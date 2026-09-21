@@ -11,6 +11,7 @@ public sealed class RexApp
     private readonly ConfigStore _config;
     private readonly IAnsiConsole _console;
     private readonly bool _pauseEnabled;
+    private readonly bool _precisionTouchpadEligible;
 
     public RexApp(
         AppPaths paths,
@@ -18,7 +19,8 @@ public sealed class RexApp
         IBridgeClient bridge,
         ConfigStore config,
         IAnsiConsole? console = null,
-        bool pauseEnabled = true)
+        bool pauseEnabled = true,
+        bool? precisionTouchpadEligible = null)
     {
         _paths = paths;
         _runner = runner;
@@ -26,6 +28,8 @@ public sealed class RexApp
         _config = config;
         _console = console ?? AnsiConsole.Console;
         _pauseEnabled = pauseEnabled;
+        _precisionTouchpadEligible = precisionTouchpadEligible ??
+            OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000);
     }
 
     public async Task<int> RunAsync()
@@ -175,7 +179,7 @@ public sealed class RexApp
             true);
         _config.Set("StayAwakeWhenUsb", stayAwake.ToString().ToLowerInvariant());
 
-        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+        if (_precisionTouchpadEligible)
         {
             var touchpad = _console.Confirm(
                 "Enable Windows 11 Precision Touchpad gestures when supported?",
