@@ -198,6 +198,8 @@ class RepositoryContractTests(unittest.TestCase):
             "Start-Hidden.vbs",
             "config.json",
             "README.md",
+            "docs/DISPLAY_TRANSPORTS.md",
+            "docs/DISPLAY_COMPATIBILITY.md",
             ".gitignore",
             ".github/workflows/ci.yml",
             ".github/workflows/pages.yml",
@@ -788,6 +790,7 @@ class RepositoryContractTests(unittest.TestCase):
         xaml = self.read("ControlCenter.xaml")
         for header in [
             'Header="Controls"',
+            'Header="Display"',
             'Header="PC / mirror settings"',
             'Header="Device settings"',
             'Header="Advanced Android"',
@@ -881,13 +884,14 @@ class RepositoryContractTests(unittest.TestCase):
         app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
         for command in [
             '"status"', '"devices"', '"start"', '"stop"', '"setup"', '"repair"',
-            '"autostart"', '"shortcut"', '"controls"', '"action"', '"mirror"', '"device"',
+            '"autostart"', '"shortcut"', '"controls"', '"action"', '"mirror"', '"display"', '"device"',
             '"android"', '"config"', '"screenshot"', '"lock-mode"', '"reset-lock"',
             '"captures"', '"diagnostics"',
         ]:
             self.assertIn(command, program)
         for section_name in [
             "Runtime controls",
+            "Display transports",
             "PC / mirror settings",
             "Device settings",
             "Advanced Android settings",
@@ -898,6 +902,28 @@ class RepositoryContractTests(unittest.TestCase):
             "Captures",
         ]:
             self.assertIn(section_name, app)
+
+    def test_display_transport_architecture_is_exposed_across_surfaces(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        machine = self.read("src/Rex.AndroidMirror.Cli/MachineMode.cs")
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        xaml = self.read("ControlCenter.xaml")
+        manager = self.read("src/Rex.AndroidMirror.Cli/DisplayManager.cs")
+        docs = self.read("docs/DISPLAY_TRANSPORTS.md")
+
+        for needle in [
+            "display probe",
+            "display receiver open",
+            "display verify",
+        ]:
+            self.assertIn(needle, program)
+        self.assertIn('case "display"', machine)
+        self.assertIn("Display transports", app)
+        self.assertIn('x:Name="DisplayTab"', xaml)
+        self.assertIn("DisplayTransportIds.Scrcpy", manager)
+        self.assertIn("DisplayTransportIds.WindowsMiracast", manager)
+        self.assertIn("ADB remains the independent control plane", docs)
+        self.assertNotIn("black frame detector", manager.lower())
 
     def test_rex_cli_first_run_wizard_covers_headless_setup_choices(self):
         app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
@@ -1003,6 +1029,9 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/Rex.AndroidMirror.Cli.Tests/RexAppTests.cs",
             "tests/Rex.AndroidMirror.Cli.Tests/MachineModeTests.cs",
             "tests/Rex.AndroidMirror.Cli.Tests/SmartLaunchTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/DisplayManagerTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/WindowsDisplayHostProbeTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/DisplayVerificationStoreTests.cs",
         ]
         for path in required:
             with self.subTest(path=path):
@@ -1029,6 +1058,7 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("exactly one JSON document", agents)
         self.assertIn("REX.bat agent capabilities", agents)
         self.assertIn("REX.bat status --json", agents)
+        self.assertIn("REX.bat agent display probe", agents)
         self.assertIn("REX_BOOTSTRAP_QUIET", rex_bat)
         self.assertIn('if /I "%~1"=="agent"', rex_bat)
         self.assertIn("for %%A in (%*)", rex_bat)
