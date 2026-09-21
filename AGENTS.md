@@ -10,17 +10,16 @@ Coding agents and automation should prefer the repository's machine interface ov
 
 ## Machine-readable entry point
 
-Use:
+Use either machine-mode spelling:
 
 ```bat
+REX.bat --plain <command> [args...]
 REX.bat --json <command> [args...]
 ```
 
-This bootstraps the self-contained REX CLI when needed and invokes:
+`--plain` and `--json` are aliases for the same versioned, non-interactive JSON protocol. The batch bootstrap is quiet in machine mode so it does not contaminate stdout.
 
-```text
-rex.exe --json <command> [args...]
-```
+This bootstraps the self-contained REX CLI when needed and invokes the equivalent `rex.exe --plain ...` / `rex.exe --json ...` command.
 
 The machine interface:
 
@@ -42,9 +41,9 @@ REX.bat --json capabilities
 Inspect the package:
 
 ```bat
-REX.bat --json status
-REX.bat --json devices
-REX.bat --json diagnostics
+REX.bat --plain status
+REX.bat --plain devices
+REX.bat --plain diagnostics
 ```
 
 Inspect or change PC / mirror configuration:
@@ -95,6 +94,16 @@ REX.bat --json android delete system some_key --serial USB123
 ```
 
 The backend blocks a protected set of keys that could break ADB recovery or mutate device identity.
+
+Smart human-entry state can also be inspected/executed without prompts:
+
+```bat
+REX.bat --plain smart
+REX.bat --plain shortcut install
+REX.bat --plain shortcut remove
+```
+
+`smart` never invents a device choice. It reports whether setup is required, focuses an existing mirror, starts a ready mirror, or starts/keeps the supervisor waiting for an authorized device.
 
 Other lifecycle commands:
 
@@ -171,6 +180,19 @@ config.json.rex-backup
 ```
 
 Use `config restore` rather than hand-editing after a bad machine-driven config change when possible.
+
+### Smart REX desktop entry
+
+Setup installs a per-user Desktop shortcut named `REX`. It launches `REX.bat smart`.
+
+Expected semantics:
+
+- setup incomplete -> guided terminal setup;
+- mirror already running -> focus the existing mirror, do not start a duplicate;
+- authorized Android device present and mirror stopped -> explicit start;
+- no authorized device and supervisor stopped -> start supervisor and show waiting/status UX;
+- no authorized device and supervisor already running -> do not start a duplicate supervisor;
+- persistent OFF is cleared only because clicking the REX shortcut is itself an explicit start request.
 
 ### User-facing parity
 
