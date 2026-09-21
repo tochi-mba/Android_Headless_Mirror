@@ -38,9 +38,37 @@ diagnosticTabs.forEach((tab,index)=>{
   });
 });
 
+const fallbackCopy=(text)=>{
+  const textarea=document.createElement('textarea');
+  textarea.value=text;
+  textarea.setAttribute('readonly','');
+  textarea.style.position='fixed';
+  textarea.style.opacity='0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  let copied=false;
+  try{copied=document.execCommand('copy')}catch{}
+  textarea.remove();
+  return copied;
+};
+const copyText=async(text)=>{
+  if(navigator.clipboard?.writeText){
+    try{
+      await Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error('clipboard timeout')),800))
+      ]);
+      return true;
+    }catch{}
+  }
+  return fallbackCopy(text);
+};
 document.querySelectorAll('.copy-button').forEach(button=>button.addEventListener('click',async()=>{
-  try{await navigator.clipboard.writeText(button.dataset.copy);const old=button.textContent;button.textContent='Copied';setTimeout(()=>button.textContent=old,1400)}
-  catch{button.textContent='Copy failed'}
+  const old=button.textContent;
+  button.textContent='Copying…';
+  const copied=await copyText(button.dataset.copy);
+  button.textContent=copied?'Copied':'Copy failed';
+  if(copied) setTimeout(()=>button.textContent=old,1400);
 }));
 
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
