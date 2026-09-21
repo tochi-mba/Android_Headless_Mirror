@@ -1,0 +1,28 @@
+{
+  "WindowTitle": "Galaxy S21 Ultra",
+  "PollSeconds": 2,
+  "RetrySeconds": 4,
+  "WakeBeforeMirror": true,
+  "TurnPhysicalScreenOff": true,
+  "StayAwakeWhenUsb": true,
+  "PowerOffOnClose": false,
+  "MaxSize": 1920,
+  "MaxFps": 60,
+  "VideoBitRate": "12M",
+  "PreferUsb": true,
+  "RestartOnUnexpectedExit": true,
+  "PreferredSerial": "",
+  "Wireless": {
+    "Enabled": true,
+    "Port": 5555,
+    "EnableTcpipWhenUsbAvailable": true,
+    "TrySavedAddresses": true,
+    "TryWindowsDefaultGateway": true,
+    "ManualHosts": []
+  },
+  "Logging": {
+    "Enabled": true,
+    "MaxBytes": 2097152,
+    "KeepFiles": 5
+  }
+}

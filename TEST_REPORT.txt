@@ -1,0 +1,47 @@
+S21 Headless Mirror - build test report
+========================================
+
+Return code: 0
+
+STDOUT
+------
+
+
+STDERR
+------
+Spreadsheet runtime warmup failed during python startup
+Traceback (most recent call last):
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/patches/warm_spreadsheet_runtime_on_startup.py", line 26, in warm_spreadsheet_runtime_on_startup
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 785, in warm_spreadsheet_runtime
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 720, in _warm_feature_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/spreadsheet_warmup.py", line 704, in _warm_collaboration_flows
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/generated/interface/models.py", line 32317, in hydrate_crdt_from_proto
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/remote.py", line 749, in __call__
+  File "/tmp/tmp.L2TH2Y5coc/artifact_tool_v2-2.8.22/artifact_tool/rpc/client.py", line 150, in call
+artifact_tool.rpc.client.RemoteError: hydrateCrdtFromProto requires an empty collaborative document.
+test_adb_parse_usb_and_tcp (__main__.PackageTests.test_adb_parse_usb_and_tcp) ... ok
+test_config_valid (__main__.PackageTests.test_config_valid) ... ok
+test_ip_extraction_falls_back_to_private (__main__.PackageTests.test_ip_extraction_falls_back_to_private) ... ok
+test_ip_extraction_prefers_hotspot_wifi_interfaces (__main__.PackageTests.test_ip_extraction_prefers_hotspot_wifi_interfaces) ... ok
+test_preferred_serial_wins (__main__.PackageTests.test_preferred_serial_wins) ... ok
+test_private_ipv4 (__main__.PackageTests.test_private_ipv4) ... ok
+test_required_files_exist (__main__.PackageTests.test_required_files_exist) ... ok
+test_setup_verifies_checksum_before_extract (__main__.PackageTests.test_setup_verifies_checksum_before_extract) ... ok
+test_stop_writes_signal_and_kills_scrcpy (__main__.PackageTests.test_stop_writes_signal_and_kills_scrcpy) ... ok
+test_supervisor_reliability_features_present (__main__.PackageTests.test_supervisor_reliability_features_present) ... ok
+test_unauthorized_not_selected (__main__.PackageTests.test_unauthorized_not_selected) ... ok
+test_unique_hosts (__main__.PackageTests.test_unique_hosts) ... ok
+test_usb_preferred_over_tcp (__main__.PackageTests.test_usb_preferred_over_tcp) ... ok
+test_vbs_launches_hidden_powershell (__main__.PackageTests.test_vbs_launches_hidden_powershell) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.001s
+
+OK
+
+
+Notes
+-----
+These are package/state-machine/static tests executed in the build environment.
+The environment is Linux and has no Windows PowerShell, ADB-connected S21 Ultra,
+or scrcpy GUI, so hardware/Windows runtime integration cannot be executed here.

@@ -1,0 +1,438 @@
+[CmdletBinding()]
+param(
+    [switch]$Foreground
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ConfigFile = Join-Path $Root "config.json"
+$StateFile = Join-Path $Root "state.json"
+$StopFile = Join-Path $Root "stop.flag"
+$LogDir = Join-Path $Root "logs"
+$LogFile = Join-Path $LogDir "mirror.log"
+$ScrcpyBase = Join-Path $Root "tools\scrcpy"
+
+if (Test-Path $StopFile) {
+    Remove-Item -Force $StopFile -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+
+if (-not (Test-Path $ConfigFile)) {
+    throw "Missing config.json"
+}
+$Config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+
+$createdNew = $false
+$Mutex = New-Object System.Threading.Mutex($true, "Local\S21HeadlessMirrorSupervisor", [ref]$createdNew)
+if (-not $createdNew) {
+    exit 0
+}
+
+function Rotate-Log {
+    if (-not $Config.Logging.Enabled) { return }
+    if (-not (Test-Path $LogFile)) { return }
+
+    $maxBytes = [int64]$Config.Logging.MaxBytes
+    if ((Get-Item $LogFile).Length -lt $maxBytes) { return }
+
+    $keep = [int]$Config.Logging.KeepFiles
+    for ($i = $keep - 1; $i -ge 1; $i--) {
+        $src = "$LogFile.$i"
+        $dst = "$LogFile." + ($i + 1)
+        if (Test-Path $src) {
+            Move-Item -Force $src $dst
+        }
+    }
+    Move-Item -Force $LogFile "$LogFile.1"
+}
+
+function Log([string]$Message, [string]$Level = "INFO") {
+    $line = "{0} [{1}] {2}" -f ([DateTime]::Now.ToString("yyyy-MM-dd HH:mm:ss")), $Level, $Message
+    if ($Foreground) { Write-Host $line }
+    if ($Config.Logging.Enabled) {
+        Rotate-Log
+        Add-Content -Path $LogFile -Value $line -Encoding UTF8
+    }
+}
+
+function Find-Tool([string]$Name) {
+    if (Test-Path $ScrcpyBase) {
+        $bundled = Get-ChildItem -Path $ScrcpyBase -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+        if ($bundled) { return $bundled.FullName }
+    }
+
+    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return $null
+}
+
+function Load-State {
+    if (Test-Path $StateFile) {
+        try {
+            return Get-Content $StateFile -Raw | ConvertFrom-Json
+        }
+        catch {
+            Log "Ignoring corrupt state.json: $($_.Exception.Message)" "WARN"
+        }
+    }
+
+    return [pscustomobject]@{
+        PreferredSerial = ""
+        WirelessHosts = @()
+    }
+}
+
+function Save-State($State) {
+    $State | ConvertTo-Json -Depth 6 | Set-Content -Path $StateFile -Encoding UTF8
+}
+
+function Get-AdbDevices([string]$Adb) {
+    $output = @(& $Adb devices -l 2>&1)
+    $items = @()
+
+    foreach ($line in $output) {
+        $text = [string]$line
+        if ($text -match '^\s*(\S+)\s+(device|unauthorized|offline|no permissions)(?:\s+|$)') {
+            $items += [pscustomobject]@{
+                Serial = $Matches[1]
+                State = $Matches[2]
+                IsTcp = ($Matches[1] -match ':\d+$')
+                Raw = $text
+            }
+        }
+    }
+    return @($items)
+}
+
+function Is-PrivateIPv4([string]$Ip) {
+    $parsed = $null
+    if (-not [System.Net.IPAddress]::TryParse($Ip, [ref]$parsed)) { return $false }
+    $b = $parsed.GetAddressBytes()
+    if ($b.Count -ne 4) { return $false }
+
+    if ($b[0] -eq 10) { return $true }
+    if ($b[0] -eq 192 -and $b[1] -eq 168) { return $true }
+    if ($b[0] -eq 172 -and $b[1] -ge 16 -and $b[1] -le 31) { return $true }
+    return $false
+}
+
+function Get-PhoneIpCandidates([string]$Adb, [string]$Serial) {
+    $result = New-Object System.Collections.Generic.List[string]
+    try {
+        $lines = @(& $Adb -s $Serial shell ip -o -4 addr show 2>$null)
+        foreach ($line in $lines) {
+            $s = [string]$line
+            if ($s -match '^\d+:\s+([^:\s]+).*?\sinet\s+(\d+\.\d+\.\d+\.\d+)/') {
+                $iface = $Matches[1]
+                $ip = $Matches[2]
+
+                if (-not (Is-PrivateIPv4 $ip)) { continue }
+                if ($ip -eq "127.0.0.1") { continue }
+
+                # Prefer Samsung/Android Wi-Fi/hotspot-style interfaces.
+                if ($iface -match '(?i)(wlan|swlan|ap|softap|wifi)') {
+                    if (-not $result.Contains($ip)) { $result.Add($ip) }
+                }
+            }
+        }
+
+        # If no Wi-Fi/AP-looking interface was found, keep private addresses as a last resort.
+        if ($result.Count -eq 0) {
+            foreach ($line in $lines) {
+                $s = [string]$line
+                if ($s -match '\sinet\s+(\d+\.\d+\.\d+\.\d+)/') {
+                    $ip = $Matches[1]
+                    if ((Is-PrivateIPv4 $ip) -and $ip -ne "127.0.0.1" -and -not $result.Contains($ip)) {
+                        $result.Add($ip)
+                    }
+                }
+            }
+        }
+    }
+    catch {
+        Log "Could not discover phone IP addresses: $($_.Exception.Message)" "WARN"
+    }
+    return @($result)
+}
+
+function Get-DefaultGatewayCandidates {
+    $result = New-Object System.Collections.Generic.List[string]
+    try {
+        $configs = Get-NetIPConfiguration -ErrorAction Stop |
+            Where-Object { $_.IPv4DefaultGateway -ne $null }
+
+        foreach ($cfg in $configs) {
+            $ip = [string]$cfg.IPv4DefaultGateway.NextHop
+            if ((Is-PrivateIPv4 $ip) -and -not $result.Contains($ip)) {
+                $result.Add($ip)
+            }
+        }
+    }
+    catch {
+        Log "Could not enumerate Windows default gateways: $($_.Exception.Message)" "WARN"
+    }
+    return @($result)
+}
+
+function Unique-Strings($Values) {
+    $set = New-Object System.Collections.Generic.HashSet[string]
+    $out = New-Object System.Collections.Generic.List[string]
+    foreach ($v in @($Values)) {
+        if ($null -eq $v) { continue }
+        $s = ([string]$v).Trim()
+        if ($s.Length -eq 0) { continue }
+        if ($set.Add($s)) { $out.Add($s) }
+    }
+    return @($out)
+}
+
+function Save-WirelessHosts($State, $Hosts) {
+    $existing = @()
+    if ($null -ne $State.WirelessHosts) { $existing = @($State.WirelessHosts) }
+    $State.WirelessHosts = @(Unique-Strings ($existing + @($Hosts)))
+    Save-State $State
+}
+
+function Try-WirelessConnections([string]$Adb, $State) {
+    if (-not $Config.Wireless.Enabled) { return }
+
+    $port = [int]$Config.Wireless.Port
+    $hosts = @()
+
+    if ($Config.Wireless.TrySavedAddresses -and $null -ne $State.WirelessHosts) {
+        $hosts += @($State.WirelessHosts)
+    }
+
+    if ($null -ne $Config.Wireless.ManualHosts) {
+        $hosts += @($Config.Wireless.ManualHosts)
+    }
+
+    if ($Config.Wireless.TryWindowsDefaultGateway) {
+        $hosts += @(Get-DefaultGatewayCandidates)
+    }
+
+    $hosts = Unique-Strings $hosts
+
+    foreach ($hostName in $hosts) {
+        if (-not (Is-PrivateIPv4 $hostName)) { continue }
+        $endpoint = "{0}:{1}" -f $hostName, $port
+        try {
+            $output = (& $Adb connect $endpoint 2>&1 | Out-String).Trim()
+            if ($output -match '(?i)(connected to|already connected to)') {
+                Log "ADB TCP/IP connected to $endpoint"
+            }
+        }
+        catch {
+            # Expected while the phone is not reachable. Keep polling quietly.
+        }
+    }
+}
+
+function Configure-WirelessFromUsb([string]$Adb, [string]$Serial, $State) {
+    if (-not $Config.Wireless.Enabled) { return }
+    if (-not $Config.Wireless.EnableTcpipWhenUsbAvailable) { return }
+
+    $port = [int]$Config.Wireless.Port
+    try {
+        $ips = @(Get-PhoneIpCandidates $Adb $Serial)
+        if ($ips.Count -gt 0) {
+            Save-WirelessHosts $State $ips
+            Log ("Saved wireless candidate(s): " + ($ips -join ", "))
+        }
+
+        # Enabling legacy ADB TCP/IP is useful for hotspot/Wi-Fi fallback.
+        # Android normally resets this after a phone reboot, so USB remains the true recovery path.
+        $result = (& $Adb -s $Serial tcpip $port 2>&1 | Out-String).Trim()
+        Log "adb tcpip response: $result"
+
+        Start-Sleep -Milliseconds 900
+        foreach ($ip in $ips) {
+            try {
+                $endpoint = "{0}:{1}" -f $ip, $port
+                $connect = (& $Adb connect $endpoint 2>&1 | Out-String).Trim()
+                Log "Wireless bootstrap $endpoint -> $connect"
+            }
+            catch {
+                Log "Wireless bootstrap failed for $ip" "WARN"
+            }
+        }
+    }
+    catch {
+        Log "Wireless bootstrap failed: $($_.Exception.Message)" "WARN"
+    }
+}
+
+function Select-Device($Devices, $State) {
+    $ready = @($Devices | Where-Object { $_.State -eq "device" })
+    if ($ready.Count -eq 0) { return $null }
+
+    $preferred = [string]$Config.PreferredSerial
+    if ([string]::IsNullOrWhiteSpace($preferred)) {
+        $preferred = [string]$State.PreferredSerial
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($preferred)) {
+        $match = $ready | Where-Object { $_.Serial -eq $preferred } | Select-Object -First 1
+        if ($match) { return $match }
+    }
+
+    if ($Config.PreferUsb) {
+        $usb = @($ready | Where-Object { -not $_.IsTcp })
+        if ($usb.Count -gt 0) { return $usb[0] }
+    }
+
+    return $ready[0]
+}
+
+function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
+    $args = New-Object System.Collections.Generic.List[string]
+    $args.Add("--serial=$Serial")
+    $args.Add("--window-title=$($Config.WindowTitle)")
+
+    if ($Config.TurnPhysicalScreenOff) {
+        $args.Add("--turn-screen-off")
+    }
+
+    if ($Config.StayAwakeWhenUsb -and -not $IsTcp) {
+        $args.Add("--stay-awake")
+    }
+
+    if ($Config.PowerOffOnClose) {
+        $args.Add("--power-off-on-close")
+    }
+
+    if ([int]$Config.MaxSize -gt 0) {
+        $args.Add("--max-size=$([int]$Config.MaxSize)")
+    }
+
+    if ([int]$Config.MaxFps -gt 0) {
+        $args.Add("--max-fps=$([int]$Config.MaxFps)")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$Config.VideoBitRate)) {
+        $args.Add("--video-bit-rate=$([string]$Config.VideoBitRate)")
+    }
+
+    return @($args)
+}
+
+function Show-FirstUseHint {
+    try {
+        Add-Type -AssemblyName PresentationFramework -ErrorAction SilentlyContinue
+        [System.Windows.MessageBox]::Show(
+            "The Galaxy S21 Ultra is connected, but USB debugging is not authorised.`n`n" +
+            "On the phone, unlock it once and accept 'Allow USB debugging'. Tick 'Always allow from this computer'.`n`n" +
+            "After that, this launcher can reconnect automatically.",
+            "S21 Headless Mirror - one-time setup"
+        ) | Out-Null
+    }
+    catch {
+        Log "USB debugging authorization is required on the phone." "WARN"
+    }
+}
+
+$Adb = $null
+$Scrcpy = $null
+$unauthorizedNoticeShown = $false
+$wirelessBootstrappedFor = ""
+
+try {
+    $Adb = Find-Tool "adb.exe"
+    $Scrcpy = Find-Tool "scrcpy.exe"
+
+    if (-not $Adb -or -not $Scrcpy) {
+        Log "scrcpy/adb not found. Run SETUP_AND_START.bat first." "ERROR"
+        exit 2
+    }
+
+    Log "Supervisor starting. adb=$Adb scrcpy=$Scrcpy"
+    & $Adb start-server | Out-Null
+
+    $State = Load-State
+
+    while (-not (Test-Path $StopFile)) {
+        try {
+            $devices = @(Get-AdbDevices $Adb)
+
+            $unauthorized = @($devices | Where-Object { $_.State -eq "unauthorized" })
+            if ($unauthorized.Count -gt 0 -and -not $unauthorizedNoticeShown) {
+                Log "Phone detected but USB debugging is unauthorized." "WARN"
+                Show-FirstUseHint
+                $unauthorizedNoticeShown = $true
+            }
+
+            $selected = Select-Device $devices $State
+
+            if (-not $selected) {
+                Try-WirelessConnections $Adb $State
+                Start-Sleep -Seconds ([int]$Config.PollSeconds)
+                continue
+            }
+
+            $unauthorizedNoticeShown = $false
+
+            if (-not $selected.IsTcp) {
+                if ([string]::IsNullOrWhiteSpace([string]$State.PreferredSerial)) {
+                    $State.PreferredSerial = $selected.Serial
+                    Save-State $State
+                    Log "Saved preferred USB serial $($selected.Serial)"
+                }
+
+                if ($wirelessBootstrappedFor -ne $selected.Serial) {
+                    Configure-WirelessFromUsb $Adb $selected.Serial $State
+                    $wirelessBootstrappedFor = $selected.Serial
+                }
+            }
+
+            if ($Config.WakeBeforeMirror) {
+                try {
+                    & $Adb -s $selected.Serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
+                }
+                catch {
+                    Log "Wake command failed; continuing." "WARN"
+                }
+            }
+
+            $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
+            Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
+
+            $proc = Start-Process -FilePath $Scrcpy -ArgumentList $args -PassThru -Wait
+            $exitCode = $proc.ExitCode
+            Log "scrcpy exited with code $exitCode"
+
+            if (Test-Path $StopFile) { break }
+
+            # A clean exit generally means the user intentionally closed the mirror.
+            if ($exitCode -eq 0) {
+                Log "Clean scrcpy exit; supervisor stopping until next login/START_NOW."
+                break
+            }
+
+            if (-not $Config.RestartOnUnexpectedExit) {
+                Log "RestartOnUnexpectedExit=false; stopping."
+                break
+            }
+
+            Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+        }
+        catch {
+            Log "Loop error: $($_.Exception.Message)" "ERROR"
+            Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+        }
+    }
+
+    Log "Supervisor stopped."
+}
+finally {
+    if (Test-Path $StopFile) {
+        Remove-Item -Force $StopFile -ErrorAction SilentlyContinue
+    }
+    if ($Mutex) {
+        try { $Mutex.ReleaseMutex() | Out-Null } catch {}
+        $Mutex.Dispose()
+    }
+}
