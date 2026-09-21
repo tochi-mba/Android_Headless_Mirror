@@ -173,6 +173,7 @@ $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
     "Get-PhoneIpCandidates",
     "Unique-Strings",
     "Select-Device",
+    "Split-ExtraScrcpyArguments",
     "Build-ScrcpyArguments",
     "Invoke-Scrcpy",
     "Start-PatternOverlay",
@@ -428,7 +429,29 @@ try {
         Assert-True -Condition (Save-PatternCalibration "USB:123" $bounds) -Message "Calibration should save successfully."
         $calibrationPath = Get-CalibrationPath "USB:123"
         Assert-True -Condition (Test-Path $calibrationPath) -Message "Calibration should be stored in a per-device file."
-        Assert-True -Condition ($calibrationPath -match 'USB_123\.json
+        Assert-True -Condition ($calibrationPath -match 'USB_123\.json$') -Message "Calibration path should sanitize the ADB serial."
+
+        $loadedCalibration = Load-PatternCalibration "USB:123"
+        Assert-Equal -Expected "calibration" -Actual $loadedCalibration.Source -Message "Saved calibration should reload as calibration geometry."
+        Assert-Equal -Expected 0.20 -Actual ([Math]::Round($loadedCalibration.GridBoundsNormalized.Left, 2)) -Message "Saved calibration should preserve left bound."
+        Assert-Equal -Expected 0.72 -Actual ([Math]::Round($loadedCalibration.GridBoundsNormalized.Bottom, 2)) -Message "Saved calibration should preserve bottom bound."
+
+        $calibrationJson = Get-Content $calibrationPath -Raw
+        Assert-False -Condition ($calibrationJson -match '(?i)trail|cursor|patternpoints|gesture') -Message "Calibration file must contain geometry only, never gesture/cursor path data."
+
+        Remove-PatternCalibration "USB:123"
+        Assert-False -Condition (Test-Path $calibrationPath) -Message "Calibration removal should delete only that device file."
+    }
+    finally {
+        $script:Root = $originalRoot
+        if ($hadOverlayConfig) {
+            $script:OverlayConfig = $originalOverlayConfig
+        }
+        else {
+            Remove-Variable -Name OverlayConfig -Scope Script -ErrorAction SilentlyContinue
+        }
+    }
+
     $fakeAdb = Join-Path $temp "fake-adb.cmd"
     @'
 @echo off
@@ -505,6 +528,19 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         VideoBitRate = "12M"
         PreferredSerial = ""
         PreferUsb = $true
+        ScrcpySession = [pscustomobject]@{
+            VideoCodec = "h264"
+            AudioEnabled = $true
+            AudioCodec = "opus"
+            AudioDup = $false
+            AudioBufferMs = 50
+            Fullscreen = $false
+            AlwaysOnTop = $false
+            DisableScreensaver = $true
+            RecordOnStart = $false
+            RecordDirectory = "captures/recordings"
+        }
+        ExtraScrcpyArgs = '--render-fit=letterbox --shortcut-mod="rctrl"'
     }
 
     $usbArgs = @(Build-ScrcpyArguments "USB123" $false)
@@ -512,32 +548,91 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         "--serial=USB123",
         "--window-title=Android Device [USB123]",
         "--mouse=sdk",
-        "--turn-screen-off"
+        "--turn-screen-off",
         "--stay-awake",
         "--keep-active",
         "--max-size=1920",
         "--max-fps=60",
-        "--video-bit-rate=12M"
+        "--video-bit-rate=12M",
+        "--video-codec=h264",
+        "--audio-codec=opus",
+        "--audio-buffer=50",
+        "--disable-screensaver",
+        "--render-fit=letterbox",
+        "--shortcut-mod=rctrl"
     )) {
         Assert-Contains -Collection $usbArgs -Value $expected -Message "USB scrcpy args should include $expected."
     }
     Assert-False -Condition ($usbArgs -contains "--power-off-on-close") -Message "Disabled power-off-on-close should not be emitted."
+    Assert-False -Condition ($usbArgs -contains "--audio-dup") -Message "Disabled audio duplication should not be emitted."
 
     $tcpArgs = @(Build-ScrcpyArguments "192.168.1.40:5555" $true)
     Assert-False -Condition ($tcpArgs -contains "--stay-awake") -Message "TCP sessions should not receive the USB stay-awake flag."
     Assert-Contains -Collection $tcpArgs -Value "--keep-active" -Message "TCP sessions should still receive --keep-active."
 
+    Write-Host "[powershell] Testing alternate session settings..."
     $script:Config.PowerOffOnClose = $true
     $script:Config.KeepActiveDuringMirror = $false
     $script:Config.MaxSize = 0
     $script:Config.MaxFps = 0
     $script:Config.VideoBitRate = ""
+    $script:Config.ScrcpySession.VideoCodec = "h265"
+    $script:Config.ScrcpySession.AudioEnabled = $false
+    $script:Config.ScrcpySession.AudioDup = $true
+    $script:Config.ScrcpySession.Fullscreen = $true
+    $script:Config.ScrcpySession.AlwaysOnTop = $true
+    $script:Config.ExtraScrcpyArgs = ""
+
     $minimalArgs = @(Build-ScrcpyArguments "USB123" $false)
     Assert-Contains -Collection $minimalArgs -Value "--power-off-on-close" -Message "Enabled power-off-on-close should be emitted."
+    Assert-Contains -Collection $minimalArgs -Value "--video-codec=h265" -Message "Configured video codec should be emitted."
+    Assert-Contains -Collection $minimalArgs -Value "--no-audio" -Message "Disabled audio should emit --no-audio."
+    Assert-Contains -Collection $minimalArgs -Value "--fullscreen" -Message "Fullscreen preference should be emitted."
+    Assert-Contains -Collection $minimalArgs -Value "--always-on-top" -Message "Always-on-top preference should be emitted."
+    Assert-False -Condition ($minimalArgs -contains "--audio-dup") -Message "Audio duplication should not emit when audio is disabled."
     Assert-False -Condition ($minimalArgs -contains "--keep-active") -Message "Disabled KeepActiveDuringMirror should suppress --keep-active."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-fps=*" }).Count -gt 0) -Message "MaxFps=0 should suppress --max-fps."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--video-bit-rate=*" }).Count -gt 0) -Message "Blank bitrate should suppress --video-bit-rate."
+
+    Write-Host "[powershell] Testing recording path and raw-argument guardrails..."
+    $recordRoot = Join-Path $temp "record-root"
+    New-Item -ItemType Directory -Force -Path $recordRoot | Out-Null
+    $originalRootForRecord = $script:Root
+    try {
+        $script:Root = $recordRoot
+        $script:Config.ScrcpySession.RecordOnStart = $true
+        $script:Config.ScrcpySession.AudioEnabled = $true
+        $recordArgs = @(Build-ScrcpyArguments "USB123" $false)
+        Assert-Equal -Expected 1 -Actual @($recordArgs | Where-Object { $_ -like "--record=*" }).Count -Message "Record-on-start should emit exactly one record argument."
+        $recordArg = @($recordArgs | Where-Object { $_ -like "--record=*" })[0]
+        Assert-True -Condition ($recordArg -match 'captures[\\/]recordings[\\/]android-\d{8}-\d{6}\.mp4$') -Message "Record argument should target the configured captures directory."
+    }
+    finally {
+        $script:Root = $originalRootForRecord
+        $script:Config.ScrcpySession.RecordOnStart = $false
+    }
+
+    foreach ($forbidden in @(
+        "--serial=OTHER",
+        "--window-title=Hijacked",
+        "--mouse=uhid",
+        "--no-control",
+        "--no-window",
+        "--no-video"
+    )) {
+        $threw = $false
+        try {
+            [void](Split-ExtraScrcpyArguments $forbidden)
+        }
+        catch {
+            $threw = $true
+        }
+        Assert-True -Condition $threw -Message "Advanced raw argument '$forbidden' must be rejected."
+    }
+
+    $splitArgs = @(Split-ExtraScrcpyArguments '--render-fit=letterbox --shortcut-mod="rctrl" "--background-color=#123456"')
+    Assert-Equal -Expected @("--render-fit=letterbox","--shortcut-mod=rctrl","--background-color=#123456") -Actual $splitArgs -Message "Quoted extra scrcpy arguments should retain exact argument boundaries."
 
     Write-Host "[powershell] Testing native scrcpy argument boundaries..."
     $scrcpyArgLog = Join-Path $temp "scrcpy-args.log"
