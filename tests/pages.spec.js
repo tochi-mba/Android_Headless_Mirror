@@ -262,6 +262,9 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('Detect before asking');
     await expect(section).toContainText('Everything from the keyboard');
     await expect(section).toContainText('The CLI and Control Center cannot drift');
+    await expect(section).toContainText('rex smart');
+    await expect(section).toContainText('rex --plain status');
+    await expect(section).toContainText('REX.lnk');
     await expect(section).toContainText('rex action sleep');
     await expect(section).toContainText('rex mirror zoom-in');
     await expect(section).toContainText('rex android list global');
