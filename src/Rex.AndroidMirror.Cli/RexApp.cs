@@ -65,7 +65,6 @@ public sealed class RexApp
                 {
                     "Start / open mirror",
                     "Runtime controls",
-                    "Display transports",
                     "PC / mirror settings",
                     "Device settings",
                     "Advanced Android settings",
@@ -78,6 +77,7 @@ public sealed class RexApp
                     "Stop Android Headless Mirror",
                     "Refresh",
                     "Exit",
+                    "Display transports",
                 }));
 
             try
