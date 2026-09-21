@@ -1,0 +1,7 @@
+tools/
+logs/
+state.json
+stop.flag
+*.log
+__pycache__/
+*.pyc
