@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$SkipAutostart
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -105,8 +107,13 @@ try {
     & $scrcpy.FullName --version | Select-Object -First 1 | ForEach-Object { Write-Host "  $_" }
     & $adb.FullName version | Select-Object -First 1 | ForEach-Object { Write-Host "  $_" }
 
-    Write-Step "Installing per-user Windows startup shortcut..."
-    & (Join-Path $Root "Install-Autostart.ps1")
+    if ($SkipAutostart) {
+        Write-Step "Skipping Windows startup shortcut; the caller will choose whether to enable it."
+    }
+    else {
+        Write-Step "Installing per-user Windows startup shortcut..."
+        & (Join-Path $Root "Install-Autostart.ps1")
+    }
 
     Write-Step "Setup complete."
 }
