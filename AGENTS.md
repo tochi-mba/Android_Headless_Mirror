@@ -38,10 +38,12 @@ The machine interface:
 - returns exit code `0` on success and non-zero on failure;
 - returns `{"ok":true,...}` or `{"ok":false,...}`.
 
-Discover the current machine contract before assuming capabilities:
+Discover the current machine contract before assuming capabilities. These are equivalent:
 
 ```bat
 REX.bat agent capabilities
+REX.bat --json capabilities
+REX.bat --plain capabilities
 ```
 
 If the executable is already bootstrapped, agents may call it directly:
