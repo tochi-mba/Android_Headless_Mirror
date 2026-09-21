@@ -12,7 +12,7 @@ public sealed class BridgeClientTests
         {
             Result = new ProcessResult(0, """
             setup chatter
-            {"Ok":true,"SetupComplete":true,"AutostartEnabled":true,"PersistentOff":false,"SupervisorRunning":true,"MirrorRunning":false,"AdbPath":"C:\adb.exe","ScrcpyPath":"C:\scrcpy.exe","Devices":[{"Serial":"USB123","State":"device","IsTcp":false,"Manufacturer":"Google","Model":"Pixel 9","DisplayName":"Google Pixel 9"}]}
+            {"Ok":true,"SetupComplete":true,"AutostartEnabled":true,"PersistentOff":false,"SupervisorRunning":true,"MirrorRunning":false,"AdbPath":"C:\\adb.exe","ScrcpyPath":"C:\\scrcpy.exe","Devices":[{"Serial":"USB123","State":"device","IsTcp":false,"Manufacturer":"Google","Model":"Pixel 9","DisplayName":"Google Pixel 9"}]}
             """, "")
         };
         var client = new BridgeClient(package.Paths, runner);
