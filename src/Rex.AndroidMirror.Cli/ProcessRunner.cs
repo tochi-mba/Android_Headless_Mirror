@@ -8,7 +8,7 @@ public sealed record ProcessResult(int ExitCode, string StdOut, string StdErr)
     public bool Ok => ExitCode == 0;
 }
 
-public sealed class ProcessRunner
+public sealed class ProcessRunner : IProcessRunner
 {
     public async Task<ProcessResult> RunAsync(
         string fileName,
