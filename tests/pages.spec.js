@@ -94,6 +94,15 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await offline.click();
     await expect(offline).toHaveAttribute('aria-selected', 'true');
     await expect(output).toContainText('OFFLINE');
+
+    await offline.press('Home');
+    const authorized = page.getByRole('tab', { name: 'Authorized' });
+    await expect(authorized).toBeFocused();
+    await expect(authorized).toHaveAttribute('aria-selected', 'true');
+
+    await authorized.press('ArrowRight');
+    await expect(unauthorized).toBeFocused();
+    await expect(unauthorized).toHaveAttribute('aria-selected', 'true');
   });
 
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
@@ -163,6 +172,11 @@ test.describe('mobile behavior', () => {
     await expect(menu).toHaveAttribute('aria-expanded', 'true');
     await expect(nav).toHaveClass(/open/);
 
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveAttribute('aria-expanded', 'false');
+    await expect(nav).not.toHaveClass(/open/);
+
+    await menu.click();
     await nav.getByRole('link', { name: 'Features' }).click();
     await expect(menu).toHaveAttribute('aria-expanded', 'false');
     await expect(nav).not.toHaveClass(/open/);
