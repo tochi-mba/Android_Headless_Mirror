@@ -171,8 +171,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "rex config list failed." }
 
           $help = Get-Content artifacts\rex-cli-smoke\help.txt -Raw
-          if ($help -notmatch "REX" -or $help -notmatch "TECHNOLOGIES" -or $help -notmatch "Advanced") {
-            throw "REX CLI help output is missing expected brand/capability content."
+          foreach ($required in @(
+            "REX",
+            "TECHNOLOGIES",
+            "rex android list",
+            "rex config restore",
+            "rex mirror"
+          )) {
+            if ($help -notmatch [regex]::Escape($required)) {
+              throw "REX CLI help output is missing required content: $required"
+            }
           }
 
       - name: Upload REX CLI and terminal smoke artifacts
@@ -189,18 +197,22 @@ jobs:
           retention-days: 14
 
       - name: Run executable behavior tests (PowerShell 7)
+        if: always()
         shell: pwsh
         run: ./tests/Test-PowerShellBehavior.ps1
 
       - name: Run executable behavior tests (Windows PowerShell 5.1)
+        if: always()
         shell: powershell
         run: .\tests\Test-PowerShellBehavior.ps1
 
       - name: Run Control Center E2E
+        if: always()
         shell: powershell
         run: .\tests\Test-ControlCenterE2E.ps1
 
       - name: Run Control Center visual regression
+        if: always()
         shell: powershell
         run: .\tests\Test-ControlCenterVisual.ps1 -OutputDirectory ".\artifacts\control-center-visual"
 
