@@ -56,6 +56,78 @@ $script:DeviceIdentity = $null
 $script:AdvancedRows = @()
 $script:TestActions = New-Object System.Collections.Generic.List[string]
 
+$Window.Width = [double]$Config.ControlCenter.Width
+$Window.Height = [double]$Config.ControlCenter.Height
+$Window.Topmost = [bool]$Config.ControlCenter.AlwaysOnTop
+
+function Get-ControlCenterRuntimeDirectory {
+    $safeSerial = ($Serial -replace '[^A-Za-z0-9._-]', '_')
+    return Join-Path (Join-Path $Root "runtime") $safeSerial
+}
+
+function Get-ControlCenterUiStatePath {
+    return Join-Path (Get-ControlCenterRuntimeDirectory) "control-center-state.json"
+}
+
+function Restore-ControlCenterTab {
+    if ($TestMode -or -not [bool]$Config.ControlCenter.RememberLastTab) { return }
+
+    $path = Get-ControlCenterUiStatePath
+    if (-not (Test-Path $path)) { return }
+
+    try {
+        $state = Get-Content $path -Raw | ConvertFrom-Json
+        $name = [string]$state.LastTab
+        if (-not [string]::IsNullOrWhiteSpace($name) -and $Controls.ContainsKey($name)) {
+            (C "MainTabs").SelectedItem = C $name
+        }
+    }
+    catch {}
+}
+
+function Save-ControlCenterTab {
+    if ($TestMode -or -not [bool]$Config.ControlCenter.RememberLastTab) { return }
+
+    $selected = (C "MainTabs").SelectedItem
+    if ($null -eq $selected -or [string]::IsNullOrWhiteSpace([string]$selected.Name)) { return }
+
+    $directory = Get-ControlCenterRuntimeDirectory
+    New-Item -ItemType Directory -Force -Path $directory | Out-Null
+
+    [pscustomobject]@{
+        LastTab = [string]$selected.Name
+    } | ConvertTo-Json -Compress | Set-Content -Path (Get-ControlCenterUiStatePath) -Encoding UTF8
+}
+
+function Apply-ControlCenterWindowPlacement {
+    if ($TestMode -or -not [bool]$Config.ControlCenter.DockToMirror) { return }
+
+    try {
+        $rect = Get-ScrcpyWindowRect $script:TargetWindowTitle
+        if ($null -eq $rect) { return }
+
+        $work = [System.Windows.SystemParameters]::WorkArea
+        $gap = 12.0
+        $preferredLeft = [double]$rect.Right + $gap
+        $fallbackLeft = [double]$rect.Left - $Window.Width - $gap
+
+        $Window.WindowStartupLocation = [System.Windows.WindowStartupLocation]::Manual
+
+        if (($preferredLeft + $Window.Width) -le $work.Right) {
+            $Window.Left = $preferredLeft
+        }
+        elseif ($fallbackLeft -ge $work.Left) {
+            $Window.Left = $fallbackLeft
+        }
+        else {
+            $Window.Left = [Math]::Max($work.Left, [Math]::Min($work.Right - $Window.Width, [double]$rect.Left))
+        }
+
+        $Window.Top = [Math]::Max($work.Top, [Math]::Min($work.Bottom - $Window.Height, [double]$rect.Top))
+    }
+    catch {}
+}
+
 function Add-TestAction([string]$Action) {
     if ($TestMode) { $script:TestActions.Add($Action) }
 }
@@ -511,6 +583,13 @@ function Confirm-AdvancedChange([string]$Namespace, [string]$Key, [string]$Risk)
     return ($result -eq [System.Windows.MessageBoxResult]::Yes)
 }
 
+if (-not [bool]$Config.ControlCenter.AdvancedSettingsWritesEnabled) {
+    (C "AdvancedWriteButton").IsEnabled = $false
+    (C "AdvancedDeleteButton").IsEnabled = $false
+    (C "AdvancedValueText").IsEnabled = $false
+    (C "AdvancedKeyText").IsReadOnly = $true
+}
+
 (C "AdvancedWriteButton").Add_Click({
     $namespace = Get-ComboTag (C "AdvancedNamespaceCombo")
     $key = (C "AdvancedKeyText").Text.Trim()
@@ -686,6 +765,12 @@ function Render-ControlCenterSnapshot([string]$Path) {
 
 Load-PcSettings
 Refresh-All
+Restore-ControlCenterTab
+Apply-ControlCenterWindowPlacement
+
+(C "MainTabs").Add_SelectionChanged({
+    Save-ControlCenterTab
+})
 
 if (-not [string]::IsNullOrWhiteSpace($SnapshotPath)) {
     Render-ControlCenterSnapshot $SnapshotPath | Out-Null
