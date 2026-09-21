@@ -830,6 +830,12 @@ function New-ToolbarButton([string]$Text) {
 }
 
 $controlsButton = New-ToolbarButton "Controls"
+if (
+    $null -eq $Config.PSObject.Properties["ControlCenter"] -or
+    -not [bool]$Config.ControlCenter.Enabled
+) {
+    $controlsButton.Visibility = [System.Windows.Visibility]::Collapsed
+}
 $stack.Children.Add($controlsButton) | Out-Null
 
 $sleepButton = New-ToolbarButton "Sleep phone"
@@ -894,6 +900,7 @@ $script:touchpadGestureHandled = $false
 $script:gestureHook = $null
 $script:controlCenterProcess = $null
 $script:lastCommandPoll = [DateTime]::MinValue
+$script:controlCenterAutoOpened = $false
 
 function Get-TargetClientRect {
     if ($script:targetHwnd -eq [IntPtr]::Zero) { return $null }
@@ -1292,6 +1299,16 @@ $timer.Add_Tick({
         if ($script:targetHwnd -ne [IntPtr]::Zero) {
             $script:targetSeen = $true
             $script:missingSince = $null
+
+            if (
+                -not $script:controlCenterAutoOpened -and
+                $null -ne $Config.PSObject.Properties["ControlCenter"] -and
+                [bool]$Config.ControlCenter.Enabled -and
+                [bool]$Config.ControlCenter.OpenOnLaunch
+            ) {
+                $script:controlCenterAutoOpened = $true
+                Open-ControlCenter
+            }
 
             if ($ChromeConfig.CtrlWheelZoom -and -not $script:wheelHookStarted) {
                 $script:wheelHookStarted = [AHMMirrorChromeNative]::StartWheelHook($script:targetHwnd)
