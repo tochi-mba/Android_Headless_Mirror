@@ -7,9 +7,34 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        var machineRequested =
+            args.Any(x =>
+                x.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+                x.Equals("--plain", StringComparison.OrdinalIgnoreCase)) ||
+            (args.Length > 0 &&
+             args[0].Equals("agent", StringComparison.OrdinalIgnoreCase));
+
         if (!OperatingSystem.IsWindows())
         {
-            Console.Error.WriteLine("Android Headless Mirror REX CLI currently supports Windows only.");
+            if (machineRequested)
+            {
+                Console.Out.WriteLine(JsonSerializer.Serialize(new
+                {
+                    ok = false,
+                    protocolVersion = MachineMode.ProtocolVersion,
+                    command = (string?)null,
+                    error = new
+                    {
+                        type = "PlatformNotSupportedException",
+                        message = "Android Headless Mirror REX CLI currently supports Windows only."
+                    }
+                }));
+            }
+            else
+            {
+                Console.Error.WriteLine("Android Headless Mirror REX CLI currently supports Windows only.");
+            }
+
             return 2;
         }
 
@@ -20,15 +45,22 @@ public static class Program
             var bridge = new BridgeClient(paths, runner);
             var config = new ConfigStore(paths.Config);
 
-            if (
-                args.Length > 0 &&
-                (
-                    args[0].Equals("--json", StringComparison.OrdinalIgnoreCase) ||
-                    args[0].Equals("--plain", StringComparison.OrdinalIgnoreCase)
-                )
-            )
+            if (machineRequested)
             {
-                var machineArgs = args.Skip(1).ToArray();
+                var machineArgs = args
+                    .Where(x =>
+                        !x.Equals("--json", StringComparison.OrdinalIgnoreCase) &&
+                        !x.Equals("--plain", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                if (
+                    machineArgs.Length > 0 &&
+                    machineArgs[0].Equals("agent", StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    machineArgs = machineArgs.Skip(1).ToArray();
+                }
+
                 var result = await MachineMode.RunAsync(
                     machineArgs,
                     paths,
@@ -40,7 +72,11 @@ public static class Program
                 return result.ExitCode;
             }
 
-            if (args.Length == 0 || args[0].Equals("tui", StringComparison.OrdinalIgnoreCase) || args[0].Equals("wizard", StringComparison.OrdinalIgnoreCase))
+            if (
+                args.Length == 0 ||
+                args[0].Equals("tui", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("wizard", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 return await new RexApp(paths, runner, bridge, config).RunAsync();
             }
@@ -62,6 +98,22 @@ public static class Program
         }
         catch (Exception ex)
         {
+            if (machineRequested)
+            {
+                Console.Out.WriteLine(JsonSerializer.Serialize(new
+                {
+                    ok = false,
+                    protocolVersion = MachineMode.ProtocolVersion,
+                    command = (string?)null,
+                    error = new
+                    {
+                        type = ex.GetType().Name,
+                        message = ex.Message
+                    }
+                }));
+                return 1;
+            }
+
             RexBrand.Error(ex.Message);
             return 1;
         }
