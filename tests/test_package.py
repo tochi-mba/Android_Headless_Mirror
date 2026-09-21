@@ -215,6 +215,7 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/pages.spec.js",
             "playwright.config.js",
             "package.json",
+            "global.json",
         ]
         for path in required:
             with self.subTest(path=path):
@@ -826,6 +827,12 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("cannot override required Android Headless Mirror option", supervisor)
 
     # ---------- REX CLI ----------
+
+    def test_rex_cli_builds_on_dotnet_8_lts(self):
+        sdk = json.loads(self.read("global.json"))["sdk"]
+        self.assertEqual(sdk["version"], "8.0.100")
+        self.assertEqual(sdk["rollForward"], "latestFeature")
+        self.assertFalse(sdk["allowPrerelease"])
 
     def test_rex_cli_uses_stable_spectre_console_and_self_contained_publish(self):
         project = self.read("src/Rex.AndroidMirror.Cli/Rex.AndroidMirror.Cli.csproj")
