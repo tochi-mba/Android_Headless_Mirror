@@ -306,7 +306,7 @@ function Set-FriendlyAndroidSetting {
             if ([string]$Value -eq "reset") {
                 return Invoke-AdbText $AdbPath $Serial @("shell","wm","density","reset")
             }
-            if (-not (Test-RangeValue $Value 120 1000)) { return [pscustomobject]@{ Ok=$false; Text="Display density must be 120–1000 or 'reset'." } }
+            if (-not (Test-RangeValue $Value 120 1000)) { return [pscustomobject]@{ Ok=$false; Text="Display density must be 120-1000 or 'reset'." } }
             return Invoke-AdbText $AdbPath $Serial @("shell","wm","density",[string]$Value)
         }
         default {
