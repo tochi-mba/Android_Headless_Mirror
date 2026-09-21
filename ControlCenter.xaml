@@ -1,0 +1,408 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Name="ControlCenterWindow"
+        Title="Android Headless Mirror — Control Center"
+        Width="1040" Height="760" MinWidth="900" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="#080A09" Foreground="#F2F5EE"
+        FontFamily="Segoe UI">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Ink" Color="#080A09"/>
+    <SolidColorBrush x:Key="Panel" Color="#111512"/>
+    <SolidColorBrush x:Key="Raised" Color="#181E19"/>
+    <SolidColorBrush x:Key="Line" Color="#29302A"/>
+    <SolidColorBrush x:Key="Text" Color="#F2F5EE"/>
+    <SolidColorBrush x:Key="Muted" Color="#858D83"/>
+    <SolidColorBrush x:Key="Signal" Color="#D7FF3F"/>
+    <SolidColorBrush x:Key="Live" Color="#FF774D"/>
+
+    <Style TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+    </Style>
+    <Style TargetType="Button" x:Key="BaseButton">
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="Background" Value="{StaticResource Raised}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="12,8"/>
+      <Setter Property="Margin" Value="0,0,8,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Signal}"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Border" Property="Background" Value="#202820"/></Trigger>
+              <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.38"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="Button" BasedOn="{StaticResource BaseButton}"/>
+    <Style TargetType="Button" x:Key="PrimaryButton" BasedOn="{StaticResource BaseButton}">
+      <Setter Property="Foreground" Value="#080A09"/>
+      <Setter Property="Background" Value="{StaticResource Signal}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Signal}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style TargetType="Button" x:Key="DangerButton" BasedOn="{StaticResource BaseButton}">
+      <Setter Property="BorderBrush" Value="{StaticResource Live}"/>
+      <Setter Property="Foreground" Value="{StaticResource Live}"/>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="Background" Value="{StaticResource Raised}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="Padding" Value="9,7"/>
+      <Setter Property="CaretBrush" Value="{StaticResource Signal}"/>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Foreground" Value="#080A09"/>
+      <Setter Property="Background" Value="#F2F5EE"/>
+      <Setter Property="Padding" Value="8,6"/>
+    </Style>
+    <Style TargetType="CheckBox">
+      <Setter Property="Foreground" Value="{StaticResource Text}"/>
+      <Setter Property="Margin" Value="0,5"/>
+    </Style>
+    <Style TargetType="Slider">
+      <Setter Property="Margin" Value="0,8"/>
+    </Style>
+    <Style TargetType="GroupBox">
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="Background" Value="{StaticResource Panel}"/>
+      <Setter Property="Margin" Value="0,0,0,14"/>
+      <Setter Property="Padding" Value="14"/>
+    </Style>
+    <Style TargetType="TabItem">
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Padding" Value="14,10"/>
+      <Setter Property="Margin" Value="0,0,0,3"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TabItem">
+            <Border x:Name="TabBorder" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="TabBorder" Property="Background" Value="#1E261F"/>
+                <Setter Property="Foreground" Value="{StaticResource Signal}"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource Text}"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="72"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="34"/>
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="20,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="ANDROID HEADLESS MIRROR" Foreground="{StaticResource Signal}" FontFamily="Consolas" FontSize="10" FontWeight="SemiBold"/>
+          <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+            <TextBlock x:Name="DeviceNameText" Text="Android Device" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Text="  ·  " Foreground="{StaticResource Muted}" FontSize="18"/>
+            <TextBlock x:Name="DeviceMetaText" Text="Connecting…" Foreground="{StaticResource Muted}" FontSize="13" VerticalAlignment="Center"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <Border x:Name="ConnectionBadge" Background="#18251B" BorderBrush="#36533A" BorderThickness="1" CornerRadius="20" Padding="10,5" Margin="0,0,10,0">
+            <StackPanel Orientation="Horizontal">
+              <Ellipse x:Name="ConnectionDot" Width="7" Height="7" Fill="{StaticResource Signal}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+              <TextBlock x:Name="ConnectionText" Text="Connected" FontSize="11"/>
+            </StackPanel>
+          </Border>
+          <Button x:Name="RefreshAllButton" Content="Refresh" Style="{StaticResource BaseButton}" Margin="0"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl x:Name="MainTabs" Grid.Row="1" TabStripPlacement="Left" Background="{StaticResource Ink}" BorderThickness="0" Padding="0">
+      <TabItem x:Name="ControlsTab" Header="Controls">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="24">
+            <TextBlock Text="Mirror controls" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Runtime controls for the active scrcpy session." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
+
+            <GroupBox Header="Window &amp; view">
+              <WrapPanel>
+                <Button x:Name="FullscreenButton" Content="Fullscreen"/>
+                <Button x:Name="FitButton" Content="Fit window"/>
+                <Button x:Name="PixelPerfectButton" Content="Pixel perfect"/>
+                <Button x:Name="RotateLeftButton" Content="Rotate left"/>
+                <Button x:Name="RotateRightButton" Content="Rotate right"/>
+                <Button x:Name="FlipHorizontalButton" Content="Flip horizontal"/>
+                <Button x:Name="FlipVerticalButton" Content="Flip vertical"/>
+                <Button x:Name="PauseButton" Content="Pause display"/>
+                <Button x:Name="UnpauseButton" Content="Resume display"/>
+                <Button x:Name="ResetCaptureButton" Content="Reset capture"/>
+                <Button x:Name="FpsButton" Content="FPS counter"/>
+                <Button x:Name="ResetHostZoomButton" Content="Reset host zoom"/>
+              </WrapPanel>
+            </GroupBox>
+
+            <GroupBox Header="Android navigation &amp; system">
+              <WrapPanel>
+                <Button x:Name="HomeButton" Content="Home"/>
+                <Button x:Name="BackButton" Content="Back"/>
+                <Button x:Name="AppsButton" Content="Recent apps"/>
+                <Button x:Name="MenuButton" Content="Menu / unlock"/>
+                <Button x:Name="PowerButton" Content="Power"/>
+                <Button x:Name="SleepButton" Content="Sleep phone" Style="{StaticResource PrimaryButton}"/>
+                <Button x:Name="WakeButton" Content="Wake screen"/>
+                <Button x:Name="RotateDeviceButton" Content="Rotate Android"/>
+                <Button x:Name="NotificationsButton" Content="Notifications"/>
+                <Button x:Name="QuickSettingsButton" Content="Quick settings"/>
+                <Button x:Name="CollapsePanelsButton" Content="Collapse panels"/>
+                <Button x:Name="VolumeDownButton" Content="Volume −"/>
+                <Button x:Name="VolumeUpButton" Content="Volume +"/>
+              </WrapPanel>
+            </GroupBox>
+
+            <GroupBox Header="Clipboard &amp; input">
+              <WrapPanel>
+                <Button x:Name="CopyButton" Content="Copy from device"/>
+                <Button x:Name="CutButton" Content="Cut"/>
+                <Button x:Name="PasteSyncButton" Content="Sync &amp; paste"/>
+                <Button x:Name="PasteInjectButton" Content="Inject PC clipboard"/>
+                <Button x:Name="KeyboardSettingsButton" Content="Keyboard settings"/>
+              </WrapPanel>
+              <TextBlock Text="Precision Touchpad: two-finger pinch controls Android. Hold Ctrl while pinching to zoom only the PC mirror." Foreground="{StaticResource Muted}" Margin="0,5,0,0"/>
+            </GroupBox>
+
+            <GroupBox Header="Capture">
+              <WrapPanel>
+                <Button x:Name="ScreenshotButton" Content="Save screenshot" Style="{StaticResource PrimaryButton}"/>
+                <Button x:Name="OpenScreenshotFolderButton" Content="Open screenshot folder"/>
+              </WrapPanel>
+              <TextBlock x:Name="CaptureStatusText" Text="" Foreground="{StaticResource Muted}"/>
+            </GroupBox>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem x:Name="PcSettingsTab" Header="PC / mirror settings">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="24">
+            <TextBlock Text="PC / mirror settings" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Settings applied by the Windows wrapper or on the next mirror session." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
+
+            <GroupBox Header="Session behavior">
+              <CheckBox x:Name="PcTurnScreenOffCheck" Content="Turn physical phone screen off on mirror start"/>
+              <CheckBox x:Name="PcStayAwakeCheck" Content="Keep Android awake while USB is connected"/>
+              <CheckBox x:Name="PcKeepActiveCheck" Content="Periodically keep Android session active"/>
+              <CheckBox x:Name="PcDismissKeyguardCheck" Content="Best-effort keyguard dismissal before mirror"/>
+              <CheckBox x:Name="PcRestartUnexpectedCheck" Content="Restart mirror after unexpected exit"/>
+              <CheckBox x:Name="PcPreferUsbCheck" Content="Prefer USB when multiple transports are available"/>
+            </GroupBox>
+
+            <GroupBox Header="Video quality">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Max size" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcMaxSizeText" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="1" Text="Max FPS" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcMaxFpsText" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="2" Text="Video bitrate" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcVideoBitRateText" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Grid.RowSpan="3" Text="Applies on the next scrcpy launch. H.264/default low-latency behavior is preserved unless advanced raw arguments override it." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="20,5,0,0"/>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Touchpad &amp; host zoom">
+              <CheckBox x:Name="PcNativeTouchpadCheck" Content="Use Windows Precision Touchpad gestures when available"/>
+              <CheckBox x:Name="PcTouchpadAndroidPinchCheck" Content="Two-finger pinch/spread sends Android multitouch"/>
+              <CheckBox x:Name="PcCtrlTouchpadHostZoomCheck" Content="Ctrl + touchpad pinch zooms only the PC mirror"/>
+              <CheckBox x:Name="PcCtrlWheelHostZoomCheck" Content="Ctrl + mouse wheel zooms only the PC mirror"/>
+              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Host zoom max" Width="170" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcHostZoomMaxText" Width="90"/>
+                <TextBlock Text="×" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Pattern guide">
+              <CheckBox x:Name="PcPatternOverlayCheck" Content="Enable pattern-lock visual guide"/>
+              <CheckBox x:Name="PcPatternAutoDiscoverCheck" Content="Auto-discover Android pattern geometry"/>
+              <CheckBox x:Name="PcPatternCalibrationCheck" Content="Allow per-device keyboard calibration fallback"/>
+              <TextBlock Text="Visibility: Ctrl+Alt+P  ·  Calibration: Ctrl+Alt+C" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+            </GroupBox>
+
+            <GroupBox Header="Wireless ADB">
+              <CheckBox x:Name="PcWirelessEnabledCheck" Content="Enable legacy wireless ADB fallback"/>
+              <CheckBox x:Name="PcWirelessTcpipBootstrapCheck" Content="Allow USB session to enable TCP/IP ADB"/>
+              <TextBlock Text="Disabled by default. USB remains the recovery path." Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+            </GroupBox>
+
+            <GroupBox Header="Advanced scrcpy launch">
+              <TextBlock Text="Extra raw scrcpy arguments" Margin="0,0,0,6"/>
+              <TextBox x:Name="PcExtraScrcpyArgsText" AcceptsReturn="False"/>
+              <TextBlock Text="Advanced: appended only after validation. Use for scrcpy options not yet represented above." Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+            </GroupBox>
+
+            <WrapPanel>
+              <Button x:Name="SavePcSettingsButton" Content="Save PC settings" Style="{StaticResource PrimaryButton}"/>
+              <Button x:Name="ReloadPcSettingsButton" Content="Discard changes"/>
+            </WrapPanel>
+            <TextBlock x:Name="PcSettingsStatusText" Foreground="{StaticResource Muted}" Margin="0,4,0,20"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem x:Name="DeviceSettingsTab" Header="Device settings">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="24">
+            <TextBlock x:Name="DeviceSettingsTitle" Text="Android device settings" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Friendly controls executed on the connected Android device through ADB." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
+
+            <GroupBox Header="Display">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Brightness" VerticalAlignment="Center"/>
+                <Slider x:Name="DeviceBrightnessSlider" Grid.Row="0" Grid.Column="1" Minimum="1" Maximum="255" TickFrequency="1"/>
+                <TextBlock x:Name="DeviceBrightnessValueText" Grid.Row="0" Grid.Column="2" Margin="12,0" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
+                <TextBlock Grid.Row="1" Text="Brightness mode" VerticalAlignment="Center"/>
+                <ComboBox x:Name="DeviceBrightnessModeCombo" Grid.Row="1" Grid.Column="1" Margin="0,4"><ComboBoxItem Content="Manual" Tag="0"/><ComboBoxItem Content="Automatic" Tag="1"/></ComboBox>
+                <TextBlock Grid.Row="2" Text="Screen timeout" VerticalAlignment="Center"/>
+                <ComboBox x:Name="DeviceTimeoutCombo" Grid.Row="2" Grid.Column="1" Margin="0,4">
+                  <ComboBoxItem Content="15 seconds" Tag="15000"/><ComboBoxItem Content="30 seconds" Tag="30000"/><ComboBoxItem Content="1 minute" Tag="60000"/><ComboBoxItem Content="2 minutes" Tag="120000"/><ComboBoxItem Content="5 minutes" Tag="300000"/><ComboBoxItem Content="10 minutes" Tag="600000"/><ComboBoxItem Content="30 minutes" Tag="1800000"/>
+                </ComboBox>
+                <TextBlock Grid.Row="3" Text="Auto rotate" VerticalAlignment="Center"/>
+                <CheckBox x:Name="DeviceAutoRotateCheck" Grid.Row="3" Grid.Column="1"/>
+                <TextBlock Grid.Row="4" Text="Font scale" VerticalAlignment="Center"/>
+                <ComboBox x:Name="DeviceFontScaleCombo" Grid.Row="4" Grid.Column="1" Margin="0,4">
+                  <ComboBoxItem Content="Small (0.85×)" Tag="0.85"/><ComboBoxItem Content="Default (1.0×)" Tag="1.0"/><ComboBoxItem Content="Large (1.15×)" Tag="1.15"/><ComboBoxItem Content="Extra large (1.30×)" Tag="1.30"/>
+                </ComboBox>
+                <TextBlock Grid.Row="5" Text="Show physical touches" VerticalAlignment="Center"/>
+                <CheckBox x:Name="DeviceShowTouchesCheck" Grid.Row="5" Grid.Column="1"/>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Power &amp; motion">
+              <WrapPanel>
+                <Button x:Name="DeviceWakeButton" Content="Wake screen"/>
+                <Button x:Name="DeviceSleepButton" Content="Sleep display" Style="{StaticResource PrimaryButton}"/>
+              </WrapPanel>
+              <CheckBox x:Name="DeviceStayAwakeCheck" Content="Stay awake on AC / USB / wireless charging"/>
+              <TextBlock Text="Animation scale" Margin="0,12,0,4"/>
+              <ComboBox x:Name="DeviceAnimationCombo" Width="260" HorizontalAlignment="Left">
+                <ComboBoxItem Content="Off (0×)" Tag="0"/><ComboBoxItem Content="Fast (0.5×)" Tag="0.5"/><ComboBoxItem Content="Default (1×)" Tag="1"/><ComboBoxItem Content="Slow (1.5×)" Tag="1.5"/>
+              </ComboBox>
+            </GroupBox>
+
+            <GroupBox Header="Appearance &amp; connectivity">
+              <TextBlock Text="Dark mode" Margin="0,0,0,4"/>
+              <ComboBox x:Name="DeviceDarkModeCombo" Width="260" HorizontalAlignment="Left">
+                <ComboBoxItem Content="Automatic" Tag="auto"/><ComboBoxItem Content="Light" Tag="no"/><ComboBoxItem Content="Dark" Tag="yes"/>
+              </ComboBox>
+              <WrapPanel Margin="0,14,0,0">
+                <Button x:Name="WifiOnButton" Content="Wi-Fi on"/>
+                <Button x:Name="WifiOffButton" Content="Wi-Fi off"/>
+                <Button x:Name="MobileDataOnButton" Content="Mobile data on"/>
+                <Button x:Name="MobileDataOffButton" Content="Mobile data off"/>
+                <Button x:Name="AirplaneOnButton" Content="Airplane on"/>
+                <Button x:Name="AirplaneOffButton" Content="Airplane off"/>
+              </WrapPanel>
+              <TextBlock Text="Android/OEM permissions vary. Unsupported commands return the device error instead of pretending success." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+            </GroupBox>
+
+            <GroupBox Header="Display override (advanced)">
+              <StackPanel Orientation="Horizontal">
+                <TextBox x:Name="DeviceWmSizeText" Width="180" Margin="0,0,8,8"/>
+                <Button x:Name="ApplyWmSizeButton" Content="Apply size"/>
+                <Button x:Name="ResetWmSizeButton" Content="Reset size"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <TextBox x:Name="DeviceWmDensityText" Width="180" Margin="0,0,8,8"/>
+                <Button x:Name="ApplyWmDensityButton" Content="Apply density"/>
+                <Button x:Name="ResetWmDensityButton" Content="Reset density"/>
+              </StackPanel>
+            </GroupBox>
+
+            <TextBlock x:Name="DeviceSettingsStatusText" Foreground="{StaticResource Muted}" Margin="0,4,0,20"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem x:Name="AdvancedTab" Header="Advanced Android">
+        <Grid Margin="24">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <StackPanel>
+            <TextBlock Text="Advanced Android settings" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Live Settings Provider keys exposed by this phone. system, secure and global are enumerated at runtime." Foreground="{StaticResource Muted}" Margin="0,5,0,16"/>
+          </StackPanel>
+          <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="170"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <ComboBox x:Name="AdvancedNamespaceCombo" SelectedIndex="0" Margin="0,0,8,0">
+              <ComboBoxItem Content="system" Tag="system"/><ComboBoxItem Content="secure" Tag="secure"/><ComboBoxItem Content="global" Tag="global"/>
+            </ComboBox>
+            <TextBox x:Name="AdvancedSearchText" Grid.Column="1" Margin="0,0,8,0" ToolTip="Filter by setting key"/>
+            <Button x:Name="AdvancedRefreshButton" Grid.Column="2" Content="Refresh namespace" Margin="0"/>
+          </Grid>
+          <DataGrid x:Name="AdvancedSettingsGrid" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal" Background="{StaticResource Panel}" Foreground="{StaticResource Text}" BorderBrush="{StaticResource Line}" RowBackground="{StaticResource Panel}" AlternatingRowBackground="{StaticResource Raised}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="Key" Binding="{Binding Key}" Width="2*"/>
+              <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="3*"/>
+              <DataGridTextColumn Header="Risk" Binding="{Binding Risk}" Width="110"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <Grid Grid.Row="3" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBox x:Name="AdvancedKeyText" Margin="0,0,8,0" ToolTip="Setting key"/>
+            <TextBox x:Name="AdvancedValueText" Grid.Column="1" Margin="0,0,8,0" ToolTip="New value"/>
+            <Button x:Name="AdvancedWriteButton" Grid.Column="2" Content="Write" Style="{StaticResource PrimaryButton}"/>
+            <Button x:Name="AdvancedDeleteButton" Grid.Column="3" Content="Delete" Style="{StaticResource DangerButton}" Margin="0"/>
+          </Grid>
+        </Grid>
+      </TabItem>
+
+      <TabItem x:Name="DiagnosticsTab" Header="Diagnostics">
+        <Grid Margin="24">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <StackPanel>
+            <TextBlock Text="Diagnostics" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Device identity, capability probes and recent command results." Foreground="{StaticResource Muted}" Margin="0,5,0,14"/>
+          </StackPanel>
+          <TextBox x:Name="DiagnosticsText" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
+          <WrapPanel Grid.Row="2" Margin="0,12,0,0">
+            <Button x:Name="RefreshDiagnosticsButton" Content="Refresh diagnostics" Style="{StaticResource PrimaryButton}"/>
+            <Button x:Name="OpenLogsButton" Content="Open logs folder"/>
+          </WrapPanel>
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <Border Grid.Row="2" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="12,0">
+      <Grid>
+        <TextBlock x:Name="StatusBarText" Text="Ready" Foreground="{StaticResource Muted}" VerticalAlignment="Center" FontSize="11"/>
+        <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="REX Technologies" Foreground="{StaticResource Signal}" VerticalAlignment="Center" FontFamily="Consolas" FontSize="10"/>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
