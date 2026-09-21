@@ -139,6 +139,23 @@ public static class Program
                 return 0;
             }
 
+            case "mirror":
+            {
+                Require(args, 2, "rex mirror <zoom-in|zoom-out|reset-zoom> [--serial SERIAL]");
+                var serial = await ResolveSerialAsync(bridge, GetOption(args, "--serial"));
+                var name = args[1].ToLowerInvariant();
+                if (name is not ("zoom-in" or "zoom-out" or "reset-zoom"))
+                    throw new ArgumentException("mirror expects zoom-in, zoom-out, or reset-zoom.");
+
+                using var result = await bridge.InvokeAsync(
+                    "mirror-command",
+                    serial: serial,
+                    name: name);
+
+                PrintBridgeText(result, $"Queued {name}.");
+                return 0;
+            }
+
             case "device":
                 return await RunDeviceCommandAsync(args, bridge);
 
@@ -531,6 +548,7 @@ public static class Program
             ("rex start | stop", "Start or persistently stop the mirror service"),
             ("rex controls [--serial S]", "Open the GUI Control Center"),
             ("rex action <name> [--serial S]", "Send a scrcpy runtime action"),
+            ("rex mirror <zoom-in|zoom-out|reset-zoom>", "Control PC-only host zoom"),
             ("rex device set <setting> <value> [--serial S]", "Change a friendly Android setting"),
             ("rex android list <system|secure|global> [--filter X]", "Browse live Android Settings Provider keys"),
             ("rex android get/set/delete ...", "Read or change an Android Settings Provider key"),
