@@ -1,5 +1,75 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
+const fs = require('fs');
+const path = require('path');
+const { PNG } = require('pngjs');
+
+const visualThresholds = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'visual-thresholds.json'), 'utf8')
+);
+
+function analyzePng(buffer) {
+  const png = PNG.sync.read(buffer);
+  let total = 0;
+  let dark = 0;
+  let signal = 0;
+  let text = 0;
+  let orange = 0;
+  const colors = new Set();
+
+  for (let y = 0; y < png.height; y += 2) {
+    for (let x = 0; x < png.width; x += 2) {
+      const i = (png.width * y + x) << 2;
+      const r = png.data[i];
+      const g = png.data[i + 1];
+      const b = png.data[i + 2];
+      const a = png.data[i + 3];
+
+      if (a < 200) continue;
+      total += 1;
+      colors.add((r << 16) | (g << 8) | b);
+
+      if (r <= 45 && g <= 55 && b <= 48) dark += 1;
+      if (Math.abs(r - 215) <= 35 && Math.abs(g - 255) <= 25 && Math.abs(b - 63) <= 45) signal += 1;
+      if (r >= 210 && g >= 210 && b >= 205) text += 1;
+      if (Math.abs(r - 255) <= 25 && Math.abs(g - 119) <= 35 && Math.abs(b - 77) <= 35) orange += 1;
+    }
+  }
+
+  return {
+    width: png.width,
+    height: png.height,
+    total,
+    darkRatio: total ? dark / total : 0,
+    signalPixels: signal,
+    textPixels: text,
+    orangePixels: orange,
+    uniqueColors: colors.size,
+  };
+}
+
+async function assertVisualThreshold(target, name) {
+  const dir = path.join(process.cwd(), 'test-results', 'visual');
+  fs.mkdirSync(dir, { recursive: true });
+  const screenshotPath = path.join(dir, name + '.png');
+
+  const buffer = await target.screenshot({ path: screenshotPath });
+  const metrics = analyzePng(buffer);
+  const threshold = visualThresholds.pages;
+
+  expect(metrics.darkRatio, name + ' dark ratio').toBeGreaterThanOrEqual(threshold.darkRatioMin);
+  expect(metrics.darkRatio, name + ' dark ratio').toBeLessThanOrEqual(threshold.darkRatioMax);
+  expect(metrics.signalPixels, name + ' signal pixels').toBeGreaterThanOrEqual(threshold.signalPixelsMin);
+  expect(metrics.textPixels, name + ' text pixels').toBeGreaterThanOrEqual(threshold.textPixelsMin);
+  expect(metrics.uniqueColors, name + ' unique colors').toBeGreaterThanOrEqual(threshold.uniqueColorsMin);
+
+  fs.writeFileSync(
+    path.join(dir, name + '.metrics.json'),
+    JSON.stringify(metrics, null, 2)
+  );
+
+  return metrics;
+}
 
 const REX = {
   ink: '#080A09',
@@ -297,6 +367,28 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     expect(transform).toBe('none');
   });
 
+  test('desktop hero screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await assertVisualThreshold(page, 'pages-desktop-hero');
+  });
+
+  test('desktop controls section screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#controls');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-controls');
+  });
+
+  test('desktop pattern guide screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#pattern-guide');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-pattern-guide');
+  });
+
   test('has no serious or critical WCAG 2.x axe violations', async ({ page }) => {
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -338,6 +430,13 @@ test.describe('mobile behavior', () => {
     await page.goto('/');
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
+  });
+
+  test('mobile controls screenshot passes visual thresholds', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#controls');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-mobile-controls');
   });
 
   test('small phone width remains usable', async ({ page }) => {
