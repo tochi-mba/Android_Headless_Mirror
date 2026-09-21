@@ -358,6 +358,13 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("RestartOnUnexpectedExit", text)
         self.assertIn("RetrySeconds", text)
 
+    def test_scrcpy_launch_preserves_argument_boundaries(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn("function Invoke-Scrcpy", text)
+        self.assertIn("& $Executable @Arguments", text)
+        self.assertIn("Invoke-Scrcpy $Scrcpy $args", text)
+        self.assertNotIn("Start-Process -FilePath $Scrcpy -ArgumentList $args", text)
+
     def test_scrcpy_arguments_cover_expected_controls(self):
         text = self.read("Start-PhoneMirror.ps1")
         for arg in [
