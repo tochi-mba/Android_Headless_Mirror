@@ -81,8 +81,8 @@ function Get-PatternGridPoints($ContentRect, $OverlayConfig) {
     $centerY = [double]$ContentRect.Y + ([double]$ContentRect.Height * [double]$OverlayConfig.GridCenterY)
 
     $half = $span / 2.0
-    $xs = @($centerX - $half, $centerX, $centerX + $half)
-    $ys = @($centerY - $half, $centerY, $centerY + $half)
+    $xs = @(($centerX - $half), $centerX, ($centerX + $half))
+    $ys = @(($centerY - $half), $centerY, ($centerY + $half))
 
     $points = @()
     foreach ($y in $ys) {
