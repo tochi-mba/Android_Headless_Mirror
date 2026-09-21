@@ -38,7 +38,7 @@ public static class Program
         string[] args,
         AppPaths paths,
         ProcessRunner runner,
-        BridgeClient bridge,
+        IBridgeClient bridge,
         ConfigStore config)
     {
         var command = args[0].ToLowerInvariant();
@@ -191,7 +191,7 @@ public static class Program
         }
     }
 
-    private static async Task<int> RunDeviceCommandAsync(string[] args, BridgeClient bridge)
+    private static async Task<int> RunDeviceCommandAsync(string[] args, IBridgeClient bridge)
     {
         Require(args, 2, "rex device set <setting> <value> [--serial SERIAL]");
 
@@ -226,7 +226,7 @@ public static class Program
         return 0;
     }
 
-    private static async Task<int> RunAndroidCommandAsync(string[] args, BridgeClient bridge)
+    private static async Task<int> RunAndroidCommandAsync(string[] args, IBridgeClient bridge)
     {
         Require(args, 3, "rex android <list|get|set|delete> <namespace> ...");
         var verb = args[1].ToLowerInvariant();
@@ -375,7 +375,7 @@ public static class Program
         }
     }
 
-    internal static async Task<string> ResolveSerialAsync(BridgeClient bridge, string? requested)
+    internal static async Task<string> ResolveSerialAsync(IBridgeClient bridge, string? requested)
     {
         if (!string.IsNullOrWhiteSpace(requested))
             return requested;
