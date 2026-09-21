@@ -6,3 +6,7 @@ stop.flag
 __pycache__/
 *.pyc
 pattern-calibration/
+runtime/
+captures/
+test-results/
+artifacts/
