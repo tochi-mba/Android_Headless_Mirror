@@ -138,6 +138,34 @@ try {
 
         $metrics = Get-ImageMetrics $path
 
+        $tabThresholds = [pscustomobject]@{
+            darkRatioMin = [double]$Thresholds.windows.darkRatioMin
+            darkRatioMax = [double]$Thresholds.windows.darkRatioMax
+            signalPixelsMin = [int]$Thresholds.windows.signalPixelsMin
+            textPixelsMin = [int]$Thresholds.windows.textPixelsMin
+            orangePixelsMin = [int]$Thresholds.windows.orangePixelsMin
+            uniqueColorsMin = [int]$Thresholds.windows.uniqueColorsMin
+        }
+
+        if (
+            $null -ne $Thresholds.windows.PSObject.Properties["tabs"] -and
+            $null -ne $Thresholds.windows.tabs.PSObject.Properties[$tab.Name]
+        ) {
+            $override = $Thresholds.windows.tabs.($tab.Name)
+            foreach ($property in @(
+                "darkRatioMin",
+                "darkRatioMax",
+                "signalPixelsMin",
+                "textPixelsMin",
+                "orangePixelsMin",
+                "uniqueColorsMin"
+            )) {
+                if ($null -ne $override.PSObject.Properties[$property]) {
+                    $tabThresholds.$property = $override.$property
+                }
+            }
+        }
+
         $metricsRows += [pscustomobject]@{
             Tab = $tab.Name
             File = $tab.File
@@ -155,11 +183,11 @@ try {
         $metricsRows | ConvertTo-Json -Depth 5 |
             Set-Content -Path (Join-Path $OutputDirectory "metrics.json") -Encoding UTF8
 
-        Assert-Between $metrics.DarkRatio ([double]$Thresholds.windows.darkRatioMin) ([double]$Thresholds.windows.darkRatioMax) "$($tab.Name) should preserve the REX dark visual hierarchy."
-        Assert-True ($metrics.SignalPixels -ge [int]$Thresholds.windows.signalPixelsMin) "$($tab.Name) should retain enough REX signal-lime pixels."
-        Assert-True ($metrics.TextPixels -ge [int]$Thresholds.windows.textPixelsMin) "$($tab.Name) should contain substantial visible high-contrast text."
-        Assert-True ($metrics.OrangePixels -ge [int]$Thresholds.windows.orangePixelsMin) "$($tab.Name) orange/live accent threshold should pass."
-        Assert-True ($metrics.UniqueColors -ge [int]$Thresholds.windows.uniqueColorsMin) "$($tab.Name) screenshot should not collapse into an empty/flat render."
+        Assert-Between $metrics.DarkRatio ([double]$tabThresholds.darkRatioMin) ([double]$tabThresholds.darkRatioMax) "$($tab.Name) should preserve the REX dark visual hierarchy."
+        Assert-True ($metrics.SignalPixels -ge [int]$tabThresholds.signalPixelsMin) "$($tab.Name) should retain enough REX signal-lime pixels."
+        Assert-True ($metrics.TextPixels -ge [int]$tabThresholds.textPixelsMin) "$($tab.Name) should contain enough visible high-contrast text for that tab's content density."
+        Assert-True ($metrics.OrangePixels -ge [int]$tabThresholds.orangePixelsMin) "$($tab.Name) orange/live accent threshold should pass."
+        Assert-True ($metrics.UniqueColors -ge [int]$tabThresholds.uniqueColorsMin) "$($tab.Name) screenshot should not collapse into an empty/flat render."
     }
 
     Write-Host "[visual] Verifying key layout bounds..."
