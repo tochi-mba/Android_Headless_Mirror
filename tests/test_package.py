@@ -199,6 +199,7 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/Test-PowerShellBehavior.ps1",
             "tests/Test-ControlCenterE2E.ps1",
             "tests/Test-ControlCenterVisual.ps1",
+            "tests/visual-thresholds.json",
             "tests/pages.spec.js",
             "playwright.config.js",
             "package.json",
@@ -428,13 +429,20 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreaterEqual(center["Height"], 640)
         self.assertTrue(center["ConfirmSensitiveDeviceWrites"])
         self.assertTrue(center["AdvancedSettingsWritesEnabled"])
+        self.assertTrue(center["DockToMirror"])
+        self.assertTrue(center["AlwaysOnTop"])
+        self.assertTrue(center["RememberLastTab"])
+        self.assertFalse(center["OpenOnLaunch"])
         self.assertTrue(center["ScreenshotDirectory"].startswith("captures/"))
 
         session = config["ScrcpySession"]
         self.assertIn(session["VideoCodec"], {"h264", "h265", "av1"})
         self.assertIn(session["AudioCodec"], {"opus", "aac", "flac", "raw"})
         self.assertTrue(session["AudioEnabled"])
+        self.assertFalse(session["AudioDup"])
         self.assertGreaterEqual(session["AudioBufferMs"], 0)
+        self.assertFalse(session["Fullscreen"])
+        self.assertFalse(session["RecordOnStart"])
         self.assertTrue(session["DisableScreensaver"])
         self.assertTrue(session["RecordDirectory"].startswith("captures/"))
         self.assertEqual(config["ExtraScrcpyArgs"], "")
@@ -700,6 +708,35 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("MirrorChrome\\.ps1", text)
 
     # ---------- Control center ----------
+
+    def test_control_center_exposes_its_own_pc_side_preferences(self):
+        xaml = self.read("ControlCenter.xaml")
+        for control in [
+            "PcControlCenterEnabledCheck",
+            "PcControlCenterOpenCheck",
+            "PcControlCenterDockCheck",
+            "PcControlCenterTopmostCheck",
+            "PcControlCenterRememberTabCheck",
+            "PcAdvancedWritesEnabledCheck",
+            "PcConfirmAdvancedWritesCheck",
+            "PcControlCenterWidthText",
+            "PcControlCenterHeightText",
+        ]:
+            self.assertIn(f'x:Name="{control}"', xaml)
+
+        script = self.read("ControlCenter.ps1")
+        for setting in [
+            "ControlCenter.Enabled",
+            "ControlCenter.OpenOnLaunch",
+            "ControlCenter.DockToMirror",
+            "ControlCenter.AlwaysOnTop",
+            "ControlCenter.RememberLastTab",
+            "ControlCenter.AdvancedSettingsWritesEnabled",
+            "ControlCenter.ConfirmSensitiveDeviceWrites",
+            "ControlCenter.Width",
+            "ControlCenter.Height",
+        ]:
+            self.assertIn(setting, script)
 
     def test_control_center_has_organized_pc_device_advanced_and_diagnostics_tabs(self):
         xaml = self.read("ControlCenter.xaml")
