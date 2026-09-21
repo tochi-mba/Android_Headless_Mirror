@@ -927,12 +927,52 @@ $script:calibrationDraft = $null
 $script:keyLatch = @{}
 
 function Update-Grid {
+    if ($canvas.ActualWidth -le 0 -or $canvas.ActualHeight -le 0) { return }
+
     $canvas.Children.Clear()
     $canvas.Children.Add($trail) | Out-Null
 
-    $contentRect = Get-FittedContentRect $canvas.ActualWidth $canvas.ActualHeight $displaySize.Width $displaySize.Height
-    $points = @(Get-PatternGridPoints $contentRect $OverlayConfig)
+    $geometry = Get-EffectivePatternGeometry
+
+    if ($script:calibrationMode -and $null -ne $script:calibrationDraft) {
+        $geometry = [pscustomobject]@{
+            Source = "calibration-draft"
+            ScreenWidth = 1.0
+            ScreenHeight = 1.0
+            ExactDots = $false
+            GridBoundsNormalized = Copy-NormalizedBounds $script:calibrationDraft
+        }
+    }
+
+    $layout = Get-PatternPointsFromGeometry (
+        $geometry
+    ) $canvas.ActualWidth $canvas.ActualHeight $displaySize.Width $displaySize.Height $OverlayConfig
+
+    $script:lastLayout = $layout
+    $points = @($layout.Points)
+    $contentRect = $layout.ContentRect
     $radius = [Math]::Max(5.0, [double]$contentRect.Width * [double]$OverlayConfig.DotRadiusRelativeToWidth)
+
+    if ($script:calibrationMode -and $points.Count -eq 9) {
+        $left = ($points | Measure-Object X -Minimum).Minimum
+        $right = ($points | Measure-Object X -Maximum).Maximum
+        $top = ($points | Measure-Object Y -Minimum).Minimum
+        $bottom = ($points | Measure-Object Y -Maximum).Maximum
+
+        $box = New-Object System.Windows.Shapes.Rectangle
+        $box.Width = [Math]::Max(1.0, $right - $left)
+        $box.Height = [Math]::Max(1.0, $bottom - $top)
+        $box.Stroke = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF774D")
+        $box.StrokeThickness = 1.5
+        $box.StrokeDashArray = New-Object System.Windows.Media.DoubleCollection
+        $box.StrokeDashArray.Add(5.0)
+        $box.StrokeDashArray.Add(4.0)
+        $box.Opacity = 0.9
+        $box.IsHitTestVisible = $false
+        [System.Windows.Controls.Canvas]::SetLeft($box, $left)
+        [System.Windows.Controls.Canvas]::SetTop($box, $top)
+        $canvas.Children.Add($box) | Out-Null
+    }
 
     foreach ($point in $points) {
         $dot = New-Object System.Windows.Shapes.Ellipse
@@ -949,13 +989,32 @@ function Update-Grid {
         $canvas.Children.Add($dot) | Out-Null
     }
 
+    $sourceLabel = switch ([string]$layout.Source) {
+        "ui-dots" { "ANDROID DOT BOUNDS" }
+        "ui-view" { "ANDROID PATTERN VIEW" }
+        "calibration" { "SAVED CALIBRATION" }
+        "calibration-draft" { "CALIBRATION" }
+        default { "ESTIMATED" }
+    }
+
     $label = New-Object System.Windows.Controls.TextBlock
-    $label.Text = "PATTERN GUIDE  •  " + [string]$OverlayConfig.ManualToggleHotkey + " TO TOGGLE"
-    $label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#D7FF3F")
+    if ($script:calibrationMode) {
+        $label.Text =
+            "CALIBRATION  •  ARROWS MOVE  •  SHIFT+ARROWS RESIZE  •  CTRL=FINE  •  ENTER SAVE  •  ESC CANCEL  •  R RESET"
+        $label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF774D")
+    }
+    else {
+        $label.Text =
+            "PATTERN GUIDE  •  " + $sourceLabel +
+            "  •  " + [string]$OverlayConfig.ManualToggleHotkey + " TO TOGGLE" +
+            "  •  " + [string]$OverlayConfig.CalibrationHotkey + " TO CALIBRATE"
+        $label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#D7FF3F")
+    }
+
     $label.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI")
     $label.FontSize = 10.0
     $label.FontWeight = [System.Windows.FontWeights]::SemiBold
-    $label.Opacity = 0.75
+    $label.Opacity = 0.78
     $label.IsHitTestVisible = $false
     [System.Windows.Controls.Canvas]::SetLeft($label, 12.0)
     [System.Windows.Controls.Canvas]::SetTop($label, 10.0)
