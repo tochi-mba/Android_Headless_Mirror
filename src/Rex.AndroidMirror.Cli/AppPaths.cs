@@ -11,6 +11,8 @@ public sealed class AppPaths
     public string Diagnostics => Path.Combine(Root, "Diagnostics.ps1");
     public string InstallAutostart => Path.Combine(Root, "Install-Autostart.ps1");
     public string RemoveAutostart => Path.Combine(Root, "Remove-Autostart.ps1");
+    public string InstallRexShortcut => Path.Combine(Root, "Install-Rex-Shortcut.ps1");
+    public string RemoveRexShortcut => Path.Combine(Root, "Remove-Rex-Shortcut.ps1");
     public string ResetLockChoices => Path.Combine(Root, "Reset-LockScreenChoices.ps1");
     public string ControlCenter => Path.Combine(Root, "ControlCenter.ps1");
     public string Bridge => Path.Combine(Root, "RexBridge.ps1");
