@@ -20,6 +20,24 @@ public static class Program
             var bridge = new BridgeClient(paths, runner);
             var config = new ConfigStore(paths.Config);
 
+            if (
+                args.Length > 0 &&
+                (args[0].Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+                 args[0].Equals("agent", StringComparison.OrdinalIgnoreCase))
+            )
+            {
+                var machineArgs = args.Skip(1).ToArray();
+                var result = await AgentCli.RunAsync(
+                    machineArgs,
+                    paths,
+                    runner,
+                    bridge,
+                    config);
+
+                Console.Out.WriteLine(result.Json);
+                return result.ExitCode;
+            }
+
             if (args.Length == 0 || args[0].Equals("tui", StringComparison.OrdinalIgnoreCase) || args[0].Equals("wizard", StringComparison.OrdinalIgnoreCase))
             {
                 return await new RexApp(paths, runner, bridge, config).RunAsync();
@@ -541,6 +559,8 @@ public static class Program
         foreach (var row in new[]
         {
             ("rex", "Open the guided REX terminal app"),
+            ("rex --json capabilities", "Machine-readable capability discovery for coding agents"),
+            ("rex --json <command> ...", "Prompt-free JSON protocol with deterministic exit codes"),
             ("rex status", "Show service, mirror, startup and device state"),
             ("rex devices", "List every ADB-visible Android device"),
             ("rex setup", "Install/verify scrcpy + ADB"),
