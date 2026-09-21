@@ -411,21 +411,26 @@ try {
         try {
             $devices = @(Get-AdbDevices $Adb)
 
-            $unauthorized = @($devices | Where-Object { $_.State -eq "unauthorized" })
-            if ($unauthorized.Count -gt 0 -and -not $unauthorizedNoticeShown) {
-                Log "Android device detected, but this computer is not authorised for ADB debugging." "WARN"
-                Show-FirstUseHint
-                $unauthorizedNoticeShown = $true
-            }
-
             $selected = Select-Device $devices $State
 
             if (-not $selected) {
+                $unauthorized = @($devices | Where-Object { $_.State -eq "unauthorized" })
+                if ($unauthorized.Count -gt 0 -and -not $unauthorizedNoticeShown) {
+                    Log "Android device detected, but this computer is not authorised for ADB debugging." "WARN"
+                    Show-FirstUseHint
+                    $unauthorizedNoticeShown = $true
+                }
+                elseif ($unauthorized.Count -eq 0) {
+                    $unauthorizedNoticeShown = $false
+                }
+
                 Try-WirelessConnections $Adb $State
                 Start-Sleep -Seconds ([int]$Config.PollSeconds)
                 continue
             }
 
+            # At least one usable device exists, so do not interrupt the user just
+            # because a second attached phone is still unauthorized.
             $unauthorizedNoticeShown = $false
 
             if (-not $selected.IsTcp) {
