@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Rex.AndroidMirror.Cli;
 
@@ -222,6 +223,9 @@ public static class MachineMode
                     });
                 }
 
+                case "display":
+                    return await DisplayAsync(args, paths, runner, bridge, config);
+
                 case "device":
                     return await DeviceAsync(args, bridge);
 
@@ -281,6 +285,71 @@ public static class MachineMode
         catch (Exception ex)
         {
             return Failure(ex);
+        }
+    }
+
+    private static async Task<MachineCommandResult> DisplayAsync(
+        string[] args,
+        AppPaths paths,
+        IProcessRunner runner,
+        IBridgeClient bridge,
+        ConfigStore config)
+    {
+        Require(
+            args,
+            2,
+            "display <status|probe|capabilities|transports|start|receiver|verify> ...");
+
+        var manager = new DisplayManager(paths, runner, bridge, config);
+        var verb = args[1].ToLowerInvariant();
+
+        switch (verb)
+        {
+            case "status":
+            case "probe":
+            case "capabilities":
+            case "transports":
+                return Success($"display.{verb}", await manager.ProbeAsync());
+
+            case "start":
+            {
+                var transport = Option(args, "--transport") ?? manager.DefaultTransport();
+                var result = await manager.StartAsync(transport);
+                return Success("display.start", result);
+            }
+
+            case "receiver":
+            {
+                Require(args, 3, "display receiver open");
+                if (!args[2].Equals("open", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("display receiver currently supports: open.");
+
+                return Success("display.receiver", await manager.OpenReceiverAsync());
+            }
+
+            case "verify":
+            {
+                Require(
+                    args,
+                    4,
+                    "display verify <normal|protected> <pass|fail|clear> [--transport windows-miracast] [--note TEXT]");
+
+                var transport =
+                    Option(args, "--transport") ?? DisplayTransportIds.WindowsMiracast;
+                var note = Option(args, "--note") ?? string.Empty;
+                var verification = manager.Verify(transport, args[2], args[3], note);
+
+                return Success("display.verify", new
+                {
+                    transport = DisplayManager.NormalizeTransport(transport),
+                    target = args[2].ToLowerInvariant(),
+                    verification
+                });
+            }
+
+            default:
+                throw new ArgumentException(
+                    "display expects status, probe, capabilities, transports, start, receiver, or verify.");
         }
     }
 
@@ -490,11 +559,21 @@ public static class MachineMode
         {
             "status", "devices", "start", "stop", "setup", "repair",
             "autostart", "shortcut", "smart", "diagnostics", "controls", "action", "mirror",
-            "device", "android", "config", "screenshot", "lock-mode",
+            "display", "device", "android", "config", "screenshot", "lock-mode",
             "reset-lock"
         },
         runtimeActions = RuntimeActions,
         mirrorCommands = MirrorCommands,
+        displayCommands = new[]
+        {
+            "display status",
+            "display probe",
+            "display capabilities",
+            "display transports",
+            "display start --transport <scrcpy|windows-miracast>",
+            "display receiver open",
+            "display verify <normal|protected> <pass|fail|clear>"
+        },
         friendlyDeviceSettings = FriendlyDeviceSettings,
         androidNamespaces = new[] { "system", "secure", "global" },
         configPaths = config.Flatten().Select(x => x.Path).ToArray(),
@@ -564,7 +643,8 @@ public static class MachineMode
     private static MachineCommandResult Build(int exitCode, object payload) =>
         new(exitCode, JsonSerializer.Serialize(payload, new JsonSerializerOptions
         {
-            WriteIndented = false
+            WriteIndented = false,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         }));
 
     private static JsonNode? Clone(JsonElement element) =>
