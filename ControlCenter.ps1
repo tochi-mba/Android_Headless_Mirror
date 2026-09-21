@@ -375,6 +375,16 @@ function Save-PcSettings {
     $Config.ControlCenter.Height = $centerHeight
 
     $Window.Topmost = [bool]$Config.ControlCenter.AlwaysOnTop
+    $Window.Width = [double]$Config.ControlCenter.Width
+    $Window.Height = [double]$Config.ControlCenter.Height
+
+    $writesEnabled = [bool]$Config.ControlCenter.AdvancedSettingsWritesEnabled
+    (C "AdvancedWriteButton").IsEnabled = $writesEnabled
+    (C "AdvancedDeleteButton").IsEnabled = $writesEnabled
+    (C "AdvancedValueText").IsEnabled = $writesEnabled
+    (C "AdvancedKeyText").IsReadOnly = -not $writesEnabled
+
+    Apply-ControlCenterWindowPlacement
 
     $Config.ExtraScrcpyArgs = $rawArgs
 
