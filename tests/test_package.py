@@ -429,7 +429,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_diagnostics_does_not_mutate_device_transport(self):
         text = self.read("Diagnostics.ps1")
-        adb_commands = re.findall(r"&\\s+\\$adb[^\\r\\n]*", text, flags=re.I)
+        adb_commands = re.findall(r"&\s+\$adb[^\r\n]*", text, flags=re.I)
         self.assertGreater(len(adb_commands), 0)
 
         for command in adb_commands:
