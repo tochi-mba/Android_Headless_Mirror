@@ -142,7 +142,7 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
 
   test('pattern guide privacy and manual fallback are explicit', async ({ page }) => {
     const section = page.locator('#pattern-guide');
-    await expect(section).toContainText('click-through');
+    await expect(section).toContainText(/click-through/i);
     await expect(section).toContainText('Ctrl+Alt+P');
     await expect(section).toContainText('never stored');
     await expect(section).toContainText('No ADB touch injection');
