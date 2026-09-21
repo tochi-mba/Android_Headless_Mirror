@@ -288,6 +288,9 @@ public sealed class RexApp
             ["Sync + paste"] = "paste-sync",
             ["Inject PC clipboard"] = "paste-inject",
             ["Keyboard settings"] = "keyboard-settings",
+            ["Host zoom in"] = "mirror:zoom-in",
+            ["Host zoom out"] = "mirror:zoom-out",
+            ["Reset host zoom"] = "mirror:reset-zoom",
         };
 
         while (true)
@@ -299,10 +302,18 @@ public sealed class RexApp
 
             if (choice == "Back") return;
 
+            var actionValue = actions[choice];
+            var bridgeAction = actionValue.StartsWith("mirror:", StringComparison.Ordinal)
+                ? "mirror-command"
+                : "scrcpy-action";
+            var actionName = bridgeAction == "mirror-command"
+                ? actionValue["mirror:".Length..]
+                : actionValue;
+
             using var result = await _bridge.InvokeAsync(
-                "scrcpy-action",
+                bridgeAction,
                 serial: device.Serial,
-                name: actions[choice]);
+                name: actionName);
 
             RexBrand.Success(_console, $"Sent {choice}.");
             await Task.Delay(180);
