@@ -1,0 +1,13 @@
+{
+  "name": "android-headless-mirror-site-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Browser regression tests for the Android Headless Mirror GitHub Pages site.",
+  "scripts": {
+    "test:pages": "playwright test tests/pages.spec.js"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.55.0"
+  }
+}
