@@ -1266,6 +1266,8 @@ function Poll-MirrorChromeCommand {
     }
 
     switch ($command) {
+        "zoom-in" { Apply-ZoomDelta 120 }
+        "zoom-out" { Apply-ZoomDelta -120 }
         "reset-zoom" { Reset-HostZoom }
         "open-controls" { Open-ControlCenter }
     }
