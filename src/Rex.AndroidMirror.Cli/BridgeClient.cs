@@ -178,9 +178,8 @@ public sealed class BridgeClient : IBridgeClient
     private static string LastJsonLine(string output)
     {
         return output
-            .Split(new[] { "
-", "
-" }, StringSplitOptions.RemoveEmptyEntries)
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Reverse()
             .FirstOrDefault(line => line.TrimStart().StartsWith('{'))?
             .Trim()
