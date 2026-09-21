@@ -1,4 +1,5 @@
 using Rex.AndroidMirror.Cli;
+using Spectre.Console;
 using Spectre.Console.Testing;
 
 namespace Rex.AndroidMirror.Cli.Tests;
@@ -46,6 +47,23 @@ public sealed class RexBrandTests
         RexBrand.Error(console, "boom [/]");
 
         Assert.Contains("boom [/]", console.Output);
+    }
+
+    [Theory]
+    [InlineData("adb_enabled = 1 [protected]")]
+    [InlineData("Wireless.ManualHosts = []")]
+    [InlineData("value [red]is data[/], not markup")]
+    public void Menu_EscapesDynamicChoiceMarkup(string choice)
+    {
+        var console = new TestConsole();
+        console.Profile.Capabilities.Interactive = true;
+        console.Profile.Width = 120;
+        console.Input.PushKey(ConsoleKey.Enter);
+
+        var selected = console.Prompt(RexBrand.Menu("Choose setting", new[] { choice }));
+
+        Assert.Equal(choice, selected);
+        Assert.Contains(choice, console.Output);
     }
 
     [Fact]
