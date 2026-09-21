@@ -118,15 +118,18 @@ function Get-DeviceLabel([string]$Adb, [string]$Serial) {
 }
 
 function Get-OrPromptLockScreenMode([string]$Adb, [string]$Serial, $State) {
-    if (-not $Config.PatternOverlay.Enabled) { return "other" }
+    if (-not $Config.PatternOverlay.Enabled) { return "none" }
 
     $profile = Get-DeviceProfile $State $Serial
     if ($profile -and -not [string]::IsNullOrWhiteSpace([string]$profile.LockScreenMode)) {
-        return ([string]$profile.LockScreenMode).ToLowerInvariant()
+        $mode = ([string]$profile.LockScreenMode).ToLowerInvariant()
+        if ($mode -in @("pattern", "other", "none")) {
+            return $mode
+        }
     }
 
     if (-not $Config.PatternOverlay.PromptPerDevice) {
-        return "other"
+        return "none"
     }
 
     $deviceLabel = Get-DeviceLabel $Adb $Serial
@@ -134,26 +137,50 @@ function Get-OrPromptLockScreenMode([string]$Adb, [string]$Serial, $State) {
     try {
         Add-Type -AssemblyName PresentationFramework -ErrorAction Stop
         $nl = [Environment]::NewLine
-        $message =
-            "Does this device use Android pattern unlock?" + $nl + $nl +
+
+        $hasLockMessage =
+            "Does this Android device use any screen lock?" + $nl + $nl +
             $deviceLabel + $nl + $Serial + $nl + $nl +
-            "Yes  - show the click-through 3x3 pattern guide when Android reports the keyguard." + $nl +
-            "No   - never show the pattern guide for this device." + $nl +
+            "Yes  - it uses a pattern, PIN, password, biometric-backed lock, or another lock method." + $nl +
+            "No   - it has no screen lock. No lock-screen overlay is needed." + $nl +
             "Cancel - continue this session without saving a choice."
 
-        $result = [System.Windows.MessageBox]::Show(
-            $message,
-            "Android Headless Mirror - lock screen",
+        $hasLock = [System.Windows.MessageBox]::Show(
+            $hasLockMessage,
+            "Android Headless Mirror - lock screen setup",
             [System.Windows.MessageBoxButton]::YesNoCancel,
             [System.Windows.MessageBoxImage]::Question
         )
 
-        if ($result -eq [System.Windows.MessageBoxResult]::Yes) {
+        if ($hasLock -eq [System.Windows.MessageBoxResult]::No) {
+            Set-DeviceLockScreenMode $State $Serial "none"
+            return "none"
+        }
+
+        if ($hasLock -eq [System.Windows.MessageBoxResult]::Cancel) {
+            return "session-off"
+        }
+
+        $patternMessage =
+            "Does this device use Android pattern unlock?" + $nl + $nl +
+            $deviceLabel + $nl + $Serial + $nl + $nl +
+            "Yes  - show the click-through 3x3 pattern guide while the keyguard is visible." + $nl +
+            "No   - it uses PIN, password, biometric/other lock. Do not show the pattern guide." + $nl +
+            "Cancel - continue this session without saving a choice."
+
+        $isPattern = [System.Windows.MessageBox]::Show(
+            $patternMessage,
+            "Android Headless Mirror - unlock method",
+            [System.Windows.MessageBoxButton]::YesNoCancel,
+            [System.Windows.MessageBoxImage]::Question
+        )
+
+        if ($isPattern -eq [System.Windows.MessageBoxResult]::Yes) {
             Set-DeviceLockScreenMode $State $Serial "pattern"
             return "pattern"
         }
 
-        if ($result -eq [System.Windows.MessageBoxResult]::No) {
+        if ($isPattern -eq [System.Windows.MessageBoxResult]::No) {
             Set-DeviceLockScreenMode $State $Serial "other"
             return "other"
         }
