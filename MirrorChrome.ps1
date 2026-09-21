@@ -732,6 +732,53 @@ Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
+function Get-TouchpadGestureMetrics($Contacts) {
+    $items = @($Contacts.Values | Select-Object -First 2)
+    if ($items.Count -lt 2) { return $null }
+
+    $dx = [double]$items[1].X - [double]$items[0].X
+    $dy = [double]$items[1].Y - [double]$items[0].Y
+    $distance = [Math]::Sqrt(($dx * $dx) + ($dy * $dy))
+
+    if ($distance -le 0.0001) { return $null }
+
+    return [pscustomobject]@{
+        Distance = $distance
+        Angle = [Math]::Atan2($dy, $dx)
+        CenterX = ([double]$items[0].X + [double]$items[1].X) / 2.0
+        CenterY = ([double]$items[0].Y + [double]$items[1].Y) / 2.0
+    }
+}
+
+function Normalize-Angle([double]$Radians) {
+    while ($Radians -gt [Math]::PI) { $Radians -= (2.0 * [Math]::PI) }
+    while ($Radians -lt -[Math]::PI) { $Radians += (2.0 * [Math]::PI) }
+    return $Radians
+}
+
+function Get-SyntheticPinchPoint($ClientRect, [double]$BaseRadius, [double]$Scale, [double]$AngleDelta) {
+    $width = [Math]::Max(1.0, [double]($ClientRect.Right - $ClientRect.Left))
+    $height = [Math]::Max(1.0, [double]($ClientRect.Bottom - $ClientRect.Top))
+    $centerX = [double]$ClientRect.Left + ($width / 2.0)
+    $centerY = [double]$ClientRect.Top + ($height / 2.0)
+
+    $maxRadius = [Math]::Max(12.0, [Math]::Min($width, $height) * 0.46)
+    $radius = [Math]::Max(12.0, [Math]::Min($maxRadius, ($BaseRadius * $Scale)))
+
+    return [pscustomobject]@{
+        X = [int][Math]::Round($centerX + ($radius * [Math]::Cos($AngleDelta)))
+        Y = [int][Math]::Round($centerY + ($radius * [Math]::Sin($AngleDelta)))
+    }
+}
+
+function Get-ClampedHostZoom([double]$StartZoom, [double]$Scale, $Config) {
+    $next = $StartZoom * $Scale
+    return [Math]::Max(
+        [double]$Config.MinZoom,
+        [Math]::Min([double]$Config.MaxZoom, $next)
+    )
+}
+
 $toolbar = New-Object System.Windows.Window
 $toolbar.WindowStyle = [System.Windows.WindowStyle]::None
 $toolbar.ResizeMode = [System.Windows.ResizeMode]::NoResize
@@ -787,6 +834,26 @@ $toolbar.Show()
 $toolbarHwnd = (New-Object System.Windows.Interop.WindowInteropHelper($toolbar)).Handle
 $toolbar.Hide()
 
+$gestureWindow = New-Object System.Windows.Window
+$gestureWindow.WindowStyle = [System.Windows.WindowStyle]::None
+$gestureWindow.ResizeMode = [System.Windows.ResizeMode]::NoResize
+$gestureWindow.AllowsTransparency = $true
+$gestureWindow.Background = [System.Windows.Media.Brushes]::Transparent
+$gestureWindow.Opacity = 0.01
+$gestureWindow.ShowInTaskbar = $false
+$gestureWindow.ShowActivated = $false
+$gestureWindow.Topmost = $true
+$gestureWindow.Focusable = $false
+$gestureWindow.Show()
+
+$gestureHwnd = (New-Object System.Windows.Interop.WindowInteropHelper($gestureWindow)).Handle
+$gestureSource = [System.Windows.Interop.HwndSource]::FromHwnd($gestureHwnd)
+$script:precisionTouchpadAvailable = $false
+if ($ChromeConfig.NativeTouchpadGestures) {
+    $script:precisionTouchpadAvailable = [AHMMirrorChromeNative]::RegisterPrecisionTouchpadWindow($gestureHwnd, $true)
+}
+$gestureWindow.Hide()
+
 $script:targetHwnd = [IntPtr]::Zero
 $script:targetSeen = $false
 $script:missingSince = $null
@@ -797,6 +864,13 @@ $script:magnifierHost = [IntPtr]::Zero
 $script:magnifierChild = [IntPtr]::Zero
 $script:wheelHookStarted = $false
 $script:lastRectKey = ""
+$script:touchpadContacts = @{}
+$script:touchpadGestureKind = "none"
+$script:touchpadStartMetrics = $null
+$script:touchpadStartHostZoom = 1.0
+$script:touchpadBaseRadius = 0.0
+$script:touchpadGestureHandled = $false
+$script:gestureHook = $null
 
 function Get-TargetClientRect {
     if ($script:targetHwnd -eq [IntPtr]::Zero) { return $null }
@@ -951,6 +1025,171 @@ function Apply-ZoomDelta([int]$Delta) {
     Update-Magnifier
 }
 
+function Reset-TouchpadGesture {
+    if ($script:touchpadGestureKind -eq "device") {
+        [AHMMirrorChromeNative]::EndScrcpyPinch()
+    }
+
+    $script:touchpadGestureKind = "none"
+    $script:touchpadStartMetrics = $null
+    $script:touchpadStartHostZoom = $script:zoom
+    $script:touchpadBaseRadius = 0.0
+    $script:touchpadGestureHandled = $false
+}
+
+function Update-TouchpadGesture {
+    if ($script:touchpadContacts.Count -lt 2) {
+        Reset-TouchpadGesture
+        return $false
+    }
+
+    $metrics = Get-TouchpadGestureMetrics $script:touchpadContacts
+    if ($null -eq $metrics) { return $false }
+
+    if ($null -eq $script:touchpadStartMetrics) {
+        $script:touchpadStartMetrics = $metrics
+        $script:touchpadStartHostZoom = $script:zoom
+
+        $rect = Get-TargetClientRect
+        if ($null -ne $rect) {
+            $shortSide = [Math]::Min(
+                [double]($rect.Right - $rect.Left),
+                [double]($rect.Bottom - $rect.Top)
+            )
+            $script:touchpadBaseRadius = [Math]::Max(
+                20.0,
+                $shortSide * [double]$ChromeConfig.TouchpadBaseRadiusRelativeToClient
+            )
+        }
+
+        return $false
+    }
+
+    if ($script:touchpadStartMetrics.Distance -le 0.0001) { return $false }
+
+    $scale = $metrics.Distance / $script:touchpadStartMetrics.Distance
+    $angleDelta = Normalize-Angle ($metrics.Angle - $script:touchpadStartMetrics.Angle)
+    $pinchMagnitude = [Math]::Abs([Math]::Log([Math]::Max(0.0001, $scale)))
+
+    if ($script:touchpadGestureKind -eq "none") {
+        if ($pinchMagnitude -lt [double]$ChromeConfig.TouchpadPinchThreshold) {
+            return $false
+        }
+
+        $ctrlPhysicallyDown = (
+            ([AHMMirrorChromeNative]::GetAsyncKeyState([AHMMirrorChromeNative]::VK_CONTROL) -band 0x8000) -ne 0
+        )
+
+        if (
+            $ctrlPhysicallyDown -and
+            $ChromeConfig.CtrlTouchpadPinchToHostZoom -and
+            $ChromeConfig.HostZoomEnabled
+        ) {
+            $script:touchpadGestureKind = "host"
+            $script:touchpadGestureHandled = $true
+
+            $rect = Get-TargetClientRect
+            $cursor = New-Object AHMMirrorChromeNative+POINT
+            if ($null -ne $rect -and [AHMMirrorChromeNative]::GetCursorPos([ref]$cursor)) {
+                $width = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
+                $height = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
+                $script:zoomAnchorX = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.X - $rect.Left) / $width)))
+                $script:zoomAnchorY = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.Y - $rect.Top) / $height)))
+            }
+        }
+        elseif ($ChromeConfig.TouchpadPinchToAndroid) {
+            $rect = Get-TargetClientRect
+            if ($null -ne $rect -and $script:touchpadBaseRadius -gt 0) {
+                $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius 1.0 0.0
+                if ([AHMMirrorChromeNative]::BeginScrcpyPinch($script:targetHwnd, $point.X, $point.Y)) {
+                    $script:touchpadGestureKind = "device"
+                    $script:touchpadGestureHandled = $true
+                }
+            }
+        }
+    }
+
+    if ($script:touchpadGestureKind -eq "host") {
+        $script:zoom = Get-ClampedHostZoom $script:touchpadStartHostZoom $scale $ChromeConfig
+        if ($script:zoom -lt 1.001) { $script:zoom = 1.0 }
+        Update-ZoomUi
+        Update-Magnifier
+        return $true
+    }
+
+    if ($script:touchpadGestureKind -eq "device") {
+        $rect = Get-TargetClientRect
+        if ($null -ne $rect) {
+            $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius $scale $angleDelta
+            [AHMMirrorChromeNative]::UpdateScrcpyPinch($point.X, $point.Y) | Out-Null
+        }
+        return $true
+    }
+
+    return $false
+}
+
+$script:gestureHook = [System.Windows.Interop.HwndSourceHook]{
+    param($hwnd, $msg, $wParam, $lParam, [ref]$handled)
+
+    if ($msg -eq [AHMMirrorChromeNative]::WM_NCHITTEST) {
+        $handled.Value = $true
+        return [IntPtr][AHMMirrorChromeNative]::HTTRANSPARENT
+    }
+
+    if (
+        -not $script:precisionTouchpadAvailable -or
+        $script:targetHwnd -eq [IntPtr]::Zero -or
+        [AHMMirrorChromeNative]::GetForegroundWindow() -ne $script:targetHwnd
+    ) {
+        return [IntPtr]::Zero
+    }
+
+    if (
+        $msg -eq [AHMMirrorChromeNative]::WM_POINTERDOWN -or
+        $msg -eq [AHMMirrorChromeNative]::WM_POINTERUPDATE -or
+        $msg -eq [AHMMirrorChromeNative]::WM_POINTERUP
+    ) {
+        $pointerId = [uint32]($wParam.ToInt64() -band 0xFFFF)
+        $sample = New-Object AHMMirrorChromeNative+TOUCHPAD_SAMPLE
+
+        if ([AHMMirrorChromeNative]::TryGetTouchpadSample($pointerId, [ref]$sample)) {
+            $key = [string]$pointerId
+
+            if ($msg -eq [AHMMirrorChromeNative]::WM_POINTERUP) {
+                if ($script:touchpadContacts.ContainsKey($key)) {
+                    $script:touchpadContacts.Remove($key)
+                }
+
+                $wasHandled = $script:touchpadGestureHandled
+                if ($script:touchpadContacts.Count -lt 2) {
+                    Reset-TouchpadGesture
+                }
+
+                if ($wasHandled) {
+                    $handled.Value = $true
+                }
+            }
+            else {
+                $script:touchpadContacts[$key] = [pscustomobject]@{
+                    X = [double]$sample.X
+                    Y = [double]$sample.Y
+                }
+
+                if (Update-TouchpadGesture) {
+                    $handled.Value = $true
+                }
+            }
+        }
+    }
+
+    return [IntPtr]::Zero
+}
+
+if ($null -ne $gestureSource) {
+    $gestureSource.AddHook($script:gestureHook)
+}
+
 $sleepButton.Add_Click({
     if ($script:targetHwnd -eq [IntPtr]::Zero) { return }
 
@@ -993,6 +1232,17 @@ $timer.Add_Tick({
             $width = [Math]::Max(1, $rect.Right - $rect.Left)
             $height = [Math]::Max(1, $rect.Bottom - $rect.Top)
 
+            if ($script:precisionTouchpadAvailable) {
+                if (-not $gestureWindow.IsVisible) {
+                    $gestureWindow.Show()
+                }
+
+                $gestureWindow.Left = $rect.Left
+                $gestureWindow.Top = $rect.Top
+                $gestureWindow.Width = $width
+                $gestureWindow.Height = $height
+            }
+
             if (-not $toolbar.IsVisible) {
                 $toolbar.Show()
             }
@@ -1031,6 +1281,19 @@ $timer.Add_Tick({
 
 $toolbar.Add_Closed({
     $timer.Stop()
+    Reset-TouchpadGesture
+
+    if ($null -ne $gestureSource -and $null -ne $script:gestureHook) {
+        $gestureSource.RemoveHook($script:gestureHook)
+    }
+
+    if ($script:precisionTouchpadAvailable) {
+        [AHMMirrorChromeNative]::RegisterPrecisionTouchpadWindow($gestureHwnd, $false) | Out-Null
+    }
+
+    if ($gestureWindow.IsVisible) {
+        $gestureWindow.Close()
+    }
 
     if ($script:wheelHookStarted) {
         [AHMMirrorChromeNative]::StopWheelHook()
