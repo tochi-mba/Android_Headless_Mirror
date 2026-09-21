@@ -303,6 +303,8 @@ class RepositoryContractTests(unittest.TestCase):
                 "CalibrationFineStepPixels",
                 "CalibrationDirectory",
                 "FallbackToEstimatedGeometry",
+            },
+        )
         self.assertEqual(
             set(config["MirrorChrome"]),
             {
@@ -315,9 +317,11 @@ class RepositoryContractTests(unittest.TestCase):
                 "ToolbarInsetPixels",
                 "PollMilliseconds",
                 "CtrlWheelZoom",
-            },
-        )
-
+                "NativeTouchpadGestures",
+                "TouchpadPinchToAndroid",
+                "CtrlTouchpadPinchToHostZoom",
+                "TouchpadPinchThreshold",
+                "TouchpadBaseRadiusRelativeToClient",
             },
         )
 
@@ -338,6 +342,7 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreater(config["Logging"]["MaxBytes"], 100_000)
         self.assertGreaterEqual(config["Logging"]["KeepFiles"], 1)
         self.assertEqual(config["WindowTitle"], "Android Device")
+
         overlay = config["PatternOverlay"]
         self.assertTrue(overlay["Enabled"])
         self.assertTrue(overlay["PromptPerDevice"])
@@ -359,16 +364,24 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreater(overlay["CalibrationFineStepPixels"], 0)
         self.assertEqual(overlay["CalibrationDirectory"], "pattern-calibration")
         self.assertTrue(overlay["FallbackToEstimatedGeometry"])
+
         chrome = config["MirrorChrome"]
         self.assertTrue(chrome["Enabled"])
         self.assertTrue(chrome["SleepButton"])
         self.assertTrue(chrome["HostZoomEnabled"])
         self.assertTrue(chrome["CtrlWheelZoom"])
+        self.assertTrue(chrome["NativeTouchpadGestures"])
+        self.assertTrue(chrome["TouchpadPinchToAndroid"])
+        self.assertTrue(chrome["CtrlTouchpadPinchToHostZoom"])
         self.assertGreater(chrome["ZoomStep"], 0)
         self.assertGreaterEqual(chrome["MinZoom"], 1.0)
         self.assertGreater(chrome["MaxZoom"], chrome["MinZoom"])
         self.assertGreaterEqual(chrome["PollMilliseconds"], 12)
         self.assertGreaterEqual(chrome["ToolbarInsetPixels"], 0)
+        self.assertGreater(chrome["TouchpadPinchThreshold"], 0)
+        self.assertLess(chrome["TouchpadPinchThreshold"], 0.2)
+        self.assertGreater(chrome["TouchpadBaseRadiusRelativeToClient"], 0.05)
+        self.assertLess(chrome["TouchpadBaseRadiusRelativeToClient"], 0.5)
 
     # ---------- Pattern overlay ----------
 
