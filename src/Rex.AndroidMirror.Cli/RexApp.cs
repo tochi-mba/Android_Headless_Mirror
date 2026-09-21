@@ -24,7 +24,7 @@ public sealed class RexApp
         _runner = runner;
         _bridge = bridge;
         _config = config;
-        _console = console ?? _console.Console;
+        _console = console ?? AnsiConsole.Console;
         _pauseEnabled = pauseEnabled;
     }
 
@@ -52,7 +52,7 @@ public sealed class RexApp
 
         while (true)
         {
-            RexBrand.Header(_console, );
+            RexBrand.Header(_console);
             RenderStatus(status);
 
             var choice = _console.Prompt(RexBrand.Menu(
