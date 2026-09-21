@@ -432,6 +432,8 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     $args.Add("--serial=$Serial")
     $sessionTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
     $args.Add("--window-title=$sessionTitle")
+    # scrcpy's Ctrl+click-and-drag pinch simulation requires SDK mouse mode.
+    $args.Add("--mouse=sdk")
 
     if ($Config.TurnPhysicalScreenOff) {
         $args.Add("--turn-screen-off")
@@ -505,6 +507,42 @@ function Invoke-Scrcpy([string]$Executable, [string[]]$Arguments, [bool]$ShowOut
     }
 }
 
+
+function Start-MirrorChrome([string]$Serial) {
+    if ($null -eq $Config.PSObject.Properties["MirrorChrome"]) { return $null }
+    if (-not $Config.MirrorChrome.Enabled) { return $null }
+
+    $chromeScript = Join-Path $Root "MirrorChrome.ps1"
+    if (-not (Test-Path $chromeScript)) {
+        Log "Mirror toolbar requested but MirrorChrome.ps1 is missing." "WARN"
+        return $null
+    }
+
+    try {
+        $quote = [char]34
+        $argumentLine =
+            "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " +
+            $quote + $chromeScript + $quote +
+            " -Serial " + $quote + $Serial + $quote
+
+        return Start-Process -FilePath "powershell.exe" -ArgumentList $argumentLine -PassThru -WindowStyle Hidden
+    }
+    catch {
+        Log "Could not start mirror toolbar: $($_.Exception.Message)" "WARN"
+        return $null
+    }
+}
+
+function Stop-MirrorChrome($Process) {
+    if ($null -eq $Process) { return }
+
+    try {
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+}
 
 function Start-PatternOverlay([string]$Serial, [string]$LockScreenMode) {
     if ($LockScreenMode -ne "pattern") { return $null }
@@ -664,12 +702,14 @@ try {
             $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
             Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
 
+            $chromeProcess = Start-MirrorChrome $selected.Serial
             $overlayProcess = Start-PatternOverlay $selected.Serial $lockScreenMode
             try {
                 $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
             }
             finally {
                 Stop-PatternOverlay $overlayProcess
+                Stop-MirrorChrome $chromeProcess
             }
 
             Log "scrcpy exited with code $exitCode"
