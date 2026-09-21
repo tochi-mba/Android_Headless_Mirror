@@ -100,7 +100,7 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(output).toContainText('OFFLINE');
 
     await offline.press('Home');
-    const authorized = page.getByRole('tab', { name: 'Authorized' });
+    const authorized = page.getByRole('tab', { name: 'Authorized', exact: true });
     await expect(authorized).toBeFocused();
     await expect(authorized).toHaveAttribute('aria-selected', 'true');
 
