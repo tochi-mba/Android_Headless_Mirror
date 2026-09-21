@@ -76,8 +76,12 @@ public sealed class DisplayVerificationStore
         try
         {
             var json = File.ReadAllText(_path);
-            return JsonSerializer.Deserialize<Dictionary<string, DisplayVerification>>(json, JsonOptions)
-                ?? new Dictionary<string, DisplayVerification>(StringComparer.OrdinalIgnoreCase);
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, DisplayVerification>>(json, JsonOptions)
+                ?? new Dictionary<string, DisplayVerification>();
+
+            return new Dictionary<string, DisplayVerification>(
+                parsed,
+                StringComparer.OrdinalIgnoreCase);
         }
         catch (JsonException ex)
         {
