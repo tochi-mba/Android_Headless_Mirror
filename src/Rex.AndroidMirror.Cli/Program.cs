@@ -563,7 +563,9 @@ public static class Program
             ("rex diagnostics", "Run the full package diagnostics"),
         })
         {
-            table.AddRow(row.Item1, row.Item2);
+            table.AddRow(
+                Markup.Escape(row.Item1),
+                Markup.Escape(row.Item2));
         }
 
         AnsiConsole.Write(table);
