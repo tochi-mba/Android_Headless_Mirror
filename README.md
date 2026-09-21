@@ -1,5 +1,7 @@
 # Android Headless Mirror
 
+**A REX Technologies product.**
+
 **Website:** https://tochi-mba.github.io/Android_Headless_Mirror/
 
 Android Headless Mirror is a Windows helper around [scrcpy](https://github.com/Genymobile/scrcpy) and ADB for people who want an Android phone to behave more like a device they can operate from their PC.
