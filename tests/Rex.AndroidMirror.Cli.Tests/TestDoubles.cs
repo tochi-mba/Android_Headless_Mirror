@@ -20,6 +20,8 @@ internal sealed class TempPackage : IDisposable
         File.WriteAllText(Path.Combine(Root, "Diagnostics.ps1"), "# test");
         File.WriteAllText(Path.Combine(Root, "Install-Autostart.ps1"), "# test");
         File.WriteAllText(Path.Combine(Root, "Remove-Autostart.ps1"), "# test");
+        File.WriteAllText(Path.Combine(Root, "Install-Rex-Shortcut.ps1"), "# test");
+        File.WriteAllText(Path.Combine(Root, "Remove-Rex-Shortcut.ps1"), "# test");
         File.WriteAllText(Path.Combine(Root, "Reset-LockScreenChoices.ps1"), "# test");
         File.WriteAllText(Path.Combine(Root, "ControlCenter.ps1"), "# test");
         File.WriteAllText(Path.Combine(Root, "RexBridge.ps1"), "# test");
@@ -85,6 +87,8 @@ internal sealed class FakeProcessRunner : IProcessRunner
 {
     public List<ProcessCall> Calls { get; } = [];
     public ProcessResult Result { get; set; } = new(0, "", "");
+    public int OpenExitCode { get; set; } = 0;
+    public int DetachedExitCode { get; set; } = 0;
 
     public Task<ProcessResult> RunAsync(
         string fileName,
@@ -114,7 +118,7 @@ internal sealed class FakeProcessRunner : IProcessRunner
     public Task<int> OpenAsync(string target, string? workingDirectory = null)
     {
         Calls.Add(new("open", target, [], workingDirectory ?? ""));
-        return Task.FromResult(0);
+        return Task.FromResult(OpenExitCode);
     }
 
     public Task<int> StartDetachedAsync(
@@ -123,7 +127,7 @@ internal sealed class FakeProcessRunner : IProcessRunner
         string workingDirectory)
     {
         Calls.Add(new("detached", fileName, arguments.ToArray(), workingDirectory));
-        return Task.FromResult(0);
+        return Task.FromResult(DetachedExitCode);
     }
 }
 
