@@ -46,6 +46,7 @@
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#controls">Controls</a>
+        <a href="#control-center">Control Center</a>
         <a href="#pattern-guide">Pattern guide</a>
         <a href="#compatibility">Compatibility</a>
         <a href="#faq">FAQ</a>
@@ -210,6 +211,79 @@
       </div>
 
       <p class="controls-compat reveal"><strong>Compatibility:</strong> native two-finger Precision Touchpad bridging uses the Windows 11 touchpad pointer API. Windows 10 and unsupported hardware keep normal mirroring and scrcpy’s compatibility gesture path.</p>
+    </section>
+
+    <section class="section container control-center-section" id="control-center">
+      <div class="control-center-heading reveal">
+        <div>
+          <div class="eyebrow signal">Windows Control Center</div>
+          <h2>Everything in one place.<br>PC settings stay PC-side. Device settings stay device-side.</h2>
+        </div>
+        <p>The mirror toolbar keeps the essentials visible. <strong>Controls</strong> opens the full per-device workspace with runtime actions, mirror preferences, Android settings, live Settings Provider keys and diagnostics.</p>
+      </div>
+
+      <div class="control-center-preview reveal" aria-label="Preview of the Windows Control Center">
+        <div class="cc-titlebar">
+          <div><span class="cc-dot"></span><strong>Samsung Galaxy S21 Ultra</strong><span>SM-G998B · Android 15 · R3CRB04F7PP</span></div>
+          <span class="cc-connected">CONNECTED</span>
+        </div>
+        <div class="cc-app">
+          <aside class="cc-sidebar" aria-label="Control Center sections">
+            <span class="active">Controls</span>
+            <span>PC / mirror settings</span>
+            <span>Samsung Galaxy S21 Ultra settings</span>
+            <span>Advanced Android</span>
+            <span>Diagnostics</span>
+          </aside>
+          <div class="cc-content">
+            <div class="cc-content-title"><span>Mirror controls</span><small>Runtime controls for the active scrcpy session.</small></div>
+            <div class="cc-control-grid">
+              <span>Fullscreen</span><span>Fit window</span><span>Pixel perfect</span><span>Rotate left</span>
+              <span>Rotate right</span><span>Pause display</span><span>Home</span><span>Back</span>
+              <span>Recent apps</span><span class="accent">Sleep phone</span><span>Wake screen</span><span>Quick settings</span>
+              <span>Volume −</span><span>Volume +</span><span>Reset host zoom</span><span class="accent">Save screenshot</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-center-principles">
+        <article class="cc-principle reveal">
+          <span>01</span>
+          <h3>Runtime mirror controls</h3>
+          <p>scrcpy’s real runtime surface is exposed as buttons: window rotation and flip, fullscreen, fit, pixel-perfect, navigation, power, sleep/wake, panels, volume, clipboard, FPS and capture reset.</p>
+        </article>
+        <article class="cc-principle reveal">
+          <span>02</span>
+          <h3>PC / mirror settings</h3>
+          <p>Video codec/quality, audio, recording-on-start, window behavior, touchpad gestures, host zoom, pattern-guide behavior, wireless fallback and validated advanced scrcpy arguments.</p>
+        </article>
+        <article class="cc-principle reveal">
+          <span>03</span>
+          <h3>&lt;device&gt; settings</h3>
+          <p>Brightness, timeout, auto-rotate, font scale, show touches, stay-awake, animation speed, dark mode, connectivity commands and display size/density run on the connected Android through ADB.</p>
+        </article>
+        <article class="cc-principle reveal">
+          <span>04</span>
+          <h3>Advanced Android, live</h3>
+          <p>The phone’s actual <code>system</code>, <code>secure</code> and <code>global</code> Settings Provider keys are enumerated at runtime, searchable and risk-labelled instead of copied from a stale hard-coded catalog.</p>
+        </article>
+      </div>
+
+      <div class="advanced-settings-demo reveal">
+        <div>
+          <span class="advanced-label">ADVANCED ANDROID</span>
+          <strong>Runtime Settings Provider browser</strong>
+          <p>Unsupported or permission-denied writes return the real Android/OEM error. A small protected set guards ADB access and device identity.</p>
+        </div>
+        <div class="settings-table" aria-hidden="true">
+          <div class="settings-head"><span>Key</span><span>Value</span><span>Risk</span></div>
+          <div><span>screen_off_timeout</span><span>60000</span><em>normal</em></div>
+          <div><span>font_scale</span><span>1.0</span><em>normal</em></div>
+          <div><span>window_animation_scale</span><span>1</span><em>advanced</em></div>
+          <div class="protected"><span>adb_enabled</span><span>1</span><em>protected</em></div>
+        </div>
+      </div>
     </section>
 
     <section class="section diagnostics-section">
