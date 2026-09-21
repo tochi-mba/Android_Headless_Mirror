@@ -219,16 +219,25 @@ After setup, the same CLI becomes the day-to-day workspace:
 
 The interactive app is optional. The same executable supports automation.
 
-For coding agents and other automation, use the prompt-free machine interface:
+For coding agents and other automation, use the prompt-free machine interface. The explicit agent form is preferred:
 
 ```text
-REX.bat --plain capabilities
-REX.bat --plain status
-REX.bat --plain devices
-REX.bat --plain smart
+REX.bat agent capabilities
+REX.bat agent status
+REX.bat agent devices
+REX.bat agent smart
 ```
 
-`--plain` and `--json` are aliases. They emit one versioned JSON document, no Spectre/ANSI UI, and never prompt. See `AGENTS.md` for the shell contract.
+The following are equivalent:
+
+```text
+REX.bat agent status
+REX.bat --json status
+REX.bat status --json
+REX.bat --plain status
+```
+
+`agent`, `--plain`, and `--json` all select the same versioned JSON protocol. Machine mode emits exactly one JSON document, no Spectre/ANSI UI, and never prompts. The batch bootstrap is quiet so its own status text cannot corrupt stdout. See `AGENTS.md` for the full coding-agent shell contract.
 
 Human-readable commands remain available:
 
