@@ -6,14 +6,14 @@ This repository is **Android Headless Mirror**, a Windows-first Android mirrorin
 
 The project is designed for Android devices generally through standard ADB + scrcpy behavior. The Samsung Galaxy S21 Ultra / SM-G998B is documented as tested hardware only; do not turn device-specific observations into global assumptions.
 
-Coding agents should prefer the repository's machine interface over scraping human UI output.
+Coding agents and automation should prefer the repository's machine interface over scraping human UI output.
 
-## Agent entry point
+## Machine-readable entry point
 
 Use:
 
 ```bat
-REX_AGENT.bat <command> [args...]
+REX.bat --json <command> [args...]
 ```
 
 This bootstraps the self-contained REX CLI when needed and invokes:
@@ -34,64 +34,64 @@ The machine interface:
 Discover the current machine contract before assuming capabilities:
 
 ```bat
-REX_AGENT.bat capabilities
+REX.bat --json capabilities
 ```
 
-## Common agent commands
+## Common shell commands
 
 Inspect the package:
 
 ```bat
-REX_AGENT.bat status
-REX_AGENT.bat devices
-REX_AGENT.bat diagnostics
+REX.bat --json status
+REX.bat --json devices
+REX.bat --json diagnostics
 ```
 
 Inspect or change PC / mirror configuration:
 
 ```bat
-REX_AGENT.bat config list
-REX_AGENT.bat config list --filter MirrorChrome
-REX_AGENT.bat config get MaxFps
-REX_AGENT.bat config set MaxFps 90
-REX_AGENT.bat config restore
+REX.bat --json config list
+REX.bat --json config list --filter MirrorChrome
+REX.bat --json config get MaxFps
+REX.bat --json config set MaxFps 90
+REX.bat --json config restore
 ```
 
 Control the mirror:
 
 ```bat
-REX_AGENT.bat action sleep --serial USB123
-REX_AGENT.bat action wake --serial USB123
-REX_AGENT.bat action home --serial USB123
-REX_AGENT.bat mirror zoom-in --serial USB123
-REX_AGENT.bat mirror zoom-out --serial USB123
-REX_AGENT.bat mirror reset-zoom --serial USB123
+REX.bat --json action sleep --serial USB123
+REX.bat --json action wake --serial USB123
+REX.bat --json action home --serial USB123
+REX.bat --json mirror zoom-in --serial USB123
+REX.bat --json mirror zoom-out --serial USB123
+REX.bat --json mirror reset-zoom --serial USB123
 ```
 
 Change friendly Android settings:
 
 ```bat
-REX_AGENT.bat device set brightness 180 --serial USB123
-REX_AGENT.bat device set screen-timeout-ms 60000 --serial USB123
-REX_AGENT.bat device set auto-rotate 1 --serial USB123
-REX_AGENT.bat device set animation-scale 0.5 --serial USB123
-REX_AGENT.bat device set wifi enable --serial USB123
+REX.bat --json device set brightness 180 --serial USB123
+REX.bat --json device set screen-timeout-ms 60000 --serial USB123
+REX.bat --json device set auto-rotate 1 --serial USB123
+REX.bat --json device set animation-scale 0.5 --serial USB123
+REX.bat --json device set wifi enable --serial USB123
 ```
 
 Inspect live Android Settings Provider keys:
 
 ```bat
-REX_AGENT.bat android list system --serial USB123
-REX_AGENT.bat android list secure --filter lock --serial USB123
-REX_AGENT.bat android list global --filter animation --serial USB123
-REX_AGENT.bat android get system font_scale --serial USB123
+REX.bat --json android list system --serial USB123
+REX.bat --json android list secure --filter lock --serial USB123
+REX.bat --json android list global --filter animation --serial USB123
+REX.bat --json android get system font_scale --serial USB123
 ```
 
 Explicit writes/deletes:
 
 ```bat
-REX_AGENT.bat android set system font_scale 1.15 --serial USB123
-REX_AGENT.bat android delete system some_key --serial USB123
+REX.bat --json android set system font_scale 1.15 --serial USB123
+REX.bat --json android delete system some_key --serial USB123
 ```
 
 The backend blocks a protected set of keys that could break ADB recovery or mutate device identity.
@@ -99,15 +99,15 @@ The backend blocks a protected set of keys that could break ADB recovery or muta
 Other lifecycle commands:
 
 ```bat
-REX_AGENT.bat start
-REX_AGENT.bat stop
-REX_AGENT.bat autostart on
-REX_AGENT.bat autostart off
-REX_AGENT.bat setup --skip-autostart
-REX_AGENT.bat repair
-REX_AGENT.bat screenshot --serial USB123
-REX_AGENT.bat lock-mode USB123 pattern
-REX_AGENT.bat reset-lock USB123
+REX.bat --json start
+REX.bat --json stop
+REX.bat --json autostart on
+REX.bat --json autostart off
+REX.bat --json setup --skip-autostart
+REX.bat --json repair
+REX.bat --json screenshot --serial USB123
+REX.bat --json lock-mode USB123 pattern
+REX.bat --json reset-lock USB123
 ```
 
 If exactly one authorized Android device is connected, `--serial` may be omitted. If multiple authorized devices are present, machine mode must not guess; pass an explicit serial.
@@ -116,7 +116,7 @@ If exactly one authorized Android device is connected, `--serial` may be omitted
 
 Keep these layers separate:
 
-- `src/Rex.AndroidMirror.Cli/` — Spectre interactive CLI and prompt-free JSON agent interface.
+- `src/Rex.AndroidMirror.Cli/` — Spectre interactive CLI and prompt-free JSON machine interface.
 - `RexBridge.ps1` — machine-readable bridge over the existing PowerShell/ADB/scrcpy backend.
 - `DeviceControl.ps1` — friendly Android settings, live Settings Provider access, screenshots and Android command-service probing.
 - `ScrcpyControl.ps1` — scrcpy runtime shortcut adapter.
@@ -178,7 +178,7 @@ If a user-facing capability is added or changed, consider all relevant surfaces:
 
 1. runtime/backend;
 2. REX interactive CLI;
-3. JSON agent CLI;
+3. JSON machine mode;
 4. WPF Control Center;
 5. README;
 6. GitHub Pages;
