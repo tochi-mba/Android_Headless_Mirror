@@ -54,6 +54,14 @@ try {
         Copy-Item (Join-Path $RepoRoot $file) (Join-Path $Temp $file)
     }
 
+    Write-Host "[rex-bridge] fresh package status is observational"
+    $env:REX_ADB_PATH = $null
+    $env:REX_SCRCPY_PATH = $null
+    $fresh = Invoke-Bridge "status"
+    Assert-True (-not [bool]$fresh.SetupComplete) "A fresh package must not count arbitrary PATH tools as setup."
+    Assert-Equal 0 @($fresh.Devices).Count "Fresh status must not start/query a PATH ADB daemon."
+    Assert-Equal "" ([string]$fresh.AdbPath) "Fresh status should expose no package-owned ADB path."
+
     $fakeAdb = Join-Path $Temp "fake-adb.cmd"
     $fakeScrcpy = Join-Path $Temp "fake-scrcpy.exe"
     $adbLog = Join-Path $Temp "adb.log"
