@@ -24,5 +24,8 @@
     "Enabled": true,
     "MaxBytes": 2097152,
     "KeepFiles": 5
-  }
+  },
+  "DismissKeyguardWhenPossible": true,
+  "KeepActiveDuringMirror": true,
+  "LockToPreferredDevice": true
 }
