@@ -543,6 +543,55 @@ class RepositoryContractTests(unittest.TestCase):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn('$args.Add("--mouse=sdk")', text)
 
+    def test_native_precision_touchpad_pinch_is_primary_multitouch_path(self):
+        text = self.read("MirrorChrome.ps1")
+        for contract in [
+            "RegisterPrecisionTouchpadWindow",
+            "GetPointerTouchpadInfoDelegate",
+            "WM_POINTERDOWN",
+            "WM_POINTERUPDATE",
+            "WM_POINTERUP",
+            "ptHimetricLocation",
+            "Get-TouchpadGestureMetrics",
+            "BeginScrcpyPinch",
+            "UpdateScrcpyPinch",
+            "EndScrcpyPinch",
+        ]:
+            self.assertIn(contract, text)
+
+        self.assertIn("new IntPtr(2689)", text)
+        self.assertIn("new IntPtr(2691)", text)
+
+    def test_touchpad_pinch_needs_no_keyboard_modifier_for_android(self):
+        text = self.read("MirrorChrome.ps1")
+        start = text.index("function Update-TouchpadGesture")
+        end = text.index("$script:gestureHook", start)
+        function = text[start:end]
+
+        ctrl_check = function.index("$ctrlPhysicallyDown")
+        android_branch = function.index("$ChromeConfig.TouchpadPinchToAndroid")
+        begin = function.index("BeginScrcpyPinch")
+        self.assertLess(ctrl_check, android_branch)
+        self.assertLess(android_branch, begin)
+        self.assertIn('$script:touchpadGestureKind = "device"', function)
+
+    def test_ctrl_plus_native_touchpad_pinch_is_host_zoom_not_android_pinch(self):
+        text = self.read("MirrorChrome.ps1")
+        start = text.index("function Update-TouchpadGesture")
+        end = text.index("$script:gestureHook", start)
+        function = text[start:end]
+        self.assertIn("$ChromeConfig.CtrlTouchpadPinchToHostZoom", function)
+        self.assertIn('$script:touchpadGestureKind = "host"', function)
+        self.assertIn("Get-ClampedHostZoom", function)
+
+    def test_windows_without_precision_touchpad_api_falls_back_cleanly(self):
+        text = self.read("MirrorChrome.ps1")
+        self.assertIn("ResolveTouchpadApi", text)
+        self.assertIn("return false;", text)
+        self.assertIn("$script:precisionTouchpadAvailable = $false", text)
+        supervisor = self.read("Start-PhoneMirror.ps1")
+        self.assertIn('$args.Add("--mouse=sdk")', supervisor)
+
     def test_mirror_toolbar_is_started_for_every_scrcpy_session_and_cleaned_up(self):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn("function Start-MirrorChrome", text)
@@ -553,6 +602,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_mirror_toolbar_sleep_button_uses_scrcpy_screen_off_shortcut(self):
         text = self.read("MirrorChrome.ps1")
         self.assertIn("Sleep phone", text)
+        self.assertIn("$ChromeConfig.SleepButton", text)
         self.assertIn("SendScrcpyScreenOffShortcut", text)
         self.assertIn("VK_LMENU", text)
         self.assertIn("VK_O", text)
