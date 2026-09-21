@@ -530,7 +530,7 @@ public sealed class RexApp
         };
     }
 
-    private async Task AdvancedAndroidAsync()
+    internal async Task AdvancedAndroidAsync()
     {
         var device = await ChooseAuthorizedDeviceAsync();
         if (device is null) return;
