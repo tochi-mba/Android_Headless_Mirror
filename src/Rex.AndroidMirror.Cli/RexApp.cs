@@ -388,9 +388,10 @@ public sealed class RexApp
             var leaf = rows[index];
             var current = _config.Get(leaf.Path);
 
-            var value = _console.Ask(
-                $"New value for [#D7FF3F]{Markup.Escape(leaf.Path)}[/] ([#858D83]{Markup.Escape(current.Value)}[/]):",
-                current.Value);
+            var value = _console.Prompt(
+                new TextPrompt<string>(
+                    $"New value for [#D7FF3F]{Markup.Escape(leaf.Path)}[/] ([#858D83]{Markup.Escape(current.Value)}[/]):")
+                    .DefaultValue(current.Value));
 
             try
             {
@@ -490,7 +491,15 @@ public sealed class RexApp
     {
         return choice switch
         {
-            "Brightness" => ("brightness", _console.Ask("Brightness 1-255:", 128).ToString()),
+            "Brightness" => (
+                "brightness",
+                _console.Prompt(
+                    new TextPrompt<int>("Brightness 1-255:")
+                        .DefaultValue(128)
+                        .Validate(value => value is >= 1 and <= 255
+                            ? ValidationResult.Success()
+                            : ValidationResult.Error("[#FF774D]Brightness must be 1-255.[/]")))
+                    .ToString()),
             "Brightness mode" => ("brightness-mode", Pick("Mode", ("Manual", "0"), ("Automatic", "1"))),
             "Screen timeout" => ("screen-timeout-ms", Pick("Timeout", ("15 seconds", "15000"), ("30 seconds", "30000"), ("1 minute", "60000"), ("2 minutes", "120000"), ("5 minutes", "300000"), ("10 minutes", "600000"), ("30 minutes", "1800000"))),
             "Auto rotate" => ("auto-rotate", _console.Confirm("Enable auto rotate?", true) ? "1" : "0"),
@@ -503,8 +512,16 @@ public sealed class RexApp
             "Wi-Fi" => ("wifi", Pick("Wi-Fi", ("Enable", "enable"), ("Disable", "disable"))),
             "Mobile data" => ("mobile-data", Pick("Mobile data", ("Enable", "enable"), ("Disable", "disable"))),
             "Airplane mode" => ("airplane-mode", Pick("Airplane mode", ("Enable", "enable"), ("Disable", "disable"))),
-            "Display size override" => ("wm-size", _console.Ask("Size (for example 1080x2400, or reset):", "reset")),
-            "Display density override" => ("wm-density", _console.Ask("Density 120-1000, or reset:", "reset")),
+            "Display size override" => (
+                "wm-size",
+                _console.Prompt(
+                    new TextPrompt<string>("Size (for example 1080x2400, or reset):")
+                        .DefaultValue("reset"))),
+            "Display density override" => (
+                "wm-density",
+                _console.Prompt(
+                    new TextPrompt<string>("Density 120-1000, or reset:")
+                        .DefaultValue("reset"))),
             _ => throw new InvalidOperationException($"Unknown setting '{choice}'."),
         };
     }
@@ -523,7 +540,9 @@ public sealed class RexApp
             if (ns == "Back") return;
 
             var rows = await _bridge.ListAndroidSettingsAsync(device.Serial, ns);
-            var filter = _console.Ask("Filter key/value (leave blank for all):", string.Empty);
+            var filter = _console.Prompt(
+                new TextPrompt<string>("Filter key/value (leave blank for all):")
+                    .AllowEmpty());
             var filtered = rows
                 .Where(x => string.IsNullOrWhiteSpace(filter) ||
                             x.Key.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
@@ -562,7 +581,9 @@ public sealed class RexApp
 
             if (action == "Change value")
             {
-                var newValue = _console.Ask("New value:", row.Value);
+                var newValue = _console.Prompt(
+                    new TextPrompt<string>("New value:")
+                        .DefaultValue(row.Value));
                 using var result = await _bridge.InvokeAsync(
                     "settings-set",
                     serial: device.Serial,
