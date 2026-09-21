@@ -427,6 +427,36 @@ function Select-Device($Devices, $State) {
     return $ready[0]
 }
 
+function Split-ExtraScrcpyArguments([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
+    if ($Text -match '[\r\n\x00]') { throw "ExtraScrcpyArgs contains unsupported characters." }
+
+    $matches = [regex]::Matches($Text, '"(?:[^"\\]|\\.)*"|''[^'']*''|\S+')
+    $result = @()
+
+    foreach ($match in $matches) {
+        $value = [string]$match.Value
+        if ($value.Length -ge 2) {
+            if (
+                ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+                ($value.StartsWith("'") -and $value.EndsWith("'"))
+            ) {
+                $value = $value.Substring(1, $value.Length - 2)
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($value)) { continue }
+
+        if ($value -match '^--(serial|window-title|mouse)(=|$)' -or $value -in @("--no-control","--no-window","--no-video")) {
+            throw "ExtraScrcpyArgs cannot override required Android Headless Mirror option '$value'."
+        }
+
+        $result += $value
+    }
+
+    return @($result)
+}
+
 function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     $args = New-Object System.Collections.Generic.List[string]
     $args.Add("--serial=$Serial")
@@ -461,6 +491,48 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
 
     if (-not [string]::IsNullOrWhiteSpace([string]$Config.VideoBitRate)) {
         $args.Add("--video-bit-rate=$([string]$Config.VideoBitRate)")
+    }
+
+    if ($null -ne $Config.PSObject.Properties["ScrcpySession"]) {
+        $session = $Config.ScrcpySession
+
+        if (-not [string]::IsNullOrWhiteSpace([string]$session.VideoCodec)) {
+            $args.Add("--video-codec=$([string]$session.VideoCodec)")
+        }
+
+        if (-not [bool]$session.AudioEnabled) {
+            $args.Add("--no-audio")
+        }
+        else {
+            if (-not [string]::IsNullOrWhiteSpace([string]$session.AudioCodec)) {
+                $args.Add("--audio-codec=$([string]$session.AudioCodec)")
+            }
+
+            if ([bool]$session.AudioDup) {
+                $args.Add("--audio-dup")
+            }
+
+            if ([int]$session.AudioBufferMs -gt 0) {
+                $args.Add("--audio-buffer=$([int]$session.AudioBufferMs)")
+            }
+        }
+
+        if ([bool]$session.Fullscreen) { $args.Add("--fullscreen") }
+        if ([bool]$session.AlwaysOnTop) { $args.Add("--always-on-top") }
+        if ([bool]$session.DisableScreensaver) { $args.Add("--disable-screensaver") }
+
+        if ([bool]$session.RecordOnStart) {
+            $recordDirectory = Join-Path $Root ([string]$session.RecordDirectory)
+            New-Item -ItemType Directory -Force -Path $recordDirectory | Out-Null
+            $recordPath = Join-Path $recordDirectory ("android-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".mp4")
+            $args.Add("--record=$recordPath")
+        }
+    }
+
+    if ($null -ne $Config.PSObject.Properties["ExtraScrcpyArgs"]) {
+        foreach ($extra in @(Split-ExtraScrcpyArguments ([string]$Config.ExtraScrcpyArgs))) {
+            $args.Add($extra)
+        }
     }
 
     return @($args)
