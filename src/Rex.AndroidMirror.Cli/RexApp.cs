@@ -72,6 +72,7 @@ public sealed class RexApp
                     "Diagnostics",
                     "Setup / repair",
                     "Windows startup",
+                    "Desktop shortcut",
                     "Captures",
                     "Stop Android Headless Mirror",
                     "Refresh",
@@ -108,6 +109,9 @@ public sealed class RexApp
                         break;
                     case "Windows startup":
                         await AutostartAsync();
+                        break;
+                    case "Desktop shortcut":
+                        await DesktopShortcutAsync();
                         break;
                     case "Captures":
                         await CapturesAsync();
@@ -641,6 +645,35 @@ public sealed class RexApp
         await RunScriptAsync("Verifying / repairing scrcpy and ADB", _paths.Setup, new[] { "-SkipAutostart" });
         await SetAutostartAsync(autostart);
         RexBrand.Success(_console, "Repair completed without changing your startup preference.");
+        Pause();
+    }
+
+    private async Task DesktopShortcutAsync()
+    {
+        RexBrand.Header(_console, "DESKTOP SHORTCUT");
+        var choice = _console.Prompt(RexBrand.Menu(
+            "REX desktop shortcut",
+            new[] { "Install / repair shortcut", "Remove shortcut", "Back" }));
+
+        if (choice == "Back")
+            return;
+
+        var script = choice.StartsWith("Install", StringComparison.Ordinal)
+            ? _paths.InstallRexShortcut
+            : _paths.RemoveRexShortcut;
+
+        await RunScriptAsync(
+            choice.StartsWith("Install", StringComparison.Ordinal)
+                ? "Installing smart REX desktop shortcut"
+                : "Removing REX desktop shortcut",
+            script);
+
+        RexBrand.Success(
+            _console,
+            choice.StartsWith("Install", StringComparison.Ordinal)
+                ? "Desktop shortcut installed."
+                : "Desktop shortcut removed.");
+
         Pause();
     }
 
