@@ -62,8 +62,7 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // Precision Touchpad
         console.Input.PushTextWithEnter("n"); // auto-open Control Center
         console.Input.PushTextWithEnter("n"); // start now
-        PushDown(console, RexApp.MainMenuChoices.Count); // main menu -> Exit
-        console.Input.PushKey(ConsoleKey.Enter);
+        SelectLast(console); // main menu -> Exit
 
         var app = new RexApp(
             package.Paths,
@@ -112,8 +111,7 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // stay awake
         console.Input.PushTextWithEnter("n"); // auto-open controls
         console.Input.PushTextWithEnter("n"); // start now
-        PushDown(console, RexApp.MainMenuChoices.Count); // main menu -> Exit
-        console.Input.PushKey(ConsoleKey.Enter);
+        SelectLast(console); // main menu -> Exit
 
         var app = new RexApp(
             package.Paths,
@@ -251,8 +249,7 @@ public sealed class RexAppTests
         var console = ConsoleWithInput();
         console.Input.PushKey(ConsoleKey.DownArrow); // Runtime controls
         console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, RexApp.MainMenuChoices.Count); // main menu -> Exit
-        console.Input.PushKey(ConsoleKey.Enter);
+        SelectLast(console); // main menu -> Exit
 
         var app = new RexApp(
             package.Paths,
@@ -280,6 +277,12 @@ public sealed class RexAppTests
     {
         for (var i = 0; i < count; i++)
             console.Input.PushKey(ConsoleKey.DownArrow);
+    }
+
+    private static void SelectLast(TestConsole console)
+    {
+        console.Input.PushKey(ConsoleKey.UpArrow);
+        console.Input.PushKey(ConsoleKey.Enter);
     }
 
     private static RexStatus Status(
