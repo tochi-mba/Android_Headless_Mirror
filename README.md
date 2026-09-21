@@ -200,6 +200,7 @@ STOP:
 - stops this package's background supervisor;
 - stops any pattern-guide sidecar started by this package;
 - stops the mirror toolbar / host-zoom / touchpad-gesture sidecar;
+- stops any open per-device Control Center;
 - leaves the shared Windows ADB server alone.
 
 The `stop.flag` remains present, so Windows autostart will not resurrect the mirror.
@@ -296,6 +297,14 @@ Useful values in `config.json`:
 - `MirrorChrome.TouchpadPinchToAndroid`: map a native two-finger pinch/spread to Android multitouch.
 - `MirrorChrome.CtrlTouchpadPinchToHostZoom`: map physical Ctrl + native touchpad pinch to PC-only frame zoom.
 - `MirrorChrome.HostZoomEnabled`: enable persistent PC-only frame magnification and **Reset zoom**.
+- `ControlCenter.Enabled`: enable the per-device Windows Control Center.
+- `ControlCenter.ConfirmSensitiveDeviceWrites`: confirm advanced Android writes before execution.
+- `ControlCenter.ScreenshotDirectory`: screenshot output directory.
+- `ScrcpySession.VideoCodec`: `h264`, `h265` or `av1` for the next mirror session.
+- `ScrcpySession.AudioEnabled` / `AudioCodec` / `AudioBufferMs` / `AudioDup`: scrcpy audio preferences.
+- `ScrcpySession.Fullscreen` / `AlwaysOnTop` / `DisableScreensaver`: window behavior at session start.
+- `ScrcpySession.RecordOnStart` / `RecordDirectory`: native scrcpy recording settings.
+- `ExtraScrcpyArgs`: validated advanced argument escape hatch. Required wrapper invariants such as device serial, window title, SDK mouse mode and an interactive window cannot be overridden.
 
 
 
