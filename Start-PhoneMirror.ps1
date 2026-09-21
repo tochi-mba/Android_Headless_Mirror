@@ -427,11 +427,88 @@ function Select-Device($Devices, $State) {
     return $ready[0]
 }
 
+function Split-ExtraScrcpyArguments([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
+    if ($Text -match '[\r\n\x00]') { throw "ExtraScrcpyArgs contains unsupported characters." }
+
+    $tokens = New-Object System.Collections.Generic.List[string]
+    $builder = New-Object System.Text.StringBuilder
+    $quote = [char]0
+    $escapeNext = $false
+    $doubleQuote = [char]34
+    $singleQuote = [char]39
+    $backslash = [char]92
+
+    foreach ($ch in $Text.ToCharArray()) {
+        if ($escapeNext) {
+            [void]$builder.Append($ch)
+            $escapeNext = $false
+            continue
+        }
+
+        if ($quote -ne [char]0) {
+            if ($ch -eq $quote) {
+                $quote = [char]0
+                continue
+            }
+
+            if ($quote -eq $doubleQuote -and $ch -eq $backslash) {
+                $escapeNext = $true
+                continue
+            }
+
+            [void]$builder.Append($ch)
+            continue
+        }
+
+        if ($ch -eq $doubleQuote -or $ch -eq $singleQuote) {
+            $quote = $ch
+            continue
+        }
+
+        if ([char]::IsWhiteSpace($ch)) {
+            if ($builder.Length -gt 0) {
+                $tokens.Add($builder.ToString())
+                [void]$builder.Clear()
+            }
+            continue
+        }
+
+        [void]$builder.Append($ch)
+    }
+
+    if ($escapeNext -or $quote -ne [char]0) {
+        throw "ExtraScrcpyArgs contains an unterminated quoted value."
+    }
+
+    if ($builder.Length -gt 0) {
+        $tokens.Add($builder.ToString())
+    }
+
+    $result = @()
+    foreach ($value in $tokens) {
+        if ([string]::IsNullOrWhiteSpace($value)) { continue }
+
+        if (
+            $value -match '^--(serial|window-title|mouse)(=|$)' -or
+            $value -in @("--no-control","--no-window","--no-video")
+        ) {
+            throw "ExtraScrcpyArgs cannot override required Android Headless Mirror option '$value'."
+        }
+
+        $result += [string]$value
+    }
+
+    return @($result)
+}
+
 function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     $args = New-Object System.Collections.Generic.List[string]
     $args.Add("--serial=$Serial")
     $sessionTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
     $args.Add("--window-title=$sessionTitle")
+    # scrcpy's Ctrl+click-and-drag pinch simulation requires SDK mouse mode.
+    $args.Add("--mouse=sdk")
 
     if ($Config.TurnPhysicalScreenOff) {
         $args.Add("--turn-screen-off")
@@ -459,6 +536,48 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
 
     if (-not [string]::IsNullOrWhiteSpace([string]$Config.VideoBitRate)) {
         $args.Add("--video-bit-rate=$([string]$Config.VideoBitRate)")
+    }
+
+    if ($null -ne $Config.PSObject.Properties["ScrcpySession"]) {
+        $session = $Config.ScrcpySession
+
+        if (-not [string]::IsNullOrWhiteSpace([string]$session.VideoCodec)) {
+            $args.Add("--video-codec=$([string]$session.VideoCodec)")
+        }
+
+        if (-not [bool]$session.AudioEnabled) {
+            $args.Add("--no-audio")
+        }
+        else {
+            if (-not [string]::IsNullOrWhiteSpace([string]$session.AudioCodec)) {
+                $args.Add("--audio-codec=$([string]$session.AudioCodec)")
+            }
+
+            if ([bool]$session.AudioDup) {
+                $args.Add("--audio-dup")
+            }
+
+            if ([int]$session.AudioBufferMs -gt 0) {
+                $args.Add("--audio-buffer=$([int]$session.AudioBufferMs)")
+            }
+        }
+
+        if ([bool]$session.Fullscreen) { $args.Add("--fullscreen") }
+        if ([bool]$session.AlwaysOnTop) { $args.Add("--always-on-top") }
+        if ([bool]$session.DisableScreensaver) { $args.Add("--disable-screensaver") }
+
+        if ([bool]$session.RecordOnStart) {
+            $recordDirectory = Join-Path $Root ([string]$session.RecordDirectory)
+            New-Item -ItemType Directory -Force -Path $recordDirectory | Out-Null
+            $recordPath = Join-Path $recordDirectory ("android-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".mp4")
+            $args.Add("--record=$recordPath")
+        }
+    }
+
+    if ($null -ne $Config.PSObject.Properties["ExtraScrcpyArgs"]) {
+        foreach ($extra in @(Split-ExtraScrcpyArguments ([string]$Config.ExtraScrcpyArgs))) {
+            $args.Add($extra)
+        }
     }
 
     return @($args)
@@ -505,6 +624,42 @@ function Invoke-Scrcpy([string]$Executable, [string[]]$Arguments, [bool]$ShowOut
     }
 }
 
+
+function Start-MirrorChrome([string]$Serial) {
+    if ($null -eq $Config.PSObject.Properties["MirrorChrome"]) { return $null }
+    if (-not $Config.MirrorChrome.Enabled) { return $null }
+
+    $chromeScript = Join-Path $Root "MirrorChrome.ps1"
+    if (-not (Test-Path $chromeScript)) {
+        Log "Mirror toolbar requested but MirrorChrome.ps1 is missing." "WARN"
+        return $null
+    }
+
+    try {
+        $quote = [char]34
+        $argumentLine =
+            "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " +
+            $quote + $chromeScript + $quote +
+            " -Serial " + $quote + $Serial + $quote
+
+        return Start-Process -FilePath "powershell.exe" -ArgumentList $argumentLine -PassThru -WindowStyle Hidden
+    }
+    catch {
+        Log "Could not start mirror toolbar: $($_.Exception.Message)" "WARN"
+        return $null
+    }
+}
+
+function Stop-MirrorChrome($Process) {
+    if ($null -eq $Process) { return }
+
+    try {
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+}
 
 function Start-PatternOverlay([string]$Serial, [string]$LockScreenMode) {
     if ($LockScreenMode -ne "pattern") { return $null }
@@ -664,12 +819,14 @@ try {
             $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
             Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
 
+            $chromeProcess = Start-MirrorChrome $selected.Serial
             $overlayProcess = Start-PatternOverlay $selected.Serial $lockScreenMode
             try {
                 $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
             }
             finally {
                 Stop-PatternOverlay $overlayProcess
+                Stop-MirrorChrome $chromeProcess
             }
 
             Log "scrcpy exited with code $exitCode"

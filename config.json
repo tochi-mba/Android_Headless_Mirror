@@ -42,6 +42,55 @@
     "ShowCursorTrail": true,
     "ManualShowSeconds": 20,
     "TrailHoldMilliseconds": 350,
-    "FrameMilliseconds": 16
-  }
+    "FrameMilliseconds": 16,
+    "AutoDiscoverGeometry": true,
+    "DiscoveryPollMilliseconds": 3000,
+    "CalibrationEnabled": true,
+    "CalibrationHotkey": "Ctrl+Alt+C",
+    "CalibrationStepPixels": 8,
+    "CalibrationFineStepPixels": 1,
+    "FallbackToEstimatedGeometry": true,
+    "CalibrationDirectory": "pattern-calibration"
+  },
+  "MirrorChrome": {
+    "Enabled": true,
+    "SleepButton": true,
+    "HostZoomEnabled": true,
+    "ZoomStep": 0.25,
+    "MinZoom": 1,
+    "MaxZoom": 4,
+    "ToolbarInsetPixels": 10,
+    "PollMilliseconds": 16,
+    "CtrlWheelZoom": true,
+    "NativeTouchpadGestures": true,
+    "TouchpadPinchToAndroid": true,
+    "CtrlTouchpadPinchToHostZoom": true,
+    "TouchpadPinchThreshold": 0.018,
+    "TouchpadBaseRadiusRelativeToClient": 0.22
+  },
+  "ControlCenter": {
+    "Enabled": true,
+    "OpenOnLaunch": false,
+    "DockToMirror": true,
+    "AlwaysOnTop": true,
+    "Width": 1040,
+    "Height": 760,
+    "RememberLastTab": true,
+    "ConfirmSensitiveDeviceWrites": true,
+    "AdvancedSettingsWritesEnabled": true,
+    "ScreenshotDirectory": "captures/screenshots"
+  },
+  "ScrcpySession": {
+    "VideoCodec": "h264",
+    "AudioEnabled": true,
+    "AudioCodec": "opus",
+    "AudioDup": false,
+    "AudioBufferMs": 50,
+    "Fullscreen": false,
+    "AlwaysOnTop": false,
+    "DisableScreensaver": true,
+    "RecordOnStart": false,
+    "RecordDirectory": "captures/recordings"
+  },
+  "ExtraScrcpyArgs": ""
 }

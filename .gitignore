@@ -5,3 +5,11 @@ stop.flag
 *.log
 __pycache__/
 *.pyc
+pattern-calibration/
+runtime/
+captures/
+test-results/
+artifacts/
+config.json.rex-backup
+config.json.tmp
+config.json.restore-current

@@ -1,5 +1,7 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$SkipAutostart
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -105,8 +107,31 @@ try {
     & $scrcpy.FullName --version | Select-Object -First 1 | ForEach-Object { Write-Host "  $_" }
     & $adb.FullName version | Select-Object -First 1 | ForEach-Object { Write-Host "  $_" }
 
-    Write-Step "Installing per-user Windows startup shortcut..."
-    & (Join-Path $Root "Install-Autostart.ps1")
+    if ($SkipAutostart) {
+        Write-Step "Skipping Windows startup shortcut; the caller will choose whether to enable it."
+    }
+    else {
+        Write-Step "Installing per-user Windows startup shortcut..."
+        & (Join-Path $Root "Install-Autostart.ps1")
+    }
+
+    $rexBootstrap = Join-Path $Root "Bootstrap-RexCli.ps1"
+    if (Test-Path $rexBootstrap) {
+        try {
+            Write-Step "Preparing the REX command-line app..."
+            & $rexBootstrap
+        }
+        catch {
+            Write-Warning ("REX CLI bootstrap was not available yet: " + $_.Exception.Message)
+            Write-Warning "The classic launchers remain usable. REX.bat can retry the CLI bootstrap later."
+        }
+    }
+
+    $rexShortcut = Join-Path $Root "Install-Rex-Shortcut.ps1"
+    if (Test-Path $rexShortcut) {
+        Write-Step "Installing the REX desktop shortcut..."
+        & $rexShortcut
+    }
 
     Write-Step "Setup complete."
 }

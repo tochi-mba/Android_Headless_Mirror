@@ -8,6 +8,7 @@ $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $SupervisorPath = Join-Path $Root "Start-PhoneMirror.ps1"
 $StopPath = Join-Path $Root "Stop-PhoneMirror.ps1"
 $OverlayPath = Join-Path $Root "PatternOverlay.ps1"
+$MirrorChromePath = Join-Path $Root "MirrorChrome.ps1"
 $ResetLockScreenPath = Join-Path $Root "Reset-LockScreenChoices.ps1"
 
 $script:Assertions = 0
@@ -98,6 +99,39 @@ function Get-SupervisorFunctionDefinitions {
     return $selectedDefinitions
 }
 
+function Get-MirrorChromeFunctionDefinitions {
+    param([string[]]$Names)
+
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        $MirrorChromePath,
+        [ref]$tokens,
+        [ref]$errors
+    )
+
+    Assert-Equal -Expected 0 -Actual $errors.Count -Message "MirrorChrome.ps1 must parse before behavior tests run."
+
+    $definitions = @{}
+    $ast.FindAll(
+        {
+            param($Node)
+            $Node -is [System.Management.Automation.Language.FunctionDefinitionAst]
+        },
+        $true
+    ) | ForEach-Object {
+        $definitions[$_.Name] = $_.Extent.Text
+    }
+
+    $selectedDefinitions = @()
+    foreach ($name in $Names) {
+        Assert-True -Condition $definitions.ContainsKey($name) -Message "Mirror chrome function '$name' must exist."
+        $selectedDefinitions += $definitions[$name]
+    }
+
+    return $selectedDefinitions
+}
+
 function Get-OverlayFunctionDefinitions {
     param([string[]]$Names)
 
@@ -139,6 +173,7 @@ $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
     "Get-PhoneIpCandidates",
     "Unique-Strings",
     "Select-Device",
+    "Split-ExtraScrcpyArguments",
     "Build-ScrcpyArguments",
     "Invoke-Scrcpy",
     "Start-PatternOverlay",
@@ -153,6 +188,17 @@ $overlayFunctionDefinitions = @(Get-OverlayFunctionDefinitions -Names @(
     "Get-KeyguardStateFromText",
     "Get-FittedContentRect",
     "Get-PatternGridPoints",
+    "ConvertFrom-AndroidBounds",
+    "New-PatternGeometry",
+    "Get-PatternGeometryFromUiXml",
+    "Get-PatternPointsFromGeometry",
+    "Get-CalibrationPath",
+    "Convert-CalibrationRecordToGeometry",
+    "Load-PatternCalibration",
+    "Save-PatternCalibration",
+    "Remove-PatternCalibration",
+    "Get-GridBoundsNormalizedFromPoints",
+    "Clamp-CalibrationBounds",
     "Get-HotkeySpec"
 ))
 
@@ -160,10 +206,49 @@ foreach ($definition in $overlayFunctionDefinitions) {
     Invoke-Expression $definition
 }
 
+$mirrorChromeFunctionDefinitions = @(Get-MirrorChromeFunctionDefinitions -Names @(
+    "Get-TouchpadGestureMetrics",
+    "Normalize-Angle",
+    "Get-SyntheticPinchPoint",
+    "Get-ClampedHostZoom"
+))
+
+foreach ($definition in $mirrorChromeFunctionDefinitions) {
+    Invoke-Expression $definition
+}
+
 
 Write-Host "[powershell] Testing overlay script safe-load mode..."
 & $OverlayPath -Serial "TEST_SERIAL" -TestOnly
 Assert-True -Condition $true -Message "PatternOverlay.ps1 -TestOnly should execute without creating WPF state."
+
+Write-Host "[powershell] Testing mirror-toolbar script safe-load mode..."
+& $MirrorChromePath -Serial "TEST_SERIAL" -TestOnly
+Assert-True -Condition $true -Message "MirrorChrome.ps1 -TestOnly should compile native helpers without creating a toolbar or magnifier."
+
+Write-Host "[powershell] Testing native touchpad pinch math..."
+$contacts = @{
+    "1" = [pscustomobject]@{ X = 0.0; Y = 0.0 }
+    "2" = [pscustomobject]@{ X = 3.0; Y = 4.0 }
+}
+$metrics = Get-TouchpadGestureMetrics $contacts
+Assert-Equal -Expected 5.0 -Actual ([Math]::Round($metrics.Distance, 6)) -Message "Touchpad distance should use both physical contacts."
+Assert-Equal -Expected ([Math]::Round([Math]::Atan2(4.0, 3.0), 6)) -Actual ([Math]::Round($metrics.Angle, 6)) -Message "Touchpad angle should follow the two-contact vector."
+Assert-True -Condition ($null -eq (Get-TouchpadGestureMetrics @{"1" = [pscustomobject]@{ X = 1; Y = 1 }})) -Message "A single touchpad contact must not be treated as a pinch."
+
+Assert-Equal -Expected ([Math]::Round(-[Math]::PI + 0.2, 6)) -Actual ([Math]::Round((Normalize-Angle ([Math]::PI + 0.2)), 6)) -Message "Angle normalization should wrap positive overflow."
+Assert-Equal -Expected ([Math]::Round([Math]::PI - 0.2, 6)) -Actual ([Math]::Round((Normalize-Angle (-[Math]::PI - 0.2)), 6)) -Message "Angle normalization should wrap negative overflow."
+
+$pinchRect = [pscustomobject]@{ Left = 0; Top = 0; Right = 1000; Bottom = 2000 }
+$pinchPoint = Get-SyntheticPinchPoint $pinchRect 200.0 1.5 0.0
+Assert-Equal -Expected 800 -Actual $pinchPoint.X -Message "Synthetic pinch X should scale radially from the mirror center."
+Assert-Equal -Expected 1000 -Actual $pinchPoint.Y -Message "Synthetic pinch Y should stay centered for zero rotation."
+
+$zoomConfig = [pscustomobject]@{ MinZoom = 1.0; MaxZoom = 4.0 }
+Assert-Equal -Expected 2.0 -Actual (Get-ClampedHostZoom 1.0 2.0 $zoomConfig) -Message "Host zoom should follow touchpad scale."
+Assert-Equal -Expected 4.0 -Actual (Get-ClampedHostZoom 3.0 2.0 $zoomConfig) -Message "Host zoom should clamp to maximum."
+Assert-Equal -Expected 1.0 -Actual (Get-ClampedHostZoom 1.5 0.2 $zoomConfig) -Message "Host zoom should clamp to 100 percent minimum."
+
 
 Write-Host "[powershell] Testing non-pattern modes never launch an overlay..."
 Assert-True -Condition ($null -eq (Start-PatternOverlay "USB123" "none")) -Message "No-lock mode must not start an overlay."
@@ -257,6 +342,60 @@ Assert-Equal -Expected 9 -Actual $points.Count -Message "Pattern guide must alwa
 Assert-Equal -Expected ([Math]::Round($portraitRect.X + ($portraitRect.Width * 0.5), 3)) -Actual ([Math]::Round($points[4].X, 3)) -Message "Middle pattern dot should use configured horizontal center."
 Assert-Equal -Expected ([Math]::Round($portraitRect.Y + ($portraitRect.Height * 0.6), 3)) -Actual ([Math]::Round($points[4].Y, 3)) -Message "Middle pattern dot should use configured vertical center."
 
+Write-Host "[powershell] Testing Android UI hierarchy pattern discovery..."
+$viewXml = @'
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
+    <node class="com.android.internal.widget.LockPatternView" resource-id="com.android.systemui:id/lockPatternView" content-desc="Pattern area" bounds="[140,820][940,1620]" />
+  </node>
+</hierarchy>
+'@
+$viewGeometry = Get-PatternGeometryFromUiXml $viewXml
+Assert-True -Condition ($null -ne $viewGeometry) -Message "LockPatternView should be discovered from UI hierarchy."
+Assert-Equal -Expected "ui-view" -Actual $viewGeometry.Source -Message "Parent LockPatternView should produce ui-view geometry."
+Assert-Equal -Expected 1080.0 -Actual $viewGeometry.ScreenWidth -Message "Hierarchy should infer Android screen width."
+Assert-Equal -Expected 2400.0 -Actual $viewGeometry.ScreenHeight -Message "Hierarchy should infer Android screen height."
+Assert-Equal -Expected ([Math]::Round((140.0 + (800.0 / 6.0)) / 1080.0, 6)) -Actual ([Math]::Round($viewGeometry.GridBoundsNormalized.Left, 6)) -Message "Parent view should derive first-column center at one sixth."
+Assert-Equal -Expected ([Math]::Round((820.0 + (800.0 / 6.0)) / 2400.0, 6)) -Actual ([Math]::Round($viewGeometry.GridBoundsNormalized.Top, 6)) -Message "Parent view should derive first-row center at one sixth."
+
+$dotsXml = @'
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
+    <node class="com.android.internal.widget.LockPatternView" resource-id="com.android.systemui:id/lockPatternView" content-desc="Pattern area" bounds="[140,820][940,1620]">
+      <node class="android.view.View" content-desc="Pattern cell 1" bounds="[270,970][330,1030]" />
+      <node class="android.view.View" content-desc="Pattern cell 2" bounds="[510,970][570,1030]" />
+      <node class="android.view.View" content-desc="Pattern cell 3" bounds="[750,970][810,1030]" />
+      <node class="android.view.View" content-desc="Pattern cell 4" bounds="[270,1190][330,1250]" />
+      <node class="android.view.View" content-desc="Pattern cell 5" bounds="[510,1190][570,1250]" />
+      <node class="android.view.View" content-desc="Pattern cell 6" bounds="[750,1190][810,1250]" />
+      <node class="android.view.View" content-desc="Pattern cell 7" bounds="[270,1410][330,1470]" />
+      <node class="android.view.View" content-desc="Pattern cell 8" bounds="[510,1410][570,1470]" />
+      <node class="android.view.View" content-desc="Pattern cell 9" bounds="[750,1410][810,1470]" />
+    </node>
+  </node>
+</hierarchy>
+'@
+$dotsGeometry = Get-PatternGeometryFromUiXml $dotsXml
+Assert-Equal -Expected "ui-dots" -Actual $dotsGeometry.Source -Message "Nine explicit virtual cells should outrank parent-view geometry."
+Assert-True -Condition $dotsGeometry.ExactDots -Message "Virtual-cell geometry should be marked exact."
+Assert-Equal -Expected ([Math]::Round(300.0 / 1080.0, 6)) -Actual ([Math]::Round($dotsGeometry.GridBoundsNormalized.Left, 6)) -Message "Exact dot geometry should use virtual-cell centers."
+Assert-Equal -Expected ([Math]::Round(780.0 / 1080.0, 6)) -Actual ([Math]::Round($dotsGeometry.GridBoundsNormalized.Right, 6)) -Message "Exact dot geometry should use outer virtual-cell centers."
+Assert-True -Condition ($null -eq (Get-PatternGeometryFromUiXml "<hierarchy><node class='android.widget.TextView' bounds='[0,0][1080,2400]' /></hierarchy>")) -Message "Unrelated UI hierarchy should not invent pattern geometry."
+
+Write-Host "[powershell] Testing discovered geometry mapping into scrcpy client coordinates..."
+$mapped = Get-PatternPointsFromGeometry $viewGeometry 540 1200 1080 2400 $overlayConfig
+Assert-Equal -Expected "ui-view" -Actual $mapped.Source -Message "Mapped layout should preserve geometry source."
+Assert-Equal -Expected 9 -Actual @($mapped.Points).Count -Message "Discovered geometry should map to nine client points."
+Assert-Equal -Expected ([Math]::Round((140.0 + (800.0 / 6.0)) / 2.0, 3)) -Actual ([Math]::Round($mapped.Points[0].X, 3)) -Message "Android X coordinates should map proportionally into scrcpy content."
+Assert-Equal -Expected ([Math]::Round((820.0 + (800.0 / 6.0)) / 2.0, 3)) -Actual ([Math]::Round($mapped.Points[0].Y, 3)) -Message "Android Y coordinates should map proportionally into scrcpy content."
+
+Write-Host "[powershell] Testing calibration bounds validation..."
+$clamped = Clamp-CalibrationBounds ([pscustomobject]@{ Left = -0.1; Top = 0.2; Right = 1.2; Bottom = 0.8 })
+Assert-Equal -Expected 0.0 -Actual ([Math]::Round($clamped.Left, 4)) -Message "Calibration should clamp left edge."
+Assert-Equal -Expected 1.0 -Actual ([Math]::Round($clamped.Right, 4)) -Message "Calibration should clamp right edge."
+$invalidCalibration = Convert-CalibrationRecordToGeometry ([pscustomobject]@{ Left = 0.8; Top = 0.2; Right = 0.2; Bottom = 0.8 })
+Assert-True -Condition ($null -eq $invalidCalibration) -Message "Inverted calibration bounds should be rejected."
+
 Write-Host "[powershell] Testing overlay hotkey parsing..."
 $hotkey = Get-HotkeySpec "Ctrl+Alt+P"
 Assert-Equal -Expected @(0x11, 0x12) -Actual @($hotkey.Modifiers) -Message "Ctrl+Alt modifiers should parse."
@@ -268,6 +407,51 @@ $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("android-headless-mirror-te
 New-Item -ItemType Directory -Force -Path $temp | Out-Null
 
 try {
+    Write-Host "[powershell] Testing per-device calibration persistence..."
+    $originalRoot = $script:Root
+    $hadOverlayConfig = Test-Path variable:script:OverlayConfig
+    $originalOverlayConfig = if ($hadOverlayConfig) { $script:OverlayConfig } else { $null }
+
+    try {
+        $script:Root = $temp
+        $script:OverlayConfig = [pscustomobject]@{
+            CalibrationEnabled = $true
+            CalibrationDirectory = "pattern-calibration"
+        }
+
+        $bounds = [pscustomobject]@{
+            Left = 0.20
+            Top = 0.35
+            Right = 0.80
+            Bottom = 0.72
+        }
+
+        Assert-True -Condition (Save-PatternCalibration "USB:123" $bounds) -Message "Calibration should save successfully."
+        $calibrationPath = Get-CalibrationPath "USB:123"
+        Assert-True -Condition (Test-Path $calibrationPath) -Message "Calibration should be stored in a per-device file."
+        Assert-True -Condition ($calibrationPath -match 'USB_123\.json$') -Message "Calibration path should sanitize the ADB serial."
+
+        $loadedCalibration = Load-PatternCalibration "USB:123"
+        Assert-Equal -Expected "calibration" -Actual $loadedCalibration.Source -Message "Saved calibration should reload as calibration geometry."
+        Assert-Equal -Expected 0.20 -Actual ([Math]::Round($loadedCalibration.GridBoundsNormalized.Left, 2)) -Message "Saved calibration should preserve left bound."
+        Assert-Equal -Expected 0.72 -Actual ([Math]::Round($loadedCalibration.GridBoundsNormalized.Bottom, 2)) -Message "Saved calibration should preserve bottom bound."
+
+        $calibrationJson = Get-Content $calibrationPath -Raw
+        Assert-False -Condition ($calibrationJson -match '(?i)trail|cursor|patternpoints|gesture') -Message "Calibration file must contain geometry only, never gesture/cursor path data."
+
+        Remove-PatternCalibration "USB:123"
+        Assert-False -Condition (Test-Path $calibrationPath) -Message "Calibration removal should delete only that device file."
+    }
+    finally {
+        $script:Root = $originalRoot
+        if ($hadOverlayConfig) {
+            $script:OverlayConfig = $originalOverlayConfig
+        }
+        else {
+            Remove-Variable -Name OverlayConfig -Scope Script -ErrorAction SilentlyContinue
+        }
+    }
+
     $fakeAdb = Join-Path $temp "fake-adb.cmd"
     @'
 @echo off
@@ -344,38 +528,111 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         VideoBitRate = "12M"
         PreferredSerial = ""
         PreferUsb = $true
+        ScrcpySession = [pscustomobject]@{
+            VideoCodec = "h264"
+            AudioEnabled = $true
+            AudioCodec = "opus"
+            AudioDup = $false
+            AudioBufferMs = 50
+            Fullscreen = $false
+            AlwaysOnTop = $false
+            DisableScreensaver = $true
+            RecordOnStart = $false
+            RecordDirectory = "captures/recordings"
+        }
+        ExtraScrcpyArgs = '--render-fit=letterbox --shortcut-mod="rctrl"'
     }
 
     $usbArgs = @(Build-ScrcpyArguments "USB123" $false)
     foreach ($expected in @(
         "--serial=USB123",
         "--window-title=Android Device [USB123]",
+        "--mouse=sdk",
         "--turn-screen-off",
         "--stay-awake",
         "--keep-active",
         "--max-size=1920",
         "--max-fps=60",
-        "--video-bit-rate=12M"
+        "--video-bit-rate=12M",
+        "--video-codec=h264",
+        "--audio-codec=opus",
+        "--audio-buffer=50",
+        "--disable-screensaver",
+        "--render-fit=letterbox",
+        "--shortcut-mod=rctrl"
     )) {
         Assert-Contains -Collection $usbArgs -Value $expected -Message "USB scrcpy args should include $expected."
     }
     Assert-False -Condition ($usbArgs -contains "--power-off-on-close") -Message "Disabled power-off-on-close should not be emitted."
+    Assert-False -Condition ($usbArgs -contains "--audio-dup") -Message "Disabled audio duplication should not be emitted."
 
     $tcpArgs = @(Build-ScrcpyArguments "192.168.1.40:5555" $true)
     Assert-False -Condition ($tcpArgs -contains "--stay-awake") -Message "TCP sessions should not receive the USB stay-awake flag."
     Assert-Contains -Collection $tcpArgs -Value "--keep-active" -Message "TCP sessions should still receive --keep-active."
 
+    Write-Host "[powershell] Testing alternate session settings..."
     $script:Config.PowerOffOnClose = $true
     $script:Config.KeepActiveDuringMirror = $false
     $script:Config.MaxSize = 0
     $script:Config.MaxFps = 0
     $script:Config.VideoBitRate = ""
+    $script:Config.ScrcpySession.VideoCodec = "h265"
+    $script:Config.ScrcpySession.AudioEnabled = $false
+    $script:Config.ScrcpySession.AudioDup = $true
+    $script:Config.ScrcpySession.Fullscreen = $true
+    $script:Config.ScrcpySession.AlwaysOnTop = $true
+    $script:Config.ExtraScrcpyArgs = ""
+
     $minimalArgs = @(Build-ScrcpyArguments "USB123" $false)
     Assert-Contains -Collection $minimalArgs -Value "--power-off-on-close" -Message "Enabled power-off-on-close should be emitted."
+    Assert-Contains -Collection $minimalArgs -Value "--video-codec=h265" -Message "Configured video codec should be emitted."
+    Assert-Contains -Collection $minimalArgs -Value "--no-audio" -Message "Disabled audio should emit --no-audio."
+    Assert-Contains -Collection $minimalArgs -Value "--fullscreen" -Message "Fullscreen preference should be emitted."
+    Assert-Contains -Collection $minimalArgs -Value "--always-on-top" -Message "Always-on-top preference should be emitted."
+    Assert-False -Condition ($minimalArgs -contains "--audio-dup") -Message "Audio duplication should not emit when audio is disabled."
     Assert-False -Condition ($minimalArgs -contains "--keep-active") -Message "Disabled KeepActiveDuringMirror should suppress --keep-active."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-fps=*" }).Count -gt 0) -Message "MaxFps=0 should suppress --max-fps."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--video-bit-rate=*" }).Count -gt 0) -Message "Blank bitrate should suppress --video-bit-rate."
+
+    Write-Host "[powershell] Testing recording path and raw-argument guardrails..."
+    $recordRoot = Join-Path $temp "record-root"
+    New-Item -ItemType Directory -Force -Path $recordRoot | Out-Null
+    $originalRootForRecord = $script:Root
+    try {
+        $script:Root = $recordRoot
+        $script:Config.ScrcpySession.RecordOnStart = $true
+        $script:Config.ScrcpySession.AudioEnabled = $true
+        $recordArgs = @(Build-ScrcpyArguments "USB123" $false)
+        Assert-Equal -Expected 1 -Actual @($recordArgs | Where-Object { $_ -like "--record=*" }).Count -Message "Record-on-start should emit exactly one record argument."
+        $recordArg = @($recordArgs | Where-Object { $_ -like "--record=*" })[0]
+        Assert-True -Condition ($recordArg -match 'captures[\\/]recordings[\\/]android-\d{8}-\d{6}\.mp4$') -Message "Record argument should target the configured captures directory."
+    }
+    finally {
+        $script:Root = $originalRootForRecord
+        $script:Config.ScrcpySession.RecordOnStart = $false
+    }
+
+    foreach ($forbidden in @(
+        "--serial=OTHER",
+        "--window-title=Hijacked",
+        "--mouse=uhid",
+        "--no-control",
+        "--no-window",
+        "--no-video"
+    )) {
+        $threw = $false
+        try {
+            [void](Split-ExtraScrcpyArguments $forbidden)
+        }
+        catch {
+            $threw = $true
+        }
+        Assert-True -Condition $threw -Message "Advanced raw argument '$forbidden' must be rejected."
+    }
+
+    $splitArgs = @(Split-ExtraScrcpyArguments '--render-fit=letterbox --shortcut-mod="rctrl" "--background-color=#123456"')
+    Assert-Equal -Expected @("--render-fit=letterbox","--shortcut-mod=rctrl","--background-color=#123456") -Actual $splitArgs -Message "Quoted extra scrcpy arguments should retain exact argument boundaries."
 
     Write-Host "[powershell] Testing native scrcpy argument boundaries..."
     $scrcpyArgLog = Join-Path $temp "scrcpy-args.log"
@@ -469,6 +726,11 @@ exit /b 0
     $isolatedReset = Join-Path $resetSandbox "Reset-LockScreenChoices.ps1"
     Copy-Item -Path $ResetLockScreenPath -Destination $isolatedReset
     $resetStatePath = Join-Path $resetSandbox "state.json"
+    $resetCalibrationDir = Join-Path $resetSandbox "pattern-calibration"
+    New-Item -ItemType Directory -Force -Path $resetCalibrationDir | Out-Null
+    '{"Version":1,"Serial":"USB123","Left":0.2,"Top":0.3,"Right":0.8,"Bottom":0.7}' | Set-Content (Join-Path $resetCalibrationDir "USB123.json") -Encoding UTF8
+    '{"Version":1,"Serial":"USB456","Left":0.2,"Top":0.3,"Right":0.8,"Bottom":0.7}' | Set-Content (Join-Path $resetCalibrationDir "USB456.json") -Encoding UTF8
+
     [pscustomobject]@{
         PreferredSerial = "USB123"
         WirelessHosts = @("192.168.1.20")
@@ -484,10 +746,13 @@ exit /b 0
     Assert-Equal -Expected @("192.168.1.20") -Actual @($resetState.WirelessHosts) -Message "Resetting lock mode must preserve wireless hosts."
     Assert-Equal -Expected 1 -Actual @($resetState.DeviceProfiles).Count -Message "Per-device reset should remove only one device profile."
     Assert-Equal -Expected "USB456" -Actual @($resetState.DeviceProfiles)[0].Serial -Message "Other device profiles must remain."
+    Assert-False -Condition (Test-Path (Join-Path $resetCalibrationDir "USB123.json")) -Message "Per-device reset should remove that device's calibration."
+    Assert-True -Condition (Test-Path (Join-Path $resetCalibrationDir "USB456.json")) -Message "Per-device reset must preserve other device calibrations."
 
     & $isolatedReset -Serial "ALL"
     $resetState = Get-Content $resetStatePath -Raw | ConvertFrom-Json
     Assert-Equal -Expected 0 -Actual @($resetState.DeviceProfiles).Count -Message "ALL should clear every lock-screen choice."
+    Assert-Equal -Expected 0 -Actual @(Get-ChildItem $resetCalibrationDir -Filter "*.json" -ErrorAction SilentlyContinue).Count -Message "ALL should clear every saved calibration."
 
     Write-Host "[powershell] Testing real STOP lifecycle in an isolated directory..."
     $stopSandbox = Join-Path $temp "stop-sandbox"
@@ -509,6 +774,8 @@ exit /b 0
 
     $stopSource = Get-Content $StopPath -Raw
     Assert-False -Condition ($stopSource -match 'kill-server') -Message "STOP must not kill the shared ADB server."
+    Assert-True -Condition ($stopSource -match 'PatternOverlay\\.ps1') -Message "STOP should clean pattern overlay sidecars."
+    Assert-True -Condition ($stopSource -match 'MirrorChrome\\.ps1') -Message "STOP should clean mirror toolbar/host-zoom sidecars."
 }
 finally {
     if (Test-Path $temp) {

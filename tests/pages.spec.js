@@ -1,5 +1,75 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
+const fs = require('fs');
+const path = require('path');
+const { PNG } = require('pngjs');
+
+const visualThresholds = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'visual-thresholds.json'), 'utf8')
+);
+
+function analyzePng(buffer) {
+  const png = PNG.sync.read(buffer);
+  let total = 0;
+  let dark = 0;
+  let signal = 0;
+  let text = 0;
+  let orange = 0;
+  const colors = new Set();
+
+  for (let y = 0; y < png.height; y += 2) {
+    for (let x = 0; x < png.width; x += 2) {
+      const i = (png.width * y + x) << 2;
+      const r = png.data[i];
+      const g = png.data[i + 1];
+      const b = png.data[i + 2];
+      const a = png.data[i + 3];
+
+      if (a < 200) continue;
+      total += 1;
+      colors.add((r << 16) | (g << 8) | b);
+
+      if (r <= 45 && g <= 55 && b <= 48) dark += 1;
+      if (Math.abs(r - 215) <= 35 && Math.abs(g - 255) <= 25 && Math.abs(b - 63) <= 45) signal += 1;
+      if (r >= 210 && g >= 210 && b >= 205) text += 1;
+      if (Math.abs(r - 255) <= 25 && Math.abs(g - 119) <= 35 && Math.abs(b - 77) <= 35) orange += 1;
+    }
+  }
+
+  return {
+    width: png.width,
+    height: png.height,
+    total,
+    darkRatio: total ? dark / total : 0,
+    signalPixels: signal,
+    textPixels: text,
+    orangePixels: orange,
+    uniqueColors: colors.size,
+  };
+}
+
+async function assertVisualThreshold(target, name) {
+  const dir = path.join(process.cwd(), 'test-results', 'visual');
+  fs.mkdirSync(dir, { recursive: true });
+  const screenshotPath = path.join(dir, name + '.png');
+
+  const buffer = await target.screenshot({ path: screenshotPath });
+  const metrics = analyzePng(buffer);
+  const threshold = visualThresholds.pages;
+
+  expect(metrics.darkRatio, name + ' dark ratio').toBeGreaterThanOrEqual(threshold.darkRatioMin);
+  expect(metrics.darkRatio, name + ' dark ratio').toBeLessThanOrEqual(threshold.darkRatioMax);
+  expect(metrics.signalPixels, name + ' signal pixels').toBeGreaterThanOrEqual(threshold.signalPixelsMin);
+  expect(metrics.textPixels, name + ' text pixels').toBeGreaterThanOrEqual(threshold.textPixelsMin);
+  expect(metrics.uniqueColors, name + ' unique colors').toBeGreaterThanOrEqual(threshold.uniqueColorsMin);
+
+  fs.writeFileSync(
+    path.join(dir, name + '.metrics.json'),
+    JSON.stringify(metrics, null, 2)
+  );
+
+  return metrics;
+}
 
 const REX = {
   ink: '#080A09',
@@ -131,21 +201,83 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(page.getByText(/authenticate from the PC/)).toBeVisible();
   });
 
-  test('pattern guide documents every per-device lock mode', async ({ page }) => {
+  test('pattern guide documents the geometry accuracy hierarchy and calibration fallback', async ({ page }) => {
     const section = page.locator('#pattern-guide');
     await expect(section).toBeVisible();
-    await expect(section.getByText('Pattern', { exact: true })).toBeVisible();
-    await expect(section.getByText(/PIN \/ password \/ other/)).toBeVisible();
-    await expect(section.getByText('No screen lock', { exact: true })).toBeVisible();
-    await expect(section.getByText('Ask later', { exact: true })).toBeVisible();
+    await expect(section).toContainText('Exact pattern-cell bounds');
+    await expect(section).toContainText('Runtime LockPatternView bounds');
+    await expect(section).toContainText('Saved per-device calibration');
+    await expect(section).toContainText('Estimated fallback');
+    await expect(section).toContainText('Ctrl+Alt+C');
+    await expect(section).toContainText('Shift+arrows');
+    await expect(section).toContainText('Ctrl+arrows');
   });
 
-  test('pattern guide privacy and manual fallback are explicit', async ({ page }) => {
+  test('pattern guide privacy distinguishes geometry from the unlock credential', async ({ page }) => {
     const section = page.locator('#pattern-guide');
-    await expect(section).toContainText(/click-through/i);
-    await expect(section).toContainText('Ctrl+Alt+P');
-    await expect(section).toContainText('never stored');
-    await expect(section).toContainText('No ADB touch injection');
+    await expect(section).toContainText('The unlock path is never stored');
+    await expect(section).toContainText('four normalized bounds');
+    await expect(section).toContainText('geometry, not the credential');
+  });
+
+  test('controls separate native Android pinch from PC-only host zoom', async ({ page }) => {
+    const section = page.locator('#controls');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('Pinch naturally → Android pinches.');
+    await expect(section).toContainText('No keyboard modifier is required');
+    await expect(section).toContainText('Hold Ctrl + pinch → magnify the mirror.');
+    await expect(section).toContainText('The phone receives no pinch');
+    await expect(section).toContainText('Reset zoom');
+    await expect(section).toContainText('Windows 11');
+    await expect(section).toContainText('Precision Touchpad');
+  });
+
+  test('controls expose the always-available sleep action', async ({ page }) => {
+    const section = page.locator('#controls');
+    await expect(section.locator('.toolbar-demo-button', { hasText: 'Sleep phone' })).toBeVisible();
+    await expect(section).toContainText('re-sends scrcpy’s screen-off command');
+    await expect(section).toContainText('PC mirror continues');
+  });
+
+  test('Control Center documents the PC/device/advanced separation', async ({ page }) => {
+    const section = page.locator('#control-center');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('PC / mirror settings');
+    await expect(section).toContainText('Samsung Galaxy S21 Ultra settings');
+    await expect(section).toContainText('Advanced Android');
+    await expect(section).toContainText('Diagnostics');
+    await expect(section).toContainText('Runtime Settings Provider browser');
+    await expect(section).toContainText('system');
+    await expect(section).toContainText('secure');
+    await expect(section).toContainText('global');
+    await expect(section).toContainText('adb_enabled');
+    await expect(section).toContainText('protected');
+  });
+
+
+  test('REX CLI documents wizard, parity, rollback, and power-user commands', async ({ page }) => {
+    const section = page.locator('#cli');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('One terminal app');
+    await expect(section).toContainText('Detect before asking');
+    await expect(section).toContainText('Everything from the keyboard');
+    await expect(section).toContainText('The CLI and Control Center cannot drift');
+    await expect(section).toContainText('rex smart');
+    await expect(section).toContainText('rex agent status');
+    await expect(section).toContainText('rex status --json');
+    await expect(section).toContainText('REX.lnk');
+    await expect(section).toContainText('rex action sleep');
+    await expect(section).toContainText('rex mirror zoom-in');
+    await expect(section).toContainText('rex android list global');
+    await expect(section).toContainText('rex config restore');
+    await expect(section).toContainText('SHA-256');
+  });
+
+  test('FAQ explains native touchpad pinch without Ctrl', async ({ page }) => {
+    const summary = page.getByText('Can I pinch TikTok with my laptop touchpad like I would on the phone?');
+    await summary.click();
+    await expect(page.getByText(/pinch or spread with two fingers/)).toBeVisible();
+    await expect(page.getByText(/You do not hold Ctrl/)).toBeVisible();
   });
 
   test('FAQ covers no-lock devices and lock-type changes', async ({ page }) => {
@@ -154,6 +286,14 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
 
     await page.getByText('What if I change my phone from pattern to PIN, or remove the lock?').click();
     await expect(page.getByText(/RESET_LOCK_SCREEN_CHOICES\.bat/)).toBeVisible();
+  });
+
+  test('FAQ documents PC-only pattern calibration', async ({ page }) => {
+    const summary = page.getByText('What if the pattern dots are not perfectly aligned on my phone?');
+    const details = summary.locator('..');
+    await summary.click();
+    await expect(details.getByText(/Ctrl\+Alt\+C/)).toBeVisible();
+    await expect(details.getByText(/no physical phone interaction is required/)).toBeVisible();
   });
 
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
@@ -263,6 +403,44 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     expect(transform).toBe('none');
   });
 
+  test('desktop hero screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.reload();
+    await assertVisualThreshold(page, 'pages-desktop-hero');
+  });
+
+  test('desktop controls section screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#controls');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-controls');
+  });
+
+  test('desktop pattern guide screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#pattern-guide');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-pattern-guide');
+  });
+
+  test('desktop Control Center screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#control-center');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-control-center');
+  });
+
+  test('desktop REX CLI screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#cli');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-rex-cli');
+  });
+
   test('has no serious or critical WCAG 2.x axe violations', async ({ page }) => {
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -304,6 +482,27 @@ test.describe('mobile behavior', () => {
     await page.goto('/');
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
+  });
+
+  test('mobile controls screenshot passes visual thresholds', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#controls');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-mobile-controls');
+  });
+
+  test('mobile Control Center screenshot passes visual thresholds', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#control-center');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-mobile-control-center');
+  });
+
+  test('mobile REX CLI screenshot passes visual thresholds', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#cli');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-mobile-rex-cli');
   });
 
   test('small phone width remains usable', async ({ page }) => {

@@ -94,6 +94,381 @@ function Get-PatternGridPoints($ContentRect, $OverlayConfig) {
     return $points
 }
 
+
+function ConvertFrom-AndroidBounds([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+
+    if ($Text -notmatch '^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$') {
+        return $null
+    }
+
+    $left = [double]$Matches[1]
+    $top = [double]$Matches[2]
+    $right = [double]$Matches[3]
+    $bottom = [double]$Matches[4]
+
+    if ($right -le $left -or $bottom -le $top) { return $null }
+
+    return [pscustomobject]@{
+        Left = $left
+        Top = $top
+        Right = $right
+        Bottom = $bottom
+        Width = $right - $left
+        Height = $bottom - $top
+        CenterX = ($left + $right) / 2.0
+        CenterY = ($top + $bottom) / 2.0
+    }
+}
+
+function New-PatternGeometry(
+    [string]$Source,
+    [double]$ScreenWidth,
+    [double]$ScreenHeight,
+    [double]$Left,
+    [double]$Top,
+    [double]$Right,
+    [double]$Bottom,
+    [bool]$ExactDots
+) {
+    if ($ScreenWidth -le 0 -or $ScreenHeight -le 0) { return $null }
+    if ($Right -le $Left -or $Bottom -le $Top) { return $null }
+
+    return [pscustomobject]@{
+        Source = $Source
+        ScreenWidth = $ScreenWidth
+        ScreenHeight = $ScreenHeight
+        ExactDots = $ExactDots
+        GridBoundsNormalized = [pscustomobject]@{
+            Left = $Left / $ScreenWidth
+            Top = $Top / $ScreenHeight
+            Right = $Right / $ScreenWidth
+            Bottom = $Bottom / $ScreenHeight
+        }
+    }
+}
+
+function Get-PatternGeometryFromUiXml([string]$XmlText) {
+    if ([string]::IsNullOrWhiteSpace($XmlText)) { return $null }
+
+    try {
+        [xml]$doc = $XmlText
+    }
+    catch {
+        return $null
+    }
+
+    $nodes = @($doc.SelectNodes("//node"))
+    if ($nodes.Count -eq 0) { return $null }
+
+    $nodeInfo = @()
+    $screenRight = 0.0
+    $screenBottom = 0.0
+
+    foreach ($node in $nodes) {
+        $bounds = ConvertFrom-AndroidBounds ([string]$node.GetAttribute("bounds"))
+        if ($null -eq $bounds) { continue }
+
+        $screenRight = [Math]::Max($screenRight, $bounds.Right)
+        $screenBottom = [Math]::Max($screenBottom, $bounds.Bottom)
+
+        $className = [string]$node.GetAttribute("class")
+        $resourceId = [string]$node.GetAttribute("resource-id")
+        $contentDescription = [string]$node.GetAttribute("content-desc")
+        $text = [string]$node.GetAttribute("text")
+        $searchText = "$className $resourceId $contentDescription $text"
+
+        $score = 0
+        if ($className -match '(?i)(^|\.)LockPatternView$') { $score += 120 }
+        elseif ($className -match '(?i)Pattern') { $score += 35 }
+
+        if ($resourceId -match '(?i)(lock.?pattern|pattern.?lock|lockPatternView)') { $score += 100 }
+        elseif ($resourceId -match '(?i)pattern') { $score += 45 }
+
+        if ($contentDescription -match '(?i)pattern\s*(area|lock|grid)?') { $score += 55 }
+        if ($text -match '(?i)pattern\s*(area|lock|grid)?') { $score += 20 }
+
+        $ratio = $bounds.Width / $bounds.Height
+        if ($ratio -ge 0.72 -and $ratio -le 1.38) { $score += 20 }
+        if ($bounds.Width -ge 180 -and $bounds.Height -ge 180) { $score += 10 }
+
+        $nodeInfo += [pscustomobject]@{
+            Node = $node
+            Bounds = $bounds
+            ClassName = $className
+            ResourceId = $resourceId
+            ContentDescription = $contentDescription
+            Text = $text
+            SearchText = $searchText
+            Score = $score
+        }
+    }
+
+    if ($screenRight -le 0 -or $screenBottom -le 0) { return $null }
+
+    $patternView = @(
+        $nodeInfo |
+            Where-Object { $_.Score -ge 50 } |
+            Sort-Object @{ Expression = { $_.Score }; Descending = $true }, @{ Expression = { $_.Bounds.Width * $_.Bounds.Height }; Descending = $true }
+    ) | Select-Object -First 1
+
+    if ($null -eq $patternView) { return $null }
+
+    # AOSP exposes nine virtual accessibility nodes while a pattern is in progress.
+    # OEMs may expose them differently, so only trust child nodes with explicit
+    # pattern/cell semantics. If nine are present, their centers are more precise
+    # than deriving centers from the parent view bounds.
+    $dotCandidates = @()
+    foreach ($child in @($patternView.Node.SelectNodes(".//node"))) {
+        $bounds = ConvertFrom-AndroidBounds ([string]$child.GetAttribute("bounds"))
+        if ($null -eq $bounds) { continue }
+
+        if (
+            $bounds.Left -lt $patternView.Bounds.Left -or
+            $bounds.Top -lt $patternView.Bounds.Top -or
+            $bounds.Right -gt $patternView.Bounds.Right -or
+            $bounds.Bottom -gt $patternView.Bounds.Bottom
+        ) {
+            continue
+        }
+
+        $childText = (
+            ([string]$child.GetAttribute("class")) + " " +
+            ([string]$child.GetAttribute("resource-id")) + " " +
+            ([string]$child.GetAttribute("content-desc")) + " " +
+            ([string]$child.GetAttribute("text"))
+        )
+
+        if ($childText -notmatch '(?i)(pattern.*cell|cell.*pattern|pattern\s*cell)') {
+            continue
+        }
+
+        if (
+            $bounds.Width -gt ($patternView.Bounds.Width * 0.45) -or
+            $bounds.Height -gt ($patternView.Bounds.Height * 0.45)
+        ) {
+            continue
+        }
+
+        $dotCandidates += $bounds
+    }
+
+    if ($dotCandidates.Count -ge 9) {
+        $ordered = @(
+            $dotCandidates |
+                Sort-Object CenterY, CenterX |
+                Select-Object -First 9
+        )
+
+        if ($ordered.Count -eq 9) {
+            $left = ($ordered | Measure-Object CenterX -Minimum).Minimum
+            $right = ($ordered | Measure-Object CenterX -Maximum).Maximum
+            $top = ($ordered | Measure-Object CenterY -Minimum).Minimum
+            $bottom = ($ordered | Measure-Object CenterY -Maximum).Maximum
+
+            $geometry = New-PatternGeometry "ui-dots" $screenRight $screenBottom $left $top $right $bottom $true
+            if ($null -ne $geometry) { return $geometry }
+        }
+    }
+
+    # For AOSP LockPatternView, the three cell centers are each centered in one
+    # third of the usable pattern view. UIAutomator gives us the runtime view
+    # bounds, so derive the outer dot-center rectangle from 1/6 and 5/6.
+    $view = $patternView.Bounds
+    $leftCenter = $view.Left + ($view.Width / 6.0)
+    $rightCenter = $view.Left + ($view.Width * 5.0 / 6.0)
+    $topCenter = $view.Top + ($view.Height / 6.0)
+    $bottomCenter = $view.Top + ($view.Height * 5.0 / 6.0)
+
+    return New-PatternGeometry "ui-view" $screenRight $screenBottom $leftCenter $topCenter $rightCenter $bottomCenter $false
+}
+
+function Get-PatternPointsFromGeometry(
+    $Geometry,
+    [double]$ClientWidth,
+    [double]$ClientHeight,
+    [double]$FallbackDeviceWidth,
+    [double]$FallbackDeviceHeight,
+    $OverlayConfig
+) {
+    if ($null -eq $Geometry -or $null -eq $Geometry.GridBoundsNormalized) {
+        $contentRect = Get-FittedContentRect $ClientWidth $ClientHeight $FallbackDeviceWidth $FallbackDeviceHeight
+
+        if (
+            $null -ne $OverlayConfig.PSObject.Properties["FallbackToEstimatedGeometry"] -and
+            -not [bool]$OverlayConfig.FallbackToEstimatedGeometry
+        ) {
+            return [pscustomobject]@{
+                Source = "unavailable"
+                ContentRect = $contentRect
+                Points = @()
+            }
+        }
+
+        $points = @(Get-PatternGridPoints $contentRect $OverlayConfig)
+        return [pscustomobject]@{
+            Source = "estimated"
+            ContentRect = $contentRect
+            Points = $points
+        }
+    }
+
+    $screenWidth = [double]$Geometry.ScreenWidth
+    $screenHeight = [double]$Geometry.ScreenHeight
+    if ($screenWidth -le 0) { $screenWidth = $FallbackDeviceWidth }
+    if ($screenHeight -le 0) { $screenHeight = $FallbackDeviceHeight }
+
+    $contentRect = Get-FittedContentRect $ClientWidth $ClientHeight $screenWidth $screenHeight
+    $bounds = $Geometry.GridBoundsNormalized
+
+    $left = $contentRect.X + ([double]$bounds.Left * $contentRect.Width)
+    $right = $contentRect.X + ([double]$bounds.Right * $contentRect.Width)
+    $top = $contentRect.Y + ([double]$bounds.Top * $contentRect.Height)
+    $bottom = $contentRect.Y + ([double]$bounds.Bottom * $contentRect.Height)
+
+    $xs = @($left, (($left + $right) / 2.0), $right)
+    $ys = @($top, (($top + $bottom) / 2.0), $bottom)
+
+    $points = @()
+    foreach ($y in $ys) {
+        foreach ($x in $xs) {
+            $points += [pscustomobject]@{ X = [double]$x; Y = [double]$y }
+        }
+    }
+
+    return [pscustomobject]@{
+        Source = [string]$Geometry.Source
+        ContentRect = $contentRect
+        Points = $points
+    }
+}
+
+function Get-CalibrationPath([string]$SerialValue) {
+    $directoryName = [string]$OverlayConfig.CalibrationDirectory
+    if ([string]::IsNullOrWhiteSpace($directoryName)) {
+        $directoryName = "pattern-calibration"
+    }
+
+    $directory = Join-Path $Root $directoryName
+    $safeSerial = ($SerialValue -replace '[^A-Za-z0-9._-]', '_')
+    if ([string]::IsNullOrWhiteSpace($safeSerial)) { $safeSerial = "device" }
+
+    return Join-Path $directory ($safeSerial + ".json")
+}
+
+function Convert-CalibrationRecordToGeometry($Record) {
+    if ($null -eq $Record) { return $null }
+
+    foreach ($name in @("Left", "Top", "Right", "Bottom")) {
+        if ($null -eq $Record.PSObject.Properties[$name]) { return $null }
+    }
+
+    $left = [double]$Record.Left
+    $top = [double]$Record.Top
+    $right = [double]$Record.Right
+    $bottom = [double]$Record.Bottom
+
+    if (
+        $left -lt 0 -or $top -lt 0 -or
+        $right -gt 1 -or $bottom -gt 1 -or
+        $right -le $left -or $bottom -le $top
+    ) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        Source = "calibration"
+        ScreenWidth = 0.0
+        ScreenHeight = 0.0
+        ExactDots = $false
+        GridBoundsNormalized = [pscustomobject]@{
+            Left = $left
+            Top = $top
+            Right = $right
+            Bottom = $bottom
+        }
+    }
+}
+
+function Load-PatternCalibration([string]$SerialValue) {
+    if (-not $OverlayConfig.CalibrationEnabled) { return $null }
+
+    $path = Get-CalibrationPath $SerialValue
+    if (-not (Test-Path $path)) { return $null }
+
+    try {
+        $record = Get-Content $path -Raw | ConvertFrom-Json
+        return Convert-CalibrationRecordToGeometry $record
+    }
+    catch {
+        return $null
+    }
+}
+
+function Save-PatternCalibration([string]$SerialValue, $BoundsNormalized) {
+    if (-not $OverlayConfig.CalibrationEnabled) { return $false }
+
+    $path = Get-CalibrationPath $SerialValue
+    $directory = Split-Path -Parent $path
+    New-Item -ItemType Directory -Force -Path $directory | Out-Null
+
+    $record = [pscustomobject]@{
+        Version = 1
+        Serial = $SerialValue
+        Left = [Math]::Round([double]$BoundsNormalized.Left, 8)
+        Top = [Math]::Round([double]$BoundsNormalized.Top, 8)
+        Right = [Math]::Round([double]$BoundsNormalized.Right, 8)
+        Bottom = [Math]::Round([double]$BoundsNormalized.Bottom, 8)
+        UpdatedUtc = [DateTime]::UtcNow.ToString("o")
+    }
+
+    $record | ConvertTo-Json -Depth 4 | Set-Content -Path $path -Encoding UTF8
+    return $true
+}
+
+function Remove-PatternCalibration([string]$SerialValue) {
+    $path = Get-CalibrationPath $SerialValue
+    if (Test-Path $path) {
+        Remove-Item -Force $path -ErrorAction SilentlyContinue
+    }
+}
+
+function Get-EffectivePatternGeometry {
+    # Exact virtual-dot bounds are the highest-confidence source.
+    if ($script:discoveredGeometry -and [string]$script:discoveredGeometry.Source -eq "ui-dots") {
+        return $script:discoveredGeometry
+    }
+
+    # A user calibration is an explicit correction, so it can override parent-view
+    # geometry when an OEM exposes a padded/non-standard pattern container.
+    if ($script:calibrationGeometry) {
+        return $script:calibrationGeometry
+    }
+
+    if ($script:discoveredGeometry) {
+        return $script:discoveredGeometry
+    }
+
+    return $null
+}
+
+function Get-GridBoundsNormalizedFromPoints($Points, $ContentRect) {
+    if ($null -eq $Points -or @($Points).Count -ne 9) { return $null }
+    if ($ContentRect.Width -le 0 -or $ContentRect.Height -le 0) { return $null }
+
+    $left = (@($Points) | Measure-Object X -Minimum).Minimum
+    $right = (@($Points) | Measure-Object X -Maximum).Maximum
+    $top = (@($Points) | Measure-Object Y -Minimum).Minimum
+    $bottom = (@($Points) | Measure-Object Y -Maximum).Maximum
+
+    return [pscustomobject]@{
+        Left = [Math]::Max(0.0, [Math]::Min(1.0, (($left - $ContentRect.X) / $ContentRect.Width)))
+        Top = [Math]::Max(0.0, [Math]::Min(1.0, (($top - $ContentRect.Y) / $ContentRect.Height)))
+        Right = [Math]::Max(0.0, [Math]::Min(1.0, (($right - $ContentRect.X) / $ContentRect.Width)))
+        Bottom = [Math]::Max(0.0, [Math]::Min(1.0, (($bottom - $ContentRect.Y) / $ContentRect.Height)))
+    }
+}
+
 function Get-HotkeySpec([string]$Text) {
     $parts = @($Text -split '\+' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     $required = @()
@@ -353,6 +728,38 @@ function Get-KeyguardState {
     return Get-KeyguardStateFromText $windowText $trustText
 }
 
+
+function Get-UiHierarchyXml {
+    if (-not $OverlayConfig.AutoDiscoverGeometry) { return $null }
+
+    $remote = "/data/local/tmp/ahm-pattern-" + $PID + ".xml"
+
+    try {
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+
+        & $adb -s $Serial shell uiautomator dump --compressed $remote 2>$null | Out-Null
+        $xmlText = (& $adb -s $Serial exec-out cat $remote 2>$null | Out-String).Trim()
+
+        if ($xmlText -match '<hierarchy[\s>]' -and $xmlText -match '</hierarchy>') {
+            return $xmlText
+        }
+    }
+    catch {}
+    finally {
+        try {
+            & $adb -s $Serial shell rm -f $remote 2>$null | Out-Null
+        }
+        catch {}
+
+        if ($null -ne $previousErrorActionPreference) {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+    }
+
+    return $null
+}
+
 function Test-KeyDown([int]$VirtualKey) {
     return (([AHMOverlayNative]::GetAsyncKeyState($VirtualKey) -band 0x8000) -ne 0)
 }
@@ -367,6 +774,114 @@ function Test-HotkeyDown($Spec) {
     }
 
     return Test-KeyDown ([int]$Spec.Key)
+}
+
+function Test-KeyPressedOnce([int]$VirtualKey) {
+    $key = [string]$VirtualKey
+    $down = Test-KeyDown $VirtualKey
+    $wasDown = $false
+
+    if ($script:keyLatch.ContainsKey($key)) {
+        $wasDown = [bool]$script:keyLatch[$key]
+    }
+
+    $script:keyLatch[$key] = $down
+    return ($down -and -not $wasDown)
+}
+
+function Copy-NormalizedBounds($Bounds) {
+    if ($null -eq $Bounds) { return $null }
+
+    return [pscustomobject]@{
+        Left = [double]$Bounds.Left
+        Top = [double]$Bounds.Top
+        Right = [double]$Bounds.Right
+        Bottom = [double]$Bounds.Bottom
+    }
+}
+
+function Clamp-CalibrationBounds($Bounds) {
+    if ($null -eq $Bounds) { return $null }
+
+    $minSpan = 0.08
+    $left = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Left))
+    $top = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Top))
+    $right = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Right))
+    $bottom = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Bottom))
+
+    if (($right - $left) -lt $minSpan) {
+        $center = ($left + $right) / 2.0
+        $left = $center - ($minSpan / 2.0)
+        $right = $center + ($minSpan / 2.0)
+    }
+
+    if (($bottom - $top) -lt $minSpan) {
+        $center = ($top + $bottom) / 2.0
+        $top = $center - ($minSpan / 2.0)
+        $bottom = $center + ($minSpan / 2.0)
+    }
+
+    if ($left -lt 0) { $right -= $left; $left = 0.0 }
+    if ($right -gt 1) { $left -= ($right - 1.0); $right = 1.0 }
+    if ($top -lt 0) { $bottom -= $top; $top = 0.0 }
+    if ($bottom -gt 1) { $top -= ($bottom - 1.0); $bottom = 1.0 }
+
+    return [pscustomobject]@{
+        Left = [Math]::Max(0.0, $left)
+        Top = [Math]::Max(0.0, $top)
+        Right = [Math]::Min(1.0, $right)
+        Bottom = [Math]::Min(1.0, $bottom)
+    }
+}
+
+function Start-CalibrationMode {
+    if (-not $OverlayConfig.CalibrationEnabled) { return }
+    if ($null -eq $script:lastLayout) { Update-Grid }
+    if ($null -eq $script:lastLayout) { return }
+
+    $bounds = Get-GridBoundsNormalizedFromPoints $script:lastLayout.Points $script:lastLayout.ContentRect
+    if ($null -eq $bounds) { return }
+
+    $script:calibrationDraft = Copy-NormalizedBounds $bounds
+    $script:calibrationMode = $true
+    $script:manualOverride = $true
+    $script:manualOverrideUntil = [DateTime]::MaxValue
+    Update-Grid
+}
+
+function Stop-CalibrationMode([bool]$KeepVisible) {
+    $script:calibrationMode = $false
+    $script:calibrationDraft = $null
+
+    if ($KeepVisible) {
+        $script:manualOverride = $true
+        $script:manualOverrideUntil = (Get-Date).AddSeconds([Math]::Max(5, [int]$OverlayConfig.ManualShowSeconds))
+    }
+    else {
+        $script:manualOverride = $null
+    }
+
+    Update-Grid
+}
+
+function Adjust-CalibrationDraft([string]$Action, [double]$StepX, [double]$StepY) {
+    if ($null -eq $script:calibrationDraft) { return }
+
+    $b = Copy-NormalizedBounds $script:calibrationDraft
+
+    switch ($Action) {
+        "move-left"  { $b.Left -= $StepX; $b.Right -= $StepX }
+        "move-right" { $b.Left += $StepX; $b.Right += $StepX }
+        "move-up"    { $b.Top -= $StepY; $b.Bottom -= $StepY }
+        "move-down"  { $b.Top += $StepY; $b.Bottom += $StepY }
+        "shrink-width"  { $b.Left += ($StepX / 2.0); $b.Right -= ($StepX / 2.0) }
+        "grow-width"    { $b.Left -= ($StepX / 2.0); $b.Right += ($StepX / 2.0) }
+        "shrink-height" { $b.Top += ($StepY / 2.0); $b.Bottom -= ($StepY / 2.0) }
+        "grow-height"   { $b.Top -= ($StepY / 2.0); $b.Bottom += ($StepY / 2.0) }
+    }
+
+    $script:calibrationDraft = Clamp-CalibrationBounds $b
+    Update-Grid
 }
 
 $window = New-Object System.Windows.Window
@@ -400,27 +915,76 @@ $style = $style -bor [AHMOverlayNative]::WS_EX_TRANSPARENT -bor [AHMOverlayNativ
 $window.Hide()
 
 $hotkey = Get-HotkeySpec ([string]$OverlayConfig.ManualToggleHotkey)
+$calibrationHotkey = Get-HotkeySpec ([string]$OverlayConfig.CalibrationHotkey)
 $displaySize = Get-DeviceDisplaySize
 $script:targetHwnd = [IntPtr]::Zero
 $script:targetSeen = $false
 $script:missingSince = $null
 $script:lastWindowPoll = [DateTime]::MinValue
 $script:lastKeyguardPoll = [DateTime]::MinValue
+$script:lastDiscoveryPoll = [DateTime]::MinValue
 $script:keyguardState = "unknown"
 $script:manualOverride = $null
 $script:manualOverrideUntil = [DateTime]::MinValue
 $script:hotkeyWasDown = $false
+$script:calibrationHotkeyWasDown = $false
 $script:leftWasDown = $false
 $script:trailClearAt = [DateTime]::MinValue
 $script:lastBoundsKey = ""
+$script:lastLayout = $null
+$script:discoveredGeometry = $null
+$script:calibrationGeometry = Load-PatternCalibration $Serial
+$script:calibrationMode = $false
+$script:calibrationDraft = $null
+$script:keyLatch = @{}
 
 function Update-Grid {
+    if ($canvas.ActualWidth -le 0 -or $canvas.ActualHeight -le 0) { return }
+
     $canvas.Children.Clear()
     $canvas.Children.Add($trail) | Out-Null
 
-    $contentRect = Get-FittedContentRect $canvas.ActualWidth $canvas.ActualHeight $displaySize.Width $displaySize.Height
-    $points = @(Get-PatternGridPoints $contentRect $OverlayConfig)
+    $geometry = Get-EffectivePatternGeometry
+
+    if ($script:calibrationMode -and $null -ne $script:calibrationDraft) {
+        $geometry = [pscustomobject]@{
+            Source = "calibration-draft"
+            ScreenWidth = 0.0
+            ScreenHeight = 0.0
+            ExactDots = $false
+            GridBoundsNormalized = Copy-NormalizedBounds $script:calibrationDraft
+        }
+    }
+
+    $layout = Get-PatternPointsFromGeometry (
+        $geometry
+    ) $canvas.ActualWidth $canvas.ActualHeight $displaySize.Width $displaySize.Height $OverlayConfig
+
+    $script:lastLayout = $layout
+    $points = @($layout.Points)
+    $contentRect = $layout.ContentRect
     $radius = [Math]::Max(5.0, [double]$contentRect.Width * [double]$OverlayConfig.DotRadiusRelativeToWidth)
+
+    if ($script:calibrationMode -and $points.Count -eq 9) {
+        $left = ($points | Measure-Object X -Minimum).Minimum
+        $right = ($points | Measure-Object X -Maximum).Maximum
+        $top = ($points | Measure-Object Y -Minimum).Minimum
+        $bottom = ($points | Measure-Object Y -Maximum).Maximum
+
+        $box = New-Object System.Windows.Shapes.Rectangle
+        $box.Width = [Math]::Max(1.0, $right - $left)
+        $box.Height = [Math]::Max(1.0, $bottom - $top)
+        $box.Stroke = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF774D")
+        $box.StrokeThickness = 1.5
+        $box.StrokeDashArray = New-Object System.Windows.Media.DoubleCollection
+        $box.StrokeDashArray.Add(5.0)
+        $box.StrokeDashArray.Add(4.0)
+        $box.Opacity = 0.9
+        $box.IsHitTestVisible = $false
+        [System.Windows.Controls.Canvas]::SetLeft($box, $left)
+        [System.Windows.Controls.Canvas]::SetTop($box, $top)
+        $canvas.Children.Add($box) | Out-Null
+    }
 
     foreach ($point in $points) {
         $dot = New-Object System.Windows.Shapes.Ellipse
@@ -437,13 +1001,32 @@ function Update-Grid {
         $canvas.Children.Add($dot) | Out-Null
     }
 
+    $sourceLabel = switch ([string]$layout.Source) {
+        "ui-dots" { "ANDROID DOT BOUNDS" }
+        "ui-view" { "ANDROID PATTERN VIEW" }
+        "calibration" { "SAVED CALIBRATION" }
+        "calibration-draft" { "CALIBRATION" }
+        default { "ESTIMATED" }
+    }
+
     $label = New-Object System.Windows.Controls.TextBlock
-    $label.Text = "PATTERN GUIDE  •  " + [string]$OverlayConfig.ManualToggleHotkey + " TO TOGGLE"
-    $label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#D7FF3F")
+    if ($script:calibrationMode) {
+        $label.Text =
+            "CALIBRATION  •  ARROWS MOVE  •  SHIFT+ARROWS RESIZE  •  CTRL=FINE  •  ENTER SAVE  •  ESC CANCEL  •  R RESET"
+        $label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF774D")
+    }
+    else {
+        $label.Text =
+            "PATTERN GUIDE  •  " + $sourceLabel +
+            "  •  " + [string]$OverlayConfig.ManualToggleHotkey + " TO TOGGLE" +
+            "  •  " + [string]$OverlayConfig.CalibrationHotkey + " TO CALIBRATE"
+        $label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#D7FF3F")
+    }
+
     $label.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI")
     $label.FontSize = 10.0
     $label.FontWeight = [System.Windows.FontWeights]::SemiBold
-    $label.Opacity = 0.75
+    $label.Opacity = 0.78
     $label.IsHitTestVisible = $false
     [System.Windows.Controls.Canvas]::SetLeft($label, 12.0)
     [System.Windows.Controls.Canvas]::SetTop($label, 10.0)
@@ -504,9 +1087,18 @@ $timer.Add_Tick({
     if (($now - $script:lastKeyguardPoll).TotalMilliseconds -ge [int]$OverlayConfig.KeyguardPollMilliseconds) {
         $script:lastKeyguardPoll = $now
         if ($OverlayConfig.AutoShowOnKeyguard) {
+            $previousKeyguardState = $script:keyguardState
             $script:keyguardState = Get-KeyguardState
+
             if ($script:keyguardState -eq "unlocked") {
                 $script:manualOverride = $null
+                if ($null -ne $script:discoveredGeometry) {
+                    $script:discoveredGeometry = $null
+                    Update-Grid
+                }
+            }
+            elseif ($previousKeyguardState -ne $script:keyguardState) {
+                Update-Grid
             }
         }
     }
@@ -516,8 +1108,102 @@ $timer.Add_Tick({
         [AHMOverlayNative]::GetForegroundWindow() -eq $script:targetHwnd
     )
 
+    $shouldDiscover = (
+        $OverlayConfig.AutoDiscoverGeometry -and
+        -not $script:calibrationMode -and
+        (
+            $script:keyguardState -eq "locked" -or
+            $null -ne $script:manualOverride
+        )
+    )
+
+    if (
+        $shouldDiscover -and
+        -not (Test-KeyDown 0x01) -and
+        ($now - $script:lastDiscoveryPoll).TotalMilliseconds -ge [int]$OverlayConfig.DiscoveryPollMilliseconds
+    ) {
+        $script:lastDiscoveryPoll = $now
+        $xmlText = Get-UiHierarchyXml
+        if (-not [string]::IsNullOrWhiteSpace([string]$xmlText)) {
+            $geometry = Get-PatternGeometryFromUiXml $xmlText
+            if ($null -ne $geometry) {
+                $script:discoveredGeometry = $geometry
+                Update-Grid
+            }
+        }
+    }
+
+    $calibrationHotkeyDown = $foreground -and (Test-HotkeyDown $calibrationHotkey)
+    if ($calibrationHotkeyDown -and -not $script:calibrationHotkeyWasDown -and $OverlayConfig.CalibrationEnabled) {
+        if ($script:calibrationMode) {
+            Stop-CalibrationMode $true
+        }
+        else {
+            Start-CalibrationMode
+        }
+    }
+    $script:calibrationHotkeyWasDown = $calibrationHotkeyDown
+
+    if ($script:calibrationMode -and $foreground) {
+        $fine = Test-KeyDown 0x11
+        $shift = Test-KeyDown 0x10
+        $stepPixels = if ($fine) {
+            [double]$OverlayConfig.CalibrationFineStepPixels
+        }
+        else {
+            [double]$OverlayConfig.CalibrationStepPixels
+        }
+
+        $contentWidth = if ($script:lastLayout -and $script:lastLayout.ContentRect.Width -gt 0) {
+            [double]$script:lastLayout.ContentRect.Width
+        }
+        else {
+            [Math]::Max(1.0, [double]$canvas.ActualWidth)
+        }
+
+        $contentHeight = if ($script:lastLayout -and $script:lastLayout.ContentRect.Height -gt 0) {
+            [double]$script:lastLayout.ContentRect.Height
+        }
+        else {
+            [Math]::Max(1.0, [double]$canvas.ActualHeight)
+        }
+
+        $stepX = $stepPixels / $contentWidth
+        $stepY = $stepPixels / $contentHeight
+
+        if (Test-KeyPressedOnce 0x25) {
+            Adjust-CalibrationDraft ($(if ($shift) { "shrink-width" } else { "move-left" })) $stepX $stepY
+        }
+        if (Test-KeyPressedOnce 0x27) {
+            Adjust-CalibrationDraft ($(if ($shift) { "grow-width" } else { "move-right" })) $stepX $stepY
+        }
+        if (Test-KeyPressedOnce 0x26) {
+            Adjust-CalibrationDraft ($(if ($shift) { "shrink-height" } else { "move-up" })) $stepX $stepY
+        }
+        if (Test-KeyPressedOnce 0x28) {
+            Adjust-CalibrationDraft ($(if ($shift) { "grow-height" } else { "move-down" })) $stepX $stepY
+        }
+
+        if (Test-KeyPressedOnce 0x0D) {
+            if ($script:calibrationDraft -and (Save-PatternCalibration $Serial $script:calibrationDraft)) {
+                $script:calibrationGeometry = Convert-CalibrationRecordToGeometry $script:calibrationDraft
+            }
+            Stop-CalibrationMode $true
+        }
+
+        if (Test-KeyPressedOnce 0x1B) {
+            Stop-CalibrationMode $true
+        }
+
+        if (Test-KeyPressedOnce 0x52) {
+            Remove-PatternCalibration $Serial
+            $script:calibrationGeometry = $null
+            Stop-CalibrationMode $true
+        }
+    }
+
     $hotkeyDown = $foreground -and (Test-HotkeyDown $hotkey)
-    if ($hotkeyDown -and -not $script:hotkeyWasDown) {
+    if ($hotkeyDown -and -not $script:hotkeyWasDown -and -not $script:calibrationMode) {
         $currentlyVisible = $window.IsVisible
         $script:manualOverride = -not $currentlyVisible
         $script:manualOverrideUntil = $now.AddSeconds([Math]::Max(5, [int]$OverlayConfig.ManualShowSeconds))

@@ -177,12 +177,22 @@ class RepositoryContractTests(unittest.TestCase):
             "STOP.bat",
             "DIAGNOSTICS.bat",
             "REMOVE_AUTOSTART.bat",
+            "REX.bat",
+            "Bootstrap-RexCli.ps1",
+            "Install-Rex-Shortcut.ps1",
+            "Remove-Rex-Shortcut.ps1",
+            "RexBridge.ps1",
             "Setup.ps1",
             "Install-Autostart.ps1",
             "Remove-Autostart.ps1",
             "Start-PhoneMirror.ps1",
             "Stop-PhoneMirror.ps1",
             "PatternOverlay.ps1",
+            "MirrorChrome.ps1",
+            "ControlCenter.ps1",
+            "ControlCenter.xaml",
+            "DeviceControl.ps1",
+            "ScrcpyControl.ps1",
             "Reset-LockScreenChoices.ps1",
             "RESET_LOCK_SCREEN_CHOICES.bat",
             "Start-Hidden.vbs",
@@ -191,10 +201,28 @@ class RepositoryContractTests(unittest.TestCase):
             ".gitignore",
             ".github/workflows/ci.yml",
             ".github/workflows/pages.yml",
+            ".github/workflows/release.yml",
+            "src/Rex.AndroidMirror.Cli/Rex.AndroidMirror.Cli.csproj",
+            "src/Rex.AndroidMirror.Cli/Program.cs",
+            "src/Rex.AndroidMirror.Cli/RexApp.cs",
+            "src/Rex.AndroidMirror.Cli/RexBrand.cs",
+            "src/Rex.AndroidMirror.Cli/ConfigStore.cs",
+            "src/Rex.AndroidMirror.Cli/BridgeClient.cs",
+            "src/Rex.AndroidMirror.Cli/MachineMode.cs",
+            "src/Rex.AndroidMirror.Cli/SmartLaunch.cs",
+            "AGENTS.md",
+            "tests/Rex.AndroidMirror.Cli.Tests/Rex.AndroidMirror.Cli.Tests.csproj",
+            "tests/Test-RexCliBootstrap.ps1",
+            "tests/Test-RexShortcut.ps1",
+            "tests/Test-RexBridgeE2E.ps1",
             "tests/Test-PowerShellBehavior.ps1",
+            "tests/Test-ControlCenterE2E.ps1",
+            "tests/Test-ControlCenterVisual.ps1",
+            "tests/visual-thresholds.json",
             "tests/pages.spec.js",
             "playwright.config.js",
             "package.json",
+            "global.json",
         ]
         for path in required:
             with self.subTest(path=path):
@@ -230,7 +258,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_runtime_artifacts_are_gitignored(self):
         gitignore = self.read(".gitignore")
-        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log"]:
+        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/", "config.json.rex-backup", "config.json.tmp", "config.json.restore-current"]:
             self.assertIn(entry, gitignore)
 
     # ---------- Configuration ----------
@@ -258,6 +286,10 @@ class RepositoryContractTests(unittest.TestCase):
                 "Wireless",
                 "Logging",
                 "PatternOverlay",
+                "MirrorChrome",
+                "ControlCenter",
+                "ScrcpySession",
+                "ExtraScrcpyArgs",
             },
         )
         self.assertEqual(
@@ -293,6 +325,63 @@ class RepositoryContractTests(unittest.TestCase):
                 "ManualShowSeconds",
                 "TrailHoldMilliseconds",
                 "FrameMilliseconds",
+                "AutoDiscoverGeometry",
+                "DiscoveryPollMilliseconds",
+                "CalibrationEnabled",
+                "CalibrationHotkey",
+                "CalibrationStepPixels",
+                "CalibrationFineStepPixels",
+                "CalibrationDirectory",
+                "FallbackToEstimatedGeometry",
+            },
+        )
+        self.assertEqual(
+            set(config["MirrorChrome"]),
+            {
+                "Enabled",
+                "SleepButton",
+                "HostZoomEnabled",
+                "ZoomStep",
+                "MinZoom",
+                "MaxZoom",
+                "ToolbarInsetPixels",
+                "PollMilliseconds",
+                "CtrlWheelZoom",
+                "NativeTouchpadGestures",
+                "TouchpadPinchToAndroid",
+                "CtrlTouchpadPinchToHostZoom",
+                "TouchpadPinchThreshold",
+                "TouchpadBaseRadiusRelativeToClient",
+            },
+        )
+        self.assertEqual(
+            set(config["ControlCenter"]),
+            {
+                "Enabled",
+                "OpenOnLaunch",
+                "DockToMirror",
+                "AlwaysOnTop",
+                "Width",
+                "Height",
+                "RememberLastTab",
+                "ConfirmSensitiveDeviceWrites",
+                "AdvancedSettingsWritesEnabled",
+                "ScreenshotDirectory",
+            },
+        )
+        self.assertEqual(
+            set(config["ScrcpySession"]),
+            {
+                "VideoCodec",
+                "AudioEnabled",
+                "AudioCodec",
+                "AudioDup",
+                "AudioBufferMs",
+                "Fullscreen",
+                "AlwaysOnTop",
+                "DisableScreensaver",
+                "RecordOnStart",
+                "RecordDirectory",
             },
         )
 
@@ -313,6 +402,7 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreater(config["Logging"]["MaxBytes"], 100_000)
         self.assertGreaterEqual(config["Logging"]["KeepFiles"], 1)
         self.assertEqual(config["WindowTitle"], "Android Device")
+
         overlay = config["PatternOverlay"]
         self.assertTrue(overlay["Enabled"])
         self.assertTrue(overlay["PromptPerDevice"])
@@ -326,6 +416,56 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreaterEqual(overlay["WindowPollMilliseconds"], 50)
         self.assertGreaterEqual(overlay["KeyguardPollMilliseconds"], 250)
         self.assertGreaterEqual(overlay["FrameMilliseconds"], 12)
+        self.assertTrue(overlay["AutoDiscoverGeometry"])
+        self.assertGreaterEqual(overlay["DiscoveryPollMilliseconds"], 1000)
+        self.assertTrue(overlay["CalibrationEnabled"])
+        self.assertEqual(overlay["CalibrationHotkey"], "Ctrl+Alt+C")
+        self.assertGreater(overlay["CalibrationStepPixels"], 0)
+        self.assertGreater(overlay["CalibrationFineStepPixels"], 0)
+        self.assertEqual(overlay["CalibrationDirectory"], "pattern-calibration")
+        self.assertTrue(overlay["FallbackToEstimatedGeometry"])
+
+        chrome = config["MirrorChrome"]
+        self.assertTrue(chrome["Enabled"])
+        self.assertTrue(chrome["SleepButton"])
+        self.assertTrue(chrome["HostZoomEnabled"])
+        self.assertTrue(chrome["CtrlWheelZoom"])
+        self.assertTrue(chrome["NativeTouchpadGestures"])
+        self.assertTrue(chrome["TouchpadPinchToAndroid"])
+        self.assertTrue(chrome["CtrlTouchpadPinchToHostZoom"])
+        self.assertGreater(chrome["ZoomStep"], 0)
+        self.assertGreaterEqual(chrome["MinZoom"], 1.0)
+        self.assertGreater(chrome["MaxZoom"], chrome["MinZoom"])
+        self.assertGreaterEqual(chrome["PollMilliseconds"], 12)
+        self.assertGreaterEqual(chrome["ToolbarInsetPixels"], 0)
+        self.assertGreater(chrome["TouchpadPinchThreshold"], 0)
+        self.assertLess(chrome["TouchpadPinchThreshold"], 0.2)
+        self.assertGreater(chrome["TouchpadBaseRadiusRelativeToClient"], 0.05)
+        self.assertLess(chrome["TouchpadBaseRadiusRelativeToClient"], 0.5)
+
+        center = config["ControlCenter"]
+        self.assertTrue(center["Enabled"])
+        self.assertGreaterEqual(center["Width"], 900)
+        self.assertGreaterEqual(center["Height"], 640)
+        self.assertTrue(center["ConfirmSensitiveDeviceWrites"])
+        self.assertTrue(center["AdvancedSettingsWritesEnabled"])
+        self.assertTrue(center["DockToMirror"])
+        self.assertTrue(center["AlwaysOnTop"])
+        self.assertTrue(center["RememberLastTab"])
+        self.assertFalse(center["OpenOnLaunch"])
+        self.assertTrue(center["ScreenshotDirectory"].startswith("captures/"))
+
+        session = config["ScrcpySession"]
+        self.assertIn(session["VideoCodec"], {"h264", "h265", "av1"})
+        self.assertIn(session["AudioCodec"], {"opus", "aac", "flac", "raw"})
+        self.assertTrue(session["AudioEnabled"])
+        self.assertFalse(session["AudioDup"])
+        self.assertGreaterEqual(session["AudioBufferMs"], 0)
+        self.assertFalse(session["Fullscreen"])
+        self.assertFalse(session["RecordOnStart"])
+        self.assertTrue(session["DisableScreensaver"])
+        self.assertTrue(session["RecordDirectory"].startswith("captures/"))
+        self.assertEqual(config["ExtraScrcpyArgs"], "")
 
     # ---------- Pattern overlay ----------
 
@@ -362,13 +502,25 @@ class RepositoryContractTests(unittest.TestCase):
             with self.subTest(needle=needle):
                 self.assertNotIn(needle, text)
 
-    def test_overlay_does_not_persist_pattern_or_cursor_path(self):
+    def test_overlay_persists_only_calibration_geometry_not_pattern_or_cursor_path(self):
         text = self.read("PatternOverlay.ps1")
-        for writer in ["Set-Content", "Add-Content", "Out-File", "Export-Csv"]:
+        for writer in ["Add-Content", "Out-File", "Export-Csv"]:
             with self.subTest(writer=writer):
                 self.assertNotIn(writer, text)
+
         self.assertNotIn("state.json", text)
         self.assertIn("$trail.Points.Clear()", text)
+        self.assertIn("function Save-PatternCalibration", text)
+
+        start = text.index("function Save-PatternCalibration")
+        end = text.index("function Remove-PatternCalibration", start)
+        save = text[start:end]
+        for forbidden in ["$trail", "Points", "Cursor", "Path="]:
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, save)
+
+        for field in ["Left", "Top", "Right", "Bottom", "Serial"]:
+            self.assertIn(field, save)
 
     def test_overlay_window_is_click_through_and_non_activating(self):
         text = self.read("PatternOverlay.ps1")
@@ -405,6 +557,48 @@ class RepositoryContractTests(unittest.TestCase):
         ]:
             self.assertIn(contract, text)
 
+    def test_overlay_discovers_runtime_pattern_geometry_before_estimate(self):
+        text = self.read("PatternOverlay.ps1")
+        for contract in [
+            "uiautomator dump --compressed",
+            "Get-PatternGeometryFromUiXml",
+            "LockPatternView",
+            "lockPatternView",
+            '"ui-dots"',
+            '"ui-view"',
+            "Get-EffectivePatternGeometry",
+        ]:
+            self.assertIn(contract, text)
+
+        effective_start = text.index("function Get-EffectivePatternGeometry")
+        effective_end = text.index("function Get-GridBoundsNormalizedFromPoints", effective_start)
+        effective = text[effective_start:effective_end]
+        self.assertLess(effective.index('"ui-dots"'), effective.index("$script:calibrationGeometry"))
+        self.assertLess(effective.index("$script:calibrationGeometry"), effective.rindex("$script:discoveredGeometry"))
+
+    def test_overlay_calibration_is_per_device_and_keyboard_only(self):
+        text = self.read("PatternOverlay.ps1")
+        for contract in [
+            "CalibrationHotkey",
+            "Start-CalibrationMode",
+            "Adjust-CalibrationDraft",
+            "Save-PatternCalibration",
+            "Get-CalibrationPath",
+            "ARROWS MOVE",
+            "SHIFT+ARROWS RESIZE",
+            "ENTER SAVE",
+            "ESC CANCEL",
+            "R RESET",
+        ]:
+            self.assertIn(contract, text)
+
+        self.assertIn("CalibrationDirectory", text)
+        self.assertNotIn("input tap", text.lower())
+        self.assertNotIn("input swipe", text.lower())
+
+    def test_runtime_calibration_directory_is_gitignored(self):
+        self.assertIn("pattern-calibration/", self.read(".gitignore"))
+
     def test_supervisor_migrates_old_state_shape_for_device_profiles(self):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn("function Ensure-StateShape", text)
@@ -418,12 +612,446 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("kill-server", text)
         self.assertNotIn("adb.exe", text)
 
-    def test_lock_screen_choice_reset_preserves_other_state(self):
+    def test_lock_screen_choice_reset_also_clears_pattern_calibration(self):
         text = self.read("Reset-LockScreenChoices.ps1")
         self.assertIn("DeviceProfiles", text)
         self.assertIn("PreferredSerial", self.read("Start-PhoneMirror.ps1"))
-        self.assertNotIn("Remove-Item", text)
+        self.assertIn("CalibrationDirectory", text)
+        self.assertIn("Remove-CalibrationForSerial", text)
+        self.assertIn("Remove-AllCalibrations", text)
         self.assertIn('if ($Serial -eq "ALL")', text)
+
+    # ---------- Mirror toolbar / multitouch / host zoom ----------
+
+    def test_scrcpy_forces_sdk_mouse_mode_for_ctrl_drag_multitouch(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn('$args.Add("--mouse=sdk")', text)
+
+    def test_native_precision_touchpad_pinch_is_primary_multitouch_path(self):
+        text = self.read("MirrorChrome.ps1")
+        for contract in [
+            "RegisterPrecisionTouchpadWindow",
+            "GetPointerTouchpadInfoDelegate",
+            "WM_POINTERDOWN",
+            "WM_POINTERUPDATE",
+            "WM_POINTERUP",
+            "ptHimetricLocation",
+            "Get-TouchpadGestureMetrics",
+            "BeginScrcpyPinch",
+            "UpdateScrcpyPinch",
+            "EndScrcpyPinch",
+        ]:
+            self.assertIn(contract, text)
+
+        self.assertIn("new IntPtr(2689)", text)
+        self.assertIn("new IntPtr(2691)", text)
+
+    def test_touchpad_pinch_needs_no_keyboard_modifier_for_android(self):
+        text = self.read("MirrorChrome.ps1")
+        start = text.index("function Update-TouchpadGesture")
+        end = text.index("$script:gestureHook", start)
+        function = text[start:end]
+
+        ctrl_check = function.index("$ctrlPhysicallyDown")
+        android_branch = function.index("$ChromeConfig.TouchpadPinchToAndroid")
+        begin = function.index("BeginScrcpyPinch")
+        self.assertLess(ctrl_check, android_branch)
+        self.assertLess(android_branch, begin)
+        self.assertIn('$script:touchpadGestureKind = "device"', function)
+
+    def test_ctrl_plus_native_touchpad_pinch_is_host_zoom_not_android_pinch(self):
+        text = self.read("MirrorChrome.ps1")
+        start = text.index("function Update-TouchpadGesture")
+        end = text.index("$script:gestureHook", start)
+        function = text[start:end]
+        self.assertIn("$ChromeConfig.CtrlTouchpadPinchToHostZoom", function)
+        self.assertIn('$script:touchpadGestureKind = "host"', function)
+        self.assertIn("Get-ClampedHostZoom", function)
+
+    def test_windows_without_precision_touchpad_api_falls_back_cleanly(self):
+        text = self.read("MirrorChrome.ps1")
+        self.assertIn("ResolveTouchpadApi", text)
+        self.assertIn("return false;", text)
+        self.assertIn("$script:precisionTouchpadAvailable = $false", text)
+        supervisor = self.read("Start-PhoneMirror.ps1")
+        self.assertIn('$args.Add("--mouse=sdk")', supervisor)
+
+    def test_mirror_toolbar_is_started_for_every_scrcpy_session_and_cleaned_up(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn("function Start-MirrorChrome", text)
+        self.assertIn("MirrorChrome.ps1", text)
+        self.assertIn("$chromeProcess = Start-MirrorChrome", text)
+        self.assertIn("Stop-MirrorChrome $chromeProcess", text)
+
+    def test_mirror_toolbar_sleep_button_uses_scrcpy_screen_off_shortcut(self):
+        text = self.read("MirrorChrome.ps1")
+        self.assertIn("Sleep phone", text)
+        self.assertIn("$ChromeConfig.SleepButton", text)
+        self.assertIn("SendScrcpyScreenOffShortcut", text)
+        self.assertIn("VK_LMENU", text)
+        self.assertIn("VK_O", text)
+        self.assertIn("turns the Android physical display off while", text)
+
+    def test_host_zoom_is_local_ctrl_wheel_and_has_reset_control(self):
+        text = self.read("MirrorChrome.ps1")
+        for contract in [
+            "WH_MOUSE_LL",
+            "WM_MOUSEWHEEL",
+            "VK_CONTROL",
+            "StartWheelHook",
+            "TryDequeueWheel",
+            "Magnification.dll",
+            "MagSetWindowSource",
+            "SetMagnifierTransform",
+            "Reset zoom",
+            "Reset-HostZoom",
+        ]:
+            self.assertIn(contract, text)
+
+        self.assertIn("return new IntPtr(1)", text)
+        self.assertIn("$script:zoom = 1.0", text)
+
+    def test_host_zoom_is_view_only_and_does_not_inject_android_touch(self):
+        text = self.read("MirrorChrome.ps1").lower()
+        for forbidden in [
+            "input swipe",
+            "input tap",
+            "input text",
+            "adb.exe",
+            "shell input",
+        ]:
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, text)
+
+    def test_stop_kills_mirror_toolbar_sidecars(self):
+        text = self.read("Stop-PhoneMirror.ps1")
+        self.assertIn("MirrorChrome\\.ps1", text)
+
+    # ---------- Control center ----------
+
+    def test_control_center_exposes_its_own_pc_side_preferences(self):
+        xaml = self.read("ControlCenter.xaml")
+        for control in [
+            "PcControlCenterEnabledCheck",
+            "PcControlCenterOpenCheck",
+            "PcControlCenterDockCheck",
+            "PcControlCenterTopmostCheck",
+            "PcControlCenterRememberTabCheck",
+            "PcAdvancedWritesEnabledCheck",
+            "PcConfirmAdvancedWritesCheck",
+            "PcControlCenterWidthText",
+            "PcControlCenterHeightText",
+        ]:
+            self.assertIn(f'x:Name="{control}"', xaml)
+
+        script = self.read("ControlCenter.ps1")
+        for setting in [
+            "ControlCenter.Enabled",
+            "ControlCenter.OpenOnLaunch",
+            "ControlCenter.DockToMirror",
+            "ControlCenter.AlwaysOnTop",
+            "ControlCenter.RememberLastTab",
+            "ControlCenter.AdvancedSettingsWritesEnabled",
+            "ControlCenter.ConfirmSensitiveDeviceWrites",
+            "ControlCenter.Width",
+            "ControlCenter.Height",
+        ]:
+            self.assertIn(setting, script)
+
+    def test_control_center_has_organized_pc_device_advanced_and_diagnostics_tabs(self):
+        xaml = self.read("ControlCenter.xaml")
+        for header in [
+            'Header="Controls"',
+            'Header="PC / mirror settings"',
+            'Header="Device settings"',
+            'Header="Advanced Android"',
+            'Header="Diagnostics"',
+        ]:
+            self.assertIn(header, xaml)
+
+    def test_control_center_covers_scrcpy_runtime_surface(self):
+        script = self.read("ScrcpyControl.ps1")
+        for action in [
+            "fullscreen", "fit", "pixel-perfect", "rotate-left", "rotate-right",
+            "flip-horizontal", "flip-vertical", "pause", "resume",
+            "reset-capture", "fps", "home", "back", "apps", "menu",
+            "power", "sleep", "wake", "rotate-device", "notifications",
+            "quick-settings", "collapse-panels", "volume-down", "volume-up",
+            "copy", "cut", "paste-sync", "paste-inject", "keyboard-settings",
+        ]:
+            self.assertIn(action, script)
+
+    def test_device_settings_are_capability_driven_and_runtime_enumerated(self):
+        script = self.read("DeviceControl.ps1")
+        for contract in [
+            'settings","list"',
+            'ValidateSet("system","secure","global")',
+            "Get-AndroidSettingsNamespace",
+            "Set-AndroidSetting",
+            "Remove-AndroidSetting",
+            "Get-AndroidCommandServices",
+        ]:
+            self.assertIn(contract, script)
+
+    def test_sensitive_device_settings_have_guardrails(self):
+        script = self.read("DeviceControl.ps1")
+        for protected in [
+            "adb_enabled",
+            "development_settings_enabled",
+            "android_id",
+            "bluetooth_address",
+        ]:
+            self.assertIn(protected, script)
+        self.assertIn('"protected"', script)
+
+    def test_control_center_is_reachable_from_always_on_mirror_toolbar(self):
+        chrome = self.read("MirrorChrome.ps1")
+        self.assertIn('New-ToolbarButton "Controls"', chrome)
+        self.assertIn("Open-ControlCenter", chrome)
+        self.assertIn("ControlCenter.ps1", chrome)
+
+    def test_control_center_and_runtime_artifacts_stop_with_package(self):
+        stop = self.read("Stop-PhoneMirror.ps1")
+        self.assertIn("ControlCenter\\.ps1", stop)
+        chrome = self.read("MirrorChrome.ps1")
+        self.assertIn("controlCenterProcess", chrome)
+
+    def test_scrcpy_session_preferences_are_applied_to_launch_arguments(self):
+        supervisor = self.read("Start-PhoneMirror.ps1")
+        for option in [
+            "--video-codec=",
+            "--no-audio",
+            "--audio-codec=",
+            "--audio-dup",
+            "--audio-buffer=",
+            "--fullscreen",
+            "--always-on-top",
+            "--disable-screensaver",
+            "--record=",
+        ]:
+            self.assertIn(option, supervisor)
+        self.assertIn("Split-ExtraScrcpyArguments", supervisor)
+        self.assertIn("cannot override required Android Headless Mirror option", supervisor)
+
+    # ---------- REX CLI ----------
+
+    def test_rex_cli_builds_on_dotnet_8_lts(self):
+        sdk = json.loads(self.read("global.json"))["sdk"]
+        self.assertEqual(sdk["version"], "8.0.100")
+        self.assertEqual(sdk["rollForward"], "latestFeature")
+        self.assertFalse(sdk["allowPrerelease"])
+
+    def test_rex_cli_uses_stable_spectre_console_and_self_contained_publish(self):
+        project = self.read("src/Rex.AndroidMirror.Cli/Rex.AndroidMirror.Cli.csproj")
+        self.assertIn('Spectre.Console" Version="0.57.2"', project)
+        self.assertIn("<PublishSingleFile Condition=", project)
+        self.assertIn("<SelfContained Condition=", project)
+        self.assertIn(">true</PublishSingleFile>", project)
+        self.assertIn(">true</SelfContained>", project)
+        self.assertIn("<TargetFramework>net8.0</TargetFramework>", project)
+
+    def test_rex_cli_has_guided_and_scripted_entry_points(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        for command in [
+            '"status"', '"devices"', '"start"', '"stop"', '"setup"', '"repair"',
+            '"autostart"', '"shortcut"', '"controls"', '"action"', '"mirror"', '"device"',
+            '"android"', '"config"', '"screenshot"', '"lock-mode"', '"reset-lock"',
+            '"captures"', '"diagnostics"',
+        ]:
+            self.assertIn(command, program)
+        for section_name in [
+            "Runtime controls",
+            "PC / mirror settings",
+            "Device settings",
+            "Advanced Android settings",
+            "Open GUI Control Center",
+            "Setup / repair",
+            "Windows startup",
+            "Desktop shortcut",
+            "Captures",
+        ]:
+            self.assertIn(section_name, app)
+
+    def test_rex_cli_first_run_wizard_covers_headless_setup_choices(self):
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        for prompt in [
+            "Run guided setup now?",
+            "Start Android Headless Mirror automatically",
+            "Keep the physical phone display off",
+            "Keep Android awake while USB power is connected",
+            "Precision Touchpad gestures",
+            "Open the GUI Control Center automatically",
+            "Start Android Headless Mirror now?",
+        ]:
+            self.assertIn(prompt, app)
+        self.assertIn("ConfigureLockScreenAsync", app)
+        self.assertIn("WaitForDevicesAsync", app)
+
+    def test_rex_cli_exposes_every_config_and_live_android_namespaces(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        config_store = self.read("src/Rex.AndroidMirror.Cli/ConfigStore.cs")
+        bridge = self.read("RexBridge.ps1")
+        self.assertIn("config list", program)
+        self.assertIn("config get", program)
+        self.assertIn("config set", program)
+        self.assertIn("config restore", program)
+        self.assertIn("Flatten()", config_store)
+        self.assertIn('"settings-list"', bridge)
+        self.assertIn('"settings-get"', bridge)
+        self.assertIn('"settings-set"', bridge)
+        self.assertIn('"settings-delete"', bridge)
+
+    def test_rex_cli_config_writes_are_atomic_and_recoverable(self):
+        store = self.read("src/Rex.AndroidMirror.Cli/ConfigStore.cs")
+        for needle in [
+            'BackupPath => _path + ".rex-backup"',
+            "SaveAtomic",
+            "RestoreBackup",
+            "File.Move(temp, _path, true)",
+            "JsonNode.Parse",
+        ]:
+            self.assertIn(needle, store)
+
+    def test_rex_cli_bridge_reuses_existing_control_backends(self):
+        bridge = self.read("RexBridge.ps1")
+        self.assertIn('DeviceControl.ps1', bridge)
+        self.assertIn('ScrcpyControl.ps1', bridge)
+        self.assertIn("Invoke-ScrcpyNamedShortcut", bridge)
+        self.assertIn("Set-FriendlyAndroidSetting", bridge)
+        self.assertIn("Get-AndroidSettingsNamespace", bridge)
+
+    def test_rex_cli_host_zoom_has_gui_parity(self):
+        bridge = self.read("RexBridge.ps1")
+        chrome = self.read("MirrorChrome.ps1")
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        for command in ["zoom-in", "zoom-out", "reset-zoom"]:
+            self.assertIn(command, bridge)
+            self.assertIn(command, chrome)
+            self.assertIn(command, program)
+
+    def test_rex_cli_bootstrap_verifies_release_checksum_and_has_local_build_fallback(self):
+        bootstrap = self.read("Bootstrap-RexCli.ps1")
+        for needle in [
+            "rex-win-x64.zip",
+            "rex-win-x64.zip.sha256",
+            "Get-FileHash",
+            "SHA256",
+            "dotnet",
+            "PublishSingleFile=true",
+        ]:
+            self.assertIn(needle, bootstrap)
+        self.assertLess(bootstrap.index("Get-FileHash"), bootstrap.index("Expand-Archive"))
+
+    def test_rex_release_workflow_publishes_zip_and_checksum(self):
+        workflow = self.read(".github/workflows/release.yml")
+        self.assertIn("rex-win-x64.zip", workflow)
+        self.assertIn("rex-win-x64.zip.sha256", workflow)
+        self.assertIn("Get-FileHash", workflow)
+        self.assertIn("gh release create", workflow)
+        self.assertIn("contents: write", workflow)
+
+    def test_rex_cli_has_real_bridge_fake_adb_e2e(self):
+        bridge_test = self.read("tests/Test-RexBridgeE2E.ps1")
+        for needle in [
+            'Invoke-Bridge "status"',
+            'Invoke-Bridge "friendly-set"',
+            'Invoke-Bridge "settings-list"',
+            'Invoke-Bridge "settings-set"',
+            'Invoke-Bridge "set-lock-mode"',
+            'Invoke-Bridge "mirror-command"',
+            'Invoke-Bridge "cmd-services"',
+            "fake-adb.cmd",
+            "REX_ADB_PATH",
+            "REX_SCRCPY_PATH",
+        ]:
+            self.assertIn(needle, bridge_test)
+
+    def test_rex_cli_has_dedicated_unit_and_interactive_tests(self):
+        required = [
+            "tests/Rex.AndroidMirror.Cli.Tests/ConfigStoreTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/AppPathsTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/BridgeClientTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/ProgramTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RexBrandTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RexAppTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/MachineModeTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/SmartLaunchTests.cs",
+        ]
+        for path in required:
+            with self.subTest(path=path):
+                self.assertTrue((ROOT / path).is_file())
+
+        wizard = self.read("tests/Rex.AndroidMirror.Cli.Tests/RexAppTests.cs")
+        self.assertIn("FirstRunWizard_ConfiguresToolsStartupLockAndHeadlessDefaults", wizard)
+        self.assertIn("RuntimeControls_DispatchSleepAndReturnToMainMenu", wizard)
+        self.assertIn("AdvancedAndroid_ProtectedKeyNeverDispatchesAWrite", wizard)
+
+    def test_rex_plain_machine_mode_and_agents_contract_are_present(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        machine = self.read("src/Rex.AndroidMirror.Cli/MachineMode.cs")
+        agents = self.read("AGENTS.md")
+        rex_bat = self.read("REX.bat")
+        bootstrap = self.read("Bootstrap-RexCli.ps1")
+
+        self.assertIn('"agent"', program)
+        self.assertIn('"--plain"', program)
+        self.assertIn('"--json"', program)
+        self.assertIn("GetMachineArgs", program)
+        self.assertIn("ProtocolVersion = 1", machine)
+        self.assertIn("non-interactive-json", machine)
+        self.assertIn("exactly one JSON document", agents)
+        self.assertIn("REX.bat agent capabilities", agents)
+        self.assertIn("REX.bat status --json", agents)
+        self.assertIn("REX_BOOTSTRAP_QUIET", rex_bat)
+        self.assertIn('if /I "%~1"=="agent"', rex_bat)
+        self.assertIn("for %%A in (%*)", rex_bat)
+        self.assertIn("-Quiet", rex_bat)
+        self.assertIn("[switch]$Quiet", bootstrap)
+
+        # Keep one machine contract. Do not let a second agent implementation drift.
+        self.assertFalse((ROOT / "src/Rex.AndroidMirror.Cli/AgentCli.cs").exists())
+
+    def test_rex_smart_desktop_shortcut_is_first_class_and_state_driven(self):
+        install = self.read("Install-Rex-Shortcut.ps1")
+        remove = self.read("Remove-Rex-Shortcut.ps1")
+        smart = self.read("src/Rex.AndroidMirror.Cli/SmartLaunch.cs")
+        setup = self.read("Setup.ps1")
+        self.assertIn("REX.lnk", install)
+        self.assertIn("REX.bat", install)
+        self.assertIn(" smart", install)
+        self.assertIn("REX.lnk", remove)
+        self.assertIn("Install-Rex-Shortcut.ps1", setup)
+        for state in [
+            "SetupRequired",
+            "FocusMirror",
+            "StartMirror",
+            "StartAndWaitForDevice",
+            "WaitForDevice",
+        ]:
+            self.assertIn(state, smart)
+        self.assertIn("PersistentOff", smart)
+        self.assertIn("MirrorRunning", smart)
+        self.assertIn('x.State == "device"', smart)
+
+    def test_rex_smart_launch_has_exhaustive_state_and_shortcut_tests(self):
+        smart_tests = self.read("tests/Rex.AndroidMirror.Cli.Tests/SmartLaunchTests.cs")
+        shortcut_test = self.read("tests/Test-RexShortcut.ps1")
+        for needle in [
+            "Planner_SetupIncomplete_RequiresWizard",
+            "Planner_PersistentOffWithAuthorizedDevice_IsExplicitStart",
+            "Planner_ActiveMirror_FocusesInsteadOfStartingDuplicate",
+            "Planner_UnauthorizedOnly_IsNotTreatedAsReady",
+            "Launcher_StartMirror_ClearsPersistentOffAndUsesCanonicalLauncher",
+            "Launcher_ActiveMirror_FocusesWindowAndDoesNotStartAgain",
+            "Launcher_ExistingWaitingSupervisor_DoesNotStartDuplicate",
+            "Launcher_StartFailure_IsSurfaced",
+        ]:
+            self.assertIn(needle, smart_tests)
+        self.assertIn("REX.lnk", shortcut_test)
+        self.assertIn("smart", shortcut_test)
+        self.assertIn("WorkingDirectory", shortcut_test)
+        self.assertIn("idempotent", shortcut_test)
 
     # ---------- Setup/install security ----------
 
@@ -520,6 +1148,7 @@ class RepositoryContractTests(unittest.TestCase):
         for arg in [
             "--serial=",
             "--window-title=",
+            "--mouse=sdk",
             "--turn-screen-off",
             "--stay-awake",
             "--keep-active",
