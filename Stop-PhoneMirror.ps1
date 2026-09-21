@@ -23,6 +23,18 @@ Get-CimInstance Win32_Process -Filter "Name='scrcpy.exe'" -ErrorAction SilentlyC
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
 
+# Stop only this package's pattern-overlay sidecars.
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.Name -in @("powershell.exe", "pwsh.exe") -and
+        $_.CommandLine -and
+        $_.CommandLine -match "PatternOverlay\.ps1" -and
+        $_.CommandLine -match $escapedRoot
+    } |
+    ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+
 # Stop only this package's supervisor process. Do not stop the shared/global ADB server.
 Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object {
