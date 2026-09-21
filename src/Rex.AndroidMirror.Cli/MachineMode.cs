@@ -309,13 +309,21 @@ public static class MachineMode
             case "probe":
             case "capabilities":
             case "transports":
-                return Success($"display.{verb}", await manager.ProbeAsync());
+            {
+                var probe = await manager.ProbeAsync();
+                return Success($"display.{verb}", DisplayProbeData(probe));
+            }
 
             case "start":
             {
                 var transport = Option(args, "--transport") ?? manager.DefaultTransport();
                 var result = await manager.StartAsync(transport);
-                return Success("display.start", result);
+                return Success("display.start", new
+                {
+                    transport = result.Transport,
+                    requested = result.Requested,
+                    message = result.Message
+                });
             }
 
             case "receiver":
@@ -324,7 +332,13 @@ public static class MachineMode
                 if (!args[2].Equals("open", StringComparison.OrdinalIgnoreCase))
                     throw new ArgumentException("display receiver currently supports: open.");
 
-                return Success("display.receiver", await manager.OpenReceiverAsync());
+                var result = await manager.OpenReceiverAsync();
+                return Success("display.receiver", new
+                {
+                    transport = result.Transport,
+                    requested = result.Requested,
+                    message = result.Message
+                });
             }
 
             case "verify":
@@ -343,7 +357,13 @@ public static class MachineMode
                 {
                     transport = DisplayManager.NormalizeTransport(transport),
                     target = args[2].ToLowerInvariant(),
-                    verification
+                    verification = new
+                    {
+                        normalPlayback = verification.NormalPlayback,
+                        protectedPlayback = verification.ProtectedPlayback,
+                        updatedAt = verification.UpdatedAt,
+                        note = verification.Note
+                    }
                 });
             }
 
@@ -352,6 +372,35 @@ public static class MachineMode
                     "display expects status, probe, capabilities, transports, start, receiver, or verify.");
         }
     }
+
+    private static object DisplayProbeData(DisplayProbeResult probe) => new
+    {
+        currentTransport = probe.CurrentTransport,
+        adbControl = probe.AdbControl,
+        samsungDexCandidate = probe.SamsungDexCandidate,
+        host = new
+        {
+            wirelessDisplayFeature = probe.Host.WirelessDisplayFeature,
+            miracastReceive = probe.Host.MiracastReceive,
+            detail = probe.Host.Detail
+        },
+        transports = probe.Transports.Select(transport => new
+        {
+            id = transport.Id,
+            label = transport.Label,
+            kind = transport.Kind,
+            availability = transport.Availability,
+            video = transport.Video,
+            audio = transport.Audio,
+            control = transport.Control,
+            screenshots = transport.Screenshots,
+            recording = transport.Recording,
+            protectedOutput = transport.ProtectedOutput,
+            normalPlaybackVerification = transport.NormalPlaybackVerification,
+            protectedPlaybackVerification = transport.ProtectedPlaybackVerification,
+            notes = transport.Notes
+        }).ToArray()
+    };
 
     private static async Task<MachineCommandResult> DeviceAsync(
         string[] args,
