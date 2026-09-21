@@ -431,7 +431,9 @@ function Split-ExtraScrcpyArguments([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
     if ($Text -match '[\r\n\x00]') { throw "ExtraScrcpyArgs contains unsupported characters." }
 
-    $matches = [regex]::Matches($Text, '"(?:[^"\\]|\\.)*"|''[^'']*''|\S+')
+    # One token may contain quoted segments after an option prefix, for example
+    # --window-x=10 or --crop="100:200:0:0" or --some-option="value with spaces".
+    $matches = [regex]::Matches($Text, '(?:[^\s"'']+|"[^"]*"|''[^'']*'')+')
     $result = @()
 
     foreach ($match in $matches) {
@@ -442,6 +444,397 @@ function Split-ExtraScrcpyArguments([string]$Text) {
                 ($value.StartsWith("'") -and $value.EndsWith("'"))
             ) {
                 $value = $value.Substring(1, $value.Length - 2)
+            }
+        }
+
+        if ($value -match '^(--[^=]+)=(".*"|''.*'')
+        if ($value -match '^--(serial|window-title|mouse)(=|$)' -or $value -in @("--no-control","--no-window","--no-video")) {
+            throw "ExtraScrcpyArgs cannot override required Android Headless Mirror option '$value'."
+        }
+
+        $result += $value
+    }
+
+    return @($result)
+}
+
+function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
+    $args = New-Object System.Collections.Generic.List[string]
+    $args.Add("--serial=$Serial")
+    $sessionTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
+    $args.Add("--window-title=$sessionTitle")
+    # scrcpy's Ctrl+click-and-drag pinch simulation requires SDK mouse mode.
+    $args.Add("--mouse=sdk")
+
+    if ($Config.TurnPhysicalScreenOff) {
+        $args.Add("--turn-screen-off")
+    }
+
+    if ($Config.StayAwakeWhenUsb -and -not $IsTcp) {
+        $args.Add("--stay-awake")
+    }
+
+    if ($Config.KeepActiveDuringMirror) {
+        $args.Add("--keep-active")
+    }
+
+    if ($Config.PowerOffOnClose) {
+        $args.Add("--power-off-on-close")
+    }
+
+    if ([int]$Config.MaxSize -gt 0) {
+        $args.Add("--max-size=$([int]$Config.MaxSize)")
+    }
+
+    if ([int]$Config.MaxFps -gt 0) {
+        $args.Add("--max-fps=$([int]$Config.MaxFps)")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$Config.VideoBitRate)) {
+        $args.Add("--video-bit-rate=$([string]$Config.VideoBitRate)")
+    }
+
+    if ($null -ne $Config.PSObject.Properties["ScrcpySession"]) {
+        $session = $Config.ScrcpySession
+
+        if (-not [string]::IsNullOrWhiteSpace([string]$session.VideoCodec)) {
+            $args.Add("--video-codec=$([string]$session.VideoCodec)")
+        }
+
+        if (-not [bool]$session.AudioEnabled) {
+            $args.Add("--no-audio")
+        }
+        else {
+            if (-not [string]::IsNullOrWhiteSpace([string]$session.AudioCodec)) {
+                $args.Add("--audio-codec=$([string]$session.AudioCodec)")
+            }
+
+            if ([bool]$session.AudioDup) {
+                $args.Add("--audio-dup")
+            }
+
+            if ([int]$session.AudioBufferMs -gt 0) {
+                $args.Add("--audio-buffer=$([int]$session.AudioBufferMs)")
+            }
+        }
+
+        if ([bool]$session.Fullscreen) { $args.Add("--fullscreen") }
+        if ([bool]$session.AlwaysOnTop) { $args.Add("--always-on-top") }
+        if ([bool]$session.DisableScreensaver) { $args.Add("--disable-screensaver") }
+
+        if ([bool]$session.RecordOnStart) {
+            $recordDirectory = Join-Path $Root ([string]$session.RecordDirectory)
+            New-Item -ItemType Directory -Force -Path $recordDirectory | Out-Null
+            $recordPath = Join-Path $recordDirectory ("android-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".mp4")
+            $args.Add("--record=$recordPath")
+        }
+    }
+
+    if ($null -ne $Config.PSObject.Properties["ExtraScrcpyArgs"]) {
+        foreach ($extra in @(Split-ExtraScrcpyArguments ([string]$Config.ExtraScrcpyArgs))) {
+            $args.Add($extra)
+        }
+    }
+
+    return @($args)
+}
+
+function Invoke-Scrcpy([string]$Executable, [string[]]$Arguments, [bool]$ShowOutput) {
+    # Invoke the native executable with PowerShell's splatted argument array.
+    # This preserves argument boundaries (for example, "--window-title=Android Device")
+    # instead of flattening them into a single command line as Start-Process
+    # -ArgumentList does on Windows PowerShell.
+    #
+    # scrcpy legitimately writes informational/progress lines to stderr. The
+    # supervisor runs with ErrorActionPreference=Stop, so Windows PowerShell can
+    # otherwise promote those native stderr records to terminating errors even
+    # when scrcpy itself is healthy. Native process success is determined by the
+    # process exit code, not by whether stderr received text.
+    $previousErrorActionPreference = $ErrorActionPreference
+    $hasNativeErrorPreference = Test-Path variable:PSNativeCommandUseErrorActionPreference
+    $previousNativeErrorPreference = $null
+
+    if ($hasNativeErrorPreference) {
+        $previousNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
+    }
+
+    try {
+        $ErrorActionPreference = "Continue"
+        if ($hasNativeErrorPreference) {
+            $PSNativeCommandUseErrorActionPreference = $false
+        }
+
+        & $Executable @Arguments 2>&1 | ForEach-Object {
+            if ($ShowOutput) {
+                Write-Host ([string]$_)
+            }
+        }
+
+        return [int]$LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+        if ($hasNativeErrorPreference) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
+        }
+    }
+}
+
+
+function Start-MirrorChrome([string]$Serial) {
+    if ($null -eq $Config.PSObject.Properties["MirrorChrome"]) { return $null }
+    if (-not $Config.MirrorChrome.Enabled) { return $null }
+
+    $chromeScript = Join-Path $Root "MirrorChrome.ps1"
+    if (-not (Test-Path $chromeScript)) {
+        Log "Mirror toolbar requested but MirrorChrome.ps1 is missing." "WARN"
+        return $null
+    }
+
+    try {
+        $quote = [char]34
+        $argumentLine =
+            "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " +
+            $quote + $chromeScript + $quote +
+            " -Serial " + $quote + $Serial + $quote
+
+        return Start-Process -FilePath "powershell.exe" -ArgumentList $argumentLine -PassThru -WindowStyle Hidden
+    }
+    catch {
+        Log "Could not start mirror toolbar: $($_.Exception.Message)" "WARN"
+        return $null
+    }
+}
+
+function Stop-MirrorChrome($Process) {
+    if ($null -eq $Process) { return }
+
+    try {
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+}
+
+function Start-PatternOverlay([string]$Serial, [string]$LockScreenMode) {
+    if ($LockScreenMode -ne "pattern") { return $null }
+    if (-not $Config.PatternOverlay.Enabled) { return $null }
+
+    $overlayScript = Join-Path $Root "PatternOverlay.ps1"
+    if (-not (Test-Path $overlayScript)) {
+        Log "Pattern overlay requested but PatternOverlay.ps1 is missing." "WARN"
+        return $null
+    }
+
+    try {
+        $quote = [char]34
+        $argumentLine =
+            "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " +
+            $quote + $overlayScript + $quote +
+            " -Serial " + $quote + $Serial + $quote
+
+        return Start-Process -FilePath "powershell.exe" -ArgumentList $argumentLine -PassThru -WindowStyle Hidden
+    }
+    catch {
+        Log "Could not start pattern overlay: $($_.Exception.Message)" "WARN"
+        return $null
+    }
+}
+
+function Stop-PatternOverlay($Process) {
+    if ($null -eq $Process) { return }
+
+    try {
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+}
+
+function Prepare-DeviceForMirror([string]$Adb, [string]$Serial) {
+    if ($Config.WakeBeforeMirror) {
+        try {
+            & $Adb -s $Serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
+        }
+        catch {
+            Log "Wake command failed; continuing." "WARN"
+        }
+    }
+
+    if ($Config.DismissKeyguardWhenPossible) {
+        try {
+            # Android only dismisses the keyguard here when authentication is not
+            # required (for example, an insecure/trusted keyguard). If credentials
+            # are required, Android keeps the security boundary intact.
+            & $Adb -s $Serial shell wm dismiss-keyguard 2>$null | Out-Null
+        }
+        catch {
+            Log "Keyguard dismiss request failed; continuing with the lock screen visible." "WARN"
+        }
+    }
+}
+
+function Wait-ForDeviceDisconnect([string]$Adb, [string]$Serial) {
+    Log "Mirror closed cleanly; waiting for $Serial to disconnect before auto-opening again."
+
+    while (-not (Test-Path $StopFile)) {
+        $devices = @(Get-AdbDevices $Adb)
+        $stillConnected = @(
+            $devices | Where-Object {
+                $_.Serial -eq $Serial -and $_.State -eq "device"
+            }
+        )
+
+        if ($stillConnected.Count -eq 0) {
+            Log "Device $Serial disconnected; armed for automatic launch on next connection."
+            return
+        }
+
+        Start-Sleep -Seconds ([int]$Config.PollSeconds)
+    }
+}
+
+function Show-FirstUseHint {
+    try {
+        Add-Type -AssemblyName PresentationFramework -ErrorAction SilentlyContinue
+        [System.Windows.MessageBox]::Show(
+            "An Android device is connected, but this computer is not authorised for ADB debugging.`n`n" +
+            "Unlock the device and accept 'Allow USB debugging'. Tick 'Always allow from this computer'.`n`n" +
+            "After that, Android Headless Mirror can reconnect automatically.",
+            "Android Headless Mirror - one-time setup"
+        ) | Out-Null
+    }
+    catch {
+        Log "USB debugging authorization is required on the phone." "WARN"
+    }
+}
+
+$Adb = $null
+$Scrcpy = $null
+$unauthorizedNoticeShown = $false
+$wirelessBootstrappedFor = ""
+
+try {
+    $Adb = Find-Tool "adb.exe"
+    $Scrcpy = Find-Tool "scrcpy.exe"
+
+    if (-not $Adb -or -not $Scrcpy) {
+        Log "scrcpy/adb not found. Run SETUP_AND_START.bat first." "ERROR"
+        exit 2
+    }
+
+    Log "Supervisor starting. adb=$Adb scrcpy=$Scrcpy"
+    & $Adb start-server | Out-Null
+
+    $State = Load-State
+
+    while (-not (Test-Path $StopFile)) {
+        try {
+            $devices = @(Get-AdbDevices $Adb)
+
+            $selected = Select-Device $devices $State
+
+            if (-not $selected) {
+                $unauthorized = @($devices | Where-Object { $_.State -eq "unauthorized" })
+                if ($unauthorized.Count -gt 0 -and -not $unauthorizedNoticeShown) {
+                    Log "Android device detected, but this computer is not authorised for ADB debugging." "WARN"
+                    Show-FirstUseHint
+                    $unauthorizedNoticeShown = $true
+                }
+                elseif ($unauthorized.Count -eq 0) {
+                    $unauthorizedNoticeShown = $false
+                }
+
+                Try-WirelessConnections $Adb $State
+                Start-Sleep -Seconds ([int]$Config.PollSeconds)
+                continue
+            }
+
+            # At least one usable device exists, so do not interrupt the user just
+            # because a second attached phone is still unauthorized.
+            $unauthorizedNoticeShown = $false
+
+            if (-not $selected.IsTcp) {
+                if ([string]::IsNullOrWhiteSpace([string]$State.PreferredSerial)) {
+                    $State.PreferredSerial = $selected.Serial
+                    Save-State $State
+                    Log "Saved preferred USB serial $($selected.Serial)"
+                }
+
+                if ($wirelessBootstrappedFor -ne $selected.Serial) {
+                    Configure-WirelessFromUsb $Adb $selected.Serial $State
+                    $wirelessBootstrappedFor = $selected.Serial
+                }
+            }
+
+            $lockScreenMode = Get-OrPromptLockScreenMode $Adb $selected.Serial $State
+            Prepare-DeviceForMirror $Adb $selected.Serial
+
+            $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
+            Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
+
+            $chromeProcess = Start-MirrorChrome $selected.Serial
+            $overlayProcess = Start-PatternOverlay $selected.Serial $lockScreenMode
+            try {
+                $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
+            }
+            finally {
+                Stop-PatternOverlay $overlayProcess
+                Stop-MirrorChrome $chromeProcess
+            }
+
+            Log "scrcpy exited with code $exitCode"
+
+            if (Test-Path $StopFile) { break }
+
+            # If the user intentionally closes the mirror while the phone remains
+            # connected, do not immediately reopen it. Keep the hidden supervisor alive
+            # and arm automatic launch again after a real disconnect/reconnect cycle.
+            if ($exitCode -eq 0) {
+                Wait-ForDeviceDisconnect $Adb $selected.Serial
+                if (Test-Path $StopFile) { break }
+                continue
+            }
+
+            if (-not $Config.RestartOnUnexpectedExit) {
+                Log "RestartOnUnexpectedExit=false; stopping."
+                break
+            }
+
+            # A cable pull/device restart is not a scrcpy crash. If the selected
+            # transport is gone, return directly to the 1-second connection poll.
+            # Only use the longer retry delay when the device is still online and
+            # scrcpy itself failed unexpectedly.
+            $afterExit = @(Get-AdbDevices $Adb)
+            $stillOnline = @(
+                $afterExit | Where-Object {
+                    $_.Serial -eq $selected.Serial -and $_.State -eq "device"
+                }
+            )
+            if ($stillOnline.Count -gt 0) {
+                Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+            }
+        }
+        catch {
+            Log "Loop error: $($_.Exception.Message)" "ERROR"
+            Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+        }
+    }
+
+    Log "Supervisor stopped."
+}
+finally {
+    if ($Mutex) {
+        try { $Mutex.ReleaseMutex() | Out-Null } catch {}
+        $Mutex.Dispose()
+    }
+}
+) {
+            $quotedValue = [string]$Matches[2]
+            if ($quotedValue.Length -ge 2) {
+                $value = [string]$Matches[1] + "=" + $quotedValue.Substring(1, $quotedValue.Length - 2)
             }
         }
 
