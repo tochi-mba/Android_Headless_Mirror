@@ -393,6 +393,16 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("return $usb[0]", select)
         self.assertNotIn("LockToPreferredDevice", select)
 
+    def test_unauthorized_secondary_phone_does_not_interrupt_usable_device(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        loop_start = text.index("while (-not (Test-Path $StopFile))", text.index("$State = Load-State"))
+        loop = text[loop_start:]
+        selected = loop.index("$selected = Select-Device")
+        hint = loop.index("Show-FirstUseHint")
+        no_selected = loop.index("if (-not $selected)")
+        self.assertLess(selected, no_selected)
+        self.assertLess(no_selected, hint)
+
     def test_unexpected_disconnect_returns_to_fast_connection_poll(self):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn("$afterExit = @(Get-AdbDevices $Adb)", text)
