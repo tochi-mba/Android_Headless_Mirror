@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tochi-mba.github.io/Android_Headless_Mirror/sitemap.xml
