@@ -139,6 +139,17 @@ public static class Program
                 };
             }
 
+            case "shortcut":
+            {
+                Require(args, 2, "rex shortcut <install|remove>");
+                return args[1].ToLowerInvariant() switch
+                {
+                    "install" or "on" => await RunScriptCommandAsync(runner, paths.InstallRexShortcut),
+                    "remove" or "off" => await RunScriptCommandAsync(runner, paths.RemoveRexShortcut),
+                    _ => throw new ArgumentException("shortcut expects install or remove.")
+                };
+            }
+
             case "controls":
             {
                 var serial = await ResolveSerialAsync(bridge, GetOption(args, "--serial"));
@@ -593,6 +604,7 @@ public static class Program
             ("rex config get/set <path> ...", "Read or change any PC/mirror config value"),
             ("rex config restore", "Restore the previous config backup"),
             ("rex autostart on|off", "Control Windows sign-in startup"),
+            ("rex shortcut install|remove", "Manage the smart REX desktop shortcut"),
             ("rex lock-mode <serial> <pattern|other|none>", "Set per-device lock-screen behavior"),
             ("rex reset-lock [serial|ALL]", "Clear saved lock-screen choice/calibration"),
             ("rex screenshot [--serial S]", "Save an Android screenshot"),
