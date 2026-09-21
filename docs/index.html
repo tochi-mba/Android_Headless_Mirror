@@ -1,21 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Android Headless Mirror turns a Windows PC into a reliable control surface for an Android device using scrcpy and ADB. USB-first, persistent start/stop, diagnostics, and optional wireless fallback.">\n  <meta name="robots" content="index,follow">
+  <meta name="description" content="Android Headless Mirror turns a Windows PC into a reliable control surface for an Android device using scrcpy and ADB. USB-first, persistent start/stop, diagnostics, and optional wireless fallback.">
+  <meta name="robots" content="index,follow">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#090b10">
-  <meta property="og:title" content="Android Headless Mirror">
-  <meta property="og:description" content="Operate your Android device from Windows with a USB-first scrcpy + ADB workflow that stays out of your way.">
+  <meta name="theme-color" content="#080A09">
+  <meta property="og:title" content="Android Headless Mirror — REX Technologies">
+  <meta property="og:description" content="A REX Technologies product for operating Android from Windows with a USB-first scrcpy + ADB workflow.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/">
   <meta name="twitter:card" content="summary">
   <link rel="canonical" href="https://tochi-mba.github.io/Android_Headless_Mirror/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="styles.css">\n  <noscript><style>@media(max-width:720px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
-  <title>Android Headless Mirror — Android control from Windows</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.replace("no-js","js");</script>
+  <noscript><style>@media(max-width:720px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
+  <title>Android Headless Mirror — control Android from Windows — REX Technologies</title>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -24,11 +30,14 @@
 
   <header class="site-header">
     <div class="container nav-wrap">
-      <a class="brand" href="#top" aria-label="Android Headless Mirror home">
+      <a class="brand" href="#top" aria-label="Android Headless Mirror, by REX Technologies">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg>
         </span>
-        <span>Android Headless Mirror</span>
+        <span class="brand-lockup">
+          <span class="brand-company">REX Technologies</span>
+          <span class="brand-name">Android Headless Mirror</span>
+        </span>
       </a>
       <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav">
         <span class="sr-only">Toggle navigation</span><span></span><span></span>
@@ -46,14 +55,14 @@
   <main id="main">
     <section class="hero container" id="top">
       <div class="hero-copy reveal">
-        <div class="eyebrow"><span class="pulse-dot"></span> Windows + Android · USB-first</div>
+        <div class="eyebrow signal"><span class="pulse-dot"></span> Windows + Android · USB-first</div>
         <h1>Your Android.<br><span>Right where you work.</span></h1>
         <p class="hero-lede">A polished Windows wrapper around scrcpy and ADB that makes an Android device feel like a dependable part of your desktop — automatic reconnection, persistent start/stop, diagnostics, and an optional wireless fallback.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
           <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror">View source <span aria-hidden="true">↗</span></a>
         </div>
-        <div class="hero-meta" aria-label="Project highlights"><span>No cloud account</span><span>No framework</span><span>Open source</span></div>
+        <div class="hero-meta" aria-label="Project highlights"><span>No account</span><span>No analytics</span><span>Open source</span></div>
       </div>
 
       <div class="hero-stage reveal" aria-label="Illustration of Android mirrored on Windows">
@@ -100,7 +109,7 @@
 
     <section class="section container" id="how">
       <div class="section-heading reveal">
-        <div class="eyebrow">Simple by design</div>
+        <div class="eyebrow signal">Simple by design</div>
         <h2>Plug in. Authorise once. Use your phone from Windows.</h2>
         <p>The project handles the repetitive parts around ADB and scrcpy so the normal workflow becomes boring — in the best possible way.</p>
       </div>
@@ -113,7 +122,7 @@
 
     <section class="section container" id="features">
       <div class="section-heading reveal">
-        <div class="eyebrow">Built for daily use</div>
+        <div class="eyebrow signal">Built for daily use</div>
         <h2>The little details that make it feel reliable.</h2>
       </div>
       <div class="bento">
@@ -133,16 +142,16 @@
     <section class="section diagnostics-section">
       <div class="container diagnostics-grid">
         <div class="section-heading reveal">
-          <div class="eyebrow">Know what is wrong</div>
+          <div class="eyebrow live">Know what is wrong</div>
           <h2>Diagnostics that tell you the actual state.</h2>
           <p>“USB debugging is off” is not the same thing as “this PC is unauthorized”. The diagnostic path separates the states that matter.</p>
           <div class="diagnostic-tabs" role="tablist" aria-label="Diagnostic examples">
-            <button class="diag-tab active" role="tab" aria-selected="true" data-state="authorized">Authorized</button>
-            <button class="diag-tab" role="tab" aria-selected="false" data-state="unauthorized">Unauthorized</button>
-            <button class="diag-tab" role="tab" aria-selected="false" data-state="offline">Offline</button>
+            <button type="button" class="diag-tab active" id="diag-authorized" role="tab" aria-selected="true" aria-controls="diagnostic-panel" tabindex="0" data-state="authorized">Authorized</button>
+            <button type="button" class="diag-tab" id="diag-unauthorized" role="tab" aria-selected="false" aria-controls="diagnostic-panel" tabindex="-1" data-state="unauthorized">Unauthorized</button>
+            <button type="button" class="diag-tab" id="diag-offline" role="tab" aria-selected="false" aria-controls="diagnostic-panel" tabindex="-1" data-state="offline">Offline</button>
           </div>
         </div>
-        <div class="diagnostic-console reveal" aria-live="polite">
+        <div class="diagnostic-console reveal" id="diagnostic-panel" role="tabpanel" aria-labelledby="diag-authorized" aria-live="polite">
           <div class="console-top"><span>DIAGNOSTICS.bat</span><i></i></div>
           <pre id="diagnostic-output"><span class="console-head">=== Android Headless Mirror Diagnostics ===</span>
 ADB:            <b>OK</b>
@@ -161,7 +170,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
     <section class="section container" id="compatibility">
       <div class="compat-card reveal">
         <div>
-          <div class="eyebrow">Compatibility</div>
+          <div class="eyebrow signal">Compatibility</div>
           <h2>Built for Android devices.<br>Tested on real hardware.</h2>
           <p>Android Headless Mirror is designed around standard ADB and scrcpy, not Samsung-only APIs. It should work anywhere those standard tools work, but broad hardware compatibility is not claimed as tested.</p>
         </div>
@@ -177,7 +186,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
     <section class="section container" id="security">
       <div class="security-grid">
         <div class="section-heading reveal">
-          <div class="eyebrow">Security choices are explicit</div>
+          <div class="eyebrow signal">Security choices are explicit</div>
           <h2>Powerful access should stay understandable.</h2>
           <p>ADB can control a lot of your phone. The project keeps the default path local and wired, and documents where convenience changes the security trade-off.</p>
         </div>
@@ -193,7 +202,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
     <section class="section container" id="install">
       <div class="install-card reveal">
         <div class="install-copy">
-          <div class="eyebrow">Get started</div>
+          <div class="eyebrow signal">Get started</div>
           <h2>Clone it. Run setup. Authorise Android.</h2>
           <p>Setup fetches the official Windows x64 scrcpy release and verifies its SHA-256 checksum before extraction.</p>
           <div class="install-actions">
@@ -209,7 +218,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
     </section>
 
     <section class="section container" id="faq">
-      <div class="section-heading reveal"><div class="eyebrow">FAQ</div><h2>The important questions.</h2></div>
+      <div class="section-heading reveal"><div class="eyebrow signal">FAQ</div><h2>The important questions.</h2></div>
       <div class="faq-list">
         <details class="reveal"><summary>Is this only for Samsung phones?</summary><p>No. The project uses standard Android ADB and scrcpy. The Samsung Galaxy S21 Ultra (SM-G998B) is simply the hardware currently tested by this project.</p></details>
         <details class="reveal"><summary>Can it control the phone while the physical screen is off?</summary><p>Yes, scrcpy supports turning the physical display off while keeping the mirrored display active. The exact behavior can vary by Android version and manufacturer.</p></details>
@@ -221,7 +230,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
 
     <section class="final-cta">
       <div class="container final-cta-inner reveal">
-        <div><span class="eyebrow">Your phone, without the reach.</span><h2>Make Android part of your desktop.</h2></div>
+        <div><span class="eyebrow signal">A REX Technologies product</span><h2>Make Android part of your desktop.</h2></div>
         <a class="button button-light" href="https://github.com/tochi-mba/Android_Headless_Mirror">View on GitHub <span aria-hidden="true">↗</span></a>
       </div>
     </section>
@@ -229,9 +238,9 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
 
   <footer class="site-footer">
     <div class="container footer-grid">
-      <div><a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span><span>Android Headless Mirror</span></a><p>Open-source Windows orchestration for Android mirroring with scrcpy + ADB.</p></div>
+      <div><a class="brand footer-brand" href="#top" aria-label="Android Headless Mirror, by REX Technologies"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span><span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span></a><p>Open-source Windows orchestration for Android mirroring with scrcpy + ADB. A REX Technologies product.</p></div>
       <div class="footer-links"><a href="https://github.com/tochi-mba/Android_Headless_Mirror">Repository</a><a href="https://github.com/Genymobile/scrcpy">scrcpy</a><a href="#security">Security</a></div>
-      <div class="footer-copy">© <span id="year"></span> · Built for Android, tested on S21 Ultra.</div>
+      <div class="footer-copy">© <span id="year"></span> REX Technologies · Built for Android, tested on S21 Ultra.</div>
     </div>
   </footer>
   <script src="app.js"></script>
