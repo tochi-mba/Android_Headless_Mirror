@@ -209,6 +209,106 @@ public sealed class DisplayManagerTests
     }
 
     [Fact]
+    public async Task StartWireless_WhenAutoOpenDisabled_DoesNotOpenReceiver()
+    {
+        using var package = new TempPackage();
+        package.Config.Set("Display.WindowsWirelessDisplay.AutoOpenReceiver", "false");
+        var host = new FakeDisplayHostProbe(DefaultHost());
+        var manager = new DisplayManager(
+            package.Paths,
+            new FakeProcessRunner(),
+            SamsungBridge(),
+            package.Config,
+            host,
+            new DisplayVerificationStore(package.Paths.DisplayVerification));
+
+        var result = await manager.StartAsync(
+            DisplayTransportIds.WindowsMiracast,
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Requested);
+        Assert.Equal(0, host.OpenCount);
+        Assert.Contains("receiver auto-open is disabled", result.Message);
+        Assert.Contains("rex display receiver open", result.Message);
+    }
+
+    [Fact]
+    public async Task OpenReceiver_StillOpensWhenAutoOpenDisabled()
+    {
+        using var package = new TempPackage();
+        package.Config.Set("Display.WindowsWirelessDisplay.AutoOpenReceiver", "false");
+        var host = new FakeDisplayHostProbe(DefaultHost());
+        var manager = new DisplayManager(
+            package.Paths,
+            new FakeProcessRunner(),
+            SamsungBridge(),
+            package.Config,
+            host,
+            new DisplayVerificationStore(package.Paths.DisplayVerification));
+
+        var result = await manager.OpenReceiverAsync(
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Requested);
+        Assert.Equal(1, host.OpenCount);
+    }
+
+    [Fact]
+    public async Task OpenReceiver_WhenDexGuidanceDisabled_OnlySuggestsSmartView()
+    {
+        using var package = new TempPackage();
+        package.Config.Set("Display.SamsungDex.Enabled", "false");
+        var host = new FakeDisplayHostProbe(DefaultHost());
+        var manager = new DisplayManager(
+            package.Paths,
+            new FakeProcessRunner(),
+            SamsungBridge(),
+            package.Config,
+            host,
+            new DisplayVerificationStore(package.Paths.DisplayVerification));
+
+        var result = await manager.OpenReceiverAsync(
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains("Start Smart View", result.Message);
+        Assert.DoesNotContain("Wireless DeX", result.Message);
+    }
+
+    [Theory]
+    [InlineData("prompt")]
+    [InlineData("ignore")]
+    [InlineData("prefer-external")]
+    public void ProtectedContentPolicy_AcceptsSupportedValues(string policy)
+    {
+        using var package = new TempPackage();
+        package.Config.Set("Display.ProtectedContentPolicy", policy);
+        var manager = Manager(
+            package,
+            SamsungBridge(),
+            CapabilityState.Reported,
+            CapabilityState.Reported);
+
+        Assert.Equal(policy, manager.ProtectedContentPolicy());
+    }
+
+    [Fact]
+    public void ProtectedContentPolicy_RejectsInvalidConfig()
+    {
+        using var package = new TempPackage();
+        package.Config.Set("Display.ProtectedContentPolicy", "magic");
+        var manager = Manager(
+            package,
+            SamsungBridge(),
+            CapabilityState.Reported,
+            CapabilityState.Reported);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => manager.ProtectedContentPolicy());
+
+        Assert.Contains("prompt, ignore, or prefer-external", ex.Message);
+    }
+
+    [Fact]
     public async Task StartWireless_PropagatesReceiverOpenFailure()
     {
         using var package = new TempPackage();
