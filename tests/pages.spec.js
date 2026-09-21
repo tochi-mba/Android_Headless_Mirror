@@ -68,6 +68,14 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', 'site.webmanifest');
   });
 
+  test('Quick Start opens GitHub in a separate tab safely', async ({ page }) => {
+    const quickStart = page.getByRole('link', { name: /Read quick start/ });
+    await expect(quickStart).toHaveAttribute('target', '_blank');
+    await expect(quickStart).toHaveAttribute('rel', /noopener/);
+    await expect(quickStart).toHaveAttribute('rel', /noreferrer/);
+    await expect(quickStart).toHaveAttribute('href', 'https://github.com/tochi-mba/Android_Headless_Mirror#quick-start');
+  });
+
   test('all same-page navigation anchors resolve and scroll', async ({ page }) => {
     const hrefs = await page.locator('a[href^="#"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
     for (const href of hrefs) {
@@ -107,6 +115,13 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await authorized.press('ArrowRight');
     await expect(unauthorized).toBeFocused();
     await expect(unauthorized).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('headless FAQ states the secure-lock boundary', async ({ page }) => {
+    const summary = page.getByText('Can it unlock the phone for me?');
+    await summary.click();
+    await expect(page.getByText(/does not bypass it/)).toBeVisible();
+    await expect(page.getByText(/authenticate from the PC/)).toBeVisible();
   });
 
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
