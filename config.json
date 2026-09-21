@@ -42,6 +42,14 @@
     "ShowCursorTrail": true,
     "ManualShowSeconds": 20,
     "TrailHoldMilliseconds": 350,
-    "FrameMilliseconds": 16
+    "FrameMilliseconds": 16,
+    "AutoDiscoverGeometry": true,
+    "DiscoveryPollMilliseconds": 3000,
+    "CalibrationEnabled": true,
+    "CalibrationHotkey": "Ctrl+Alt+C",
+    "CalibrationStepPixels": 8,
+    "CalibrationFineStepPixels": 1,
+    "CalibrationFile": "pattern-calibration.json",
+    "FallbackToEstimatedGeometry": true
   }
 }
