@@ -399,3 +399,5 @@ finally {
 
 Write-Host ""
 Write-Host ("Control Center E2E passed: " + $script:Assertions + " assertions.") -ForegroundColor Green
+
+exit 0
