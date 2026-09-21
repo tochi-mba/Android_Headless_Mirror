@@ -76,8 +76,8 @@ public sealed class RexApp
                     "Captures",
                     "Stop Android Headless Mirror",
                     "Refresh",
-                    "Exit",
                     "Display transports",
+                    "Exit",
                 }));
 
             try
