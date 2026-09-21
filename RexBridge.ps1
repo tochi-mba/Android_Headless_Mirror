@@ -310,6 +310,14 @@ try {
     }
 
     $result | ConvertTo-Json -Depth 12 -Compress
+
+    if (
+        $null -ne $result -and
+        $null -ne $result.PSObject.Properties["Ok"] -and
+        -not [bool]$result.Ok
+    ) {
+        exit 1
+    }
 }
 catch {
     [pscustomobject]@{
