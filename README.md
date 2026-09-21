@@ -340,16 +340,19 @@ Tests:
 python tests\test_package.py
 ```
 
-The repository also includes Windows and browser CI that:
+The repository includes Windows and browser CI that:
 
-- validates JSON and PowerShell syntax;
-- verifies launcher/script references;
-- runs static package contracts;
-- runs executable behavior tests under **PowerShell 7 and Windows PowerShell 5.1**;
-- exercises overlay keyguard parsing, aspect-ratio geometry, hotkey parsing, state migration and reset behavior;
-- runs Chromium desktop/mobile tests plus axe accessibility checks for GitHub Pages.
+- validates JSON, XAML, JavaScript and PowerShell syntax;
+- verifies launcher/script references and runtime-artifact ignore rules;
+- runs static repository/package contracts;
+- runs supervisor/overlay behavior under **PowerShell 7 and Windows PowerShell 5.1**;
+- runs the real WPF Control Center against deterministic fake-device/fake-ADB backends and exercises every top-level tab and every named button flow;
+- verifies scrcpy runtime action dispatch, PC settings validation/save/discard, friendly Android controls, advanced namespace search/write/delete/protected-key blocking, diagnostics and failure paths;
+- renders all five Control Center tabs at a fixed 1040×760 target and gates them with screenshot color/contrast/visual-entropy/layout thresholds;
+- runs Chromium desktop/mobile behavior, screenshot thresholds and axe accessibility checks for GitHub Pages;
+- uploads WPF and Pages screenshot/metric artifacts on every CI run for visual diagnosis.
 
-Hardware integration still requires a real Android device.
+Hardware integration still requires a real Android device. CI deliberately proves deterministic command construction/UI behavior without claiming that every OEM grants every ADB setting permission.
 
 ## Security
 
