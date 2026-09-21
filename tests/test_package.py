@@ -331,6 +331,8 @@ class RepositoryContractTests(unittest.TestCase):
                 "CtrlTouchpadPinchToHostZoom",
                 "TouchpadPinchThreshold",
                 "TouchpadBaseRadiusRelativeToClient",
+            },
+        )
         self.assertEqual(
             set(config["ControlCenter"]),
             {
@@ -359,9 +361,6 @@ class RepositoryContractTests(unittest.TestCase):
                 "DisableScreensaver",
                 "RecordOnStart",
                 "RecordDirectory",
-            },
-        )
-
             },
         )
 
