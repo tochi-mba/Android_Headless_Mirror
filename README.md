@@ -26,7 +26,7 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Can turn the physical Android display off while keeping the PC mirror active.
 - Keeps the active session alive using scrcpy `--keep-active`, and also uses `--stay-awake` for plugged-in USB sessions.
 - Works with any authorised Android device; a preferred serial is only a preference when multiple ready devices are present.
-- Can show a click-through 3×3 pattern guide over scrcpy when a secure lock screen renders black, without capturing or replaying the pattern.
+- Can show a click-through 3×3 pattern guide over scrcpy when a secure lock screen renders black, without storing or replaying the pattern.
 - Provides persistent **START / STOP** semantics.
 - Can start automatically when Windows signs in.
 - Includes diagnostics and rotating logs.
@@ -94,7 +94,7 @@ The choice is stored **per ADB serial** in `state.json`, so different phones on 
 
 ### Pattern privacy
 
-The overlay never learns the unlock credential:
+The overlay never persists or replays the unlock credential:
 
 - it does **not** call ADB touch-injection commands;
 - it does **not** store, log, transmit or replay pattern coordinates;
