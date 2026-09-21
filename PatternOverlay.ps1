@@ -94,6 +94,369 @@ function Get-PatternGridPoints($ContentRect, $OverlayConfig) {
     return $points
 }
 
+
+function ConvertFrom-AndroidBounds([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+
+    if ($Text -notmatch '^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$') {
+        return $null
+    }
+
+    $left = [double]$Matches[1]
+    $top = [double]$Matches[2]
+    $right = [double]$Matches[3]
+    $bottom = [double]$Matches[4]
+
+    if ($right -le $left -or $bottom -le $top) { return $null }
+
+    return [pscustomobject]@{
+        Left = $left
+        Top = $top
+        Right = $right
+        Bottom = $bottom
+        Width = $right - $left
+        Height = $bottom - $top
+        CenterX = ($left + $right) / 2.0
+        CenterY = ($top + $bottom) / 2.0
+    }
+}
+
+function New-PatternGeometry(
+    [string]$Source,
+    [double]$ScreenWidth,
+    [double]$ScreenHeight,
+    [double]$Left,
+    [double]$Top,
+    [double]$Right,
+    [double]$Bottom,
+    [bool]$ExactDots
+) {
+    if ($ScreenWidth -le 0 -or $ScreenHeight -le 0) { return $null }
+    if ($Right -le $Left -or $Bottom -le $Top) { return $null }
+
+    return [pscustomobject]@{
+        Source = $Source
+        ScreenWidth = $ScreenWidth
+        ScreenHeight = $ScreenHeight
+        ExactDots = $ExactDots
+        GridBoundsNormalized = [pscustomobject]@{
+            Left = $Left / $ScreenWidth
+            Top = $Top / $ScreenHeight
+            Right = $Right / $ScreenWidth
+            Bottom = $Bottom / $ScreenHeight
+        }
+    }
+}
+
+function Get-PatternGeometryFromUiXml([string]$XmlText) {
+    if ([string]::IsNullOrWhiteSpace($XmlText)) { return $null }
+
+    try {
+        [xml]$doc = $XmlText
+    }
+    catch {
+        return $null
+    }
+
+    $nodes = @($doc.SelectNodes("//node"))
+    if ($nodes.Count -eq 0) { return $null }
+
+    $nodeInfo = @()
+    $screenRight = 0.0
+    $screenBottom = 0.0
+
+    foreach ($node in $nodes) {
+        $bounds = ConvertFrom-AndroidBounds ([string]$node.bounds)
+        if ($null -eq $bounds) { continue }
+
+        $screenRight = [Math]::Max($screenRight, $bounds.Right)
+        $screenBottom = [Math]::Max($screenBottom, $bounds.Bottom)
+
+        $className = [string]$node.class
+        $resourceId = [string]$node.'resource-id'
+        $contentDescription = [string]$node.'content-desc'
+        $text = [string]$node.text
+        $searchText = "$className $resourceId $contentDescription $text"
+
+        $score = 0
+        if ($className -match '(?i)(^|\.)LockPatternView$') { $score += 120 }
+        elseif ($className -match '(?i)Pattern') { $score += 35 }
+
+        if ($resourceId -match '(?i)(lock.?pattern|pattern.?lock|lockPatternView)') { $score += 100 }
+        elseif ($resourceId -match '(?i)pattern') { $score += 45 }
+
+        if ($contentDescription -match '(?i)pattern\s*(area|lock|grid)?') { $score += 55 }
+        if ($text -match '(?i)pattern\s*(area|lock|grid)?') { $score += 20 }
+
+        $ratio = $bounds.Width / $bounds.Height
+        if ($ratio -ge 0.72 -and $ratio -le 1.38) { $score += 20 }
+        if ($bounds.Width -ge 180 -and $bounds.Height -ge 180) { $score += 10 }
+
+        $nodeInfo += [pscustomobject]@{
+            Node = $node
+            Bounds = $bounds
+            ClassName = $className
+            ResourceId = $resourceId
+            ContentDescription = $contentDescription
+            Text = $text
+            SearchText = $searchText
+            Score = $score
+        }
+    }
+
+    if ($screenRight -le 0 -or $screenBottom -le 0) { return $null }
+
+    $patternView = @(
+        $nodeInfo |
+            Where-Object { $_.Score -ge 50 } |
+            Sort-Object Score -Descending, @{ Expression = { $_.Bounds.Width * $_.Bounds.Height }; Descending = $true }
+    ) | Select-Object -First 1
+
+    if ($null -eq $patternView) { return $null }
+
+    # AOSP exposes nine virtual accessibility nodes while a pattern is in progress.
+    # OEMs may expose them differently, so only trust child nodes with explicit
+    # pattern/cell semantics. If nine are present, their centers are more precise
+    # than deriving centers from the parent view bounds.
+    $dotCandidates = @()
+    foreach ($child in @($patternView.Node.SelectNodes(".//node"))) {
+        $bounds = ConvertFrom-AndroidBounds ([string]$child.bounds)
+        if ($null -eq $bounds) { continue }
+
+        if (
+            $bounds.Left -lt $patternView.Bounds.Left -or
+            $bounds.Top -lt $patternView.Bounds.Top -or
+            $bounds.Right -gt $patternView.Bounds.Right -or
+            $bounds.Bottom -gt $patternView.Bounds.Bottom
+        ) {
+            continue
+        }
+
+        $childText = (
+            ([string]$child.class) + " " +
+            ([string]$child.'resource-id') + " " +
+            ([string]$child.'content-desc') + " " +
+            ([string]$child.text)
+        )
+
+        if ($childText -notmatch '(?i)(pattern.*cell|cell.*pattern|pattern\s*cell)') {
+            continue
+        }
+
+        if (
+            $bounds.Width -gt ($patternView.Bounds.Width * 0.45) -or
+            $bounds.Height -gt ($patternView.Bounds.Height * 0.45)
+        ) {
+            continue
+        }
+
+        $dotCandidates += $bounds
+    }
+
+    if ($dotCandidates.Count -ge 9) {
+        $ordered = @(
+            $dotCandidates |
+                Sort-Object CenterY, CenterX |
+                Select-Object -First 9
+        )
+
+        if ($ordered.Count -eq 9) {
+            $left = ($ordered | Measure-Object CenterX -Minimum).Minimum
+            $right = ($ordered | Measure-Object CenterX -Maximum).Maximum
+            $top = ($ordered | Measure-Object CenterY -Minimum).Minimum
+            $bottom = ($ordered | Measure-Object CenterY -Maximum).Maximum
+
+            $geometry = New-PatternGeometry "ui-dots" $screenRight $screenBottom $left $top $right $bottom $true
+            if ($null -ne $geometry) { return $geometry }
+        }
+    }
+
+    # For AOSP LockPatternView, the three cell centers are each centered in one
+    # third of the usable pattern view. UIAutomator gives us the runtime view
+    # bounds, so derive the outer dot-center rectangle from 1/6 and 5/6.
+    $view = $patternView.Bounds
+    $leftCenter = $view.Left + ($view.Width / 6.0)
+    $rightCenter = $view.Left + ($view.Width * 5.0 / 6.0)
+    $topCenter = $view.Top + ($view.Height / 6.0)
+    $bottomCenter = $view.Top + ($view.Height * 5.0 / 6.0)
+
+    return New-PatternGeometry "ui-view" $screenRight $screenBottom $leftCenter $topCenter $rightCenter $bottomCenter $false
+}
+
+function Get-PatternPointsFromGeometry(
+    $Geometry,
+    [double]$ClientWidth,
+    [double]$ClientHeight,
+    [double]$FallbackDeviceWidth,
+    [double]$FallbackDeviceHeight,
+    $OverlayConfig
+) {
+    if ($null -eq $Geometry -or $null -eq $Geometry.GridBoundsNormalized) {
+        $contentRect = Get-FittedContentRect $ClientWidth $ClientHeight $FallbackDeviceWidth $FallbackDeviceHeight
+        $points = @(Get-PatternGridPoints $contentRect $OverlayConfig)
+        return [pscustomobject]@{
+            Source = "estimated"
+            ContentRect = $contentRect
+            Points = $points
+        }
+    }
+
+    $screenWidth = [double]$Geometry.ScreenWidth
+    $screenHeight = [double]$Geometry.ScreenHeight
+    if ($screenWidth -le 0) { $screenWidth = $FallbackDeviceWidth }
+    if ($screenHeight -le 0) { $screenHeight = $FallbackDeviceHeight }
+
+    $contentRect = Get-FittedContentRect $ClientWidth $ClientHeight $screenWidth $screenHeight
+    $bounds = $Geometry.GridBoundsNormalized
+
+    $left = $contentRect.X + ([double]$bounds.Left * $contentRect.Width)
+    $right = $contentRect.X + ([double]$bounds.Right * $contentRect.Width)
+    $top = $contentRect.Y + ([double]$bounds.Top * $contentRect.Height)
+    $bottom = $contentRect.Y + ([double]$bounds.Bottom * $contentRect.Height)
+
+    $xs = @($left, (($left + $right) / 2.0), $right)
+    $ys = @($top, (($top + $bottom) / 2.0), $bottom)
+
+    $points = @()
+    foreach ($y in $ys) {
+        foreach ($x in $xs) {
+            $points += [pscustomobject]@{ X = [double]$x; Y = [double]$y }
+        }
+    }
+
+    return [pscustomobject]@{
+        Source = [string]$Geometry.Source
+        ContentRect = $contentRect
+        Points = $points
+    }
+}
+
+function Get-CalibrationPath([string]$SerialValue) {
+    $directoryName = [string]$OverlayConfig.CalibrationDirectory
+    if ([string]::IsNullOrWhiteSpace($directoryName)) {
+        $directoryName = "pattern-calibration"
+    }
+
+    $directory = Join-Path $Root $directoryName
+    $safeSerial = ($SerialValue -replace '[^A-Za-z0-9._-]', '_')
+    if ([string]::IsNullOrWhiteSpace($safeSerial)) { $safeSerial = "device" }
+
+    return Join-Path $directory ($safeSerial + ".json")
+}
+
+function Convert-CalibrationRecordToGeometry($Record) {
+    if ($null -eq $Record) { return $null }
+
+    foreach ($name in @("Left", "Top", "Right", "Bottom")) {
+        if ($null -eq $Record.PSObject.Properties[$name]) { return $null }
+    }
+
+    $left = [double]$Record.Left
+    $top = [double]$Record.Top
+    $right = [double]$Record.Right
+    $bottom = [double]$Record.Bottom
+
+    if (
+        $left -lt 0 -or $top -lt 0 -or
+        $right -gt 1 -or $bottom -gt 1 -or
+        $right -le $left -or $bottom -le $top
+    ) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        Source = "calibration"
+        ScreenWidth = 1.0
+        ScreenHeight = 1.0
+        ExactDots = $false
+        GridBoundsNormalized = [pscustomobject]@{
+            Left = $left
+            Top = $top
+            Right = $right
+            Bottom = $bottom
+        }
+    }
+}
+
+function Load-PatternCalibration([string]$SerialValue) {
+    if (-not $OverlayConfig.CalibrationEnabled) { return $null }
+
+    $path = Get-CalibrationPath $SerialValue
+    if (-not (Test-Path $path)) { return $null }
+
+    try {
+        $record = Get-Content $path -Raw | ConvertFrom-Json
+        return Convert-CalibrationRecordToGeometry $record
+    }
+    catch {
+        return $null
+    }
+}
+
+function Save-PatternCalibration([string]$SerialValue, $BoundsNormalized) {
+    if (-not $OverlayConfig.CalibrationEnabled) { return $false }
+
+    $path = Get-CalibrationPath $SerialValue
+    $directory = Split-Path -Parent $path
+    New-Item -ItemType Directory -Force -Path $directory | Out-Null
+
+    $record = [pscustomobject]@{
+        Version = 1
+        Serial = $SerialValue
+        Left = [Math]::Round([double]$BoundsNormalized.Left, 8)
+        Top = [Math]::Round([double]$BoundsNormalized.Top, 8)
+        Right = [Math]::Round([double]$BoundsNormalized.Right, 8)
+        Bottom = [Math]::Round([double]$BoundsNormalized.Bottom, 8)
+        UpdatedUtc = [DateTime]::UtcNow.ToString("o")
+    }
+
+    $record | ConvertTo-Json -Depth 4 | Set-Content -Path $path -Encoding UTF8
+    return $true
+}
+
+function Remove-PatternCalibration([string]$SerialValue) {
+    $path = Get-CalibrationPath $SerialValue
+    if (Test-Path $path) {
+        Remove-Item -Force $path -ErrorAction SilentlyContinue
+    }
+}
+
+function Get-EffectivePatternGeometry {
+    # Exact virtual-dot bounds are the highest-confidence source.
+    if ($script:discoveredGeometry -and [string]$script:discoveredGeometry.Source -eq "ui-dots") {
+        return $script:discoveredGeometry
+    }
+
+    # A user calibration is an explicit correction, so it can override parent-view
+    # geometry when an OEM exposes a padded/non-standard pattern container.
+    if ($script:calibrationGeometry) {
+        return $script:calibrationGeometry
+    }
+
+    if ($script:discoveredGeometry) {
+        return $script:discoveredGeometry
+    }
+
+    return $null
+}
+
+function Get-GridBoundsNormalizedFromPoints($Points, $ContentRect) {
+    if ($null -eq $Points -or @($Points).Count -ne 9) { return $null }
+    if ($ContentRect.Width -le 0 -or $ContentRect.Height -le 0) { return $null }
+
+    $left = (@($Points) | Measure-Object X -Minimum).Minimum
+    $right = (@($Points) | Measure-Object X -Maximum).Maximum
+    $top = (@($Points) | Measure-Object Y -Minimum).Minimum
+    $bottom = (@($Points) | Measure-Object Y -Maximum).Maximum
+
+    return [pscustomobject]@{
+        Left = [Math]::Max(0.0, [Math]::Min(1.0, (($left - $ContentRect.X) / $ContentRect.Width)))
+        Top = [Math]::Max(0.0, [Math]::Min(1.0, (($top - $ContentRect.Y) / $ContentRect.Height)))
+        Right = [Math]::Max(0.0, [Math]::Min(1.0, (($right - $ContentRect.X) / $ContentRect.Width)))
+        Bottom = [Math]::Max(0.0, [Math]::Min(1.0, (($bottom - $ContentRect.Y) / $ContentRect.Height)))
+    }
+}
+
 function Get-HotkeySpec([string]$Text) {
     $parts = @($Text -split '\+' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
     $required = @()
