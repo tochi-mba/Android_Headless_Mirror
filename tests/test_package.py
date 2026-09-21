@@ -830,8 +830,10 @@ class RepositoryContractTests(unittest.TestCase):
     def test_rex_cli_uses_stable_spectre_console_and_self_contained_publish(self):
         project = self.read("src/Rex.AndroidMirror.Cli/Rex.AndroidMirror.Cli.csproj")
         self.assertIn('Spectre.Console" Version="0.57.2"', project)
-        self.assertIn("<PublishSingleFile>true</PublishSingleFile>", project)
-        self.assertIn("<SelfContained>true</SelfContained>", project)
+        self.assertIn("<PublishSingleFile Condition=", project)
+        self.assertIn("<SelfContained Condition=", project)
+        self.assertIn(">true</PublishSingleFile>", project)
+        self.assertIn(">true</SelfContained>", project)
         self.assertIn("<TargetFramework>net8.0</TargetFramework>", project)
 
     def test_rex_cli_has_guided_and_scripted_entry_points(self):
