@@ -15,6 +15,7 @@ public sealed class AppPathsTests
         Assert.Equal(Path.Combine(package.Root, "config.json"), paths.Config);
         Assert.Equal(Path.Combine(package.Root, "RexBridge.ps1"), paths.Bridge);
         Assert.Equal(Path.Combine(package.Root, "captures"), paths.Captures);
+        Assert.Equal(Path.Combine(package.Root, "display-verification.json"), paths.DisplayVerification);
     }
 
     [Fact]
@@ -71,6 +72,7 @@ public sealed class AppPathsTests
             package.Paths.State,
             package.Paths.Logs,
             package.Paths.Captures,
+            package.Paths.DisplayVerification,
         })
         {
             Assert.StartsWith(root, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase);
