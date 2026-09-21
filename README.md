@@ -21,6 +21,7 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Verifies the scrcpy ZIP against the release SHA-256 checksums before extraction.
 - Prefers USB for the reliable recovery path.
 - Waits for an authorised Android device instead of failing if it is disconnected or still booting.
+- Auto-opens the mirror when an authorised phone is connected, with a 1-second detection interval by default.
 - Wakes the device before launching scrcpy.
 - Can turn the physical Android display off while keeping the PC mirror active.
 - Keeps the device awake while connected over USB.
@@ -38,7 +39,7 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 4. On the first ADB connection, Android should show **Allow USB debugging?**
 5. Select **Always allow from this computer** and press **Allow**.
 
-After authorisation, the supervisor can reconnect to the device automatically.
+After authorisation, the hidden supervisor stays armed in the background. Connecting the phone opens the mirror automatically. If you manually close scrcpy while the phone remains connected, it stays closed until you disconnect and reconnect the phone.
 
 ## Start and stop behavior
 
@@ -130,7 +131,7 @@ USB remains the recommended recovery path because legacy ADB TCP/IP normally doe
 Useful values in `config.json`:
 
 - `TurnPhysicalScreenOff`: turn the physical device display off while mirrored.
-- `StayAwakeWhenUsb`: request scrcpy's USB stay-awake behavior.
+- `StayAwakeWhenUsb`: request scrcpy's USB stay-awake behavior for the active USB mirror session.
 - `PowerOffOnClose`: optionally power the device display off when scrcpy closes.
 - `MaxSize`: maximum encoded video dimension.
 - `MaxFps`: frame-rate cap.
