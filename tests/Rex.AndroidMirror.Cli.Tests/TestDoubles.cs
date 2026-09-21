@@ -63,6 +63,17 @@ internal sealed class TempPackage : IDisposable
             "AudioEnabled": true,
             "AudioBufferMs": 50
           },
+          "Display": {
+            "DefaultTransport": "scrcpy",
+            "ProtectedContentPolicy": "prompt",
+            "WindowsWirelessDisplay": {
+              "Enabled": true,
+              "AutoOpenReceiver": true
+            },
+            "SamsungDex": {
+              "Enabled": true
+            }
+          },
           "ExtraScrcpyArgs": ""
         }
         """);
