@@ -180,6 +180,7 @@
             </GroupBox>
 
             <GroupBox Header="Clipboard &amp; input">
+              <StackPanel>
               <WrapPanel>
                 <Button x:Name="CopyButton" Content="Copy from device"/>
                 <Button x:Name="CutButton" Content="Cut"/>
@@ -188,14 +189,17 @@
                 <Button x:Name="KeyboardSettingsButton" Content="Keyboard settings"/>
               </WrapPanel>
               <TextBlock Text="Precision Touchpad: two-finger pinch controls Android. Hold Ctrl while pinching to zoom only the PC mirror." Foreground="{StaticResource Muted}" Margin="0,5,0,0"/>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Capture">
+              <StackPanel>
               <WrapPanel>
                 <Button x:Name="ScreenshotButton" Content="Save screenshot" Style="{StaticResource PrimaryButton}"/>
                 <Button x:Name="OpenScreenshotFolderButton" Content="Open screenshot folder"/>
               </WrapPanel>
               <TextBlock x:Name="CaptureStatusText" Text="" Foreground="{StaticResource Muted}"/>
+              </StackPanel>
             </GroupBox>
           </StackPanel>
         </ScrollViewer>
@@ -208,12 +212,14 @@
             <TextBlock Text="Settings applied by the Windows wrapper or on the next mirror session." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
 
             <GroupBox Header="Session behavior">
+              <StackPanel>
               <CheckBox x:Name="PcTurnScreenOffCheck" Content="Turn physical phone screen off on mirror start"/>
               <CheckBox x:Name="PcStayAwakeCheck" Content="Keep Android awake while USB is connected"/>
               <CheckBox x:Name="PcKeepActiveCheck" Content="Periodically keep Android session active"/>
               <CheckBox x:Name="PcDismissKeyguardCheck" Content="Best-effort keyguard dismissal before mirror"/>
               <CheckBox x:Name="PcRestartUnexpectedCheck" Content="Restart mirror after unexpected exit"/>
               <CheckBox x:Name="PcPreferUsbCheck" Content="Prefer USB when multiple transports are available"/>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Video quality">
@@ -233,6 +239,7 @@
             </GroupBox>
 
             <GroupBox Header="Touchpad &amp; host zoom">
+              <StackPanel>
               <CheckBox x:Name="PcNativeTouchpadCheck" Content="Use Windows Precision Touchpad gestures when available"/>
               <CheckBox x:Name="PcTouchpadAndroidPinchCheck" Content="Two-finger pinch/spread sends Android multitouch"/>
               <CheckBox x:Name="PcCtrlTouchpadHostZoomCheck" Content="Ctrl + touchpad pinch zooms only the PC mirror"/>
@@ -242,19 +249,24 @@
                 <TextBox x:Name="PcHostZoomMaxText" Width="90"/>
                 <TextBlock Text="×" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="6,0,0,0"/>
               </StackPanel>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Pattern guide">
+              <StackPanel>
               <CheckBox x:Name="PcPatternOverlayCheck" Content="Enable pattern-lock visual guide"/>
               <CheckBox x:Name="PcPatternAutoDiscoverCheck" Content="Auto-discover Android pattern geometry"/>
               <CheckBox x:Name="PcPatternCalibrationCheck" Content="Allow per-device keyboard calibration fallback"/>
               <TextBlock Text="Visibility: Ctrl+Alt+P  ·  Calibration: Ctrl+Alt+C" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Wireless ADB">
+              <StackPanel>
               <CheckBox x:Name="PcWirelessEnabledCheck" Content="Enable legacy wireless ADB fallback"/>
               <CheckBox x:Name="PcWirelessTcpipBootstrapCheck" Content="Allow USB session to enable TCP/IP ADB"/>
               <TextBlock Text="Disabled by default. USB remains the recovery path." Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Video / window">
@@ -274,6 +286,7 @@
             </GroupBox>
 
             <GroupBox Header="Audio">
+              <StackPanel>
               <CheckBox x:Name="PcAudioEnabledCheck" Content="Forward Android audio to this PC"/>
               <Grid Margin="0,8,0,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -289,18 +302,22 @@
                 <TextBox x:Name="PcAudioBufferText" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
                 <CheckBox x:Name="PcAudioDupCheck" Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" Content="Duplicate playback on device too (Android 13+)" Margin="18,5,0,5"/>
               </Grid>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Recording">
+              <StackPanel>
               <CheckBox x:Name="PcRecordOnStartCheck" Content="Record automatically when the next mirror session starts"/>
               <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                 <TextBlock Text="Recording folder" Width="190" VerticalAlignment="Center"/>
                 <TextBox x:Name="PcRecordDirectoryText" Width="360"/>
               </StackPanel>
               <TextBlock Text="scrcpy records clean device-timestamped video/audio. Runtime stop/start recording is not available in scrcpy 4.1, so this applies on the next mirror launch." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Control Center">
+              <StackPanel>
               <CheckBox x:Name="PcControlCenterEnabledCheck" Content="Enable the per-device Control Center"/>
               <CheckBox x:Name="PcControlCenterOpenCheck" Content="Open Control Center automatically when the mirror connects"/>
               <CheckBox x:Name="PcControlCenterDockCheck" Content="Dock Control Center beside the scrcpy window when space permits"/>
@@ -314,12 +331,15 @@
                 <TextBlock Text="×" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <TextBox x:Name="PcControlCenterHeightText" Width="90"/>
               </StackPanel>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Advanced scrcpy launch">
+              <StackPanel>
               <TextBlock Text="Extra raw scrcpy arguments" Margin="0,0,0,6"/>
               <TextBox x:Name="PcExtraScrcpyArgsText" AcceptsReturn="False"/>
               <TextBlock Text="Advanced: appended only after validation. Use for scrcpy options not yet represented above." Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
+              </StackPanel>
             </GroupBox>
 
             <WrapPanel>
@@ -364,6 +384,7 @@
             </GroupBox>
 
             <GroupBox Header="Power &amp; motion">
+              <StackPanel>
               <WrapPanel>
                 <Button x:Name="DeviceWakeButton" Content="Wake screen"/>
                 <Button x:Name="DeviceSleepButton" Content="Sleep display" Style="{StaticResource PrimaryButton}"/>
@@ -373,9 +394,11 @@
               <ComboBox x:Name="DeviceAnimationCombo" Width="260" HorizontalAlignment="Left">
                 <ComboBoxItem Content="Off (0×)" Tag="0"/><ComboBoxItem Content="Fast (0.5×)" Tag="0.5"/><ComboBoxItem Content="Default (1×)" Tag="1"/><ComboBoxItem Content="Slow (1.5×)" Tag="1.5"/>
               </ComboBox>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Appearance &amp; connectivity">
+              <StackPanel>
               <TextBlock Text="Dark mode" Margin="0,0,0,4"/>
               <ComboBox x:Name="DeviceDarkModeCombo" Width="260" HorizontalAlignment="Left">
                 <ComboBoxItem Content="Automatic" Tag="auto"/><ComboBoxItem Content="Light" Tag="no"/><ComboBoxItem Content="Dark" Tag="yes"/>
@@ -389,9 +412,11 @@
                 <Button x:Name="AirplaneOffButton" Content="Airplane off"/>
               </WrapPanel>
               <TextBlock Text="Android/OEM permissions vary. Unsupported commands return the device error instead of pretending success." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+              </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Display override (advanced)">
+              <StackPanel>
               <StackPanel Orientation="Horizontal">
                 <TextBox x:Name="DeviceWmSizeText" Width="180" Margin="0,0,8,8"/>
                 <Button x:Name="ApplyWmSizeButton" Content="Apply size"/>
@@ -401,6 +426,7 @@
                 <TextBox x:Name="DeviceWmDensityText" Width="180" Margin="0,0,8,8"/>
                 <Button x:Name="ApplyWmDensityButton" Content="Apply density"/>
                 <Button x:Name="ResetWmDensityButton" Content="Reset density"/>
+              </StackPanel>
               </StackPanel>
             </GroupBox>
 
