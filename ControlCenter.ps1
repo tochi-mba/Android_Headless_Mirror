@@ -19,6 +19,43 @@ $XamlPath = Join-Path $Root "ControlCenter.xaml"
 
 $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 
+function Ensure-DisplayConfig {
+    if ($null -eq $Config.PSObject.Properties["Display"]) {
+        $Config | Add-Member -NotePropertyName Display -NotePropertyValue ([pscustomobject]@{
+            DefaultTransport = "scrcpy"
+            ProtectedContentPolicy = "prompt"
+            WindowsWirelessDisplay = [pscustomobject]@{
+                Enabled = $true
+                AutoOpenReceiver = $true
+            }
+            SamsungDex = [pscustomobject]@{
+                Enabled = $true
+            }
+        })
+        return
+    }
+
+    if ($null -eq $Config.Display.PSObject.Properties["DefaultTransport"]) {
+        $Config.Display | Add-Member -NotePropertyName DefaultTransport -NotePropertyValue "scrcpy"
+    }
+    if ($null -eq $Config.Display.PSObject.Properties["ProtectedContentPolicy"]) {
+        $Config.Display | Add-Member -NotePropertyName ProtectedContentPolicy -NotePropertyValue "prompt"
+    }
+    if ($null -eq $Config.Display.PSObject.Properties["WindowsWirelessDisplay"]) {
+        $Config.Display | Add-Member -NotePropertyName WindowsWirelessDisplay -NotePropertyValue ([pscustomobject]@{
+            Enabled = $true
+            AutoOpenReceiver = $true
+        })
+    }
+    if ($null -eq $Config.Display.PSObject.Properties["SamsungDex"]) {
+        $Config.Display | Add-Member -NotePropertyName SamsungDex -NotePropertyValue ([pscustomobject]@{
+            Enabled = $true
+        })
+    }
+}
+
+Ensure-DisplayConfig
+
 if ([string]::IsNullOrWhiteSpace($AdbPath)) {
     $AdbPath = Get-ChildItem (Join-Path $Root "tools") -Filter "adb.exe" -Recurse -File -ErrorAction SilentlyContinue |
         Select-Object -First 1 -ExpandProperty FullName
@@ -224,6 +261,119 @@ function Ensure-ExtraScrcpyArgs {
         $Config | Add-Member -NotePropertyName ExtraScrcpyArgs -NotePropertyValue ""
     }
 }
+
+function Get-DisplayVerificationSummary {
+    $path = Join-Path $Root "display-verification.json"
+    if (-not (Test-Path $path)) {
+        return "Protected playback: not verified on this PC."
+    }
+
+    try {
+        $state = Get-Content $path -Raw | ConvertFrom-Json
+        $entry = $state.'windows-miracast'
+        if ($null -eq $entry) {
+            return "Protected playback: not verified on this PC."
+        }
+
+        $normal = if ($null -ne $entry.NormalPlayback) { [string]$entry.NormalPlayback } else { "unknown" }
+        $protected = if ($null -ne $entry.ProtectedPlayback) { [string]$entry.ProtectedPlayback } else { "unknown" }
+        return "Manual verification - normal: $normal; protected: $protected."
+    }
+    catch {
+        return "Display verification state could not be read."
+    }
+}
+
+function Refresh-DisplayStatus {
+    $transport = "scrcpy ready"
+    if (-not $TestMode) {
+        $rect = Get-ScrcpyWindowRect $script:TargetWindowTitle
+        $transport = if ($null -ne $rect) { "scrcpy active" } else { "scrcpy available / not active" }
+    }
+
+    $dex = "unknown"
+    if ($null -ne $script:DeviceIdentity) {
+        $dex = if ([string]$script:DeviceIdentity.Manufacturer -match '(?i)samsung') {
+            "Samsung device detected; DeX requires runtime verification"
+        }
+        else {
+            "non-Samsung device"
+        }
+    }
+
+    (C "DisplayTransportSummaryText").Text =
+        "Current: $transport. ADB control: connected. DeX: $dex."
+    (C "DisplayVerificationText").Text = Get-DisplayVerificationSummary
+}
+
+function Load-DisplaySettings {
+    Ensure-DisplayConfig
+    Select-ComboTag (C "DisplayDefaultTransportCombo") ([string]$Config.Display.DefaultTransport)
+    Select-ComboTag (C "DisplayProtectedPolicyCombo") ([string]$Config.Display.ProtectedContentPolicy)
+    (C "DisplayWirelessEnabledCheck").IsChecked = [bool]$Config.Display.WindowsWirelessDisplay.Enabled
+    (C "DisplayWirelessAutoOpenCheck").IsChecked = [bool]$Config.Display.WindowsWirelessDisplay.AutoOpenReceiver
+    (C "DisplayDexEnabledCheck").IsChecked = [bool]$Config.Display.SamsungDex.Enabled
+    Refresh-DisplayStatus
+}
+
+function Save-DisplaySettings {
+    Ensure-DisplayConfig
+
+    $transport = Get-ComboTag (C "DisplayDefaultTransportCombo")
+    if ($transport -notin @("scrcpy", "windows-miracast")) {
+        Set-Status "Default display transport is invalid." $true
+        return
+    }
+
+    $policy = Get-ComboTag (C "DisplayProtectedPolicyCombo")
+    if ($policy -notin @("prompt", "ignore", "prefer-external")) {
+        Set-Status "Protected-content policy is invalid." $true
+        return
+    }
+
+    $Config.Display.DefaultTransport = $transport
+    $Config.Display.ProtectedContentPolicy = $policy
+    $Config.Display.WindowsWirelessDisplay.Enabled = [bool](C "DisplayWirelessEnabledCheck").IsChecked
+    $Config.Display.WindowsWirelessDisplay.AutoOpenReceiver = [bool](C "DisplayWirelessAutoOpenCheck").IsChecked
+    $Config.Display.SamsungDex.Enabled = [bool](C "DisplayDexEnabledCheck").IsChecked
+
+    Add-TestAction "display-settings:save"
+
+    if (-not $TestMode) {
+        $Config | ConvertTo-Json -Depth 12 | Set-Content -Path $ConfigPath -Encoding UTF8
+    }
+
+    (C "DisplaySettingsStatusText").Text = "Saved."
+    Set-Status "Display settings saved."
+    Refresh-DisplayStatus
+}
+
+(C "DisplayRefreshButton").Add_Click({
+    Add-TestAction "display:refresh"
+    Refresh-DisplayStatus
+})
+
+(C "DisplayStartScrcpyButton").Add_Click({
+    Add-TestAction "display:start-scrcpy"
+    if (-not $TestMode) {
+        Start-Process -FilePath (Join-Path $Root "START_NOW.bat") -WorkingDirectory $Root
+    }
+    Set-Status "scrcpy mirror requested."
+})
+
+(C "DisplayOpenWirelessButton").Add_Click({
+    Add-TestAction "display:open-wireless"
+    if (-not $TestMode) {
+        Start-Process "ms-settings:project"
+    }
+    Set-Status "Opened Windows Projecting to this PC."
+})
+
+(C "SaveDisplaySettingsButton").Add_Click({ Save-DisplaySettings })
+(C "ReloadDisplaySettingsButton").Add_Click({
+    Load-DisplaySettings
+    (C "DisplaySettingsStatusText").Text = "Discarded unsaved changes."
+})
 
 function Load-PcSettings {
     Ensure-ExtraScrcpyArgs
@@ -757,6 +907,7 @@ function Refresh-All {
 
         Refresh-DeviceState
         Refresh-AdvancedRows
+        Refresh-DisplayStatus
         (C "DiagnosticsText").Text = Get-DiagnosticsText
         Set-Status "Ready."
     }
@@ -815,6 +966,7 @@ function Render-ControlCenterSnapshot([string]$Path) {
 }
 
 Load-PcSettings
+Load-DisplaySettings
 Refresh-All
 Restore-ControlCenterTab
 Apply-ControlCenterWindowPlacement
