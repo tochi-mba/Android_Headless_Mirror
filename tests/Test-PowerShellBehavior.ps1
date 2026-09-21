@@ -99,6 +99,39 @@ function Get-SupervisorFunctionDefinitions {
     return $selectedDefinitions
 }
 
+function Get-MirrorChromeFunctionDefinitions {
+    param([string[]]$Names)
+
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        $MirrorChromePath,
+        [ref]$tokens,
+        [ref]$errors
+    )
+
+    Assert-Equal -Expected 0 -Actual $errors.Count -Message "MirrorChrome.ps1 must parse before behavior tests run."
+
+    $definitions = @{}
+    $ast.FindAll(
+        {
+            param($Node)
+            $Node -is [System.Management.Automation.Language.FunctionDefinitionAst]
+        },
+        $true
+    ) | ForEach-Object {
+        $definitions[$_.Name] = $_.Extent.Text
+    }
+
+    $selectedDefinitions = @()
+    foreach ($name in $Names) {
+        Assert-True -Condition $definitions.ContainsKey($name) -Message "Mirror chrome function '$name' must exist."
+        $selectedDefinitions += $definitions[$name]
+    }
+
+    return $selectedDefinitions
+}
+
 function Get-OverlayFunctionDefinitions {
     param([string[]]$Names)
 
@@ -172,6 +205,17 @@ foreach ($definition in $overlayFunctionDefinitions) {
     Invoke-Expression $definition
 }
 
+$mirrorChromeFunctionDefinitions = @(Get-MirrorChromeFunctionDefinitions -Names @(
+    "Get-TouchpadGestureMetrics",
+    "Normalize-Angle",
+    "Get-SyntheticPinchPoint",
+    "Get-ClampedHostZoom"
+))
+
+foreach ($definition in $mirrorChromeFunctionDefinitions) {
+    Invoke-Expression $definition
+}
+
 
 Write-Host "[powershell] Testing overlay script safe-load mode..."
 & $OverlayPath -Serial "TEST_SERIAL" -TestOnly
@@ -180,6 +224,29 @@ Assert-True -Condition $true -Message "PatternOverlay.ps1 -TestOnly should execu
 Write-Host "[powershell] Testing mirror-toolbar script safe-load mode..."
 & $MirrorChromePath -Serial "TEST_SERIAL" -TestOnly
 Assert-True -Condition $true -Message "MirrorChrome.ps1 -TestOnly should compile native helpers without creating a toolbar or magnifier."
+
+Write-Host "[powershell] Testing native touchpad pinch math..."
+$contacts = @{
+    "1" = [pscustomobject]@{ X = 0.0; Y = 0.0 }
+    "2" = [pscustomobject]@{ X = 3.0; Y = 4.0 }
+}
+$metrics = Get-TouchpadGestureMetrics $contacts
+Assert-Equal -Expected 5.0 -Actual ([Math]::Round($metrics.Distance, 6)) -Message "Touchpad distance should use both physical contacts."
+Assert-Equal -Expected ([Math]::Round([Math]::Atan2(4.0, 3.0), 6)) -Actual ([Math]::Round($metrics.Angle, 6)) -Message "Touchpad angle should follow the two-contact vector."
+Assert-True -Condition ($null -eq (Get-TouchpadGestureMetrics @{"1" = [pscustomobject]@{ X = 1; Y = 1 }})) -Message "A single touchpad contact must not be treated as a pinch."
+
+Assert-Equal -Expected ([Math]::Round(-[Math]::PI + 0.2, 6)) -Actual ([Math]::Round((Normalize-Angle ([Math]::PI + 0.2)), 6)) -Message "Angle normalization should wrap positive overflow."
+Assert-Equal -Expected ([Math]::Round([Math]::PI - 0.2, 6)) -Actual ([Math]::Round((Normalize-Angle (-[Math]::PI - 0.2)), 6)) -Message "Angle normalization should wrap negative overflow."
+
+$pinchRect = [pscustomobject]@{ Left = 0; Top = 0; Right = 1000; Bottom = 2000 }
+$pinchPoint = Get-SyntheticPinchPoint $pinchRect 200.0 1.5 0.0
+Assert-Equal -Expected 800 -Actual $pinchPoint.X -Message "Synthetic pinch X should scale radially from the mirror center."
+Assert-Equal -Expected 1000 -Actual $pinchPoint.Y -Message "Synthetic pinch Y should stay centered for zero rotation."
+
+$zoomConfig = [pscustomobject]@{ MinZoom = 1.0; MaxZoom = 4.0 }
+Assert-Equal -Expected 2.0 -Actual (Get-ClampedHostZoom 1.0 2.0 $zoomConfig) -Message "Host zoom should follow touchpad scale."
+Assert-Equal -Expected 4.0 -Actual (Get-ClampedHostZoom 3.0 2.0 $zoomConfig) -Message "Host zoom should clamp to maximum."
+Assert-Equal -Expected 1.0 -Actual (Get-ClampedHostZoom 1.5 0.2 $zoomConfig) -Message "Host zoom should clamp to 100 percent minimum."
 
 
 Write-Host "[powershell] Testing non-pattern modes never launch an overlay..."
