@@ -10,17 +10,20 @@ public static class RexBrand
     public const string Danger = "#FF774D";
     public const string Line = "#29302A";
 
-    public static void Header(string subtitle = "ANDROID HEADLESS MIRROR")
+    public static void Header(string subtitle = "ANDROID HEADLESS MIRROR") =>
+        Header(AnsiConsole.Console, subtitle);
+
+    public static void Header(IAnsiConsole console, string subtitle = "ANDROID HEADLESS MIRROR")
     {
-        AnsiConsole.Clear();
+        console.Clear();
 
         var title = new FigletText("REX")
             .LeftJustified()
             .Color(Color.Parse(Signal));
 
-        AnsiConsole.Write(title);
-        AnsiConsole.MarkupLine($"[{Signal}]TECHNOLOGIES[/]  [{Muted}]{Markup.Escape(subtitle)}[/]");
-        AnsiConsole.Write(new Rule().RuleStyle(Line));
+        console.Write(title);
+        console.MarkupLine($"[{Signal}]TECHNOLOGIES[/]  [{Muted}]{Markup.Escape(subtitle)}[/]");
+        console.Write(new Rule().RuleStyle(Line));
     }
 
     public static Panel Panel(string title, IRenderable body)
@@ -34,14 +37,18 @@ public static class RexBrand
         };
     }
 
-    public static void Success(string message) =>
-        AnsiConsole.MarkupLine($"[{Signal}]✓[/] {Markup.Escape(message)}");
+    public static void Success(string message) => Success(AnsiConsole.Console, message);
+    public static void Warn(string message) => Warn(AnsiConsole.Console, message);
+    public static void Error(string message) => Error(AnsiConsole.Console, message);
 
-    public static void Warn(string message) =>
-        AnsiConsole.MarkupLine($"[{Danger}]![/] {Markup.Escape(message)}");
+    public static void Success(IAnsiConsole console, string message) =>
+        console.MarkupLine($"[{Signal}]✓[/] {Markup.Escape(message)}");
 
-    public static void Error(string message) =>
-        AnsiConsole.MarkupLine($"[{Danger}]ERROR[/] {Markup.Escape(message)}");
+    public static void Warn(IAnsiConsole console, string message) =>
+        console.MarkupLine($"[{Danger}]![/] {Markup.Escape(message)}");
+
+    public static void Error(IAnsiConsole console, string message) =>
+        console.MarkupLine($"[{Danger}]ERROR[/] {Markup.Escape(message)}");
 
     public static string State(bool value, string yes, string no) =>
         value ? $"[{Signal}]{Markup.Escape(yes)}[/]" : $"[{Muted}]{Markup.Escape(no)}[/]";
