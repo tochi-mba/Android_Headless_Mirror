@@ -105,11 +105,16 @@ public sealed class WindowsDisplayHostProbe : IDisplayHostProbe
 
             var lineEnd = output.IndexOfAny(new[] { '\r', '\n' }, index);
             var line = lineEnd < 0 ? output[index..] : output[index..lineEnd];
+            var separator = line.IndexOf(':');
+            if (separator < 0)
+                return CapabilityState.Unknown;
 
-            if (line.Contains("Yes", StringComparison.OrdinalIgnoreCase))
+            var supported = line[(separator + 1)..].TrimStart();
+
+            if (supported.StartsWith("Yes", StringComparison.OrdinalIgnoreCase))
                 return CapabilityState.Reported;
 
-            if (line.Contains("No", StringComparison.OrdinalIgnoreCase))
+            if (supported.StartsWith("No", StringComparison.OrdinalIgnoreCase))
                 return CapabilityState.Unsupported;
 
             return CapabilityState.Unknown;
