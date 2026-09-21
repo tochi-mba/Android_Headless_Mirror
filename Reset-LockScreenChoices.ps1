@@ -8,6 +8,42 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $StateFile = Join-Path $Root "state.json"
+$ConfigFile = Join-Path $Root "config.json"
+
+$CalibrationDirectory = Join-Path $Root "pattern-calibration"
+if (Test-Path $ConfigFile) {
+    try {
+        $config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+        if (
+            $null -ne $config.PSObject.Properties["PatternOverlay"] -and
+            $null -ne $config.PatternOverlay.PSObject.Properties["CalibrationDirectory"] -and
+            -not [string]::IsNullOrWhiteSpace([string]$config.PatternOverlay.CalibrationDirectory)
+        ) {
+            $CalibrationDirectory = Join-Path $Root ([string]$config.PatternOverlay.CalibrationDirectory)
+        }
+    }
+    catch {}
+}
+
+function Get-CalibrationPath([string]$SerialValue) {
+    $safeSerial = ($SerialValue -replace '[^A-Za-z0-9._-]', '_')
+    if ([string]::IsNullOrWhiteSpace($safeSerial)) { $safeSerial = "device" }
+    return Join-Path $CalibrationDirectory ($safeSerial + ".json")
+}
+
+function Remove-CalibrationForSerial([string]$SerialValue) {
+    $path = Get-CalibrationPath $SerialValue
+    if (Test-Path $path) {
+        Remove-Item -Force $path -ErrorAction SilentlyContinue
+    }
+}
+
+function Remove-AllCalibrations {
+    if (-not (Test-Path $CalibrationDirectory)) { return }
+
+    Get-ChildItem -Path $CalibrationDirectory -Filter "*.json" -File -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+}
 
 if (-not (Test-Path $StateFile)) {
     Write-Host "No saved device lock-screen choices exist." -ForegroundColor Yellow
@@ -41,7 +77,8 @@ if ([string]::IsNullOrWhiteSpace($Serial)) {
 if ($Serial -eq "ALL") {
     $state.DeviceProfiles = @()
     $state | ConvertTo-Json -Depth 6 | Set-Content -Path $StateFile -Encoding UTF8
-    Write-Host "Cleared all saved lock-screen choices. Devices will be asked again next time." -ForegroundColor Green
+    Remove-AllCalibrations
+    Write-Host "Cleared all saved lock-screen choices and pattern calibrations. Devices will be asked again next time." -ForegroundColor Green
     exit 0
 }
 
@@ -53,4 +90,5 @@ if ($remaining.Count -eq $profiles.Count) {
 
 $state.DeviceProfiles = @($remaining)
 $state | ConvertTo-Json -Depth 6 | Set-Content -Path $StateFile -Encoding UTF8
-Write-Host "Cleared the saved lock-screen choice for '$Serial'. It will be asked again next time." -ForegroundColor Green
+Remove-CalibrationForSerial $Serial
+Write-Host "Cleared the saved lock-screen choice and pattern calibration for '$Serial'. It will be asked again next time." -ForegroundColor Green
