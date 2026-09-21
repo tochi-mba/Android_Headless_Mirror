@@ -693,7 +693,6 @@ public static class MachineMode
         new(exitCode, JsonSerializer.Serialize(payload, new JsonSerializerOptions
         {
             WriteIndented = false,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         }));
 
