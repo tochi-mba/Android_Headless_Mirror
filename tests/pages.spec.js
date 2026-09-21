@@ -116,7 +116,8 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
   });
 
   test('copy control copies the clone command and confirms success', async ({ page }) => {
-    const copy = page.getByRole('button', { name: 'Copy' });
+    const copy = page.locator('.copy-button');
+    await expect(copy).toHaveText('Copy');
     await copy.click();
     await expect(copy).toHaveText('Copied');
 
