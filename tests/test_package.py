@@ -182,6 +182,9 @@ class RepositoryContractTests(unittest.TestCase):
             "Remove-Autostart.ps1",
             "Start-PhoneMirror.ps1",
             "Stop-PhoneMirror.ps1",
+            "PatternOverlay.ps1",
+            "Reset-LockScreenChoices.ps1",
+            "RESET_LOCK_SCREEN_CHOICES.bat",
             "Start-Hidden.vbs",
             "config.json",
             "README.md",
@@ -254,6 +257,7 @@ class RepositoryContractTests(unittest.TestCase):
                 "PreferredSerial",
                 "Wireless",
                 "Logging",
+                "PatternOverlay",
             },
         )
         self.assertEqual(
@@ -270,6 +274,26 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(
             set(config["Logging"]),
             {"Enabled", "MaxBytes", "KeepFiles"},
+        )
+        self.assertEqual(
+            set(config["PatternOverlay"]),
+            {
+                "Enabled",
+                "PromptPerDevice",
+                "AutoShowOnKeyguard",
+                "ManualToggleHotkey",
+                "KeyguardPollMilliseconds",
+                "WindowPollMilliseconds",
+                "Opacity",
+                "GridCenterX",
+                "GridCenterY",
+                "GridSizeRelativeToWidth",
+                "DotRadiusRelativeToWidth",
+                "ShowCursorTrail",
+                "ManualShowSeconds",
+                "TrailHoldMilliseconds",
+                "FrameMilliseconds",
+            },
         )
 
     def test_config_defaults_are_safe_and_bounded(self):
@@ -289,6 +313,117 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreater(config["Logging"]["MaxBytes"], 100_000)
         self.assertGreaterEqual(config["Logging"]["KeepFiles"], 1)
         self.assertEqual(config["WindowTitle"], "Android Device")
+        overlay = config["PatternOverlay"]
+        self.assertTrue(overlay["Enabled"])
+        self.assertTrue(overlay["PromptPerDevice"])
+        self.assertTrue(overlay["AutoShowOnKeyguard"])
+        self.assertEqual(overlay["ManualToggleHotkey"], "Ctrl+Alt+P")
+        self.assertGreaterEqual(overlay["Opacity"], 0.2)
+        self.assertLessEqual(overlay["Opacity"], 1.0)
+        self.assertGreater(overlay["GridSizeRelativeToWidth"], 0.0)
+        self.assertLessEqual(overlay["GridSizeRelativeToWidth"], 1.0)
+        self.assertGreater(overlay["DotRadiusRelativeToWidth"], 0.0)
+        self.assertGreaterEqual(overlay["WindowPollMilliseconds"], 50)
+        self.assertGreaterEqual(overlay["KeyguardPollMilliseconds"], 250)
+        self.assertGreaterEqual(overlay["FrameMilliseconds"], 12)
+
+    # ---------- Pattern overlay ----------
+
+    def test_lock_screen_modes_cover_pattern_other_none_and_session_off(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        prompt_start = text.index("function Get-OrPromptLockScreenMode")
+        prompt_end = text.index("function Find-Tool", prompt_start)
+        prompt = text[prompt_start:prompt_end]
+        for mode in ['"pattern"', '"other"', '"none"', '"session-off"']:
+            self.assertIn(mode, prompt)
+        self.assertIn("Does this Android device use any screen lock?", prompt)
+        self.assertIn("Does this device use Android pattern unlock?", prompt)
+
+    def test_only_pattern_mode_starts_overlay_sidecar(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        start = text.index("function Start-PatternOverlay")
+        end = text.index("function Stop-PatternOverlay", start)
+        function = text[start:end]
+        self.assertIn('$LockScreenMode -ne "pattern"', function)
+        self.assertIn("PatternOverlay.ps1", function)
+
+    def test_overlay_is_visual_only_and_never_injects_unlock_input(self):
+        text = self.read("PatternOverlay.ps1").lower()
+        forbidden = [
+            "input swipe",
+            "input tap",
+            "input text",
+            "locksettings verify",
+            "locksettings set",
+            "password=",
+            "pin=",
+        ]
+        for needle in forbidden:
+            with self.subTest(needle=needle):
+                self.assertNotIn(needle, text)
+
+    def test_overlay_does_not_persist_pattern_or_cursor_path(self):
+        text = self.read("PatternOverlay.ps1")
+        for writer in ["Set-Content", "Add-Content", "Out-File", "Export-Csv"]:
+            with self.subTest(writer=writer):
+                self.assertNotIn(writer, text)
+        self.assertNotIn("state.json", text)
+        self.assertIn("$trail.Points.Clear()", text)
+
+    def test_overlay_window_is_click_through_and_non_activating(self):
+        text = self.read("PatternOverlay.ps1")
+        for contract in [
+            "WS_EX_TRANSPARENT",
+            "WS_EX_NOACTIVATE",
+            "WS_EX_TOOLWINDOW",
+            "SWP_NOACTIVATE",
+            "IsHitTestVisible = $false",
+            "ShowActivated = $false",
+        ]:
+            self.assertIn(contract, text)
+
+    def test_overlay_supports_window_tracking_dpi_and_multi_monitor_coordinates(self):
+        text = self.read("PatternOverlay.ps1")
+        for contract in [
+            "GetClientRect",
+            "ClientToScreen",
+            "SetWindowPos",
+            "SetProcessDpiAwarenessContext",
+            "FindWindowByExactTitle",
+        ]:
+            self.assertIn(contract, text)
+
+    def test_overlay_has_keyguard_detection_and_manual_fallback(self):
+        text = self.read("PatternOverlay.ps1")
+        for contract in [
+            "Get-KeyguardStateFromText",
+            "dumpsys window",
+            "dumpsys trust",
+            "AutoShowOnKeyguard",
+            "ManualToggleHotkey",
+            "GetAsyncKeyState",
+        ]:
+            self.assertIn(contract, text)
+
+    def test_supervisor_migrates_old_state_shape_for_device_profiles(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn("function Ensure-StateShape", text)
+        self.assertIn('Add-Member -NotePropertyName DeviceProfiles', text)
+        self.assertIn("Ensure-StateShape (Get-Content $StateFile", text)
+
+    def test_stop_kills_overlay_sidecars_without_touching_global_adb(self):
+        text = self.read("Stop-PhoneMirror.ps1")
+        self.assertIn("PatternOverlay\\.ps1", text)
+        self.assertIn("Stop-Process", text)
+        self.assertNotIn("kill-server", text)
+        self.assertNotIn("adb.exe", text)
+
+    def test_lock_screen_choice_reset_preserves_other_state(self):
+        text = self.read("Reset-LockScreenChoices.ps1")
+        self.assertIn("DeviceProfiles", text)
+        self.assertIn("PreferredSerial", self.read("Start-PhoneMirror.ps1"))
+        self.assertNotIn("Remove-Item", text)
+        self.assertIn('if ($Serial -eq "ALL")', text)
 
     # ---------- Setup/install security ----------
 
@@ -374,6 +509,11 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn('$ErrorActionPreference = "Continue"', invoke)
         self.assertIn('$ErrorActionPreference = $previousErrorActionPreference', invoke)
         self.assertIn('PSNativeCommandUseErrorActionPreference', invoke)
+
+    def test_scrcpy_window_title_is_unique_per_device_for_overlay_tracking(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn('$sessionTitle = "{0} [{1}]"', text)
+        self.assertIn('$args.Add("--window-title=$sessionTitle")', text)
 
     def test_scrcpy_arguments_cover_expected_controls(self):
         text = self.read("Start-PhoneMirror.ps1")
