@@ -407,6 +407,9 @@ public static class Program
             "Samsung DeX candidate",
             Markup.Escape(DisplayState(probe.SamsungDexCandidate)));
         summary.AddRow(
+            "Protected-content policy",
+            Markup.Escape(probe.ProtectedContentPolicy));
+        summary.AddRow(
             "Windows Wireless Display",
             Markup.Escape(DisplayState(probe.Host.WirelessDisplayFeature)));
         summary.AddRow(
