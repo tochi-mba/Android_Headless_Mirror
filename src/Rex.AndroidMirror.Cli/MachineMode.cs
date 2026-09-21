@@ -117,6 +117,48 @@ public static class MachineMode
                     return Success("autostart", new { enabled });
                 }
 
+                case "shortcut":
+                {
+                    Require(args, 2, "shortcut <install|remove>");
+                    var install = args[1].ToLowerInvariant() switch
+                    {
+                        "install" or "on" => true,
+                        "remove" or "off" => false,
+                        _ => throw new ArgumentException("shortcut expects install or remove.")
+                    };
+
+                    var result = await runner.RunPowerShellAsync(
+                        install ? paths.InstallRexShortcut : paths.RemoveRexShortcut);
+
+                    if (!result.Ok)
+                        return ProcessFailure("shortcut", result);
+
+                    return Success("shortcut", new { installed = install });
+                }
+
+                case "smart":
+                {
+                    var outcome = await new SmartLauncher(paths, runner, bridge)
+                        .RunAsync(cancellationToken: default);
+
+                    if (outcome.OpenInteractiveCli)
+                    {
+                        return Success("smart", new
+                        {
+                            decision = outcome.Decision.ToString(),
+                            interactiveRequired = true,
+                            message = outcome.Message
+                        });
+                    }
+
+                    return Success("smart", new
+                    {
+                        decision = outcome.Decision.ToString(),
+                        interactiveRequired = false,
+                        message = outcome.Message
+                    });
+                }
+
                 case "diagnostics":
                 {
                     var result = await runner.RunPowerShellAsync(paths.Diagnostics);
@@ -447,7 +489,7 @@ public static class MachineMode
         commands = new[]
         {
             "status", "devices", "start", "stop", "setup", "repair",
-            "autostart", "diagnostics", "controls", "action", "mirror",
+            "autostart", "shortcut", "smart", "diagnostics", "controls", "action", "mirror",
             "device", "android", "config", "screenshot", "lock-mode",
             "reset-lock"
         },
