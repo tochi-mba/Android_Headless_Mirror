@@ -403,7 +403,8 @@ function Select-Device($Devices, $State) {
 function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     $args = New-Object System.Collections.Generic.List[string]
     $args.Add("--serial=$Serial")
-    $args.Add("--window-title=$($Config.WindowTitle)")
+    $sessionTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
+    $args.Add("--window-title=$sessionTitle")
 
     if ($Config.TurnPhysicalScreenOff) {
         $args.Add("--turn-screen-off")
@@ -475,6 +476,43 @@ function Invoke-Scrcpy([string]$Executable, [string[]]$Arguments, [bool]$ShowOut
             $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
         }
     }
+}
+
+
+function Start-PatternOverlay([string]$Serial, [string]$LockScreenMode) {
+    if ($LockScreenMode -ne "pattern") { return $null }
+    if (-not $Config.PatternOverlay.Enabled) { return $null }
+
+    $overlayScript = Join-Path $Root "PatternOverlay.ps1"
+    if (-not (Test-Path $overlayScript)) {
+        Log "Pattern overlay requested but PatternOverlay.ps1 is missing." "WARN"
+        return $null
+    }
+
+    try {
+        $quote = [char]34
+        $argumentLine =
+            "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " +
+            $quote + $overlayScript + $quote +
+            " -Serial " + $quote + $Serial + $quote
+
+        return Start-Process -FilePath "powershell.exe" -ArgumentList $argumentLine -PassThru -WindowStyle Hidden
+    }
+    catch {
+        Log "Could not start pattern overlay: $($_.Exception.Message)" "WARN"
+        return $null
+    }
+}
+
+function Stop-PatternOverlay($Process) {
+    if ($null -eq $Process) { return }
+
+    try {
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
 }
 
 function Prepare-DeviceForMirror([string]$Adb, [string]$Serial) {
@@ -593,12 +631,20 @@ try {
                 }
             }
 
+            $lockScreenMode = Get-OrPromptLockScreenMode $Adb $selected.Serial $State
             Prepare-DeviceForMirror $Adb $selected.Serial
 
             $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
             Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
 
-            $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
+            $overlayProcess = Start-PatternOverlay $selected.Serial $lockScreenMode
+            try {
+                $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
+            }
+            finally {
+                Stop-PatternOverlay $overlayProcess
+            }
+
             Log "scrcpy exited with code $exitCode"
 
             if (Test-Path $StopFile) { break }
