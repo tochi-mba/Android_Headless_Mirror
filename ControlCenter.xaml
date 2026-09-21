@@ -300,6 +300,22 @@
               <TextBlock Text="scrcpy records clean device-timestamped video/audio. Runtime stop/start recording is not available in scrcpy 4.1, so this applies on the next mirror launch." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/>
             </GroupBox>
 
+            <GroupBox Header="Control Center">
+              <CheckBox x:Name="PcControlCenterEnabledCheck" Content="Enable the per-device Control Center"/>
+              <CheckBox x:Name="PcControlCenterOpenCheck" Content="Open Control Center automatically when the mirror connects"/>
+              <CheckBox x:Name="PcControlCenterDockCheck" Content="Dock Control Center beside the scrcpy window when space permits"/>
+              <CheckBox x:Name="PcControlCenterTopmostCheck" Content="Keep Control Center always on top"/>
+              <CheckBox x:Name="PcControlCenterRememberTabCheck" Content="Remember the last selected section per device"/>
+              <CheckBox x:Name="PcAdvancedWritesEnabledCheck" Content="Allow Advanced Android setting writes/deletes"/>
+              <CheckBox x:Name="PcConfirmAdvancedWritesCheck" Content="Confirm sensitive/advanced Android setting changes"/>
+              <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <TextBlock Text="Window size" Width="190" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcControlCenterWidthText" Width="90" Margin="0,0,6,0"/>
+                <TextBlock Text="×" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox x:Name="PcControlCenterHeightText" Width="90"/>
+              </StackPanel>
+            </GroupBox>
+
             <GroupBox Header="Advanced scrcpy launch">
               <TextBlock Text="Extra raw scrcpy arguments" Margin="0,0,0,6"/>
               <TextBox x:Name="PcExtraScrcpyArgsText" AcceptsReturn="False"/>
