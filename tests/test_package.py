@@ -184,6 +184,10 @@ class RepositoryContractTests(unittest.TestCase):
             "Stop-PhoneMirror.ps1",
             "PatternOverlay.ps1",
             "MirrorChrome.ps1",
+            "ControlCenter.ps1",
+            "ControlCenter.xaml",
+            "DeviceControl.ps1",
+            "ScrcpyControl.ps1",
             "Reset-LockScreenChoices.ps1",
             "RESET_LOCK_SCREEN_CHOICES.bat",
             "Start-Hidden.vbs",
@@ -193,6 +197,8 @@ class RepositoryContractTests(unittest.TestCase):
             ".github/workflows/ci.yml",
             ".github/workflows/pages.yml",
             "tests/Test-PowerShellBehavior.ps1",
+            "tests/Test-ControlCenterE2E.ps1",
+            "tests/Test-ControlCenterVisual.ps1",
             "tests/pages.spec.js",
             "playwright.config.js",
             "package.json",
@@ -231,7 +237,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_runtime_artifacts_are_gitignored(self):
         gitignore = self.read(".gitignore")
-        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/"]:
+        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/"]:
             self.assertIn(entry, gitignore)
 
     # ---------- Configuration ----------
@@ -260,6 +266,9 @@ class RepositoryContractTests(unittest.TestCase):
                 "Logging",
                 "PatternOverlay",
                 "MirrorChrome",
+                "ControlCenter",
+                "ScrcpySession",
+                "ExtraScrcpyArgs",
             },
         )
         self.assertEqual(
@@ -322,6 +331,37 @@ class RepositoryContractTests(unittest.TestCase):
                 "CtrlTouchpadPinchToHostZoom",
                 "TouchpadPinchThreshold",
                 "TouchpadBaseRadiusRelativeToClient",
+        self.assertEqual(
+            set(config["ControlCenter"]),
+            {
+                "Enabled",
+                "OpenOnLaunch",
+                "DockToMirror",
+                "AlwaysOnTop",
+                "Width",
+                "Height",
+                "RememberLastTab",
+                "ConfirmSensitiveDeviceWrites",
+                "AdvancedSettingsWritesEnabled",
+                "ScreenshotDirectory",
+            },
+        )
+        self.assertEqual(
+            set(config["ScrcpySession"]),
+            {
+                "VideoCodec",
+                "AudioEnabled",
+                "AudioCodec",
+                "AudioDup",
+                "AudioBufferMs",
+                "Fullscreen",
+                "AlwaysOnTop",
+                "DisableScreensaver",
+                "RecordOnStart",
+                "RecordDirectory",
+            },
+        )
+
             },
         )
 
@@ -382,6 +422,23 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertLess(chrome["TouchpadPinchThreshold"], 0.2)
         self.assertGreater(chrome["TouchpadBaseRadiusRelativeToClient"], 0.05)
         self.assertLess(chrome["TouchpadBaseRadiusRelativeToClient"], 0.5)
+
+        center = config["ControlCenter"]
+        self.assertTrue(center["Enabled"])
+        self.assertGreaterEqual(center["Width"], 900)
+        self.assertGreaterEqual(center["Height"], 640)
+        self.assertTrue(center["ConfirmSensitiveDeviceWrites"])
+        self.assertTrue(center["AdvancedSettingsWritesEnabled"])
+        self.assertTrue(center["ScreenshotDirectory"].startswith("captures/"))
+
+        session = config["ScrcpySession"]
+        self.assertIn(session["VideoCodec"], {"h264", "h265", "av1"})
+        self.assertIn(session["AudioCodec"], {"opus", "aac", "flac", "raw"})
+        self.assertTrue(session["AudioEnabled"])
+        self.assertGreaterEqual(session["AudioBufferMs"], 0)
+        self.assertTrue(session["DisableScreensaver"])
+        self.assertTrue(session["RecordDirectory"].startswith("captures/"))
+        self.assertEqual(config["ExtraScrcpyArgs"], "")
 
     # ---------- Pattern overlay ----------
 
@@ -642,6 +699,83 @@ class RepositoryContractTests(unittest.TestCase):
     def test_stop_kills_mirror_toolbar_sidecars(self):
         text = self.read("Stop-PhoneMirror.ps1")
         self.assertIn("MirrorChrome\\.ps1", text)
+
+    # ---------- Control center ----------
+
+    def test_control_center_has_organized_pc_device_advanced_and_diagnostics_tabs(self):
+        xaml = self.read("ControlCenter.xaml")
+        for header in [
+            'Header="Controls"',
+            'Header="PC / mirror settings"',
+            'Header="Device settings"',
+            'Header="Advanced Android"',
+            'Header="Diagnostics"',
+        ]:
+            self.assertIn(header, xaml)
+
+    def test_control_center_covers_scrcpy_runtime_surface(self):
+        script = self.read("ScrcpyControl.ps1")
+        for action in [
+            "fullscreen", "fit", "pixel-perfect", "rotate-left", "rotate-right",
+            "flip-horizontal", "flip-vertical", "pause", "resume",
+            "reset-capture", "fps", "home", "back", "apps", "menu",
+            "power", "sleep", "wake", "rotate-device", "notifications",
+            "quick-settings", "collapse-panels", "volume-down", "volume-up",
+            "copy", "cut", "paste-sync", "paste-inject", "keyboard-settings",
+        ]:
+            self.assertIn(action, script)
+
+    def test_device_settings_are_capability_driven_and_runtime_enumerated(self):
+        script = self.read("DeviceControl.ps1")
+        for contract in [
+            'settings","list"',
+            'ValidateSet("system","secure","global")',
+            "Get-AndroidSettingsNamespace",
+            "Set-AndroidSetting",
+            "Remove-AndroidSetting",
+            "Get-AndroidCommandServices",
+        ]:
+            self.assertIn(contract, script)
+
+    def test_sensitive_device_settings_have_guardrails(self):
+        script = self.read("DeviceControl.ps1")
+        for protected in [
+            "adb_enabled",
+            "development_settings_enabled",
+            "android_id",
+            "bluetooth_address",
+        ]:
+            self.assertIn(protected, script)
+        self.assertIn('"protected"', script)
+
+    def test_control_center_is_reachable_from_always_on_mirror_toolbar(self):
+        chrome = self.read("MirrorChrome.ps1")
+        self.assertIn('New-ToolbarButton "Controls"', chrome)
+        self.assertIn("Open-ControlCenter", chrome)
+        self.assertIn("ControlCenter.ps1", chrome)
+
+    def test_control_center_and_runtime_artifacts_stop_with_package(self):
+        stop = self.read("Stop-PhoneMirror.ps1")
+        self.assertIn("ControlCenter\\.ps1", stop)
+        chrome = self.read("MirrorChrome.ps1")
+        self.assertIn("controlCenterProcess", chrome)
+
+    def test_scrcpy_session_preferences_are_applied_to_launch_arguments(self):
+        supervisor = self.read("Start-PhoneMirror.ps1")
+        for option in [
+            "--video-codec=",
+            "--no-audio",
+            "--audio-codec=",
+            "--audio-dup",
+            "--audio-buffer=",
+            "--fullscreen",
+            "--always-on-top",
+            "--disable-screensaver",
+            "--record=",
+        ]:
+            self.assertIn(option, supervisor)
+        self.assertIn("Split-ExtraScrcpyArguments", supervisor)
+        self.assertIn("cannot override required Android Headless Mirror option", supervisor)
 
     # ---------- Setup/install security ----------
 
