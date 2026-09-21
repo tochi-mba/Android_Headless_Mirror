@@ -116,11 +116,10 @@ public static class Program
                     "-Serial", serial
                 };
 
-                _ = await runner.RunAsync(
+                _ = await runner.StartDetachedAsync(
                     "powershell.exe",
                     psArgs,
-                    paths.Root,
-                    captureOutput: false);
+                    paths.Root);
 
                 RexBrand.Success($"Opened Control Center for {serial}.");
                 return 0;
