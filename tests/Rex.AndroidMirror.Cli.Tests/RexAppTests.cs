@@ -74,7 +74,7 @@ public sealed class RexAppTests
             x.Kind == "powershell" &&
             x.FileName == package.Paths.InstallAutostart);
 
-        var lockCall = Assert.Single(bridge.Calls.Where(x => x.Action == "set-lock-mode"));
+        var lockCall = Assert.Single(bridge.Calls, x => x.Action == "set-lock-mode");
         Assert.Equal("USB123", lockCall.Serial);
         Assert.Equal("pattern", lockCall.Value);
 
@@ -146,7 +146,7 @@ public sealed class RexAppTests
         var code = await app.RunAsync();
 
         Assert.Equal(0, code);
-        var call = Assert.Single(bridge.Calls.Where(x => x.Action == "scrcpy-action"));
+        var call = Assert.Single(bridge.Calls, x => x.Action == "scrcpy-action");
         Assert.Equal("sleep", call.Name);
         Assert.Equal("USB123", call.Serial);
     }
