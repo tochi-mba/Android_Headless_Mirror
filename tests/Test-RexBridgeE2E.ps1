@@ -123,7 +123,16 @@ exit /b 0
     Write-Host "[rex-bridge] protected-key refusal"
     $failure = Invoke-Bridge "settings-set" @("-Serial","USB123","-Namespace","global","-Key","adb_enabled","-Value","0") -ExpectFailure
     Assert-True (-not $failure.Ok) "Protected key write should return Ok=false."
-    Assert-True ([string]$failure.Error -match "protect") "Protected key failure should explain the guardrail."
+    $failureMessage = if ($null -ne $failure.PSObject.Properties["Error"]) {
+        [string]$failure.Error
+    }
+    elseif ($null -ne $failure.PSObject.Properties["Text"]) {
+        [string]$failure.Text
+    }
+    else {
+        ""
+    }
+    Assert-True ($failureMessage -match "protect") "Protected key failure should explain the guardrail."
 
     Write-Host "[rex-bridge] lock-mode persistence"
     $lock = Invoke-Bridge "set-lock-mode" @("-Serial","USB123","-Value","pattern")
