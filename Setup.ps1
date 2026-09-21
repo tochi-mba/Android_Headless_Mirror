@@ -115,6 +115,18 @@ try {
         & (Join-Path $Root "Install-Autostart.ps1")
     }
 
+    $rexBootstrap = Join-Path $Root "Bootstrap-RexCli.ps1"
+    if (Test-Path $rexBootstrap) {
+        try {
+            Write-Step "Preparing the REX command-line app..."
+            & $rexBootstrap
+        }
+        catch {
+            Write-Warning ("REX CLI bootstrap was not available yet: " + $_.Exception.Message)
+            Write-Warning "The classic launchers remain usable. REX.bat can retry the CLI bootstrap later."
+        }
+    }
+
     Write-Step "Setup complete."
 }
 finally {
