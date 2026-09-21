@@ -5,4 +5,4 @@ stop.flag
 *.log
 __pycache__/
 *.pyc
-pattern-calibration.json
+pattern-calibration/
