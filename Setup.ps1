@@ -127,6 +127,12 @@ try {
         }
     }
 
+    $rexShortcut = Join-Path $Root "Install-Rex-Shortcut.ps1"
+    if (Test-Path $rexShortcut) {
+        Write-Step "Installing the REX desktop shortcut..."
+        & $rexShortcut
+    }
+
     Write-Step "Setup complete."
 }
 finally {
