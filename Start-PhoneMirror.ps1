@@ -281,6 +281,24 @@ function Select-Device($Devices, $State) {
     if (-not [string]::IsNullOrWhiteSpace($preferred)) {
         $match = $ready | Where-Object { $_.Serial -eq $preferred } | Select-Object -First 1
         if ($match) { return $match }
+
+        if ($Config.LockToPreferredDevice) {
+            # ADB-over-TCP/IP uses host:port instead of the USB serial. Only allow
+            # a TCP fallback if its host was learned from the preferred USB device.
+            if ($Config.Wireless.Enabled -and $null -ne $State.WirelessHosts) {
+                $knownHosts = @(Unique-Strings @($State.WirelessHosts))
+                $knownTcp = @(
+                    $ready | Where-Object {
+                        if (-not $_.IsTcp) { return $false }
+                        $hostPart = ([string]$_.Serial) -replace ':\d+$', ''
+                        return $knownHosts -contains $hostPart
+                    }
+                )
+                if ($knownTcp.Count -gt 0) { return $knownTcp[0] }
+            }
+
+            return $null
+        }
     }
 
     if ($Config.PreferUsb) {
@@ -304,6 +322,10 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
         $args.Add("--stay-awake")
     }
 
+    if ($Config.KeepActiveDuringMirror) {
+        $args.Add("--keep-active")
+    }
+
     if ($Config.PowerOffOnClose) {
         $args.Add("--power-off-on-close")
     }
@@ -321,6 +343,29 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     }
 
     return @($args)
+}
+
+function Prepare-DeviceForMirror([string]$Adb, [string]$Serial) {
+    if ($Config.WakeBeforeMirror) {
+        try {
+            & $Adb -s $Serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
+        }
+        catch {
+            Log "Wake command failed; continuing." "WARN"
+        }
+    }
+
+    if ($Config.DismissKeyguardWhenPossible) {
+        try {
+            # Android only dismisses the keyguard here when authentication is not
+            # required (for example, an insecure/trusted keyguard). If credentials
+            # are required, Android keeps the security boundary intact.
+            & $Adb -s $Serial shell wm dismiss-keyguard 2>$null | Out-Null
+        }
+        catch {
+            Log "Keyguard dismiss request failed; continuing with the lock screen visible." "WARN"
+        }
+    }
 }
 
 function Wait-ForDeviceDisconnect([string]$Adb, [string]$Serial) {
@@ -411,14 +456,7 @@ try {
                 }
             }
 
-            if ($Config.WakeBeforeMirror) {
-                try {
-                    & $Adb -s $selected.Serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
-                }
-                catch {
-                    Log "Wake command failed; continuing." "WARN"
-                }
-            }
+            Prepare-DeviceForMirror $Adb $selected.Serial
 
             $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
             Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
@@ -443,7 +481,19 @@ try {
                 break
             }
 
-            Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+            # A cable pull/device restart is not a scrcpy crash. If the selected
+            # transport is gone, return directly to the 1-second connection poll.
+            # Only use the longer retry delay when the device is still online and
+            # scrcpy itself failed unexpectedly.
+            $afterExit = @(Get-AdbDevices $Adb)
+            $stillOnline = @(
+                $afterExit | Where-Object {
+                    $_.Serial -eq $selected.Serial -and $_.State -eq "device"
+                }
+            )
+            if ($stillOnline.Count -gt 0) {
+                Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+            }
         }
         catch {
             Log "Loop error: $($_.Exception.Message)" "ERROR"
