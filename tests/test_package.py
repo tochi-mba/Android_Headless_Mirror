@@ -606,6 +606,9 @@ class RepositoryContractTests(unittest.TestCase):
             "authorized",
             "unauthorized",
             "offline",
+            "ArrowRight",
+            "ArrowLeft",
+            "Escape",
         ]:
             self.assertIn(contract, js)
 
@@ -620,9 +623,17 @@ class RepositoryContractTests(unittest.TestCase):
             "ubuntu-latest",
             "playwright",
             "chromium",
-            "pages.spec.js",
+            "npm run test:pages",
         ]:
             self.assertIn(required, workflow)
+
+    def test_browser_test_dependencies_are_exactly_pinned(self):
+        package = json.loads(self.read("package.json"))
+        dev = package["devDependencies"]
+        self.assertRegex(dev["@playwright/test"], r"^\d+\.\d+\.\d+$")
+        self.assertRegex(dev["@axe-core/playwright"], r"^\d+\.\d+\.\d+$")
+        self.assertFalse(dev["@playwright/test"].startswith("^"))
+        self.assertFalse(dev["@axe-core/playwright"].startswith("^"))
 
     def test_pages_workflow_uses_official_pages_actions(self):
         workflow = self.read(".github/workflows/pages.yml")
