@@ -147,6 +147,42 @@ public sealed class ProgramTests
     }
 
     [Fact]
+    public async Task MirrorZoom_DispatchesHostOnlyMirrorCommand()
+    {
+        using var package = new TempPackage();
+        var bridge = new FakeBridgeClient();
+        bridge.Devices.Add(new RexDevice("USB123", "device", false, "", "", "Android"));
+
+        var code = await Program.RunCommandAsync(
+            new[] { "mirror", "zoom-in" },
+            package.Paths, new FakeProcessRunner(), bridge, package.Config);
+
+        Assert.Equal(0, code);
+        var call = Assert.Single(bridge.Calls);
+        Assert.Equal("mirror-command", call.Action);
+        Assert.Equal("USB123", call.Serial);
+        Assert.Equal("zoom-in", call.Name);
+    }
+
+    [Theory]
+    [InlineData("zoom-in")]
+    [InlineData("zoom-out")]
+    [InlineData("reset-zoom")]
+    public async Task MirrorZoom_AllSupportedCommandsAreAccepted(string command)
+    {
+        using var package = new TempPackage();
+        var bridge = new FakeBridgeClient();
+        bridge.Devices.Add(new RexDevice("USB123", "device", false, "", "", "Android"));
+
+        var code = await Program.RunCommandAsync(
+            new[] { "mirror", command },
+            package.Paths, new FakeProcessRunner(), bridge, package.Config);
+
+        Assert.Equal(0, code);
+        Assert.Equal(command, Assert.Single(bridge.Calls).Name);
+    }
+
+    [Fact]
     public async Task DeviceAnimationScale_UpdatesAllThreeAndroidScales()
     {
         using var package = new TempPackage();
