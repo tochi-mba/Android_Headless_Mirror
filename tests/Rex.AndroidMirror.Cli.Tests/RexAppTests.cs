@@ -202,19 +202,14 @@ public sealed class RexAppTests
         var bridge = new FakeBridgeClient();
         var device = new RexDevice("USB123", "device", false, "Samsung", "S24", "Samsung S24");
         bridge.Devices.Add(device);
-        bridge.DefaultStatus = Status(setup: true, devices: new[] { device });
         bridge.AndroidSettings.Add(("adb_enabled", "1", "protected"));
 
         var console = ConsoleWithInput();
-        PushDown(console, 4); // Advanced Android settings
-        console.Input.PushKey(ConsoleKey.Enter);
         console.Input.PushKey(ConsoleKey.Enter); // system
-        console.Input.PushKey(ConsoleKey.Enter); // empty filter
+        console.Input.PushTextWithEnter(""); // no filter
         console.Input.PushKey(ConsoleKey.Enter); // adb_enabled
-        console.Input.PushKey(ConsoleKey.Enter); // Change value
-        PushDown(console, 3); // Back from namespace chooser
-        console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, 13); // Exit main
+        console.Input.PushKey(ConsoleKey.Enter); // Change value -> protected
+        PushDown(console, 3); // namespace chooser -> Back
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -226,9 +221,11 @@ public sealed class RexAppTests
             pauseEnabled: false,
             precisionTouchpadEligible: false);
 
-        Assert.Equal(0, await app.RunAsync());
+        await app.AdvancedAndroidAsync();
+
         Assert.DoesNotContain(bridge.Calls, x =>
             x.Action is "settings-set" or "settings-delete");
+        Assert.Contains("REX protects this key", console.Output);
     }
 
     [Fact]
