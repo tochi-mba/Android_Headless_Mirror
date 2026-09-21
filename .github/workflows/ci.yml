@@ -60,6 +60,7 @@ jobs:
             "Start-PhoneMirror.ps1",
             "Stop-PhoneMirror.ps1",
             "PatternOverlay.ps1",
+            "MirrorChrome.ps1",
             "Reset-LockScreenChoices.ps1",
             "RESET_LOCK_SCREEN_CHOICES.bat",
             "Start-Hidden.vbs",
