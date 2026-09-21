@@ -26,6 +26,18 @@ jobs:
           Get-Content docs/site.webmanifest -Raw | ConvertFrom-Json | Out-Null
           Get-Content package.json -Raw | ConvertFrom-Json | Out-Null
 
+      - name: Validate Control Center XAML
+        shell: powershell
+        run: |
+          [xml](Get-Content ControlCenter.xaml -Raw) | Out-Null
+          Add-Type -AssemblyName PresentationFramework
+          Add-Type -AssemblyName WindowsBase
+          [xml]$xaml = Get-Content ControlCenter.xaml -Raw
+          $reader = New-Object System.Xml.XmlNodeReader $xaml
+          $window = [Windows.Markup.XamlReader]::Load($reader)
+          if ($null -eq $window) { throw "ControlCenter.xaml did not load." }
+          $window.Close()
+
       - name: Validate every PowerShell file parses
         shell: pwsh
         run: |
