@@ -26,6 +26,8 @@ public sealed class ConfigStore
         return rows.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
+    public string BackupPath => _path + ".rex-backup";
+
     public ConfigLeaf Get(string path)
     {
         var node = Resolve(Load(), path)
@@ -59,11 +61,31 @@ public sealed class ConfigStore
         SaveAtomic(root);
     }
 
+    public void RestoreBackup()
+    {
+        if (!File.Exists(BackupPath))
+            throw new InvalidOperationException("No previous REX config backup exists.");
+
+        var candidate = File.ReadAllText(BackupPath);
+        _ = JsonNode.Parse(candidate)?.AsObject()
+            ?? throw new InvalidOperationException("The REX config backup is not a valid JSON object.");
+
+        var currentTemp = _path + ".restore-current";
+        File.Copy(_path, currentTemp, true);
+        File.Copy(BackupPath, _path, true);
+        File.Move(currentTemp, BackupPath, true);
+    }
+
     private void SaveAtomic(JsonObject root)
     {
         var options = new JsonSerializerOptions { WriteIndented = true };
         var temp = _path + ".tmp";
         File.WriteAllText(temp, root.ToJsonString(options) + Environment.NewLine);
+
+        _ = JsonNode.Parse(File.ReadAllText(temp))?.AsObject()
+            ?? throw new InvalidOperationException("Refusing to save an invalid config document.");
+
+        File.Copy(_path, BackupPath, true);
         File.Move(temp, _path, true);
     }
 
