@@ -5,12 +5,21 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $Startup = [Environment]::GetFolderPath("Startup")
-$ShortcutPath = Join-Path $Startup "S21 Headless Mirror.lnk"
+$ShortcutNames = @(
+    "Android Headless Mirror.lnk",
+    "S21 Headless Mirror.lnk"
+)
 
-if (Test-Path $ShortcutPath) {
-    Remove-Item -Force $ShortcutPath
-    Write-Host "Removed: $ShortcutPath"
+$removed = $false
+foreach ($name in $ShortcutNames) {
+    $path = Join-Path $Startup $name
+    if (Test-Path $path) {
+        Remove-Item -Force $path
+        Write-Host "Removed: $path"
+        $removed = $true
+    }
 }
-else {
-    Write-Host "No startup shortcut was installed."
+
+if (-not $removed) {
+    Write-Host "No Android Headless Mirror startup shortcut was installed."
 }
