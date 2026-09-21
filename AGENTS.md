@@ -10,16 +10,24 @@ Coding agents and automation should prefer the repository's machine interface ov
 
 ## Machine-readable entry point
 
-Use either machine-mode spelling:
+For coding agents, prefer the explicit `agent` alias:
 
 ```bat
-REX.bat --plain <command> [args...]
-REX.bat --json <command> [args...]
+REX.bat agent <command> [args...]
 ```
 
-`--plain` and `--json` are aliases for the same versioned, non-interactive JSON protocol. The batch bootstrap is quiet in machine mode so it does not contaminate stdout.
+The following are equivalent machine-mode spellings:
 
-This bootstraps the self-contained REX CLI when needed and invokes the equivalent `rex.exe --plain ...` / `rex.exe --json ...` command.
+```bat
+REX.bat agent status
+REX.bat --json status
+REX.bat status --json
+REX.bat --plain status
+```
+
+`agent`, `--plain`, and `--json` all select the same versioned, non-interactive JSON protocol. The `--plain` / `--json` flags may appear before or after the command. The batch bootstrap is quiet in machine mode so it does not contaminate stdout.
+
+This bootstraps the self-contained REX CLI when needed and invokes the same `MachineMode` contract inside `rex.exe`.
 
 The machine interface:
 
@@ -33,7 +41,13 @@ The machine interface:
 Discover the current machine contract before assuming capabilities:
 
 ```bat
-REX.bat --json capabilities
+REX.bat agent capabilities
+```
+
+If the executable is already bootstrapped, agents may call it directly:
+
+```bat
+tools\rex\rex.exe agent capabilities
 ```
 
 ## Common shell commands
@@ -41,9 +55,9 @@ REX.bat --json capabilities
 Inspect the package:
 
 ```bat
-REX.bat --plain status
-REX.bat --plain devices
-REX.bat --plain diagnostics
+REX.bat agent status
+REX.bat agent devices
+REX.bat agent diagnostics
 ```
 
 Inspect or change PC / mirror configuration:
@@ -126,6 +140,7 @@ If exactly one authorized Android device is connected, `--serial` may be omitted
 Keep these layers separate:
 
 - `src/Rex.AndroidMirror.Cli/` — Spectre interactive CLI and prompt-free JSON machine interface.
+- `src/Rex.AndroidMirror.Cli/MachineMode.cs` — the single stable agent/plain JSON contract; do not create a second competing machine CLI.
 - `RexBridge.ps1` — machine-readable bridge over the existing PowerShell/ADB/scrcpy backend.
 - `DeviceControl.ps1` — friendly Android settings, live Settings Provider access, screenshots and Android command-service probing.
 - `ScrcpyControl.ps1` — scrcpy runtime shortcut adapter.
@@ -272,6 +287,8 @@ When a visual threshold fails, determine whether:
 When a behavior test fails, fix the implementation unless the test is demonstrably asserting the wrong contract.
 
 New user-visible flows should receive executable coverage. New terminal flows should receive deterministic CLI tests. New Pages/UI layouts should receive responsive/accessibility/visual coverage when appropriate.
+
+For machine-mode changes, test all relevant invocation forms (`agent`, prefix flag, suffix flag) and assert the output remains exactly one parseable JSON document with no ANSI/bootstrap chatter.
 
 ## Generated/runtime files
 
