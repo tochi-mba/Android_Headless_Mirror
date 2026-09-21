@@ -102,6 +102,12 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Validate JavaScript syntax
+        run: |
+          node --check docs/app.js
+          node --check playwright.config.js
+          node --check tests/pages.spec.js
+
       - name: Install browser test dependencies
         run: npm install --no-audit --no-fund
 
