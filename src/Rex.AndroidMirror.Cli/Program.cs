@@ -37,7 +37,7 @@ public static class Program
     internal static async Task<int> RunCommandAsync(
         string[] args,
         AppPaths paths,
-        ProcessRunner runner,
+        IProcessRunner runner,
         IBridgeClient bridge,
         ConfigStore config)
     {
@@ -419,7 +419,7 @@ public static class Program
     }
 
     private static async Task<int> RunScriptCommandAsync(
-        ProcessRunner runner,
+        IProcessRunner runner,
         string script,
         IEnumerable<string>? args = null)
     {
