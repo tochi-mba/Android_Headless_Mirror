@@ -174,16 +174,41 @@ jobs:
           & .\artifacts\rex-cli\rex.exe config list --filter MirrorChrome | Tee-Object artifacts\rex-cli-smoke\config-list.txt
           if ($LASTEXITCODE -ne 0) { throw "rex config list failed." }
 
+          function Assert-MachineJson([string]$Path, [string]$Label) {
+            $raw = Get-Content $Path -Raw
+            if ($raw -match [char]27) { throw "$Label emitted ANSI escape sequences." }
+            $lines = @($raw -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if ($lines.Count -ne 1) { throw "$Label must emit exactly one JSON document line." }
+            try {
+              return ($raw | ConvertFrom-Json)
+            }
+            catch {
+              throw "$Label did not emit valid JSON: $($_.Exception.Message)"
+            }
+          }
+
+          & .\artifacts\rex-cli\rex.exe agent capabilities | Tee-Object artifacts\rex-cli-smoke\agent-capabilities.json
+          if ($LASTEXITCODE -ne 0) { throw "rex agent capabilities failed." }
+          $agent = Assert-MachineJson artifacts\rex-cli-smoke\agent-capabilities.json "rex agent capabilities"
+          if (-not $agent.ok -or $agent.protocolVersion -ne 1) { throw "Agent machine protocol contract failed." }
+          if ($agent.data.mode -ne "non-interactive-json") { throw "Unexpected agent machine mode identifier." }
+
           & .\artifacts\rex-cli\rex.exe --plain capabilities | Tee-Object artifacts\rex-cli-smoke\plain-capabilities.json
           if ($LASTEXITCODE -ne 0) { throw "rex --plain capabilities failed." }
+          $plain = Assert-MachineJson artifacts\rex-cli-smoke\plain-capabilities.json "rex --plain capabilities"
+          if (-not $plain.ok -or $plain.protocolVersion -ne 1) { throw "Plain machine mode protocol contract failed." }
 
-          $machineRaw = Get-Content artifacts\rex-cli-smoke\plain-capabilities.json -Raw
-          if ($machineRaw -match [char]27) { throw "Plain machine mode emitted ANSI escape sequences." }
-          $machineLines = @($machineRaw -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-          if ($machineLines.Count -ne 1) { throw "Plain machine mode must emit exactly one JSON document line." }
-          $machine = $machineRaw | ConvertFrom-Json
-          if (-not $machine.ok -or $machine.protocolVersion -ne 1) { throw "Plain machine mode protocol contract failed." }
-          if ($machine.data.mode -ne "non-interactive-json") { throw "Unexpected machine mode identifier." }
+          & .\artifacts\rex-cli\rex.exe status --json | Tee-Object artifacts\rex-cli-smoke\suffix-json-status.json
+          if ($LASTEXITCODE -ne 0) { throw "rex status --json failed." }
+          $suffix = Assert-MachineJson artifacts\rex-cli-smoke\suffix-json-status.json "rex status --json"
+          if (-not $suffix.ok -or $suffix.command -ne "status") { throw "Suffix JSON mode routing failed." }
+
+          New-Item -ItemType Directory -Force tools\rex | Out-Null
+          Copy-Item .\artifacts\rex-cli\rex.exe .\tools\rex\rex.exe -Force
+          & .\REX.bat agent capabilities | Tee-Object artifacts\rex-cli-smoke\batch-agent-capabilities.json
+          if ($LASTEXITCODE -ne 0) { throw "REX.bat agent capabilities failed." }
+          $batchAgent = Assert-MachineJson artifacts\rex-cli-smoke\batch-agent-capabilities.json "REX.bat agent capabilities"
+          if (-not $batchAgent.ok -or $batchAgent.protocolVersion -ne 1) { throw "REX.bat agent protocol contract failed." }
 
           $help = Get-Content artifacts\rex-cli-smoke\help.txt -Raw
           foreach ($required in @(
