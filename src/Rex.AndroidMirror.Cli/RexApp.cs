@@ -133,7 +133,7 @@ public sealed class RexApp
     {
         RexBrand.Header(_console, "FIRST RUN");
 
-        var table = new Table().Border(TableBorder.Rounded).BorderColor(Color.Parse(RexBrand.Line));
+        var table = new Table().Border(TableBorder.Rounded).BorderColor(RexBrand.LineColor);
         table.AddColumn("Check");
         table.AddColumn("State");
         table.AddRow("Configuration", "[#D7FF3F]Found[/]");
@@ -206,7 +206,7 @@ public sealed class RexApp
         RexStatus? status = null;
         await _console.Status()
             .Spinner(Spinner.Known.Dots)
-            .SpinnerStyle(Style.Parse(RexBrand.Signal))
+            .SpinnerStyle(new Style(foreground: RexBrand.SignalColor))
             .StartAsync("Checking Android Headless Mirror...", async _ =>
             {
                 status = await _bridge.GetStatusAsync();
@@ -715,7 +715,7 @@ public sealed class RexApp
         var deadline = DateTime.UtcNow.AddSeconds(45);
         await _console.Status()
             .Spinner(Spinner.Known.Dots)
-            .SpinnerStyle(Style.Parse(RexBrand.Signal))
+            .SpinnerStyle(new Style(foreground: RexBrand.SignalColor))
             .StartAsync("Waiting for Android device...", async ctx =>
             {
                 while (DateTime.UtcNow < deadline)
@@ -771,7 +771,7 @@ public sealed class RexApp
 
         await _console.Status()
             .Spinner(Spinner.Known.Dots)
-            .SpinnerStyle(Style.Parse(RexBrand.Signal))
+            .SpinnerStyle(new Style(foreground: RexBrand.SignalColor))
             .StartAsync(label + "...", async _ =>
             {
                 result = await _runner.RunPowerShellAsync(script, args);
