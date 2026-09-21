@@ -264,6 +264,9 @@ public static class Program
                 return 0;
             }
 
+            case "display":
+                return await RunDisplayCommandAsync(args, paths, runner, bridge, config);
+
             case "device":
                 return await RunDeviceCommandAsync(args, bridge);
 
@@ -315,6 +318,131 @@ public static class Program
                 throw new ArgumentException($"Unknown command '{args[0]}'. Run 'rex help'.");
         }
     }
+
+    private static async Task<int> RunDisplayCommandAsync(
+        string[] args,
+        AppPaths paths,
+        IProcessRunner runner,
+        IBridgeClient bridge,
+        ConfigStore config)
+    {
+        Require(
+            args,
+            2,
+            "rex display <status|probe|capabilities|transports|start|receiver|verify> ...");
+
+        var manager = new DisplayManager(paths, runner, bridge, config);
+        var verb = args[1].ToLowerInvariant();
+
+        switch (verb)
+        {
+            case "status":
+            case "probe":
+            case "capabilities":
+            case "transports":
+                PrintDisplayProbe(await manager.ProbeAsync());
+                return 0;
+
+            case "start":
+            {
+                var transport = GetOption(args, "--transport") ?? manager.DefaultTransport();
+                var result = await manager.StartAsync(transport);
+                RexBrand.Success(result.Message);
+                return 0;
+            }
+
+            case "receiver":
+            {
+                Require(args, 3, "rex display receiver open");
+                if (!args[2].Equals("open", StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException("display receiver currently supports: open.");
+
+                var result = await manager.OpenReceiverAsync();
+                RexBrand.Success(result.Message);
+                return 0;
+            }
+
+            case "verify":
+            {
+                Require(
+                    args,
+                    4,
+                    "rex display verify <normal|protected> <pass|fail|clear> [--transport windows-miracast] [--note TEXT]");
+
+                var transport =
+                    GetOption(args, "--transport") ?? DisplayTransportIds.WindowsMiracast;
+                var note = GetOption(args, "--note") ?? string.Empty;
+                var verification = manager.Verify(transport, args[2], args[3], note);
+
+                RexBrand.Success(
+                    $"Saved {DisplayManager.NormalizeTransport(transport)} verification: " +
+                    $"normal={verification.NormalPlayback.ToString().ToLowerInvariant()}, " +
+                    $"protected={verification.ProtectedPlayback.ToString().ToLowerInvariant()}.");
+                return 0;
+            }
+
+            default:
+                throw new ArgumentException(
+                    "display expects status, probe, capabilities, transports, start, receiver, or verify.");
+        }
+    }
+
+    private static void PrintDisplayProbe(DisplayProbeResult probe)
+    {
+        RexBrand.Header("DISPLAY");
+
+        var summary = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(RexBrand.LineColor)
+            .AddColumn("Capability")
+            .AddColumn("State");
+
+        summary.AddRow(
+            "Current transport",
+            Markup.Escape(probe.CurrentTransport ?? "none"));
+        summary.AddRow(
+            "ADB control plane",
+            Markup.Escape(DisplayState(probe.AdbControl)));
+        summary.AddRow(
+            "Samsung DeX candidate",
+            Markup.Escape(DisplayState(probe.SamsungDexCandidate)));
+        summary.AddRow(
+            "Windows Wireless Display",
+            Markup.Escape(DisplayState(probe.Host.WirelessDisplayFeature)));
+        summary.AddRow(
+            "Miracast receive",
+            Markup.Escape(DisplayState(probe.Host.MiracastReceive)));
+
+        AnsiConsole.Write(summary);
+
+        var transports = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(RexBrand.LineColor)
+            .AddColumn("Transport")
+            .AddColumn("Kind")
+            .AddColumn("Availability")
+            .AddColumn("Video")
+            .AddColumn("Protected");
+
+        foreach (var transport in probe.Transports)
+        {
+            transports.AddRow(
+                Markup.Escape(transport.Label),
+                Markup.Escape(transport.Kind),
+                Markup.Escape(DisplayState(transport.Availability)),
+                Markup.Escape(DisplayState(transport.Video)),
+                Markup.Escape(DisplayState(transport.ProtectedOutput)));
+        }
+
+        AnsiConsole.Write(transports);
+        AnsiConsole.MarkupLine(
+            $"[{RexBrand.Muted}]{Markup.Escape(probe.Host.Detail)}[/]");
+        AnsiConsole.MarkupLine(
+            $"[{RexBrand.Muted}]Protected playback is never inferred from Miracast/HDCP capability alone; verify it on the exact device/PC/application path.[/]");
+    }
+
+    private static string DisplayState(CapabilityState state) =>
+        state.ToString().ToLowerInvariant();
 
     private static async Task<int> RunDeviceCommandAsync(string[] args, IBridgeClient bridge)
     {
@@ -661,6 +789,10 @@ public static class Program
             ("rex controls [--serial S]", "Open the GUI Control Center"),
             ("rex action <name> [--serial S]", "Send a scrcpy runtime action"),
             ("rex mirror <zoom-in|zoom-out|reset-zoom>", "Control PC-only host zoom"),
+            ("rex display probe", "Probe scrcpy, Windows Wireless Display, Miracast and DeX capability"),
+            ("rex display start --transport <scrcpy|windows-miracast>", "Start or prepare a display transport"),
+            ("rex display receiver open", "Open Windows Projecting to this PC"),
+            ("rex display verify <normal|protected> <pass|fail|clear>", "Record manual hardware playback verification"),
             ("rex device set <setting> <value> [--serial S]", "Change a friendly Android setting"),
             ("rex android list <system|secure|global> [--filter X]", "Browse live Android Settings Provider keys"),
             ("rex android get/set/delete ...", "Read or change an Android Settings Provider key"),
