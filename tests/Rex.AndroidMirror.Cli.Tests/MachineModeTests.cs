@@ -402,4 +402,120 @@ public sealed class MachineModeTests
             "setup exploded",
             doc.RootElement.GetProperty("error").GetProperty("message").GetString());
     }
+    [Fact]
+    public async Task DisplayProbe_ReturnsStructuredTransportCapabilities()
+    {
+        using var package = new TempPackage();
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = new RexStatus(
+                true,
+                false,
+                false,
+                false,
+                true,
+                "adb.exe",
+                "scrcpy.exe",
+                new[]
+                {
+                    new RexDevice(
+                        "USB123",
+                        "device",
+                        false,
+                        "Samsung",
+                        "SM-G998B",
+                        "Samsung Galaxy S21 Ultra")
+                })
+        };
+
+        var result = await MachineMode.RunAsync(
+            new[] { "display", "probe" },
+            package.Paths,
+            new FakeProcessRunner(),
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+
+        Assert.Equal("scrcpy", data.GetProperty("currentTransport").GetString());
+        Assert.Equal("reported", data.GetProperty("adbControl").GetString());
+
+        var transports = data.GetProperty("transports");
+        Assert.Equal(2, transports.GetArrayLength());
+        Assert.Contains(
+            transports.EnumerateArray(),
+            x => x.GetProperty("id").GetString() == "scrcpy");
+        Assert.Contains(
+            transports.EnumerateArray(),
+            x => x.GetProperty("id").GetString() == "windows-miracast");
+    }
+
+    [Fact]
+    public async Task DisplayVerify_ReturnsStringEnumsAndPersistsState()
+    {
+        using var package = new TempPackage();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "display", "verify", "protected", "pass" },
+            package.Paths,
+            new FakeProcessRunner(),
+            new FakeBridgeClient(),
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+
+        using var doc = JsonDocument.Parse(result.Json);
+        var verification = doc.RootElement
+            .GetProperty("data")
+            .GetProperty("verification");
+
+        Assert.Equal(
+            "passed",
+            verification.GetProperty("protectedPlayback").GetString());
+    }
+
+    [Fact]
+    public async Task Capabilities_AdvertiseDisplayCommands()
+    {
+        using var package = new TempPackage();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "capabilities" },
+            package.Paths,
+            new FakeProcessRunner(),
+            new FakeBridgeClient(),
+            package.Config);
+
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+
+        Assert.Contains(
+            data.GetProperty("commands").EnumerateArray(),
+            x => x.GetString() == "display");
+        Assert.True(data.GetProperty("displayCommands").GetArrayLength() >= 6);
+    }
+
+    [Fact]
+    public async Task DisplayStartScrcpy_ReturnsRequestedTransport()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "display", "start", "--transport", "scrcpy" },
+            package.Paths,
+            runner,
+            new FakeBridgeClient(),
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+
+        Assert.Equal("scrcpy", data.GetProperty("transport").GetString());
+        Assert.True(data.GetProperty("requested").GetBoolean());
+    }
+
 }

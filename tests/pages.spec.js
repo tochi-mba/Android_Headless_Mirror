@@ -220,6 +220,13 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('geometry, not the credential');
   });
 
+  test('display section explains independent control and transport verification', async ({ page }) => {
+    const section = page.locator('#display');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('Control stays on ADB');
+    await expect(section).toContainText('scrcpy by default');
+    await expect(section).toContainText('Verify protected playback');
+  });
   test('controls separate native Android pinch from PC-only host zoom', async ({ page }) => {
     const section = page.locator('#controls');
     await expect(section).toBeVisible();

@@ -62,6 +62,24 @@ REX.bat agent devices
 REX.bat agent diagnostics
 ```
 
+Inspect display capabilities before assuming transport support:
+
+```bat
+REX.bat agent display probe
+REX.bat agent display capabilities
+REX.bat agent display start --transport scrcpy
+REX.bat agent display receiver open
+REX.bat agent display verify protected pass
+```
+
+Display invariants:
+
+- ADB is the independent control plane; a display transport does not own device control.
+- `scrcpy` is the default capture transport and must report Android secure/protected surfaces as unavailable.
+- `windows-miracast` is orchestration around the Windows receiver, not a REX Miracast/HDCP implementation.
+- Do not infer protected playback from Miracast or HDCP reporting. Keep it unknown until the exact hardware/application path is manually verified.
+- Do not infer DRM from black frames.
+- A Samsung manufacturer match means only "DeX candidate"; runtime verification is still required.
 Inspect or change PC / mirror configuration:
 
 ```bat
@@ -147,6 +165,7 @@ Keep these layers separate:
 - `DeviceControl.ps1` — friendly Android settings, live Settings Provider access, screenshots and Android command-service probing.
 - `ScrcpyControl.ps1` — scrcpy runtime shortcut adapter.
 - `Start-PhoneMirror.ps1` — supervisor, device selection, scrcpy launch arguments and session lifecycle.
+- `DisplayManager.cs` / `WindowsDisplayHostProbe.cs` — display transport capability model, Windows receiver orchestration and verification state.
 - `MirrorChrome.ps1` — always-on mirror toolbar, host zoom and touchpad bridge.
 - `PatternOverlay.ps1` — pattern-lock geometry discovery/calibration/overlay.
 - `ControlCenter.ps1` + `ControlCenter.xaml` — WPF GUI.
@@ -300,6 +319,7 @@ Do not commit runtime state or local tools:
 - `logs/`
 - `runtime/`
 - `captures/`
+- `display-verification.json`
 - `state.json`
 - `stop.flag`
 - `pattern-calibration/`

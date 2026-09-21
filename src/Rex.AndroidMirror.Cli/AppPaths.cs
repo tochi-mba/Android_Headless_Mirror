@@ -20,6 +20,7 @@ public sealed class AppPaths
     public string StopFlag => Path.Combine(Root, "stop.flag");
     public string Logs => Path.Combine(Root, "logs");
     public string Captures => Path.Combine(Root, "captures");
+    public string DisplayVerification => Path.Combine(Root, "display-verification.json");
 
     private AppPaths(string root)
     {

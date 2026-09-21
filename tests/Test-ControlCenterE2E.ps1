@@ -82,7 +82,7 @@ Assert-True ((C "DeviceMetaText").Text -match "SM-G998B") "Device metadata shoul
 Assert-Equal "Connected" (C "ConnectionText").Text "Test-mode device should be connected."
 
 Write-Host "[control-center] Exercising all top-level tabs..."
-foreach ($tab in @("ControlsTab","PcSettingsTab","DeviceSettingsTab","AdvancedTab","DiagnosticsTab")) {
+foreach ($tab in @("ControlsTab","DisplayTab","PcSettingsTab","DeviceSettingsTab","AdvancedTab","DiagnosticsTab")) {
     Select-Tab $tab
     Assert-True ((C $tab).IsSelected) "$tab should be selectable."
 }
@@ -187,6 +187,36 @@ Assert-True $Window.Topmost "Saving always-on-top should update the current Cont
 (C "PcMaxFpsText").Text = "33"
 Click-Control "ReloadPcSettingsButton"
 Assert-Equal "90" (C "PcMaxFpsText").Text "Discard changes should reload saved in-memory config."
+
+Write-Host "[control-center] Exercising display transport settings and orchestration..."
+Select-Tab "DisplayTab"
+Assert-True ((C "DisplayTransportSummaryText").Text -match "ADB control: connected") "Display status should expose the independent ADB control plane."
+Assert-True ((C "DisplayVerificationText").Text -match "not verified") "Protected playback should start unverified."
+
+Select-ComboTag (C "DisplayDefaultTransportCombo") "windows-miracast"
+Select-ComboTag (C "DisplayProtectedPolicyCombo") "prefer-external"
+(C "DisplayWirelessEnabledCheck").IsChecked = $true
+(C "DisplayWirelessAutoOpenCheck").IsChecked = $false
+(C "DisplayDexEnabledCheck").IsChecked = $true
+
+$beforeDisplaySave = $script:TestActions.Count
+Click-Control "SaveDisplaySettingsButton"
+Assert-Equal ($beforeDisplaySave + 1) $script:TestActions.Count "Display settings should dispatch one save action."
+Assert-Equal "display-settings:save" $script:TestActions[$script:TestActions.Count - 1] "Display settings save action should be recorded."
+Assert-Equal "windows-miracast" $Config.Display.DefaultTransport "Default display transport should update in memory."
+Assert-Equal "prefer-external" $Config.Display.ProtectedContentPolicy "Protected-content policy should update in memory."
+Assert-False $Config.Display.WindowsWirelessDisplay.AutoOpenReceiver "Wireless receiver auto-open preference should update."
+
+Click-Control "DisplayRefreshButton"
+Assert-Contains $script:TestActions "display:refresh" "Display refresh should be recorded."
+Click-Control "DisplayStartScrcpyButton"
+Assert-Contains $script:TestActions "display:start-scrcpy" "scrcpy fallback should be recorded."
+Click-Control "DisplayOpenWirelessButton"
+Assert-Contains $script:TestActions "display:open-wireless" "Wireless receiver action should be recorded."
+
+Select-ComboTag (C "DisplayDefaultTransportCombo") "scrcpy"
+Click-Control "ReloadDisplaySettingsButton"
+Assert-Equal "windows-miracast" (Get-ComboTag (C "DisplayDefaultTransportCombo")) "Discard should restore saved display transport."
 
 Write-Host "[control-center] Exercising friendly Android device controls..."
 Select-Tab "DeviceSettingsTab"
@@ -305,6 +335,8 @@ $exercised = @(
     @(
         "RefreshAllButton","ResetHostZoomButton","ScreenshotButton","OpenScreenshotFolderButton",
         "SavePcSettingsButton","ReloadPcSettingsButton","DeviceAutoRotateCheck",
+        "DisplayRefreshButton","DisplayStartScrcpyButton","DisplayOpenWirelessButton",
+        "SaveDisplaySettingsButton","ReloadDisplaySettingsButton",
         "WifiOnButton","WifiOffButton","MobileDataOnButton","MobileDataOffButton",
         "AirplaneOnButton","AirplaneOffButton","ApplyWmSizeButton","ResetWmSizeButton",
         "ApplyWmDensityButton","ResetWmDensityButton","DeviceWakeButton","DeviceSleepButton",

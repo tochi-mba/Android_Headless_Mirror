@@ -187,6 +187,12 @@ jobs:
             }
           }
 
+          & .\artifacts\rex-cli\rex.exe agent display probe | Tee-Object artifacts\rex-cli-smoke\agent-display-probe.json
+          if ($LASTEXITCODE -ne 0) { throw "rex agent display probe failed." }
+          $displayProbe = Assert-MachineJson artifacts\rex-cli-smoke\agent-display-probe.json "rex agent display probe"
+          if (-not $displayProbe.ok -or $displayProbe.command -ne "display.probe") { throw "Display machine protocol contract failed." }
+          if ($displayProbe.data.transports.Count -lt 2) { throw "Display probe did not expose both transport classes." }
+
           & .\artifacts\rex-cli\rex.exe agent capabilities | Tee-Object artifacts\rex-cli-smoke\agent-capabilities.json
           if ($LASTEXITCODE -ne 0) { throw "rex agent capabilities failed." }
           $agent = Assert-MachineJson artifacts\rex-cli-smoke\agent-capabilities.json "rex agent capabilities"
@@ -216,7 +222,8 @@ jobs:
             "TECHNOLOGIES",
             "rex android list",
             "rex config restore",
-            "rex mirror"
+            "rex mirror",
+            "rex display probe"
           )) {
             if ($help -notmatch [regex]::Escape($required)) {
               throw "REX CLI help output is missing required content: $required"

@@ -6,6 +6,16 @@ namespace Rex.AndroidMirror.Cli.Tests;
 public sealed class RexAppTests
 {
     [Fact]
+    public void MainMenu_ExposesDisplayTransportsAndKeepsExitLast()
+    {
+        Assert.Contains("Display transports", RexApp.MainMenuChoices);
+        Assert.Equal("Exit", RexApp.MainMenuChoices[^1]);
+        Assert.Equal(
+            RexApp.MainMenuChoices.Count,
+            RexApp.MainMenuChoices.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
     public async Task FirstRun_CanBeDeclinedCleanly()
     {
         using var package = new TempPackage();
@@ -52,7 +62,7 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // Precision Touchpad
         console.Input.PushTextWithEnter("n"); // auto-open Control Center
         console.Input.PushTextWithEnter("n"); // start now
-        PushDown(console, 13); // main menu -> Exit
+        PushDown(console, RexApp.MainMenuChoices.Count - 1); // main menu -> Exit
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -102,7 +112,7 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // stay awake
         console.Input.PushTextWithEnter("n"); // auto-open controls
         console.Input.PushTextWithEnter("n"); // start now
-        PushDown(console, 13); // main menu -> Exit
+        PushDown(console, RexApp.MainMenuChoices.Count - 1); // main menu -> Exit
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -135,7 +145,7 @@ public sealed class RexAppTests
         console.Input.PushKey(ConsoleKey.Enter); // Sleep phone (first)
         PushDown(console, 32); // Back in runtime controls
         console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, 13); // Exit main menu
+        PushDown(console, RexApp.MainMenuChoices.Count - 1); // main menu -> Exit
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -165,7 +175,7 @@ public sealed class RexAppTests
         bridge.DefaultStatus = Status(setup: true, devices: new[] { device });
 
         var console = ConsoleWithInput();
-        PushDown(console, 3); // Device settings
+        PushDown(console, 3); // Device settings (Display is near the end of the main menu)
         console.Input.PushKey(ConsoleKey.Enter);
         PushDown(console, 8); // Animation speed
         console.Input.PushKey(ConsoleKey.Enter);
@@ -173,7 +183,7 @@ public sealed class RexAppTests
         console.Input.PushKey(ConsoleKey.Enter);
         PushDown(console, 17); // Back device menu
         console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, 13); // Exit main menu
+        PushDown(console, RexApp.MainMenuChoices.Count - 1); // main menu -> Exit
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -241,7 +251,7 @@ public sealed class RexAppTests
         var console = ConsoleWithInput();
         console.Input.PushKey(ConsoleKey.DownArrow); // Runtime controls
         console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, 13); // Exit main
+        PushDown(console, RexApp.MainMenuChoices.Count - 1); // main menu -> Exit
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(

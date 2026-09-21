@@ -174,3 +174,7 @@ $RECYCLE.BIN/
 .Trashes
 .fseventsd/
 .directory
+
+# Local display capability verification state
+display-verification.json
+display-verification.json.tmp

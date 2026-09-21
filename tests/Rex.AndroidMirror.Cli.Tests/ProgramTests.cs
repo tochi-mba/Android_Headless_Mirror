@@ -298,4 +298,84 @@ public sealed class ProgramTests
         Assert.Equal("screenshot", call.Action);
         Assert.Equal("USB123", call.Serial);
     }
+    [Fact]
+    public async Task DisplayStartScrcpy_UsesExistingMirrorLauncher()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+        var bridge = new FakeBridgeClient();
+
+        var code = await Program.RunCommandAsync(
+            new[] { "display", "start", "--transport", "scrcpy" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, code);
+        var call = Assert.Single(runner.Calls);
+        Assert.Equal("open", call.Kind);
+        Assert.Equal(package.Paths.StartBatch, call.FileName);
+    }
+
+    [Fact]
+    public async Task DisplayVerifyProtected_PersistsManualOutcome()
+    {
+        using var package = new TempPackage();
+
+        var code = await Program.RunCommandAsync(
+            new[]
+            {
+                "display", "verify", "protected", "pass",
+                "--transport", "windows-miracast",
+                "--note", "manual hardware check"
+            },
+            package.Paths,
+            new FakeProcessRunner(),
+            new FakeBridgeClient(),
+            package.Config);
+
+        Assert.Equal(0, code);
+
+        var saved = new DisplayVerificationStore(package.Paths.DisplayVerification)
+            .Get(DisplayTransportIds.WindowsMiracast);
+        Assert.Equal(VerificationOutcome.Passed, saved.ProtectedPlayback);
+        Assert.Equal("manual hardware check", saved.Note);
+    }
+
+    [Fact]
+    public async Task DisplayReceiverOpen_UsesWindowsProjectingSettings()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+
+        var code = await Program.RunCommandAsync(
+            new[] { "display", "receiver", "open" },
+            package.Paths,
+            runner,
+            new FakeBridgeClient(),
+            package.Config);
+
+        Assert.Equal(0, code);
+        var call = Assert.Single(runner.Calls);
+        Assert.Equal("open", call.Kind);
+        Assert.Equal("ms-settings:project", call.FileName);
+    }
+
+    [Fact]
+    public async Task DisplayStart_RejectsUnknownTransport()
+    {
+        using var package = new TempPackage();
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            Program.RunCommandAsync(
+                new[] { "display", "start", "--transport", "telepathy" },
+                package.Paths,
+                new FakeProcessRunner(),
+                new FakeBridgeClient(),
+                package.Config));
+
+        Assert.Contains("scrcpy or windows-miracast", ex.Message);
+    }
+
 }

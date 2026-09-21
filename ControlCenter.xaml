@@ -210,6 +210,77 @@
         </ScrollViewer>
       </TabItem>
 
+      <TabItem x:Name="DisplayTab" Header="Display">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="24">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+              <Border Background="{StaticResource Signal}" CornerRadius="3" Padding="9,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="DISPLAY" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+              </Border>
+              <TextBlock Text="Display transports" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="REX keeps ADB as the control plane while scrcpy or a Windows external-display path handles presentation." Foreground="{StaticResource Muted}" Margin="0,5,0,22" TextWrapping="Wrap"/>
+
+            <GroupBox Header="Current state">
+              <StackPanel>
+                <TextBlock x:Name="DisplayTransportSummaryText" Text="Checking display state…" TextWrapping="Wrap"/>
+                <TextBlock x:Name="DisplayVerificationText" Foreground="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,12,0,0">
+                  <Button x:Name="DisplayRefreshButton" Content="Refresh display state"/>
+                  <Button x:Name="DisplayStartScrcpyButton" Content="Use scrcpy" Style="{StaticResource PrimaryButton}"/>
+                  <Button x:Name="DisplayOpenWirelessButton" Content="Open Windows receiver"/>
+                </WrapPanel>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Transport policy">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Default transport" VerticalAlignment="Center"/>
+                <ComboBox x:Name="DisplayDefaultTransportCombo" Grid.Row="0" Grid.Column="1" Margin="0,4">
+                  <ComboBoxItem Content="scrcpy" Tag="scrcpy"/>
+                  <ComboBoxItem Content="Windows Wireless Display" Tag="windows-miracast"/>
+                </ComboBox>
+                <TextBlock Grid.Row="1" Text="Protected-content policy" VerticalAlignment="Center"/>
+                <ComboBox x:Name="DisplayProtectedPolicyCombo" Grid.Row="1" Grid.Column="1" Margin="0,4">
+                  <ComboBoxItem Content="Prompt before switching" Tag="prompt"/>
+                  <ComboBoxItem Content="Never suggest external display" Tag="ignore"/>
+                  <ComboBoxItem Content="Prefer external display" Tag="prefer-external"/>
+                </ComboBox>
+                <TextBlock Grid.Column="2" Grid.RowSpan="2" Margin="20,5,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                           Text="Automatic DRM detection is intentionally avoided. The policy controls REX guidance; application and hardware support still decide whether protected playback is allowed."/>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="External display integration">
+              <StackPanel>
+                <CheckBox x:Name="DisplayWirelessEnabledCheck" Content="Enable Windows Wireless Display / Miracast orchestration"/>
+                <CheckBox x:Name="DisplayWirelessAutoOpenCheck" Content="Open receiver setup automatically when the external-display transport is requested"/>
+                <CheckBox x:Name="DisplayDexEnabledCheck" Content="Enable Samsung DeX guidance when a Samsung device is connected"/>
+                <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Text="REX does not implement Miracast or HDCP. Windows, the GPU/Wi-Fi drivers, Android and the application negotiate the external-display path."/>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Protected playback">
+              <StackPanel>
+                <TextBlock TextWrapping="Wrap"
+                           Text="scrcpy cannot capture Android secure/protected surfaces. Windows Wireless Display is treated as a separate external-display path, and protected playback remains unknown until you manually test the exact phone, PC, driver and application combination."/>
+                <TextBlock Foreground="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"
+                           Text="Use rex display verify protected pass|fail after testing to record the result locally. REX never assumes Netflix or another DRM application works just because Miracast is available."/>
+              </StackPanel>
+            </GroupBox>
+
+            <WrapPanel>
+              <Button x:Name="SaveDisplaySettingsButton" Content="Save display settings" Style="{StaticResource PrimaryButton}"/>
+              <Button x:Name="ReloadDisplaySettingsButton" Content="Discard changes"/>
+            </WrapPanel>
+            <TextBlock x:Name="DisplaySettingsStatusText" Foreground="{StaticResource Muted}" Margin="0,4,0,20"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <TabItem x:Name="PcSettingsTab" Header="PC / mirror settings">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="24">
