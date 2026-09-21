@@ -829,6 +829,9 @@ function New-ToolbarButton([string]$Text) {
     return $button
 }
 
+$controlsButton = New-ToolbarButton "Controls"
+$stack.Children.Add($controlsButton) | Out-Null
+
 $sleepButton = New-ToolbarButton "Sleep phone"
 if (-not $ChromeConfig.SleepButton) {
     $sleepButton.Visibility = [System.Windows.Visibility]::Collapsed
@@ -889,6 +892,8 @@ $script:touchpadStartHostZoom = 1.0
 $script:touchpadBaseRadius = 0.0
 $script:touchpadGestureHandled = $false
 $script:gestureHook = $null
+$script:controlCenterProcess = $null
+$script:lastCommandPoll = [DateTime]::MinValue
 
 function Get-TargetClientRect {
     if ($script:targetHwnd -eq [IntPtr]::Zero) { return $null }
@@ -1208,6 +1213,61 @@ if ($null -ne $gestureSource) {
     $gestureSource.AddHook($script:gestureHook)
 }
 
+function Get-RuntimeDirectory {
+    $safeSerial = ($Serial -replace '[^A-Za-z0-9._-]', '_')
+    return Join-Path (Join-Path $Root "runtime") $safeSerial
+}
+
+function Open-ControlCenter {
+    $controlCenterScript = Join-Path $Root "ControlCenter.ps1"
+    if (-not (Test-Path $controlCenterScript)) { return }
+
+    try {
+        if ($null -ne $script:controlCenterProcess -and -not $script:controlCenterProcess.HasExited) {
+            return
+        }
+    }
+    catch {}
+
+    $quote = [char]34
+    $arguments =
+        "-NoLogo -NoProfile -ExecutionPolicy Bypass -File " +
+        $quote + $controlCenterScript + $quote +
+        " -Serial " + $quote + $Serial + $quote
+
+    try {
+        $script:controlCenterProcess = Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -PassThru
+    }
+    catch {
+        $script:controlCenterProcess = $null
+    }
+}
+
+function Poll-MirrorChromeCommand {
+    $directory = Get-RuntimeDirectory
+    $path = Join-Path $directory "mirror-chrome.command"
+    if (-not (Test-Path $path)) { return }
+
+    try {
+        $command = (Get-Content $path -Raw).Trim().ToLowerInvariant()
+    }
+    catch {
+        return
+    }
+    finally {
+        Remove-Item -Force $path -ErrorAction SilentlyContinue
+    }
+
+    switch ($command) {
+        "reset-zoom" { Reset-HostZoom }
+        "open-controls" { Open-ControlCenter }
+    }
+}
+
+$controlsButton.Add_Click({
+    Open-ControlCenter
+})
+
 $sleepButton.Add_Click({
     if ($script:targetHwnd -eq [IntPtr]::Zero) { return }
 
@@ -1244,6 +1304,11 @@ $timer.Add_Tick({
 
     if ($script:targetHwnd -ne [IntPtr]::Zero -and [AHMMirrorChromeNative]::IsWindow($script:targetHwnd)) {
         $script:missingSince = $null
+
+        if (($now - $script:lastCommandPoll).TotalMilliseconds -ge 100) {
+            $script:lastCommandPoll = $now
+            Poll-MirrorChromeCommand
+        }
 
         $rect = Get-TargetClientRect
         if ($null -ne $rect) {
@@ -1349,6 +1414,13 @@ $toolbar.Add_Closed({
     }
 
     [AHMMirrorChromeNative]::UninitializeMagnification()
+
+    try {
+        if ($null -ne $script:controlCenterProcess -and -not $script:controlCenterProcess.HasExited) {
+            Stop-Process -Id $script:controlCenterProcess.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
 })
 
 Update-ZoomUi
