@@ -141,6 +141,10 @@ jobs:
         shell: powershell
         run: .\tests\Test-RexCliBootstrap.ps1
 
+      - name: Run REX desktop shortcut behavior
+        shell: powershell
+        run: .\tests\Test-RexShortcut.ps1
+
       - name: Run REX bridge fake-ADB E2E
         shell: powershell
         run: .\tests\Test-RexBridgeE2E.ps1
