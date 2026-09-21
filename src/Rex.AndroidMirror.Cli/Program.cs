@@ -22,7 +22,10 @@ public static class Program
 
             if (
                 args.Length > 0 &&
-                args[0].Equals("--json", StringComparison.OrdinalIgnoreCase)
+                (
+                    args[0].Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+                    args[0].Equals("--plain", StringComparison.OrdinalIgnoreCase)
+                )
             )
             {
                 var machineArgs = args.Skip(1).ToArray();
@@ -40,6 +43,19 @@ public static class Program
             if (args.Length == 0 || args[0].Equals("tui", StringComparison.OrdinalIgnoreCase) || args[0].Equals("wizard", StringComparison.OrdinalIgnoreCase))
             {
                 return await new RexApp(paths, runner, bridge, config).RunAsync();
+            }
+
+            if (args[0].Equals("smart", StringComparison.OrdinalIgnoreCase))
+            {
+                var outcome = await new SmartLauncher(paths, runner, bridge).RunAsync();
+
+                if (outcome.OpenInteractiveCli)
+                {
+                    return await new RexApp(paths, runner, bridge, config).RunAsync();
+                }
+
+                RexBrand.Success(outcome.Message);
+                return 0;
             }
 
             return await RunCommandAsync(args, paths, runner, bridge, config);
@@ -558,6 +574,8 @@ public static class Program
         foreach (var row in new[]
         {
             ("rex", "Open the guided REX terminal app"),
+            ("rex smart", "Smart desktop launch: setup, start, wait, or focus"),
+            ("rex --plain capabilities", "Prompt-free JSON machine mode for coding agents"),
             ("rex --json capabilities", "Machine-readable capability discovery for coding agents"),
             ("rex --json <command> ...", "Prompt-free JSON protocol with deterministic exit codes"),
             ("rex status", "Show service, mirror, startup and device state"),
