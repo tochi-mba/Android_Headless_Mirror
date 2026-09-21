@@ -45,6 +45,7 @@
       <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
+        <a href="#controls">Controls</a>
         <a href="#pattern-guide">Pattern guide</a>
         <a href="#compatibility">Compatibility</a>
         <a href="#faq">FAQ</a>
@@ -58,7 +59,7 @@
       <div class="hero-copy reveal">
         <div class="eyebrow signal"><span class="pulse-dot"></span> Windows + Android · USB-first</div>
         <h1>Your Android.<br><span>Right where you work.</span></h1>
-        <p class="hero-lede">A polished Windows wrapper around scrcpy and ADB that makes an Android device feel like a dependable part of your desktop — automatic reconnection, persistent start/stop, diagnostics, and an optional wireless fallback.</p>
+        <p class="hero-lede">A polished Windows wrapper around scrcpy and ADB that makes Android feel native on your desktop — automatic reconnection, persistent start/stop, touchpad gestures, lock-screen guidance, diagnostics, and optional wireless fallback.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
           <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
@@ -148,10 +149,67 @@
           </div>
         </article>
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 8a8 8 0 1 1-1 8"/><path d="M5 3v5h5"/></svg></div><h3>Auto-open on connect</h3><p>The hidden supervisor stays armed after Windows sign-in. Plug in any authorised Android phone and its mirror opens automatically, with a one-second poll interval by default.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M9.5 6h5M10 17h4"/></svg></div><h3>Headless active session</h3><p>Keep the physical phone display dark while scrcpy keeps the mirrored session active. USB sessions also use Android's plugged-in stay-awake behavior.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M9.5 6h5M10 17h4"/></svg></div><h3>Headless active session</h3><p>Keep the physical display dark, re-send screen-off from the always-on mirror toolbar whenever needed, and keep the PC mirror active.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 12a8 8 0 0 1 10 0m-7 3a4 4 0 0 1 4 0"/><circle cx="12" cy="18" r="1"/></svg></div><h3>Wireless, when you want it</h3><p>ADB-over-TCP/IP remains available as an optional fallback, but ships disabled by default.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol pattern-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></div><h3>Black lock screen? Still usable.</h3><p>Pattern-lock phones can opt into a click-through 3×3 visual guide over scrcpy. The pattern is never saved or replayed.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol pattern-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></div><h3>Black lock screen? Still usable.</h3><p>Pattern-lock phones can use runtime Android geometry first and keyboard-only calibration only when the OEM hides the real pattern view.</p></article>
       </div>
+    </section>
+
+    <section class="section container controls-section" id="controls">
+      <div class="controls-head reveal">
+        <div>
+          <div class="eyebrow signal">Desktop-native controls</div>
+          <h2>Use the touchpad like the phone.<br>Use Ctrl when you only want the PC view.</h2>
+        </div>
+        <p>Android gestures and desktop magnification stay intentionally separate, so the same touchpad can control the app or just magnify the mirror without ambiguity.</p>
+      </div>
+
+      <div class="controls-layout">
+        <div class="gesture-cards">
+          <article class="gesture-card reveal">
+            <div class="gesture-visual touchpad-visual" aria-hidden="true">
+              <span class="finger finger-a"></span>
+              <span class="finger finger-b"></span>
+              <span class="gesture-arrow left"></span>
+              <span class="gesture-arrow right"></span>
+            </div>
+            <div class="gesture-copy">
+              <span class="gesture-kicker">WINDOWS 11 · PRECISION TOUCHPAD</span>
+              <h3>Pinch naturally → Android pinches.</h3>
+              <p>Two fingers pinch or spread on the laptop touchpad. Android receives the corresponding two-finger pinch/rotate gesture through scrcpy. No keyboard modifier is required.</p>
+            </div>
+          </article>
+
+          <article class="gesture-card reveal">
+            <div class="gesture-visual zoom-visual" aria-hidden="true">
+              <kbd>Ctrl</kbd>
+              <span>+</span>
+              <div class="mini-touchpad"><i></i><i></i></div>
+            </div>
+            <div class="gesture-copy">
+              <span class="gesture-kicker">PC-ONLY VIEW</span>
+              <h3>Hold Ctrl + pinch → magnify the mirror.</h3>
+              <p>The phone receives no pinch. The Windows frame zoom persists after Ctrl is released, and <strong>Reset zoom</strong> appears whenever the view is above 100%.</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="toolbar-demo reveal" aria-label="Example always-on mirror toolbar">
+          <div class="toolbar-demo-label">ALWAYS AVAILABLE ON THE MIRROR</div>
+          <div class="toolbar-shell">
+            <button type="button" tabindex="-1">Sleep phone</button>
+            <span class="toolbar-zoom">175%</span>
+            <button type="button" tabindex="-1" class="toolbar-reset">Reset zoom</button>
+          </div>
+          <div class="toolbar-notes">
+            <div><span>01</span><p><strong>Sleep phone</strong> re-sends scrcpy’s screen-off command while the PC mirror continues.</p></div>
+            <div><span>02</span><p><strong>Reset zoom</strong> only appears when the Windows-side magnifier is not at 100%.</p></div>
+            <div><span>03</span><p><strong>Mouse fallback:</strong> Ctrl + wheel controls host zoom; scrcpy Ctrl + left-drag remains available if native touchpad APIs are unavailable.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="controls-compat reveal"><strong>Compatibility:</strong> native two-finger Precision Touchpad bridging uses the Windows 11 touchpad pointer API. Windows 10 and unsupported hardware keep normal mirroring and scrcpy’s compatibility gesture path.</p>
     </section>
 
     <section class="section diagnostics-section">
@@ -186,41 +244,51 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
       <div class="pattern-grid">
         <div class="section-heading reveal">
           <div class="eyebrow signal">Pattern lock guide</div>
-          <h2>When Android gives scrcpy a black lock screen, keep the coordinates visible.</h2>
-          <p>On some secure lock screens the video frame is black even though scrcpy still sends touch coordinates correctly. For devices that actually use Android pattern unlock, Android Headless Mirror can draw a visual-only guide over the scrcpy window.</p>
+          <h2>Discover the real Android pattern geometry first. Calibrate only when the OEM hides it.</h2>
+          <p>When a secure lock screen renders black through scrcpy, the guide now asks Android for the current UI hierarchy and uses the actual pattern widget geometry whenever it is exposed.</p>
 
-          <div class="mode-list" aria-label="Per-device lock screen modes">
-            <div><span class="mode-dot pattern"></span><strong>Pattern</strong><small>3×3 overlay available</small></div>
-            <div><span class="mode-dot other"></span><strong>PIN / password / other</strong><small>No pattern overlay</small></div>
-            <div><span class="mode-dot none"></span><strong>No screen lock</strong><small>No overlay process at all</small></div>
-            <div><span class="mode-dot later"></span><strong>Ask later</strong><small>Nothing saved for this session</small></div>
+          <div class="geometry-priority" aria-label="Pattern geometry accuracy order">
+            <div><span>1</span><strong>Exact pattern-cell bounds</strong><small>Highest confidence when Android exposes all nine virtual cells.</small></div>
+            <div><span>2</span><strong>Runtime LockPatternView bounds</strong><small>Uses Android’s live view rectangle and the AOSP 3×3 cell geometry.</small></div>
+            <div><span>3</span><strong>Saved per-device calibration</strong><small>Only for OEM-specific padding or hidden pattern widgets.</small></div>
+            <div><span>4</span><strong>Estimated fallback</strong><small>Used only when no better geometry source exists.</small></div>
           </div>
         </div>
 
-        <div class="pattern-demo reveal" aria-label="Visual example of the click-through 3 by 3 pattern guide">
+        <div class="pattern-demo reveal" aria-label="Visual example of runtime-discovered pattern geometry">
           <div class="pattern-demo-bar">
             <span>Android Device [R3CRB04F7PP]</span>
-            <span class="pattern-demo-state">KEYGUARD · GUIDE ON</span>
+            <span class="pattern-demo-state">ANDROID PATTERN VIEW · GUIDE ON</span>
           </div>
           <div class="pattern-demo-screen">
-            <div class="pattern-demo-label">PATTERN GUIDE · CTRL + ALT + P TO TOGGLE</div>
-            <div class="pattern-dots" aria-hidden="true">
-              <i></i><i></i><i></i>
-              <i></i><i></i><i></i>
-              <i></i><i></i><i></i>
-              <svg viewBox="0 0 300 300" preserveAspectRatio="none">
-                <path d="M50 50 L150 50 L250 150 L150 250" />
-              </svg>
+            <div class="pattern-demo-label">SOURCE: LOCKPATTERNVIEW · CTRL + ALT + C TO CALIBRATE</div>
+            <div class="pattern-bounds" aria-hidden="true">
+              <span class="bound-label">runtime bounds</span>
+              <div class="pattern-dots">
+                <i></i><i></i><i></i>
+                <i></i><i></i><i></i>
+                <i></i><i></i><i></i>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="pattern-facts">
-        <article class="pattern-fact reveal"><span>01</span><h3>Click-through by design</h3><p>The overlay never takes focus or mouse input. Your drag goes to scrcpy underneath; the guide only supplies visible landmarks.</p></article>
-        <article class="pattern-fact reveal"><span>02</span><h3>Per phone, asked once</h3><p>Each authorized device can independently be Pattern, Other lock, or No lock. Change your lock type later? Reset the saved choice and reconnect.</p></article>
-        <article class="pattern-fact reveal"><span>03</span><h3>OEM-tolerant fallback</h3><p>Keyguard detection uses multiple generic Android signals. If an OEM reports them differently, <strong>Ctrl+Alt+P</strong> manually shows the guide while scrcpy is focused.</p></article>
-        <article class="pattern-fact reveal"><span>04</span><h3>The pattern is never stored</h3><p>No ADB touch injection, no pattern file, no replay. The optional cursor trail exists in memory only and disappears shortly after the drag ends.</p></article>
+        <article class="pattern-fact reveal"><span>01</span><h3>Android tells us where it is</h3><p>UIAutomator hierarchy data is read at runtime while the guide is relevant. Exact virtual cells outrank parent-view geometry.</p></article>
+        <article class="pattern-fact reveal"><span>02</span><h3>Calibration stays headless</h3><p><strong>Ctrl+Alt+C</strong> enters calibration. Arrow keys move; Shift+arrows resize; Ctrl+arrows fine-adjust; Enter saves; Esc cancels.</p></article>
+        <article class="pattern-fact reveal"><span>03</span><h3>Per-device correction</h3><p>Calibration is saved by ADB serial as four normalized bounds, so resizing the scrcpy window or moving monitors does not invalidate it.</p></article>
+        <article class="pattern-fact reveal"><span>04</span><h3>The unlock path is never stored</h3><p>No pattern sequence, no gesture replay. The optional drag trail is memory-only; calibration stores geometry, not the credential.</p></article>
+      </div>
+
+      <div class="calibration-strip reveal">
+        <span class="calibration-title">CALIBRATION</span>
+        <kbd>← ↑ ↓ →</kbd><span>move</span>
+        <kbd>Shift + arrows</kbd><span>resize</span>
+        <kbd>Ctrl + arrows</kbd><span>fine</span>
+        <kbd>Enter</kbd><span>save</span>
+        <kbd>Esc</kbd><span>cancel</span>
+        <kbd>R</kbd><span>reset</span>
       </div>
     </section>
 
@@ -228,7 +296,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
       <div class="compat-heading reveal">
         <div class="eyebrow signal">Compatibility</div>
         <h2>Built for Android devices.<br>Tested on real hardware.</h2>
-        <p>Android Headless Mirror is designed around standard ADB and scrcpy, not Samsung-only APIs. It should work anywhere those standard tools work, but broad hardware compatibility is not claimed as tested.</p>
+        <p>Android Headless Mirror is designed around standard ADB and scrcpy, not Samsung-only APIs. Core mirroring targets Windows 10/11; native Precision Touchpad pinch bridging is an enhanced Windows 11 path. Broad Android hardware compatibility is not claimed as tested.</p>
       </div>
 
       <div class="tested-devices-grid" aria-label="Hardware tested by this project">
@@ -255,7 +323,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
           <div><span>02</span><p><strong>STOP does not kill the global ADB server.</strong> It shuts down only this package's own processes.</p></div>
           <div><span>03</span><p><strong>No first-unlock bypass.</strong> Android's secure boot and post-reboot PIN requirements remain intact.</p></div>
           <div><span>04</span><p><strong>No cloud dependency.</strong> The core mirror path is your Windows PC, ADB, scrcpy, and the connected Android device.</p></div>
-          <div><span>05</span><p><strong>Pattern privacy stays local and ephemeral.</strong> The visual guide does not store, transmit, inject or replay unlock coordinates.</p></div>
+          <div><span>05</span><p><strong>Pattern privacy stays local.</strong> Runtime UI hierarchy data is not retained; optional calibration saves only the pattern-grid rectangle, never the unlock path.</p></div>
         </div>
       </div>
     </section>
@@ -287,9 +355,13 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
         <details class="reveal"><summary>Does STOP really keep it stopped?</summary><p>Yes. STOP creates a persistent state file and shuts down the package's mirror and supervisor. Windows autostart respects that state until you explicitly run START again.</p></details>
         <details class="reveal"><summary>What if my phone has no password or screen lock?</summary><p>Choose “No” when the one-time prompt asks whether the device uses any screen lock. The choice is saved for that phone and no pattern-overlay process is started.</p></details>
         <details class="reveal"><summary>What if I use PIN, password, fingerprint or another lock instead of a pattern?</summary><p>Choose that the phone has a lock, then choose “No” when asked whether it is a pattern. The device is saved as an “other” lock type and the pattern guide is not started.</p></details>
-        <details class="reveal"><summary>Does the pattern guide know or save my unlock pattern?</summary><p>No. It is a transparent visual layer only. Mouse input continues to scrcpy underneath. The guide never stores, transmits, injects or replays the pattern; its optional drag trail exists only in memory and is cleared shortly after use.</p></details>
-        <details class="reveal"><summary>What if automatic lock-screen detection is wrong on my phone?</summary><p>With the scrcpy window focused, press <strong>Ctrl+Alt+P</strong> to manually toggle the pattern guide for a short period. Keyguard reporting varies by Android version and OEM, so the manual fallback is intentional.</p></details>
+        <details class="reveal"><summary>Does the pattern guide know or save my unlock pattern?</summary><p>No. The unlock sequence is never stored or replayed. Runtime Android UI hierarchy data is read only to locate the pattern widget. If calibration is needed, only four normalized grid bounds are saved for that device.</p></details>
+        <details class="reveal"><summary>What if the pattern dots are not perfectly aligned on my phone?</summary><p>The guide first tries exact Android pattern-cell bounds, then the runtime LockPatternView bounds. If your OEM still differs, press <strong>Ctrl+Alt+C</strong> and calibrate entirely from the PC with the arrow keys; no physical phone interaction is required.</p></details>
+        <details class="reveal"><summary>What if automatic lock-screen detection is wrong on my phone?</summary><p>With the scrcpy window focused, press <strong>Ctrl+Alt+P</strong> to manually toggle the guide. Geometry discovery and visibility detection are separate, so manual visibility still uses the best available geometry source.</p></details>
         <details class="reveal"><summary>What if I change my phone from pattern to PIN, or remove the lock?</summary><p>Run <code>RESET_LOCK_SCREEN_CHOICES.bat</code>, clear that device’s saved choice, then reconnect it. The setup prompt appears again.</p></details>
+        <details class="reveal"><summary>Can I pinch TikTok with my laptop touchpad like I would on the phone?</summary><p>On Windows 11 with a Precision Touchpad, yes: pinch or spread with two fingers and the gesture is bridged into Android multitouch automatically. You do not hold Ctrl. Holding physical Ctrl changes the same pinch into PC-only frame zoom instead.</p></details>
+        <details class="reveal"><summary>How do I zoom only the PC mirror without zooming the Android app?</summary><p>Hold <strong>Ctrl</strong> and pinch/spread on a supported touchpad, or use Ctrl + mouse wheel. The mirror magnification persists after Ctrl is released and a <strong>Reset zoom</strong> button appears whenever the view is above 100%.</p></details>
+        <details class="reveal"><summary>What does the Sleep phone button do?</summary><p>It re-sends scrcpy’s screen-off command to the physical Android display while the mirror stays active. Use it whenever the phone screen has been woken but you want the device dark again.</p></details>
         <details class="reveal"><summary>Does it require Wi-Fi?</summary><p>No. USB is the default path. Wireless ADB is optional and disabled by default.</p></details>
         <details class="reveal"><summary>Will another Android phone work?</summary><p>Yes. The supervisor targets any authorised Android device. A preferred serial only influences selection when multiple ready devices are present; it does not lock the project to the first phone you used.</p></details>
       </div>
