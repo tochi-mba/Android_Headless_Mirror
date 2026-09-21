@@ -197,6 +197,15 @@ The first run is state-aware instead of showing a fixed questionnaire. REX check
 - choose whether the GUI Control Center opens automatically;
 - optionally start the supervisor immediately.
 
+After setup, Windows also gets a **REX** desktop shortcut. It launches `REX.bat smart` and behaves contextually:
+
+- setup incomplete -> open the guided first-run wizard;
+- mirror already running -> focus the existing mirror instead of starting a duplicate;
+- authorized Android device connected + mirror stopped -> explicitly start the system and mirror;
+- no authorized Android device + supervisor stopped -> start the supervisor and open a waiting/status experience;
+- no authorized Android device + supervisor already running -> keep the existing supervisor and avoid a duplicate;
+- persistent OFF is cleared because clicking the REX shortcut is itself an explicit start action.
+
 After setup, the same CLI becomes the day-to-day workspace:
 
 - **Runtime controls** — scrcpy controls plus PC-only host zoom in/out/reset.
@@ -208,7 +217,20 @@ After setup, the same CLI becomes the day-to-day workspace:
 
 ### Scriptable commands
 
-The interactive app is optional. The same executable supports automation:
+The interactive app is optional. The same executable supports automation.
+
+For coding agents and other automation, use the prompt-free machine interface:
+
+```text
+REX.bat --plain capabilities
+REX.bat --plain status
+REX.bat --plain devices
+REX.bat --plain smart
+```
+
+`--plain` and `--json` are aliases. They emit one versioned JSON document, no Spectre/ANSI UI, and never prompt. See `AGENTS.md` for the shell contract.
+
+Human-readable commands remain available:
 
 ```text
 rex status
@@ -229,6 +251,8 @@ rex config get MaxFps
 rex config set MaxFps 90
 rex config restore
 rex autostart on
+rex shortcut install
+rex shortcut remove
 rex screenshot --serial USB123
 rex diagnostics
 ```
