@@ -440,6 +440,23 @@ public sealed class RexApp
             }
 
             var (id, value) = PromptFriendlySetting(choice);
+
+            if (choice == "Animation speed")
+            {
+                foreach (var animationId in new[] { "animation-window", "animation-transition", "animation-duration" })
+                {
+                    using var _ = await _bridge.InvokeAsync(
+                        "friendly-set",
+                        serial: device.Serial,
+                        name: animationId,
+                        value: value);
+                }
+
+                RexBrand.Success(_console, "All Android animation scales updated.");
+                Pause();
+                continue;
+            }
+
             using var result = await _bridge.InvokeAsync(
                 "friendly-set",
                 serial: device.Serial,
