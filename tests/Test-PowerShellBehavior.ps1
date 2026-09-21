@@ -303,7 +303,7 @@ public static class ArgProbe
     $nativeExit = Invoke-Scrcpy $fakeScrcpy $nativeArgs $false
     Assert-Equal -Expected 23 -Actual $nativeExit -Message "Invoke-Scrcpy should return the native process exit code."
 
-    $received = @(Get-Content $scrcpyArgLog)
+    $received = @(Get-Content $scrcpyArgLog | ForEach-Object { [string]$_ })
     Assert-Equal -Expected @(
         "--serial=USB123",
         "--window-title=Android Device",
