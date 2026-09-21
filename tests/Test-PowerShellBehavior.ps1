@@ -264,14 +264,24 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     Write-Host "[powershell] Testing native scrcpy argument boundaries..."
     $scrcpyArgLog = Join-Path $temp "scrcpy-args.log"
     $env:AHM_SCRCPY_ARG_LOG = $scrcpyArgLog
-    $fakeScrcpy = Join-Path $temp "fake-scrcpy.cmd"
-    @'
-@echo off
-> "%AHM_SCRCPY_ARG_LOG%" echo [1]=%~1
->>"%AHM_SCRCPY_ARG_LOG%" echo [2]=%~2
->>"%AHM_SCRCPY_ARG_LOG%" echo [3]=%~3
-exit /b 23
-'@ | Set-Content -Path $fakeScrcpy -Encoding ASCII
+    $fakeScrcpy = Join-Path $temp "fake-scrcpy.exe"
+    $probeSource = @'
+using System;
+using System.IO;
+
+public static class ArgProbe
+{
+    public static int Main(string[] args)
+    {
+        File.WriteAllLines(
+            Environment.GetEnvironmentVariable("AHM_SCRCPY_ARG_LOG"),
+            args
+        );
+        return 23;
+    }
+}
+'@
+    Add-Type -TypeDefinition $probeSource -OutputAssembly $fakeScrcpy -OutputType ConsoleApplication
 
     $nativeArgs = @(
         "--serial=USB123",
@@ -283,10 +293,10 @@ exit /b 23
 
     $received = @(Get-Content $scrcpyArgLog)
     Assert-Equal -Expected @(
-        "[1]=--serial=USB123",
-        "[2]=--window-title=Android Device",
-        "[3]=--max-fps=60"
-    ) -Actual $received -Message "Native invocation must preserve arguments containing spaces as one argument."
+        "--serial=USB123",
+        "--window-title=Android Device",
+        "--max-fps=60"
+    ) -Actual $received -Message "Native .exe invocation must preserve every scrcpy argument boundary."
 
     Write-Host "[powershell] Testing real device preparation commands..."
     $prepareLog = Join-Path $temp "prepare.log"
