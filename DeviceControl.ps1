@@ -2,7 +2,11 @@ Set-StrictMode -Version Latest
 
 function Quote-AdbShellArgument([string]$Value) {
     if ($null -eq $Value) { return "''" }
-    return "'" + ($Value -replace "'", "'\"'\"'") + "'"
+
+    $singleQuote = [string][char]39
+    $escapedQuote = $singleQuote + "\" + $singleQuote + $singleQuote
+    $escapedValue = $Value.Replace($singleQuote, $escapedQuote)
+    return $singleQuote + $escapedValue + $singleQuote
 }
 
 function Test-AndroidSettingKey([string]$Key) {
