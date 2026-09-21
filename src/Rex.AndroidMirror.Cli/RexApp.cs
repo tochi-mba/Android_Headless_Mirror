@@ -5,6 +5,25 @@ namespace Rex.AndroidMirror.Cli;
 
 public sealed class RexApp
 {
+    internal static IReadOnlyList<string> MainMenuChoices { get; } = new[]
+    {
+        "Start / open mirror",
+        "Runtime controls",
+        "PC / mirror settings",
+        "Device settings",
+        "Advanced Android settings",
+        "Open GUI Control Center",
+        "Diagnostics",
+        "Setup / repair",
+        "Windows startup",
+        "Desktop shortcut",
+        "Captures",
+        "Stop Android Headless Mirror",
+        "Refresh",
+        "Display transports",
+        "Exit",
+    };
+
     private readonly AppPaths _paths;
     private readonly IProcessRunner _runner;
     private readonly IBridgeClient _bridge;
@@ -61,24 +80,7 @@ public sealed class RexApp
 
             var choice = _console.Prompt(RexBrand.Menu(
                 "What do you want to do?",
-                new[]
-                {
-                    "Start / open mirror",
-                    "Runtime controls",
-                    "PC / mirror settings",
-                    "Device settings",
-                    "Advanced Android settings",
-                    "Open GUI Control Center",
-                    "Diagnostics",
-                    "Setup / repair",
-                    "Windows startup",
-                    "Desktop shortcut",
-                    "Captures",
-                    "Stop Android Headless Mirror",
-                    "Refresh",
-                    "Display transports",
-                    "Exit",
-                }));
+                MainMenuChoices));
 
             try
             {
