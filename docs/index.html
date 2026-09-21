@@ -47,6 +47,7 @@
         <a href="#features">Features</a>
         <a href="#controls">Controls</a>
         <a href="#control-center">Control Center</a>
+        <a href="#cli">REX CLI</a>
         <a href="#pattern-guide">Pattern guide</a>
         <a href="#compatibility">Compatibility</a>
         <a href="#faq">FAQ</a>
@@ -283,6 +284,97 @@
           <div><span>window_animation_scale</span><span>1</span><em>advanced</em></div>
           <div class="protected"><span>adb_enabled</span><span>1</span><em>protected</em></div>
         </div>
+      </div>
+    </section>
+
+    <section class="section container rex-cli-section" id="cli">
+      <div class="rex-cli-heading reveal">
+        <div>
+          <div class="eyebrow signal">REX CLI</div>
+          <h2>One terminal app.<br>Setup wizard, controls, settings and recovery.</h2>
+        </div>
+        <p>Open <code>REX.bat</code> and the CLI works out what state the package is in. First run becomes guided setup. After that, the same app becomes a complete keyboard-driven workspace with GUI parity and a scriptable command surface.</p>
+      </div>
+
+      <div class="rex-terminal reveal" aria-label="Preview of the REX command-line app">
+        <div class="rex-terminal-bar">
+          <span>REX TECHNOLOGIES · ANDROID HEADLESS MIRROR</span>
+          <span class="rex-terminal-state">● USB CONNECTED</span>
+        </div>
+        <div class="rex-terminal-body">
+          <pre><span class="rt-signal">██████╗ ███████╗██╗  ██╗
+██╔══██╗██╔════╝╚██╗██╔╝
+██████╔╝█████╗   ╚███╔╝
+██╔══██╗██╔══╝   ██╔██╗
+██║  ██║███████╗██╔╝ ██╗
+╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝</span>
+
+<span class="rt-muted">STATUS</span>
+  SERVICE      <span class="rt-signal">ON</span>
+  SUPERVISOR   <span class="rt-signal">running</span>
+  MIRROR       waiting
+  AUTOSTART    <span class="rt-signal">enabled</span>
+  DEVICE       Samsung Galaxy S21 Ultra · R3CRB04F7PP · USB · device
+
+<span class="rt-text">What do you want to do?</span>
+<span class="rt-selected">❯ Start / open mirror</span>
+  Runtime controls
+  PC / mirror settings
+  Device settings
+  Advanced Android settings
+  Open GUI Control Center
+  Diagnostics
+  Setup / repair</pre>
+        </div>
+      </div>
+
+      <div class="cli-flow-grid">
+        <article class="cli-flow-card reveal">
+          <span>FIRST RUN</span>
+          <h3>Detect before asking</h3>
+          <p>REX checks scrcpy, ADB, current startup state and connected devices first. It only asks questions that matter for the current machine.</p>
+        </article>
+        <article class="cli-flow-card reveal">
+          <span>SETUP</span>
+          <h3>Guide the headless choices</h3>
+          <p>Choose Windows startup, lock method, physical-screen behavior, USB stay-awake, Precision Touchpad support and whether the GUI Control Center should auto-open.</p>
+        </article>
+        <article class="cli-flow-card reveal">
+          <span>EVERY DAY</span>
+          <h3>Everything from the keyboard</h3>
+          <p>Start/stop, sleep/wake, navigation, rotation, volume, clipboard, host zoom, screenshots, PC settings and Android settings all remain reachable without touching the phone.</p>
+        </article>
+        <article class="cli-flow-card reveal">
+          <span>RECOVERY</span>
+          <h3>Repair without losing intent</h3>
+          <p>Tool repair preserves the user’s startup choice. Config edits create a rollback copy, and protected Android keys cannot silently sever the ADB recovery path.</p>
+        </article>
+      </div>
+
+      <div class="cli-parity reveal">
+        <div class="cli-parity-copy">
+          <div class="eyebrow signal">Two interfaces · one backend</div>
+          <h3>The CLI and Control Center cannot drift.</h3>
+          <p>Both surfaces call the same PowerShell, ADB and scrcpy control layer. Friendly device settings and the live <code>system</code> / <code>secure</code> / <code>global</code> browser are shared rather than reimplemented.</p>
+        </div>
+        <div class="cli-command-list" aria-label="Example REX commands">
+          <code><b>rex</b><span>guided terminal app</span></code>
+          <code><b>rex status</b><span>package + device state</span></code>
+          <code><b>rex action sleep</b><span>runtime scrcpy action</span></code>
+          <code><b>rex mirror zoom-in</b><span>PC-only host zoom</span></code>
+          <code><b>rex device set brightness 180</b><span>friendly Android setting</span></code>
+          <code><b>rex android list global</b><span>live Settings Provider keys</span></code>
+          <code><b>rex config list</b><span>every PC / mirror setting</span></code>
+          <code><b>rex config restore</b><span>one-step config rollback</span></code>
+        </div>
+      </div>
+
+      <div class="cli-release-note reveal">
+        <div>
+          <span class="advanced-label">ZERO-FRICTION ENTRY</span>
+          <strong><code>REX.bat</code> bootstraps the app.</strong>
+        </div>
+        <p>Release builds ship a self-contained Windows <code>rex.exe</code>. The bootstrap verifies the release ZIP’s SHA-256 checksum before extraction and can build locally from source when a .NET 8 SDK is available.</p>
       </div>
     </section>
 
