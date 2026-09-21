@@ -124,6 +124,31 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(page.getByText(/authenticate from the PC/)).toBeVisible();
   });
 
+  test('pattern guide documents every per-device lock mode', async ({ page }) => {
+    const section = page.locator('#pattern-guide');
+    await expect(section).toBeVisible();
+    await expect(section.getByText('Pattern', { exact: true })).toBeVisible();
+    await expect(section.getByText(/PIN \/ password \/ other/)).toBeVisible();
+    await expect(section.getByText('No screen lock', { exact: true })).toBeVisible();
+    await expect(section.getByText('Ask later', { exact: true })).toBeVisible();
+  });
+
+  test('pattern guide privacy and manual fallback are explicit', async ({ page }) => {
+    const section = page.locator('#pattern-guide');
+    await expect(section).toContainText('click-through');
+    await expect(section).toContainText('Ctrl+Alt+P');
+    await expect(section).toContainText('never stored');
+    await expect(section).toContainText('No ADB touch injection');
+  });
+
+  test('FAQ covers no-lock devices and lock-type changes', async ({ page }) => {
+    await page.getByText('What if my phone has no password or screen lock?').click();
+    await expect(page.getByText(/no pattern-overlay process is started/)).toBeVisible();
+
+    await page.getByText('What if I change my phone from pattern to PIN, or remove the lock?').click();
+    await expect(page.getByText(/RESET_LOCK_SCREEN_CHOICES\.bat/)).toBeVisible();
+  });
+
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
     const summary = page.getByText('Does STOP really keep it stopped?');
     await summary.click();
