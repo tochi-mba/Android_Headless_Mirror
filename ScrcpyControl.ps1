@@ -86,6 +86,26 @@ public static class AHMScrcpyControlNative
         return found;
     }
 
+    public static IntPtr FindWindowByTitlePrefix(string prefix)
+    {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows(delegate(IntPtr hwnd, IntPtr lParam)
+        {
+            if (!IsWindowVisible(hwnd)) return true;
+            StringBuilder builder = new StringBuilder(512);
+            GetWindowText(hwnd, builder, builder.Capacity);
+            string title = builder.ToString();
+            if (!String.IsNullOrEmpty(title) &&
+                title.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                found = hwnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
     private static INPUT Key(ushort vk, bool up)
     {
         INPUT input = new INPUT();
@@ -185,6 +205,25 @@ function Get-ScrcpyWindowRect([string]$WindowTitle) {
         Bottom = $rect.Bottom
         Width = $rect.Right - $rect.Left
         Height = $rect.Bottom - $rect.Top
+    }
+}
+
+function Focus-ScrcpyWindow([string]$WindowTitlePrefix, [switch]$TestMode) {
+    Initialize-ScrcpyControlNative
+
+    if ($TestMode) {
+        return [pscustomobject]@{ Ok=$true; Text="Test focus scrcpy window." }
+    }
+
+    $target = [AHMScrcpyControlNative]::FindWindowByTitlePrefix($WindowTitlePrefix)
+    if ($target -eq [IntPtr]::Zero) {
+        return [pscustomobject]@{ Ok=$false; Text="No matching scrcpy window is running." }
+    }
+
+    $ok = [AHMScrcpyControlNative]::SetForegroundWindow($target)
+    return [pscustomobject]@{
+        Ok = $ok
+        Text = if ($ok) { "Mirror focused." } else { "Windows did not allow the mirror to be focused." }
     }
 }
 
