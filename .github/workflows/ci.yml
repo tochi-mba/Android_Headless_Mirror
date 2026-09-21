@@ -125,6 +125,10 @@ jobs:
         shell: powershell
         run: .\tests\Test-RexCliBootstrap.ps1
 
+      - name: Run REX bridge fake-ADB E2E
+        shell: powershell
+        run: .\tests\Test-RexBridgeE2E.ps1
+
       - name: Publish self-contained REX CLI
         shell: pwsh
         run: |
