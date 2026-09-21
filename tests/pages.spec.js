@@ -255,6 +255,20 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
   });
 
 
+  test('REX CLI documents wizard, parity, rollback, and power-user commands', async ({ page }) => {
+    const section = page.locator('#cli');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('One terminal app');
+    await expect(section).toContainText('Detect before asking');
+    await expect(section).toContainText('Everything from the keyboard');
+    await expect(section).toContainText('The CLI and Control Center cannot drift');
+    await expect(section).toContainText('rex action sleep');
+    await expect(section).toContainText('rex mirror zoom-in');
+    await expect(section).toContainText('rex android list global');
+    await expect(section).toContainText('rex config restore');
+    await expect(section).toContainText('SHA-256');
+  });
+
   test('FAQ explains native touchpad pinch without Ctrl', async ({ page }) => {
     const summary = page.getByText('Can I pinch TikTok with my laptop touchpad like I would on the phone?');
     await summary.click();
@@ -415,6 +429,14 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await assertVisualThreshold(section, 'pages-desktop-control-center');
   });
 
+  test('desktop REX CLI screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#cli');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-rex-cli');
+  });
+
   test('has no serious or critical WCAG 2.x axe violations', async ({ page }) => {
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -470,6 +492,13 @@ test.describe('mobile behavior', () => {
     const section = page.locator('#control-center');
     await section.scrollIntoViewIfNeeded();
     await assertVisualThreshold(section, 'pages-mobile-control-center');
+  });
+
+  test('mobile REX CLI screenshot passes visual thresholds', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#cli');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-mobile-rex-cli');
   });
 
   test('small phone width remains usable', async ({ page }) => {
