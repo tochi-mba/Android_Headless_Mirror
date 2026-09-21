@@ -335,13 +335,40 @@ function Invoke-Scrcpy([string]$Executable, [string[]]$Arguments, [bool]$ShowOut
     # This preserves argument boundaries (for example, "--window-title=Android Device")
     # instead of flattening them into a single command line as Start-Process
     # -ArgumentList does on Windows PowerShell.
-    & $Executable @Arguments 2>&1 | ForEach-Object {
-        if ($ShowOutput) {
-            Write-Host ([string]$_)
-        }
+    #
+    # scrcpy legitimately writes informational/progress lines to stderr. The
+    # supervisor runs with ErrorActionPreference=Stop, so Windows PowerShell can
+    # otherwise promote those native stderr records to terminating errors even
+    # when scrcpy itself is healthy. Native process success is determined by the
+    # process exit code, not by whether stderr received text.
+    $previousErrorActionPreference = $ErrorActionPreference
+    $hasNativeErrorPreference = Test-Path variable:PSNativeCommandUseErrorActionPreference
+    $previousNativeErrorPreference = $null
+
+    if ($hasNativeErrorPreference) {
+        $previousNativeErrorPreference = $PSNativeCommandUseErrorActionPreference
     }
 
-    return [int]$LASTEXITCODE
+    try {
+        $ErrorActionPreference = "Continue"
+        if ($hasNativeErrorPreference) {
+            $PSNativeCommandUseErrorActionPreference = $false
+        }
+
+        & $Executable @Arguments 2>&1 | ForEach-Object {
+            if ($ShowOutput) {
+                Write-Host ([string]$_)
+            }
+        }
+
+        return [int]$LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+        if ($hasNativeErrorPreference) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
+        }
+    }
 }
 
 function Prepare-DeviceForMirror([string]$Adb, [string]$Serial) {

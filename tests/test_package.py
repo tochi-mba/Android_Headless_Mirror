@@ -365,6 +365,16 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("Invoke-Scrcpy $Scrcpy $args", text)
         self.assertNotIn("Start-Process -FilePath $Scrcpy -ArgumentList $args", text)
 
+    def test_scrcpy_native_stderr_does_not_use_global_stop_policy(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        start = text.index("function Invoke-Scrcpy")
+        end = text.index("function Prepare-DeviceForMirror", start)
+        invoke = text[start:end]
+        self.assertIn('$previousErrorActionPreference = $ErrorActionPreference', invoke)
+        self.assertIn('$ErrorActionPreference = "Continue"', invoke)
+        self.assertIn('$ErrorActionPreference = $previousErrorActionPreference', invoke)
+        self.assertIn('PSNativeCommandUseErrorActionPreference', invoke)
+
     def test_scrcpy_arguments_cover_expected_controls(self):
         text = self.read("Start-PhoneMirror.ps1")
         for arg in [
