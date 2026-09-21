@@ -268,7 +268,7 @@ public static class Program
 
                 var table = new Table()
                     .Border(TableBorder.Rounded)
-                    .BorderColor(Color.Parse(RexBrand.Line))
+                    .BorderColor(RexBrand.LineColor)
                     .AddColumn("Key")
                     .AddColumn("Value")
                     .AddColumn("Risk");
@@ -348,7 +348,7 @@ public static class Program
 
                 var table = new Table()
                     .Border(TableBorder.Rounded)
-                    .BorderColor(Color.Parse(RexBrand.Line))
+                    .BorderColor(RexBrand.LineColor)
                     .AddColumn("Setting")
                     .AddColumn("Value")
                     .AddColumn("Type");
@@ -447,7 +447,7 @@ public static class Program
 
         var table = new Table()
             .Border(TableBorder.Rounded)
-            .BorderColor(Color.Parse(RexBrand.Line))
+            .BorderColor(RexBrand.LineColor)
             .AddColumn("Component")
             .AddColumn("State");
 
@@ -471,7 +471,7 @@ public static class Program
 
         var table = new Table()
             .Border(TableBorder.Rounded)
-            .BorderColor(Color.Parse(RexBrand.Line))
+            .BorderColor(RexBrand.LineColor)
             .AddColumn("Device")
             .AddColumn("Serial")
             .AddColumn("Transport")
@@ -534,7 +534,7 @@ public static class Program
 
         var table = new Table()
             .Border(TableBorder.Rounded)
-            .BorderColor(Color.Parse(RexBrand.Line))
+            .BorderColor(RexBrand.LineColor)
             .AddColumn("Command")
             .AddColumn("Purpose");
 
