@@ -175,7 +175,7 @@ public sealed class RexAppTests
         bridge.DefaultStatus = Status(setup: true, devices: new[] { device });
 
         var console = ConsoleWithInput();
-        PushDown(console, 4); // Device settings
+        PushDown(console, 3); // Device settings (Display is near the end of the main menu)
         console.Input.PushKey(ConsoleKey.Enter);
         PushDown(console, 8); // Animation speed
         console.Input.PushKey(ConsoleKey.Enter);
