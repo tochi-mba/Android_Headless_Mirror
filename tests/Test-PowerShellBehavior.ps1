@@ -7,6 +7,8 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $SupervisorPath = Join-Path $Root "Start-PhoneMirror.ps1"
 $StopPath = Join-Path $Root "Stop-PhoneMirror.ps1"
+$OverlayPath = Join-Path $Root "PatternOverlay.ps1"
+$ResetLockScreenPath = Join-Path $Root "Reset-LockScreenChoices.ps1"
 
 $script:Assertions = 0
 
@@ -96,7 +98,42 @@ function Get-SupervisorFunctionDefinitions {
     return $selectedDefinitions
 }
 
+function Get-OverlayFunctionDefinitions {
+    param([string[]]$Names)
+
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        $OverlayPath,
+        [ref]$tokens,
+        [ref]$errors
+    )
+
+    Assert-Equal -Expected 0 -Actual $errors.Count -Message "Pattern overlay must parse before behavior tests run."
+
+    $definitions = @{}
+    $ast.FindAll(
+        {
+            param($Node)
+            $Node -is [System.Management.Automation.Language.FunctionDefinitionAst]
+        },
+        $true
+    ) | ForEach-Object {
+        $definitions[$_.Name] = $_.Extent.Text
+    }
+
+    $selectedDefinitions = @()
+    foreach ($name in $Names) {
+        Assert-True -Condition $definitions.ContainsKey($name) -Message "Overlay function '$name' must exist."
+        $selectedDefinitions += $definitions[$name]
+    }
+
+    return $selectedDefinitions
+}
+
 $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
+    "Ensure-StateShape",
+    "Get-DeviceProfile",
     "Get-AdbDevices",
     "Is-PrivateIPv4",
     "Get-PhoneIpCandidates",
@@ -110,6 +147,18 @@ $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
 foreach ($definition in $functionDefinitions) {
     Invoke-Expression $definition
 }
+
+$overlayFunctionDefinitions = @(Get-OverlayFunctionDefinitions -Names @(
+    "Get-KeyguardStateFromText",
+    "Get-FittedContentRect",
+    "Get-PatternGridPoints",
+    "Get-HotkeySpec"
+))
+
+foreach ($definition in $overlayFunctionDefinitions) {
+    Invoke-Expression $definition
+}
+
 
 Write-Host "[powershell] Testing private IPv4 classification..."
 foreach ($ip in @(
@@ -146,6 +195,63 @@ $unique = @(Unique-Strings @(
     "10.0.0.2"
 ))
 Assert-Equal -Expected @("192.168.1.1", "10.0.0.2") -Actual $unique -Message "Unique-Strings should trim, drop empties, and preserve first occurrence."
+
+Write-Host "[powershell] Testing state migration and per-device profiles..."
+$legacyState = [pscustomobject]@{
+    PreferredSerial = "USB123"
+    WirelessHosts = @("192.168.1.20")
+}
+$legacyState = Ensure-StateShape $legacyState
+Assert-True -Condition ($null -ne $legacyState.PSObject.Properties["DeviceProfiles"]) -Message "Old state should gain DeviceProfiles."
+Assert-Equal -Expected 0 -Actual @($legacyState.DeviceProfiles).Count -Message "Migrated DeviceProfiles should start empty."
+
+$profileState = [pscustomobject]@{
+    PreferredSerial = ""
+    WirelessHosts = @()
+    DeviceProfiles = @(
+        [pscustomobject]@{ Serial = "A"; LockScreenMode = "none" },
+        [pscustomobject]@{ Serial = "B"; LockScreenMode = "pattern" }
+    )
+}
+$profile = Get-DeviceProfile $profileState "B"
+Assert-Equal -Expected "pattern" -Actual $profile.LockScreenMode -Message "Per-device lock mode should be retrieved by serial."
+Assert-True -Condition ($null -eq (Get-DeviceProfile $profileState "MISSING")) -Message "Unknown devices should not inherit another phone's lock mode."
+
+Write-Host "[powershell] Testing pattern overlay keyguard parsing..."
+Assert-Equal -Expected "locked" -Actual (Get-KeyguardStateFromText "mKeyguardShowing=true" "") -Message "Generic keyguard=true should be locked."
+Assert-Equal -Expected "locked" -Actual (Get-KeyguardStateFromText "" "deviceLocked: 1") -Message "Trust deviceLocked=1 should be locked."
+Assert-Equal -Expected "unlocked" -Actual (Get-KeyguardStateFromText "mShowingLockscreen=false" "") -Message "Generic lockscreen=false should be unlocked."
+Assert-Equal -Expected "unlocked" -Actual (Get-KeyguardStateFromText "" "deviceLocked=false") -Message "Trust deviceLocked=false should be unlocked."
+Assert-Equal -Expected "unknown" -Actual (Get-KeyguardStateFromText "unrelated output" "nothing useful") -Message "Missing OEM signals should remain unknown."
+
+Write-Host "[powershell] Testing pattern overlay geometry..."
+$portraitRect = Get-FittedContentRect 1000 1000 1080 2400
+Assert-Equal -Expected 275.0 -Actual ([Math]::Round($portraitRect.X, 3)) -Message "Portrait video should be horizontally letterboxed in a square client."
+Assert-Equal -Expected 0.0 -Actual ([Math]::Round($portraitRect.Y, 3)) -Message "Portrait video should fill square-client height."
+Assert-Equal -Expected 450.0 -Actual ([Math]::Round($portraitRect.Width, 3)) -Message "Portrait fitted width should preserve aspect ratio."
+Assert-Equal -Expected 1000.0 -Actual ([Math]::Round($portraitRect.Height, 3)) -Message "Portrait fitted height should fill client height."
+
+$landscapeRect = Get-FittedContentRect 1600 900 1080 2400
+Assert-Equal -Expected 0.0 -Actual ([Math]::Round($landscapeRect.X, 3)) -Message "Landscape video should fill client width."
+Assert-Equal -Expected 90.0 -Actual ([Math]::Round($landscapeRect.Y, 3)) -Message "Landscape video should be vertically letterboxed."
+Assert-Equal -Expected 1600.0 -Actual ([Math]::Round($landscapeRect.Width, 3)) -Message "Landscape fitted width should fill client width."
+Assert-Equal -Expected 720.0 -Actual ([Math]::Round($landscapeRect.Height, 3)) -Message "Landscape fitted height should preserve aspect ratio."
+
+$overlayConfig = [pscustomobject]@{
+    GridSizeRelativeToWidth = 0.6
+    GridCenterX = 0.5
+    GridCenterY = 0.6
+}
+$points = @(Get-PatternGridPoints $portraitRect $overlayConfig)
+Assert-Equal -Expected 9 -Actual $points.Count -Message "Pattern guide must always contain nine points."
+Assert-Equal -Expected ([Math]::Round($portraitRect.X + ($portraitRect.Width * 0.5), 3)) -Actual ([Math]::Round($points[4].X, 3)) -Message "Middle pattern dot should use configured horizontal center."
+Assert-Equal -Expected ([Math]::Round($portraitRect.Y + ($portraitRect.Height * 0.6), 3)) -Actual ([Math]::Round($points[4].Y, 3)) -Message "Middle pattern dot should use configured vertical center."
+
+Write-Host "[powershell] Testing overlay hotkey parsing..."
+$hotkey = Get-HotkeySpec "Ctrl+Alt+P"
+Assert-Equal -Expected @(0x11, 0x12) -Actual @($hotkey.Modifiers) -Message "Ctrl+Alt modifiers should parse."
+Assert-Equal -Expected ([int][char]'P') -Actual $hotkey.Key -Message "P key should parse."
+Assert-True -Condition ($null -eq (Get-HotkeySpec "Ctrl+Banana")) -Message "Invalid hotkeys should be rejected."
 
 Write-Host "[powershell] Testing ADB device parsing with a fake executable..."
 $temp = Join-Path ([System.IO.Path]::GetTempPath()) ("android-headless-mirror-tests-" + [guid]::NewGuid().ToString("N"))
@@ -233,7 +339,7 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     $usbArgs = @(Build-ScrcpyArguments "USB123" $false)
     foreach ($expected in @(
         "--serial=USB123",
-        "--window-title=Android Device",
+        "--window-title=Android Device [USB123]",
         "--turn-screen-off",
         "--stay-awake",
         "--keep-active",
@@ -306,7 +412,7 @@ public static class ArgProbe
 
     $nativeArgs = @(
         "--serial=USB123",
-        "--window-title=Android Device",
+        "--window-title=Android Device [USB123]",
         "--max-fps=60"
     )
     $nativeExit = Invoke-Scrcpy $fakeScrcpy $nativeArgs $false
@@ -315,7 +421,7 @@ public static class ArgProbe
     $received = @(Get-Content $scrcpyArgLog | ForEach-Object { [string]$_ })
     Assert-Equal -Expected @(
         "--serial=USB123",
-        "--window-title=Android Device",
+        "--window-title=Android Device [USB123]",
         "--max-fps=60"
     ) -Actual $received -Message "Native .exe invocation must preserve every scrcpy argument boundary."
 
@@ -346,6 +452,32 @@ exit /b 0
     Clear-Content $prepareLog
     Prepare-DeviceForMirror $fakePrepareAdb "USB123"
     Assert-Equal -Expected 0 -Actual @(Get-Content $prepareLog -ErrorAction SilentlyContinue).Count -Message "Disabled preparation controls should emit no ADB commands."
+
+    Write-Host "[powershell] Testing lock-screen choice reset utility..."
+    $resetSandbox = Join-Path $temp "reset-sandbox"
+    New-Item -ItemType Directory -Force -Path $resetSandbox | Out-Null
+    $isolatedReset = Join-Path $resetSandbox "Reset-LockScreenChoices.ps1"
+    Copy-Item -Path $ResetLockScreenPath -Destination $isolatedReset
+    $resetStatePath = Join-Path $resetSandbox "state.json"
+    [pscustomobject]@{
+        PreferredSerial = "USB123"
+        WirelessHosts = @("192.168.1.20")
+        DeviceProfiles = @(
+            [pscustomobject]@{ Serial = "USB123"; LockScreenMode = "pattern" },
+            [pscustomobject]@{ Serial = "USB456"; LockScreenMode = "none" }
+        )
+    } | ConvertTo-Json -Depth 6 | Set-Content -Path $resetStatePath -Encoding UTF8
+
+    & $isolatedReset -Serial "USB123"
+    $resetState = Get-Content $resetStatePath -Raw | ConvertFrom-Json
+    Assert-Equal -Expected "USB123" -Actual $resetState.PreferredSerial -Message "Resetting lock mode must preserve preferred serial."
+    Assert-Equal -Expected @("192.168.1.20") -Actual @($resetState.WirelessHosts) -Message "Resetting lock mode must preserve wireless hosts."
+    Assert-Equal -Expected 1 -Actual @($resetState.DeviceProfiles).Count -Message "Per-device reset should remove only one device profile."
+    Assert-Equal -Expected "USB456" -Actual @($resetState.DeviceProfiles)[0].Serial -Message "Other device profiles must remain."
+
+    & $isolatedReset -Serial "ALL"
+    $resetState = Get-Content $resetStatePath -Raw | ConvertFrom-Json
+    Assert-Equal -Expected 0 -Actual @($resetState.DeviceProfiles).Count -Message "ALL should clear every lock-screen choice."
 
     Write-Host "[powershell] Testing real STOP lifecycle in an isolated directory..."
     $stopSandbox = Join-Path $temp "stop-sandbox"
