@@ -323,6 +323,26 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     return @($args)
 }
 
+function Wait-ForDeviceDisconnect([string]$Adb, [string]$Serial) {
+    Log "Mirror closed cleanly; waiting for $Serial to disconnect before auto-opening again."
+
+    while (-not (Test-Path $StopFile)) {
+        $devices = @(Get-AdbDevices $Adb)
+        $stillConnected = @(
+            $devices | Where-Object {
+                $_.Serial -eq $Serial -and $_.State -eq "device"
+            }
+        )
+
+        if ($stillConnected.Count -eq 0) {
+            Log "Device $Serial disconnected; armed for automatic launch on next connection."
+            return
+        }
+
+        Start-Sleep -Seconds ([int]$Config.PollSeconds)
+    }
+}
+
 function Show-FirstUseHint {
     try {
         Add-Type -AssemblyName PresentationFramework -ErrorAction SilentlyContinue
@@ -409,10 +429,13 @@ try {
 
             if (Test-Path $StopFile) { break }
 
-            # A clean exit generally means the user intentionally closed the mirror.
+            # If the user intentionally closes the mirror while the phone remains
+            # connected, do not immediately reopen it. Keep the hidden supervisor alive
+            # and arm automatic launch again after a real disconnect/reconnect cycle.
             if ($exitCode -eq 0) {
-                Log "Clean scrcpy exit; supervisor stopping until next login/START_NOW."
-                break
+                Wait-ForDeviceDisconnect $Adb $selected.Serial
+                if (Test-Path $StopFile) { break }
+                continue
             }
 
             if (-not $Config.RestartOnUnexpectedExit) {
