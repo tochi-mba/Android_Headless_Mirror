@@ -124,7 +124,7 @@ function Get-HotkeySpec([string]$Text) {
 }
 
 if ($TestOnly) {
-    exit 0
+    return
 }
 
 if (-not (Test-Path $ConfigPath)) {
