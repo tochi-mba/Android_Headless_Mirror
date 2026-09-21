@@ -13,12 +13,17 @@ Write-Host "Stopping Android Headless Mirror..." -ForegroundColor Cyan
 # Persist the OFF state. Windows autostart respects this flag until an explicit START clears it.
 Set-Content -Path $StopFile -Value ([DateTime]::UtcNow.ToString("o")) -Encoding ASCII -Force
 
-# Stop the visible mirror.
-Get-Process -Name "scrcpy" -ErrorAction SilentlyContinue |
-    Stop-Process -Force -ErrorAction SilentlyContinue
+# Stop only scrcpy instances launched from this package.
+$escapedRoot = [regex]::Escape($Root)
+Get-CimInstance Win32_Process -Filter "Name='scrcpy.exe'" -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.ExecutablePath -and $_.ExecutablePath -match $escapedRoot
+    } |
+    ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
 
 # Stop only this package's supervisor process. Do not stop the shared/global ADB server.
-$escapedRoot = [regex]::Escape($Root)
 Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object {
         $_.Name -in @("powershell.exe", "pwsh.exe") -and
