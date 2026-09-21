@@ -84,20 +84,46 @@ The choice is stored **per ADB serial** in `state.json`, so different phones on 
 
 ### How the pattern guide works
 
-- The guide is a transparent, always-on-top Windows overlay aligned to the scrcpy **client area**.
-- It uses click-through + no-activate window styles, so mouse input continues to scrcpy underneath.
-- It follows scrcpy when the window moves/resizes and is DPI/multi-monitor aware.
-- It tries to show automatically when generic Android keyguard signals report a locked device.
-- OEM keyguard reporting is not perfectly consistent, so **Ctrl+Alt+P** manually toggles the guide for 20 seconds while the matching scrcpy window is focused.
-- The 3×3 grid geometry is normalized to the fitted Android video area so letterboxing and landscape/portrait resizing are accounted for.
-- Grid center, size, dot radius, opacity, polling intervals, trail duration and hotkey are configurable under `PatternOverlay` in `config.json`.
+The overlay uses the most accurate geometry source available, in this order:
+
+1. **Exact Android pattern-cell bounds** from the current UI hierarchy, when the OEM exposes the nine virtual cells.
+2. **Android `LockPatternView` bounds** from the current UI hierarchy. AOSP places the three pattern centers in each axis at the centers of the three equal cells, so the outer centers are at 1/6 and 5/6 of the runtime view bounds.
+3. **Saved per-device calibration** when an OEM exposes a padded/non-standard pattern container or hides the widget completely.
+4. **Estimated geometry** only as the final fallback.
+
+Runtime discovery uses `uiautomator dump` only while the pattern guide is relevant. The hierarchy is read in memory and is not retained.
+
+The guide itself:
+
+- is a transparent, always-on-top Windows overlay aligned to the scrcpy **client area**;
+- is click-through + no-activate, so mouse input continues to scrcpy underneath;
+- follows scrcpy across move/resize and mixed-DPI/multi-monitor layouts;
+- maps Android screen coordinates into the fitted scrcpy video area, including letterboxing and orientation changes;
+- tries to show automatically when generic Android keyguard signals report a locked device;
+- can be shown manually with **Ctrl+Alt+P** when OEM keyguard reporting is unreliable.
+
+### Calibration fallback
+
+Press **Ctrl+Alt+C** while the matching scrcpy window is focused to enter calibration mode.
+
+Calibration never requires touching the phone. Use only the PC keyboard:
+
+- **Arrow keys** — move the grid.
+- **Shift + arrows** — resize the grid.
+- **Ctrl + arrows** — fine 1-pixel adjustment.
+- **Enter** — save calibration for this ADB serial.
+- **Esc** — cancel without saving.
+- **R** — remove the saved calibration and return to automatic discovery/fallback.
+
+Saved calibration contains only four normalized geometry numbers (left/top/right/bottom) for that phone. It does not contain the pattern path.
 
 ### Pattern privacy
 
 The overlay never persists or replays the unlock credential:
 
 - it does **not** call ADB touch-injection commands;
-- it does **not** store, log, transmit or replay pattern coordinates;
+- it does **not** store, log, transmit or replay the gesture path;
+- optional calibration stores only the pattern-grid rectangle, never the unlock sequence;
 - scrcpy remains the only input path;
 - the optional cursor trail exists only in memory and is cleared shortly after the drag ends;
 - `state.json` stores only the device serial and the selected mode (`pattern`, `other`, or `none`).
@@ -108,7 +134,32 @@ If a phone changes lock type later, run:
 RESET_LOCK_SCREEN_CHOICES.bat
 ```
 
-You can reset one serial or all saved lock-screen choices; the next connection prompts again.
+You can reset one serial or all saved lock-screen choices; matching saved pattern calibration is cleared at the same time and the next connection prompts again.
+
+## Mirror controls
+
+Android Headless Mirror adds a small always-on-top toolbar to each active mirror.
+
+### Native touchpad pinch
+
+On **Windows 11 with a Precision Touchpad**, two-finger touchpad gestures are read through the Windows Precision Touchpad pointer API:
+
+- **Pinch/spread with two fingers** → Android receives a real two-finger pinch/rotate gesture through scrcpy.
+- **Hold physical Ctrl + pinch/spread** → zoom the **PC mirror frame only**. Android receives no pinch.
+- Host zoom persists after Ctrl is released.
+- When host zoom is not 100%, the toolbar shows **Reset zoom**.
+
+scrcpy is forced to SDK mouse mode so its virtual-finger multitouch path is always available to the bridge.
+
+On Windows versions/hardware where the Precision Touchpad API is unavailable, normal mirroring remains available and scrcpy's **Ctrl + left-drag** pinch simulation remains the compatibility fallback.
+
+### Sleep phone
+
+The toolbar's **Sleep phone** button sends scrcpy's own “turn device screen off while keeping mirroring active” shortcut. It can be pressed again whenever the physical phone display has been woken; the PC mirror continues operating normally.
+
+### Mouse-only host zoom
+
+For mouse users, **Ctrl + mouse wheel** also controls the PC-only frame zoom. This is separate from Android pinch-to-zoom.
 
 ## Start and stop behavior
 
@@ -128,6 +179,7 @@ STOP:
 - closes scrcpy;
 - stops this package's background supervisor;
 - stops any pattern-guide sidecar started by this package;
+- stops the mirror toolbar / host-zoom / touchpad-gesture sidecar;
 - leaves the shared Windows ADB server alone.
 
 The `stop.flag` remains present, so Windows autostart will not resurrect the mirror.
@@ -216,6 +268,15 @@ Useful values in `config.json`:
 - `PatternOverlay.ManualToggleHotkey`: manual fallback hotkey; default `Ctrl+Alt+P`.
 - `PatternOverlay.GridCenterX` / `GridCenterY` / `GridSizeRelativeToWidth`: normalized grid geometry for OEM/device tuning.
 - `PatternOverlay.ShowCursorTrail`: draw a temporary in-memory cursor trail while dragging over the guide.
+- `PatternOverlay.AutoDiscoverGeometry`: discover the runtime Android pattern widget/cell bounds before using any estimate.
+- `PatternOverlay.CalibrationHotkey`: enter keyboard-only calibration; default `Ctrl+Alt+C`.
+- `PatternOverlay.CalibrationDirectory`: per-device normalized geometry files; ignored by Git.
+- `MirrorChrome.SleepButton`: show the persistent **Sleep phone** toolbar action.
+- `MirrorChrome.NativeTouchpadGestures`: enable Windows 11 Precision Touchpad gesture bridging when supported.
+- `MirrorChrome.TouchpadPinchToAndroid`: map a native two-finger pinch/spread to Android multitouch.
+- `MirrorChrome.CtrlTouchpadPinchToHostZoom`: map physical Ctrl + native touchpad pinch to PC-only frame zoom.
+- `MirrorChrome.HostZoomEnabled`: enable persistent PC-only frame magnification and **Reset zoom**.
+
 
 
 ## Samsung notes
