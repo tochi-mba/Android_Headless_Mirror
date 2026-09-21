@@ -60,6 +60,111 @@ function Log([string]$Message, [string]$Level = "INFO") {
     }
 }
 
+
+function Ensure-StateShape($State) {
+    if ($null -eq $State.PSObject.Properties["PreferredSerial"]) {
+        $State | Add-Member -NotePropertyName PreferredSerial -NotePropertyValue ""
+    }
+    if ($null -eq $State.PSObject.Properties["WirelessHosts"]) {
+        $State | Add-Member -NotePropertyName WirelessHosts -NotePropertyValue @()
+    }
+    if ($null -eq $State.PSObject.Properties["DeviceProfiles"]) {
+        $State | Add-Member -NotePropertyName DeviceProfiles -NotePropertyValue @()
+    }
+
+    return $State
+}
+
+function Get-DeviceProfile($State, [string]$Serial) {
+    if ($null -eq $State.PSObject.Properties["DeviceProfiles"]) { return $null }
+
+    return @($State.DeviceProfiles | Where-Object {
+        [string]$_.Serial -eq $Serial
+    }) | Select-Object -First 1
+}
+
+function Set-DeviceLockScreenMode($State, [string]$Serial, [string]$Mode) {
+    $profiles = @()
+    if ($null -ne $State.PSObject.Properties["DeviceProfiles"]) {
+        $profiles = @($State.DeviceProfiles | Where-Object {
+            [string]$_.Serial -ne $Serial
+        })
+    }
+
+    $profiles += [pscustomobject]@{
+        Serial = $Serial
+        LockScreenMode = $Mode
+    }
+
+    $State.DeviceProfiles = @($profiles)
+    Save-State $State
+}
+
+function Get-DeviceLabel([string]$Adb, [string]$Serial) {
+    try {
+        $manufacturer = (& $Adb -s $Serial shell getprop ro.product.manufacturer 2>$null | Out-String).Trim()
+        $model = (& $Adb -s $Serial shell getprop ro.product.model 2>$null | Out-String).Trim()
+        $label = ((@($manufacturer, $model) | Where-Object {
+            -not [string]::IsNullOrWhiteSpace([string]$_)
+        }) -join " ").Trim()
+
+        if (-not [string]::IsNullOrWhiteSpace($label)) {
+            return $label
+        }
+    }
+    catch {}
+
+    return $Serial
+}
+
+function Get-OrPromptLockScreenMode([string]$Adb, [string]$Serial, $State) {
+    if (-not $Config.PatternOverlay.Enabled) { return "other" }
+
+    $profile = Get-DeviceProfile $State $Serial
+    if ($profile -and -not [string]::IsNullOrWhiteSpace([string]$profile.LockScreenMode)) {
+        return ([string]$profile.LockScreenMode).ToLowerInvariant()
+    }
+
+    if (-not $Config.PatternOverlay.PromptPerDevice) {
+        return "other"
+    }
+
+    $deviceLabel = Get-DeviceLabel $Adb $Serial
+
+    try {
+        Add-Type -AssemblyName PresentationFramework -ErrorAction Stop
+        $nl = [Environment]::NewLine
+        $message =
+            "Does this device use Android pattern unlock?" + $nl + $nl +
+            $deviceLabel + $nl + $Serial + $nl + $nl +
+            "Yes  - show the click-through 3x3 pattern guide when Android reports the keyguard." + $nl +
+            "No   - never show the pattern guide for this device." + $nl +
+            "Cancel - continue this session without saving a choice."
+
+        $result = [System.Windows.MessageBox]::Show(
+            $message,
+            "Android Headless Mirror - lock screen",
+            [System.Windows.MessageBoxButton]::YesNoCancel,
+            [System.Windows.MessageBoxImage]::Question
+        )
+
+        if ($result -eq [System.Windows.MessageBoxResult]::Yes) {
+            Set-DeviceLockScreenMode $State $Serial "pattern"
+            return "pattern"
+        }
+
+        if ($result -eq [System.Windows.MessageBoxResult]::No) {
+            Set-DeviceLockScreenMode $State $Serial "other"
+            return "other"
+        }
+    }
+    catch {
+        Log "Could not show per-device lock-screen prompt: $($_.Exception.Message)" "WARN"
+    }
+
+    return "session-off"
+}
+
 function Find-Tool([string]$Name) {
     if (Test-Path $ScrcpyBase) {
         $bundled = Get-ChildItem -Path $ScrcpyBase -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
@@ -76,17 +181,18 @@ function Find-Tool([string]$Name) {
 function Load-State {
     if (Test-Path $StateFile) {
         try {
-            return Get-Content $StateFile -Raw | ConvertFrom-Json
+            return Ensure-StateShape (Get-Content $StateFile -Raw | ConvertFrom-Json)
         }
         catch {
             Log "Ignoring corrupt state.json: $($_.Exception.Message)" "WARN"
         }
     }
 
-    return [pscustomobject]@{
+    return Ensure-StateShape ([pscustomobject]@{
         PreferredSerial = ""
         WirelessHosts = @()
-    }
+        DeviceProfiles = @()
+    })
 }
 
 function Save-State($State) {
