@@ -741,7 +741,14 @@ Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
 function Get-TouchpadGestureMetrics($Contacts) {
-    $items = @($Contacts.Values | Select-Object -First 2)
+    # Keep pointer ordering stable across frames so a hashtable enumeration
+    # change cannot flip the vector by PI and create a fake rotation.
+    $items = @(
+        $Contacts.GetEnumerator() |
+            Sort-Object { [uint64]$_.Key } |
+            Select-Object -First 2 |
+            ForEach-Object { $_.Value }
+    )
     if ($items.Count -lt 2) { return $null }
 
     $dx = [double]$items[1].X - [double]$items[0].X
