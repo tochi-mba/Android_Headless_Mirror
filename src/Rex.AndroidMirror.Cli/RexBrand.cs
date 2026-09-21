@@ -29,7 +29,7 @@ public static class RexBrand
             .Color(SignalColor);
 
         console.Write(title);
-        console.MarkupLine($"[{Signal}]TECHNOLOGIES[/]  [{Muted}]{Markup.Escape(subtitle)}[/]");
+        console.MarkupLine($"[{Signal}]REX TECHNOLOGIES[/]  [{Muted}]{Markup.Escape(subtitle)}[/]");
         console.Write(new Rule().RuleStyle(Line));
     }
 
