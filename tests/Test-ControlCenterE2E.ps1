@@ -60,8 +60,22 @@ function Select-Tab([string]$Name) {
     )
 }
 
+function Commit-ComboSelection([string]$Name, [string]$Tag) {
+    $combo = C $Name
+    Select-ComboTag $combo $Tag
+    $combo.IsDropDownOpen = $true
+    $combo.IsDropDownOpen = $false
+    [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke(
+        [Action]{},
+        [System.Windows.Threading.DispatcherPriority]::Background
+    )
+}
+
+
 Write-Host "[control-center] Loading real WPF control center against deterministic fake device..."
 . $ControlCenterPath -Serial "TEST123" -TestMode
+$Window.Show()
+$Window.UpdateLayout()
 
 Assert-Equal "Samsung Galaxy S21 Ultra" (C "DeviceNameText").Text "Fake device identity should populate title bar."
 Assert-True ((C "DeviceMetaText").Text -match "SM-G998B") "Device metadata should include model."
@@ -131,6 +145,11 @@ Click-Control "SavePcSettingsButton"
 Assert-True ((C "StatusBarText").Text -match "1-240") "Invalid max FPS should be rejected."
 
 (C "PcMaxFpsText").Text = "90"
+(C "PcControlCenterWidthText").Text = "500"
+Click-Control "SavePcSettingsButton"
+Assert-True ((C "StatusBarText").Text -match "900-2400") "Invalid Control Center width should be rejected."
+
+(C "PcControlCenterWidthText").Text = "1040"
 (C "PcMaxSizeText").Text = "1600"
 (C "PcVideoBitRateText").Text = "10M"
 (C "PcHostZoomMaxText").Text = "3.5"
@@ -141,6 +160,11 @@ Assert-True ((C "StatusBarText").Text -match "1-240") "Invalid max FPS should be
 (C "PcAudioDupCheck").IsChecked = $true
 Select-ComboTag (C "PcVideoCodecCombo") "h265"
 Select-ComboTag (C "PcAudioCodecCombo") "aac"
+(C "PcControlCenterOpenCheck").IsChecked = $true
+(C "PcControlCenterTopmostCheck").IsChecked = $true
+(C "PcControlCenterRememberTabCheck").IsChecked = $false
+(C "PcAdvancedWritesEnabledCheck").IsChecked = $true
+(C "PcConfirmAdvancedWritesCheck").IsChecked = $false
 
 $beforeSave = $script:TestActions.Count
 Click-Control "SavePcSettingsButton"
@@ -154,6 +178,11 @@ Assert-Equal "aac" $Config.ScrcpySession.AudioCodec "Audio codec should update i
 Assert-True $Config.ScrcpySession.RecordOnStart "Recording preference should update in memory."
 Assert-True $Config.ScrcpySession.Fullscreen "Fullscreen preference should update in memory."
 Assert-True $Config.ScrcpySession.AudioDup "Audio duplication preference should update in memory."
+Assert-True $Config.ControlCenter.OpenOnLaunch "Control Center auto-open preference should update."
+Assert-True $Config.ControlCenter.AlwaysOnTop "Control Center topmost preference should update."
+Assert-False $Config.ControlCenter.RememberLastTab "Remember-last-tab preference should update."
+Assert-False $Config.ControlCenter.ConfirmSensitiveDeviceWrites "Advanced confirmation preference should update."
+Assert-True $Window.Topmost "Saving always-on-top should update the current Control Center immediately."
 
 (C "PcMaxFpsText").Text = "33"
 Click-Control "ReloadPcSettingsButton"
@@ -161,6 +190,26 @@ Assert-Equal "90" (C "PcMaxFpsText").Text "Discard changes should reload saved i
 
 Write-Host "[control-center] Exercising friendly Android device controls..."
 Select-Tab "DeviceSettingsTab"
+
+Invoke-Friendly "brightness" 200
+Assert-Contains $script:TestActions "device:brightness=200" "Brightness flow should dispatch exact value."
+
+Commit-ComboSelection "DeviceBrightnessModeCombo" "1"
+Assert-Contains $script:TestActions "device:brightness-mode=1" "Brightness mode combo should dispatch automatic mode."
+
+Commit-ComboSelection "DeviceTimeoutCombo" "300000"
+Assert-Contains $script:TestActions "device:screen-timeout-ms=300000" "Timeout combo should dispatch selected timeout."
+
+Commit-ComboSelection "DeviceFontScaleCombo" "1.15"
+Assert-Contains $script:TestActions "device:font-scale=1.15" "Font scale combo should dispatch selected scale."
+
+Commit-ComboSelection "DeviceDarkModeCombo" "yes"
+Assert-Contains $script:TestActions "device:dark-mode=yes" "Dark mode combo should dispatch dark mode."
+
+Commit-ComboSelection "DeviceAnimationCombo" "0.5"
+Assert-Contains $script:TestActions "device:animation-window=0.5" "Animation combo should dispatch window animation."
+Assert-Contains $script:TestActions "device:animation-transition=0.5" "Animation combo should dispatch transition animation."
+Assert-Contains $script:TestActions "device:animation-duration=0.5" "Animation combo should dispatch duration animation."
 
 $deviceButtons = @{
     WifiOnButton="device:wifi=enable"
@@ -230,6 +279,12 @@ Assert-Contains $script:TestActions "advanced-write:system:font_scale=1.15" "Nor
 (C "AdvancedKeyText").Text = "font_scale"
 Click-Control "AdvancedDeleteButton"
 Assert-Contains $script:TestActions "advanced-delete:system:font_scale" "Normal advanced delete should dispatch."
+
+Write-Host "[control-center] Exercising refresh flows..."
+Click-Control "RefreshAllButton"
+Assert-Equal "Ready." (C "StatusBarText").Text "Refresh all should return to Ready state."
+Click-Control "AdvancedRefreshButton"
+Assert-True (@((C "AdvancedSettingsGrid").ItemsSource).Count -gt 0) "Advanced refresh button should repopulate namespace."
 
 Write-Host "[control-center] Exercising diagnostics..."
 Select-Tab "DiagnosticsTab"
