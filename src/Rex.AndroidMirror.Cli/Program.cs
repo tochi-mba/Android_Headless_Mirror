@@ -7,12 +7,8 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        var machineRequested =
-            args.Any(x =>
-                x.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
-                x.Equals("--plain", StringComparison.OrdinalIgnoreCase)) ||
-            (args.Length > 0 &&
-             args[0].Equals("agent", StringComparison.OrdinalIgnoreCase));
+        var machineArgs = GetMachineArgs(args);
+        var machineRequested = machineArgs is not null;
 
         if (!OperatingSystem.IsWindows())
         {
@@ -47,22 +43,8 @@ public static class Program
 
             if (machineRequested)
             {
-                var machineArgs = args
-                    .Where(x =>
-                        !x.Equals("--json", StringComparison.OrdinalIgnoreCase) &&
-                        !x.Equals("--plain", StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-                if (
-                    machineArgs.Length > 0 &&
-                    machineArgs[0].Equals("agent", StringComparison.OrdinalIgnoreCase)
-                )
-                {
-                    machineArgs = machineArgs.Skip(1).ToArray();
-                }
-
                 var result = await MachineMode.RunAsync(
-                    machineArgs,
+                    machineArgs!,
                     paths,
                     runner,
                     bridge,
@@ -117,6 +99,36 @@ public static class Program
             RexBrand.Error(ex.Message);
             return 1;
         }
+    }
+
+    internal static string[]? GetMachineArgs(string[] args)
+    {
+        var hasMachineFlag = args.Any(x =>
+            x.Equals("--json", StringComparison.OrdinalIgnoreCase) ||
+            x.Equals("--plain", StringComparison.OrdinalIgnoreCase));
+
+        var agentAlias =
+            args.Length > 0 &&
+            args[0].Equals("agent", StringComparison.OrdinalIgnoreCase);
+
+        if (!hasMachineFlag && !agentAlias)
+            return null;
+
+        var filtered = args
+            .Where(x =>
+                !x.Equals("--json", StringComparison.OrdinalIgnoreCase) &&
+                !x.Equals("--plain", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (
+            filtered.Length > 0 &&
+            filtered[0].Equals("agent", StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            filtered = filtered.Skip(1).ToArray();
+        }
+
+        return filtered;
     }
 
     internal static async Task<int> RunCommandAsync(
