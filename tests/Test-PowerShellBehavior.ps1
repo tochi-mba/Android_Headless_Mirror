@@ -281,7 +281,19 @@ public static class ArgProbe
     }
 }
 '@
-    Add-Type -TypeDefinition $probeSource -OutputAssembly $fakeScrcpy -OutputType ConsoleApplication
+    $probeSourceFile = Join-Path $temp "ArgProbe.cs"
+    Set-Content -Path $probeSourceFile -Value $probeSource -Encoding UTF8
+
+    $cscCandidates = @(
+        (Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"),
+        (Join-Path $env:WINDIR "Microsoft.NET\Framework\v4.0.30319\csc.exe")
+    )
+    $csc = $cscCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    Assert-True -Condition (-not [string]::IsNullOrWhiteSpace([string]$csc)) -Message "A .NET Framework C# compiler should be available on Windows."
+
+    & $csc /nologo /target:exe "/out:$fakeScrcpy" $probeSourceFile
+    Assert-Equal -Expected 0 -Actual $LASTEXITCODE -Message "Native argument probe should compile."
+    Assert-True -Condition (Test-Path $fakeScrcpy) -Message "Native argument probe executable should exist."
 
     $nativeArgs = @(
         "--serial=USB123",
