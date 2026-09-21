@@ -360,7 +360,8 @@
         <div class="cli-command-list" aria-label="Example REX commands">
           <code><b>rex</b><span>guided terminal app</span></code>
           <code><b>rex smart</b><span>setup, start, wait, or focus</span></code>
-          <code><b>rex --plain status</b><span>agent-safe JSON, no prompts</span></code>
+          <code><b>rex agent status</b><span>preferred coding-agent JSON mode</span></code>
+          <code><b>rex status --json</b><span>same prompt-free machine contract</span></code>
           <code><b>rex status</b><span>human-readable package + device state</span></code>
           <code><b>rex action sleep</b><span>runtime scrcpy action</span></code>
           <code><b>rex mirror zoom-in</b><span>PC-only host zoom</span></code>
@@ -376,7 +377,7 @@
           <span class="advanced-label">ZERO-FRICTION ENTRY</span>
           <strong><code>REX.bat</code> bootstraps the app.</strong>
         </div>
-        <p>Release builds ship a self-contained Windows <code>rex.exe</code>. The bootstrap verifies the release ZIP’s SHA-256 checksum before extraction and can build locally from source when a .NET 8 SDK is available. Setup also creates <strong>REX.lnk</strong>: if a mirror already exists it focuses it; if a ready phone is connected it starts the mirror; otherwise it starts/keeps the supervisor waiting. Coding agents use <code>--plain</code> or <code>--json</code> for one prompt-free JSON response.</p>
+        <p>Release builds ship a self-contained Windows <code>rex.exe</code>. The bootstrap verifies the release ZIP’s SHA-256 checksum before extraction and can build locally from source when a .NET 8 SDK is available. Setup also creates <strong>REX.lnk</strong>: if a mirror already exists it focuses it; if a ready phone is connected it starts the mirror; otherwise it starts/keeps the supervisor waiting. Coding agents can use <code>rex agent …</code> (preferred), <code>--plain</code>, or <code>--json</code> for the same prompt-free, versioned JSON response. The machine flags may appear before or after the command.</p>
       </div>
     </section>
 
