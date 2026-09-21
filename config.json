@@ -26,6 +26,5 @@
     "KeepFiles": 5
   },
   "DismissKeyguardWhenPossible": true,
-  "KeepActiveDuringMirror": true,
-  "LockToPreferredDevice": true
+  "KeepActiveDuringMirror": true
 }
