@@ -51,6 +51,7 @@ public sealed record DisplayProbeResult(
     string? CurrentTransport,
     CapabilityState AdbControl,
     CapabilityState SamsungDexCandidate,
+    string ProtectedContentPolicy,
     DisplayHostCapabilities Host,
     IReadOnlyList<DisplayTransportCapabilities> Transports);
 
