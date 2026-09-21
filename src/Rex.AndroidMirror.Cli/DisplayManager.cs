@@ -110,6 +110,7 @@ public sealed class DisplayManager
             status.MirrorRunning ? DisplayTransportIds.Scrcpy : null,
             adbControl,
             samsungDex,
+            ProtectedContentPolicy(),
             host,
             transports);
     }
@@ -135,24 +136,25 @@ public sealed class DisplayManager
                 "scrcpy mirror startup requested.");
         }
 
-        if (!IsWindowsWirelessDisplayEnabled())
-            throw new InvalidOperationException(
-                "Windows Wireless Display support is disabled in REX config.");
+        EnsureWindowsWirelessDisplayEnabled();
 
-        var receiverCode = await _hostProbe.OpenReceiverSetupAsync(cancellationToken);
-        if (receiverCode != 0)
-            throw new InvalidOperationException(
-                "Could not open Windows Projecting to this PC settings.");
+        if (!ShouldAutoOpenReceiver())
+        {
+            return new DisplayActionResult(
+                normalized,
+                false,
+                "Windows Wireless Display selected, but receiver auto-open is disabled. Run 'rex display receiver open', then start the phone's wireless display flow.");
+        }
 
-        return new DisplayActionResult(
-            normalized,
-            true,
-            "Opened Windows Projecting to this PC. Start Smart View or Wireless DeX on Android and select this PC.");
+        return await OpenReceiverCoreAsync(cancellationToken);
     }
 
-    public Task<DisplayActionResult> OpenReceiverAsync(
-        CancellationToken cancellationToken = default) =>
-        StartAsync(DisplayTransportIds.WindowsMiracast, cancellationToken);
+    public async Task<DisplayActionResult> OpenReceiverAsync(
+        CancellationToken cancellationToken = default)
+    {
+        EnsureWindowsWirelessDisplayEnabled();
+        return await OpenReceiverCoreAsync(cancellationToken);
+    }
 
     public DisplayVerification Verify(
         string transport,
@@ -203,15 +205,67 @@ public sealed class DisplayManager
         };
     }
 
-    private bool IsWindowsWirelessDisplayEnabled()
+    public string ProtectedContentPolicy()
     {
+        string value;
         try
         {
-            return bool.Parse(_config.Get("Display.WindowsWirelessDisplay.Enabled").Value);
+            value = _config.Get("Display.ProtectedContentPolicy").Value;
         }
         catch (KeyNotFoundException)
         {
-            return true;
+            return "prompt";
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "prompt" or "ignore" or "prefer-external" => normalized,
+            _ => throw new InvalidOperationException(
+                "Display.ProtectedContentPolicy must be prompt, ignore, or prefer-external.")
+        };
+    }
+
+    private async Task<DisplayActionResult> OpenReceiverCoreAsync(
+        CancellationToken cancellationToken)
+    {
+        var receiverCode = await _hostProbe.OpenReceiverSetupAsync(cancellationToken);
+        if (receiverCode != 0)
+            throw new InvalidOperationException(
+                "Could not open Windows Projecting to this PC settings.");
+
+        var phoneFlow = IsSamsungDexGuidanceEnabled()
+            ? "Start Smart View or Wireless DeX on Android and select this PC."
+            : "Start Smart View on Android and select this PC.";
+
+        return new DisplayActionResult(
+            DisplayTransportIds.WindowsMiracast,
+            true,
+            $"Opened Windows Projecting to this PC. {phoneFlow}");
+    }
+
+    private void EnsureWindowsWirelessDisplayEnabled()
+    {
+        if (!ReadBoolConfig("Display.WindowsWirelessDisplay.Enabled", true))
+            throw new InvalidOperationException(
+                "Windows Wireless Display support is disabled in REX config.");
+    }
+
+    private bool ShouldAutoOpenReceiver() =>
+        ReadBoolConfig("Display.WindowsWirelessDisplay.AutoOpenReceiver", true);
+
+    private bool IsSamsungDexGuidanceEnabled() =>
+        ReadBoolConfig("Display.SamsungDex.Enabled", true);
+
+    private bool ReadBoolConfig(string path, bool fallback)
+    {
+        try
+        {
+            return bool.Parse(_config.Get(path).Value);
+        }
+        catch (KeyNotFoundException)
+        {
+            return fallback;
         }
     }
 
