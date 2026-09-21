@@ -138,12 +138,6 @@ try {
 
         $metrics = Get-ImageMetrics $path
 
-        Assert-Between $metrics.DarkRatio ([double]$Thresholds.windows.darkRatioMin) ([double]$Thresholds.windows.darkRatioMax) "$($tab.Name) should preserve the REX dark visual hierarchy."
-        Assert-True ($metrics.SignalPixels -ge [int]$Thresholds.windows.signalPixelsMin) "$($tab.Name) should retain enough REX signal-lime pixels."
-        Assert-True ($metrics.TextPixels -ge [int]$Thresholds.windows.textPixelsMin) "$($tab.Name) should contain substantial visible high-contrast text."
-        Assert-True ($metrics.OrangePixels -ge [int]$Thresholds.windows.orangePixelsMin) "$($tab.Name) orange/live accent threshold should pass."
-        Assert-True ($metrics.UniqueColors -ge [int]$Thresholds.windows.uniqueColorsMin) "$($tab.Name) screenshot should not collapse into an empty/flat render."
-
         $metricsRows += [pscustomobject]@{
             Tab = $tab.Name
             File = $tab.File
@@ -155,6 +149,17 @@ try {
             OrangePixels = $metrics.OrangePixels
             UniqueColors = $metrics.UniqueColors
         }
+
+        # Persist diagnostic metrics before asserting so failed CI still retains
+        # the exact pixel counts that triggered the regression.
+        $metricsRows | ConvertTo-Json -Depth 5 |
+            Set-Content -Path (Join-Path $OutputDirectory "metrics.json") -Encoding UTF8
+
+        Assert-Between $metrics.DarkRatio ([double]$Thresholds.windows.darkRatioMin) ([double]$Thresholds.windows.darkRatioMax) "$($tab.Name) should preserve the REX dark visual hierarchy."
+        Assert-True ($metrics.SignalPixels -ge [int]$Thresholds.windows.signalPixelsMin) "$($tab.Name) should retain enough REX signal-lime pixels."
+        Assert-True ($metrics.TextPixels -ge [int]$Thresholds.windows.textPixelsMin) "$($tab.Name) should contain substantial visible high-contrast text."
+        Assert-True ($metrics.OrangePixels -ge [int]$Thresholds.windows.orangePixelsMin) "$($tab.Name) orange/live accent threshold should pass."
+        Assert-True ($metrics.UniqueColors -ge [int]$Thresholds.windows.uniqueColorsMin) "$($tab.Name) screenshot should not collapse into an empty/flat render."
     }
 
     Write-Host "[visual] Verifying key layout bounds..."
