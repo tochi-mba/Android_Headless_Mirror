@@ -184,6 +184,56 @@ class PackageTests(unittest.TestCase):
         self.assertIn("ro.product.manufacturer", text)
         self.assertIn("ro.product.model", text)
 
+    def test_github_pages_site_exists(self):
+        for name in [
+            "docs/index.html",
+            "docs/styles.css",
+            "docs/app.js",
+            "docs/favicon.svg",
+            "docs/site.webmanifest",
+            "docs/404.html",
+            "docs/.nojekyll",
+            ".github/workflows/pages.yml",
+        ]:
+            self.assertTrue((ROOT / name).exists(), name)
+
+    def test_github_pages_site_basics(self):
+        html = self.read("docs/index.html")
+        css = self.read("docs/styles.css")
+        js = self.read("docs/app.js")
+
+        self.assertIn("<meta name=\"viewport\"", html)
+        self.assertIn("Skip to content", html)
+        self.assertIn('id="main"', html)
+        self.assertIn("prefers-reduced-motion", css)
+        self.assertIn(":focus-visible", css)
+        self.assertIn("IntersectionObserver", js)
+        self.assertIn("Android Headless Mirror", html)
+        self.assertIn("Samsung Galaxy S21 Ultra", html)
+        self.assertIn("SM-G998B", html)
+
+    def test_github_pages_local_assets_are_present(self):
+        html = self.read("docs/index.html")
+        for asset in ["styles.css", "app.js", "favicon.svg", "site.webmanifest"]:
+            self.assertIn(asset, html)
+            self.assertTrue((ROOT / "docs" / asset).exists(), asset)
+
+    def test_github_pages_internal_anchors_exist(self):
+        html = self.read("docs/index.html")
+        targets = set(re.findall(r'id="([^"]+)"', html))
+        anchors = re.findall(r'href="#([^"]+)"', html)
+        missing = sorted(set(anchors) - targets)
+        self.assertEqual(missing, [])
+
+    def test_pages_workflow_deploys_docs(self):
+        workflow = self.read(".github/workflows/pages.yml")
+        self.assertIn("actions/configure-pages@v5", workflow)
+        self.assertIn("actions/upload-pages-artifact@v4", workflow)
+        self.assertIn("actions/deploy-pages@v4", workflow)
+        self.assertIn("path: docs", workflow)
+        self.assertIn("pages: write", workflow)
+        self.assertIn("id-token: write", workflow)
+
     def test_adb_parse_usb_and_tcp(self):
         text = """List of devices attached
 R58M123ABC device product:p3sxxx model:SM_G998B transport_id:1
