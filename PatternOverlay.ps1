@@ -293,6 +293,18 @@ function Get-PatternPointsFromGeometry(
 ) {
     if ($null -eq $Geometry -or $null -eq $Geometry.GridBoundsNormalized) {
         $contentRect = Get-FittedContentRect $ClientWidth $ClientHeight $FallbackDeviceWidth $FallbackDeviceHeight
+
+        if (
+            $null -ne $OverlayConfig.PSObject.Properties["FallbackToEstimatedGeometry"] -and
+            -not [bool]$OverlayConfig.FallbackToEstimatedGeometry
+        ) {
+            return [pscustomobject]@{
+                Source = "unavailable"
+                ContentRect = $contentRect
+                Points = @()
+            }
+        }
+
         $points = @(Get-PatternGridPoints $contentRect $OverlayConfig)
         return [pscustomobject]@{
             Source = "estimated"
@@ -366,8 +378,8 @@ function Convert-CalibrationRecordToGeometry($Record) {
 
     return [pscustomobject]@{
         Source = "calibration"
-        ScreenWidth = 1.0
-        ScreenHeight = 1.0
+        ScreenWidth = 0.0
+        ScreenHeight = 0.0
         ExactDots = $false
         GridBoundsNormalized = [pscustomobject]@{
             Left = $left
@@ -937,8 +949,8 @@ function Update-Grid {
     if ($script:calibrationMode -and $null -ne $script:calibrationDraft) {
         $geometry = [pscustomobject]@{
             Source = "calibration-draft"
-            ScreenWidth = 1.0
-            ScreenHeight = 1.0
+            ScreenWidth = 0.0
+            ScreenHeight = 0.0
             ExactDots = $false
             GridBoundsNormalized = Copy-NormalizedBounds $script:calibrationDraft
         }
