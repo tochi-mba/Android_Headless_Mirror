@@ -239,6 +239,22 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('PC mirror continues');
   });
 
+  test('Control Center documents the PC/device/advanced separation', async ({ page }) => {
+    const section = page.locator('#control-center');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('PC / mirror settings');
+    await expect(section).toContainText('Samsung Galaxy S21 Ultra settings');
+    await expect(section).toContainText('Advanced Android');
+    await expect(section).toContainText('Diagnostics');
+    await expect(section).toContainText('Runtime Settings Provider browser');
+    await expect(section).toContainText('system');
+    await expect(section).toContainText('secure');
+    await expect(section).toContainText('global');
+    await expect(section).toContainText('adb_enabled');
+    await expect(section).toContainText('protected');
+  });
+
+
   test('FAQ explains native touchpad pinch without Ctrl', async ({ page }) => {
     const summary = page.getByText('Can I pinch TikTok with my laptop touchpad like I would on the phone?');
     await summary.click();
@@ -389,6 +405,14 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await assertVisualThreshold(section, 'pages-desktop-pattern-guide');
   });
 
+  test('desktop Control Center screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.reload();
+    const section = page.locator('#control-center');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-control-center');
+  });
+
   test('has no serious or critical WCAG 2.x axe violations', async ({ page }) => {
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -437,6 +461,13 @@ test.describe('mobile behavior', () => {
     const section = page.locator('#controls');
     await section.scrollIntoViewIfNeeded();
     await assertVisualThreshold(section, 'pages-mobile-controls');
+  });
+
+  test('mobile Control Center screenshot passes visual thresholds', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#control-center');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-mobile-control-center');
   });
 
   test('small phone width remains usable', async ({ page }) => {
