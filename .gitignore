@@ -10,3 +10,6 @@ runtime/
 captures/
 test-results/
 artifacts/
+config.json.rex-backup
+config.json.tmp
+config.json.restore-current
