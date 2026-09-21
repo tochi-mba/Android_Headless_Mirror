@@ -11,6 +11,12 @@ public static class RexBrand
     public const string Danger = "#FF774D";
     public const string Line = "#29302A";
 
+    public static readonly Color SignalColor = new(0xD7, 0xFF, 0x3F);
+    public static readonly Color TextColor = new(0xF2, 0xF5, 0xEE);
+    public static readonly Color MutedColor = new(0x85, 0x8D, 0x83);
+    public static readonly Color DangerColor = new(0xFF, 0x77, 0x4D);
+    public static readonly Color LineColor = new(0x29, 0x30, 0x2A);
+
     public static void Header(string subtitle = "ANDROID HEADLESS MIRROR") =>
         Header(AnsiConsole.Console, subtitle);
 
@@ -20,7 +26,7 @@ public static class RexBrand
 
         var title = new FigletText("REX")
             .LeftJustified()
-            .Color(Color.Parse(Signal));
+            .Color(SignalColor);
 
         console.Write(title);
         console.MarkupLine($"[{Signal}]TECHNOLOGIES[/]  [{Muted}]{Markup.Escape(subtitle)}[/]");
@@ -33,7 +39,7 @@ public static class RexBrand
         {
             Header = new PanelHeader($" {title} "),
             Border = BoxBorder.Rounded,
-            BorderStyle = new Style(Color.Parse(Line)),
+            BorderStyle = new Style(LineColor),
             Padding = new Padding(1, 0, 1, 0),
         };
     }
@@ -68,7 +74,7 @@ public static class RexBrand
         return new SelectionPrompt<string>()
             .Title($"[{Text}]{Markup.Escape(title)}[/]")
             .PageSize(16)
-            .HighlightStyle(new Style(Color.Parse(Signal), decoration: Decoration.Bold))
+            .HighlightStyle(new Style(SignalColor, decoration: Decoration.Bold))
             .MoreChoicesText($"[{Muted}](move up/down to reveal more)[/]")
             .AddChoices(choices);
     }
