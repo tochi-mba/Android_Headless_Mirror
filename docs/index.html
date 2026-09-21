@@ -332,7 +332,7 @@
         <article class="cli-flow-card reveal">
           <span>FIRST RUN</span>
           <h3>Detect before asking</h3>
-          <p>REX checks scrcpy, ADB, current startup state and connected devices first. It only asks questions that matter for the current machine.</p>
+          <p>REX checks scrcpy, ADB, current startup state and connected devices first. It only asks questions that matter for the current machine, then installs a smart <strong>REX</strong> desktop shortcut.</p>
         </article>
         <article class="cli-flow-card reveal">
           <span>SETUP</span>
@@ -359,7 +359,9 @@
         </div>
         <div class="cli-command-list" aria-label="Example REX commands">
           <code><b>rex</b><span>guided terminal app</span></code>
-          <code><b>rex status</b><span>package + device state</span></code>
+          <code><b>rex smart</b><span>setup, start, wait, or focus</span></code>
+          <code><b>rex --plain status</b><span>agent-safe JSON, no prompts</span></code>
+          <code><b>rex status</b><span>human-readable package + device state</span></code>
           <code><b>rex action sleep</b><span>runtime scrcpy action</span></code>
           <code><b>rex mirror zoom-in</b><span>PC-only host zoom</span></code>
           <code><b>rex device set brightness 180</b><span>friendly Android setting</span></code>
@@ -374,7 +376,7 @@
           <span class="advanced-label">ZERO-FRICTION ENTRY</span>
           <strong><code>REX.bat</code> bootstraps the app.</strong>
         </div>
-        <p>Release builds ship a self-contained Windows <code>rex.exe</code>. The bootstrap verifies the release ZIP’s SHA-256 checksum before extraction and can build locally from source when a .NET 8 SDK is available.</p>
+        <p>Release builds ship a self-contained Windows <code>rex.exe</code>. The bootstrap verifies the release ZIP’s SHA-256 checksum before extraction and can build locally from source when a .NET 8 SDK is available. Setup also creates <strong>REX.lnk</strong>: if a mirror already exists it focuses it; if a ready phone is connected it starts the mirror; otherwise it starts/keeps the supervisor waiting. Coding agents use <code>--plain</code> or <code>--json</code> for one prompt-free JSON response.</p>
       </div>
     </section>
 
