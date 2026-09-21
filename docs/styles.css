@@ -55,7 +55,7 @@ strong{font-weight:700;color:var(--text)}
 .eyebrow.live{color:var(--live)}
 .pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 5px var(--signal-wash)}
 
-.ambient{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;opacity:.16;z-index:-2}
+.ambient{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;opacity:.16;z-index:-2}
 .ambient-one{width:520px;height:520px;background:var(--signal);top:90px;right:-230px}
 .ambient-two{width:420px;height:420px;background:var(--live);top:620px;left:-250px}
 
