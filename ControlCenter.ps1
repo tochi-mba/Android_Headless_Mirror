@@ -262,6 +262,16 @@ function Load-PcSettings {
     (C "PcRecordOnStartCheck").IsChecked = [bool]$Config.ScrcpySession.RecordOnStart
     (C "PcRecordDirectoryText").Text = [string]$Config.ScrcpySession.RecordDirectory
 
+    (C "PcControlCenterEnabledCheck").IsChecked = [bool]$Config.ControlCenter.Enabled
+    (C "PcControlCenterOpenCheck").IsChecked = [bool]$Config.ControlCenter.OpenOnLaunch
+    (C "PcControlCenterDockCheck").IsChecked = [bool]$Config.ControlCenter.DockToMirror
+    (C "PcControlCenterTopmostCheck").IsChecked = [bool]$Config.ControlCenter.AlwaysOnTop
+    (C "PcControlCenterRememberTabCheck").IsChecked = [bool]$Config.ControlCenter.RememberLastTab
+    (C "PcAdvancedWritesEnabledCheck").IsChecked = [bool]$Config.ControlCenter.AdvancedSettingsWritesEnabled
+    (C "PcConfirmAdvancedWritesCheck").IsChecked = [bool]$Config.ControlCenter.ConfirmSensitiveDeviceWrites
+    (C "PcControlCenterWidthText").Text = [string]$Config.ControlCenter.Width
+    (C "PcControlCenterHeightText").Text = [string]$Config.ControlCenter.Height
+
     (C "PcExtraScrcpyArgsText").Text = [string]$Config.ExtraScrcpyArgs
 }
 
@@ -309,6 +319,17 @@ function Save-PcSettings {
         return
     }
 
+    $centerWidth = 0
+    $centerHeight = 0
+    if (-not [int]::TryParse((C "PcControlCenterWidthText").Text, [ref]$centerWidth) -or $centerWidth -lt 900 -or $centerWidth -gt 2400) {
+        Set-Status "Control Center width must be 900-2400." $true
+        return
+    }
+    if (-not [int]::TryParse((C "PcControlCenterHeightText").Text, [ref]$centerHeight) -or $centerHeight -lt 640 -or $centerHeight -gt 1800) {
+        Set-Status "Control Center height must be 640-1800." $true
+        return
+    }
+
     $Config.TurnPhysicalScreenOff = [bool](C "PcTurnScreenOffCheck").IsChecked
     $Config.StayAwakeWhenUsb = [bool](C "PcStayAwakeCheck").IsChecked
     $Config.KeepActiveDuringMirror = [bool](C "PcKeepActiveCheck").IsChecked
@@ -342,6 +363,18 @@ function Save-PcSettings {
     $Config.ScrcpySession.AudioDup = [bool](C "PcAudioDupCheck").IsChecked
     $Config.ScrcpySession.RecordOnStart = [bool](C "PcRecordOnStartCheck").IsChecked
     $Config.ScrcpySession.RecordDirectory = $recordDirectory
+
+    $Config.ControlCenter.Enabled = [bool](C "PcControlCenterEnabledCheck").IsChecked
+    $Config.ControlCenter.OpenOnLaunch = [bool](C "PcControlCenterOpenCheck").IsChecked
+    $Config.ControlCenter.DockToMirror = [bool](C "PcControlCenterDockCheck").IsChecked
+    $Config.ControlCenter.AlwaysOnTop = [bool](C "PcControlCenterTopmostCheck").IsChecked
+    $Config.ControlCenter.RememberLastTab = [bool](C "PcControlCenterRememberTabCheck").IsChecked
+    $Config.ControlCenter.AdvancedSettingsWritesEnabled = [bool](C "PcAdvancedWritesEnabledCheck").IsChecked
+    $Config.ControlCenter.ConfirmSensitiveDeviceWrites = [bool](C "PcConfirmAdvancedWritesCheck").IsChecked
+    $Config.ControlCenter.Width = $centerWidth
+    $Config.ControlCenter.Height = $centerHeight
+
+    $Window.Topmost = [bool]$Config.ControlCenter.AlwaysOnTop
 
     $Config.ExtraScrcpyArgs = $rawArgs
 
