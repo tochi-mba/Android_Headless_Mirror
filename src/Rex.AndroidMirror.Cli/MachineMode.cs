@@ -378,6 +378,7 @@ public static class MachineMode
         currentTransport = probe.CurrentTransport,
         adbControl = probe.AdbControl,
         samsungDexCandidate = probe.SamsungDexCandidate,
+        protectedContentPolicy = probe.ProtectedContentPolicy,
         host = new
         {
             wirelessDisplayFeature = probe.Host.WirelessDisplayFeature,
