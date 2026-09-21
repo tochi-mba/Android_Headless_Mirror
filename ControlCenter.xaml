@@ -141,10 +141,12 @@
       <TabItem x:Name="ControlsTab" Header="Controls">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="24">
-            <Border Background="{StaticResource Signal}" CornerRadius="3" HorizontalAlignment="Left" Padding="9,4" Margin="0,0,0,10">
-              <TextBlock Text="CONTROLS" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
-            </Border>
-            <TextBlock Text="Mirror controls" FontSize="26" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+              <Border Background="{StaticResource Signal}" CornerRadius="3" Padding="9,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="CONTROLS" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+              </Border>
+              <TextBlock Text="Mirror controls" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
             <TextBlock Text="Runtime controls for the active scrcpy session." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
 
             <GroupBox Header="Window &amp; view">
@@ -211,10 +213,12 @@
       <TabItem x:Name="PcSettingsTab" Header="PC / mirror settings">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="24">
-            <Border Background="{StaticResource Signal}" CornerRadius="3" HorizontalAlignment="Left" Padding="9,4" Margin="0,0,0,10">
-              <TextBlock Text="PC / MIRROR" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
-            </Border>
-            <TextBlock Text="PC / mirror settings" FontSize="26" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+              <Border Background="{StaticResource Signal}" CornerRadius="3" Padding="9,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="PC / MIRROR" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+              </Border>
+              <TextBlock Text="PC / mirror settings" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
             <TextBlock Text="Settings applied by the Windows wrapper or on the next mirror session." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
 
             <GroupBox Header="Session behavior">
@@ -360,10 +364,12 @@
       <TabItem x:Name="DeviceSettingsTab" Header="Device settings">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="24">
-            <Border Background="{StaticResource Signal}" CornerRadius="3" HorizontalAlignment="Left" Padding="9,4" Margin="0,0,0,10">
-              <TextBlock Text="ANDROID DEVICE" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
-            </Border>
-            <TextBlock x:Name="DeviceSettingsTitle" Text="Android device settings" FontSize="26" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+              <Border Background="{StaticResource Signal}" CornerRadius="3" Padding="9,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="ANDROID DEVICE" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+              </Border>
+              <TextBlock x:Name="DeviceSettingsTitle" Text="Android device settings" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
             <TextBlock Text="Friendly controls executed on the connected Android device through ADB." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
 
             <GroupBox Header="Display">
@@ -448,10 +454,12 @@
         <Grid Margin="24">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel>
-            <Border Background="{StaticResource Signal}" CornerRadius="3" HorizontalAlignment="Left" Padding="9,4" Margin="0,0,0,10">
-              <TextBlock Text="ADVANCED" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
-            </Border>
-            <TextBlock Text="Advanced Android settings" FontSize="26" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+              <Border Background="{StaticResource Signal}" CornerRadius="3" Padding="9,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="ADVANCED" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+              </Border>
+              <TextBlock Text="Advanced Android settings" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
             <TextBlock Text="Live Settings Provider keys exposed by this phone. system, secure and global are enumerated at runtime." Foreground="{StaticResource Muted}" Margin="0,5,0,16"/>
           </StackPanel>
           <Grid Grid.Row="1" Margin="0,0,0,12">
@@ -483,10 +491,12 @@
         <Grid Margin="24">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel>
-            <Border Background="{StaticResource Signal}" CornerRadius="3" HorizontalAlignment="Left" Padding="9,4" Margin="0,0,0,10">
-              <TextBlock Text="DIAGNOSTICS" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
-            </Border>
-            <TextBlock Text="Diagnostics" FontSize="26" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+              <Border Background="{StaticResource Signal}" CornerRadius="3" Padding="9,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="DIAGNOSTICS" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+              </Border>
+              <TextBlock Text="Diagnostics" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
             <TextBlock Text="Device identity, capability probes and recent command results." Foreground="{StaticResource Muted}" Margin="0,5,0,14"/>
           </StackPanel>
           <TextBox x:Name="DiagnosticsText" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
