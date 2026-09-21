@@ -145,6 +145,7 @@ internal sealed class FakeBridgeClient : IBridgeClient
 
     public List<BridgeCall> Calls { get; } = [];
     public List<RexDevice> Devices { get; } = [];
+    public int DeviceQueryCount { get; private set; }
     public List<(string Key, string Value, string Risk)> AndroidSettings { get; } = [];
 
     public RexStatus DefaultStatus { get; set; } = new(
@@ -158,8 +159,11 @@ internal sealed class FakeBridgeClient : IBridgeClient
         return Task.FromResult(status);
     }
 
-    public Task<IReadOnlyList<RexDevice>> GetDevicesAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<RexDevice>>(Devices.ToArray());
+    public Task<IReadOnlyList<RexDevice>> GetDevicesAsync(CancellationToken cancellationToken = default)
+    {
+        DeviceQueryCount++;
+        return Task.FromResult<IReadOnlyList<RexDevice>>(Devices.ToArray());
+    }
 
     public Task<IReadOnlyList<(string Key, string Value, string Risk)>> ListAndroidSettingsAsync(
         string serial,
