@@ -179,6 +179,8 @@ class RepositoryContractTests(unittest.TestCase):
             "REMOVE_AUTOSTART.bat",
             "REX.bat",
             "Bootstrap-RexCli.ps1",
+            "Install-Rex-Shortcut.ps1",
+            "Remove-Rex-Shortcut.ps1",
             "RexBridge.ps1",
             "Setup.ps1",
             "Install-Autostart.ps1",
@@ -206,8 +208,12 @@ class RepositoryContractTests(unittest.TestCase):
             "src/Rex.AndroidMirror.Cli/RexBrand.cs",
             "src/Rex.AndroidMirror.Cli/ConfigStore.cs",
             "src/Rex.AndroidMirror.Cli/BridgeClient.cs",
+            "src/Rex.AndroidMirror.Cli/MachineMode.cs",
+            "src/Rex.AndroidMirror.Cli/SmartLaunch.cs",
+            "AGENTS.md",
             "tests/Rex.AndroidMirror.Cli.Tests/Rex.AndroidMirror.Cli.Tests.csproj",
             "tests/Test-RexCliBootstrap.ps1",
+            "tests/Test-RexShortcut.ps1",
             "tests/Test-RexBridgeE2E.ps1",
             "tests/Test-PowerShellBehavior.ps1",
             "tests/Test-ControlCenterE2E.ps1",
@@ -849,7 +855,7 @@ class RepositoryContractTests(unittest.TestCase):
         app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
         for command in [
             '"status"', '"devices"', '"start"', '"stop"', '"setup"', '"repair"',
-            '"autostart"', '"controls"', '"action"', '"mirror"', '"device"',
+            '"autostart"', '"shortcut"', '"controls"', '"action"', '"mirror"', '"device"',
             '"android"', '"config"', '"screenshot"', '"lock-mode"', '"reset-lock"',
             '"captures"', '"diagnostics"',
         ]:
@@ -862,6 +868,7 @@ class RepositoryContractTests(unittest.TestCase):
             "Open GUI Control Center",
             "Setup / repair",
             "Windows startup",
+            "Desktop shortcut",
             "Captures",
         ]:
             self.assertIn(section_name, app)
@@ -968,6 +975,8 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/Rex.AndroidMirror.Cli.Tests/ProgramTests.cs",
             "tests/Rex.AndroidMirror.Cli.Tests/RexBrandTests.cs",
             "tests/Rex.AndroidMirror.Cli.Tests/RexAppTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/MachineModeTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/SmartLaunchTests.cs",
         ]
         for path in required:
             with self.subTest(path=path):
@@ -977,6 +986,63 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("FirstRunWizard_ConfiguresToolsStartupLockAndHeadlessDefaults", wizard)
         self.assertIn("RuntimeControls_DispatchSleepAndReturnToMainMenu", wizard)
         self.assertIn("AdvancedAndroid_ProtectedKeyNeverDispatchesAWrite", wizard)
+
+    def test_rex_plain_machine_mode_and_agents_contract_are_present(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        machine = self.read("src/Rex.AndroidMirror.Cli/MachineMode.cs")
+        agents = self.read("AGENTS.md")
+        rex_bat = self.read("REX.bat")
+        bootstrap = self.read("Bootstrap-RexCli.ps1")
+        self.assertIn('"--plain"', program)
+        self.assertIn('"--json"', program)
+        self.assertIn("ProtocolVersion = 1", machine)
+        self.assertIn("non-interactive-json", machine)
+        self.assertIn("exactly one JSON document", agents)
+        self.assertIn("--json capabilities", agents)
+        self.assertIn("REX_BOOTSTRAP_QUIET", rex_bat)
+        self.assertIn("-Quiet", rex_bat)
+        self.assertIn("[switch]$Quiet", bootstrap)
+
+    def test_rex_smart_desktop_shortcut_is_first_class_and_state_driven(self):
+        install = self.read("Install-Rex-Shortcut.ps1")
+        remove = self.read("Remove-Rex-Shortcut.ps1")
+        smart = self.read("src/Rex.AndroidMirror.Cli/SmartLaunch.cs")
+        setup = self.read("Setup.ps1")
+        self.assertIn("REX.lnk", install)
+        self.assertIn("REX.bat", install)
+        self.assertIn(" smart", install)
+        self.assertIn("REX.lnk", remove)
+        self.assertIn("Install-Rex-Shortcut.ps1", setup)
+        for state in [
+            "SetupRequired",
+            "FocusMirror",
+            "StartMirror",
+            "StartAndWaitForDevice",
+            "WaitForDevice",
+        ]:
+            self.assertIn(state, smart)
+        self.assertIn("PersistentOff", smart)
+        self.assertIn("MirrorRunning", smart)
+        self.assertIn('x.State == "device"', smart)
+
+    def test_rex_smart_launch_has_exhaustive_state_and_shortcut_tests(self):
+        smart_tests = self.read("tests/Rex.AndroidMirror.Cli.Tests/SmartLaunchTests.cs")
+        shortcut_test = self.read("tests/Test-RexShortcut.ps1")
+        for needle in [
+            "Planner_SetupIncomplete_RequiresWizard",
+            "Planner_PersistentOffWithAuthorizedDevice_IsExplicitStart",
+            "Planner_ActiveMirror_FocusesInsteadOfStartingDuplicate",
+            "Planner_UnauthorizedOnly_IsNotTreatedAsReady",
+            "Launcher_StartMirror_ClearsPersistentOffAndUsesCanonicalLauncher",
+            "Launcher_ActiveMirror_FocusesWindowAndDoesNotStartAgain",
+            "Launcher_ExistingWaitingSupervisor_DoesNotStartDuplicate",
+            "Launcher_StartFailure_IsSurfaced",
+        ]:
+            self.assertIn(needle, smart_tests)
+        self.assertIn("REX.lnk", shortcut_test)
+        self.assertIn("smart", shortcut_test)
+        self.assertIn("WorkingDirectory", shortcut_test)
+        self.assertIn("idempotent", shortcut_test)
 
     # ---------- Setup/install security ----------
 
