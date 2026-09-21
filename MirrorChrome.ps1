@@ -1238,12 +1238,12 @@ function Open-ControlCenter {
 
     $quote = [char]34
     $arguments =
-        "-NoLogo -NoProfile -ExecutionPolicy Bypass -File " +
+        "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " +
         $quote + $controlCenterScript + $quote +
         " -Serial " + $quote + $Serial + $quote
 
     try {
-        $script:controlCenterProcess = Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -PassThru
+        $script:controlCenterProcess = Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -PassThru -WindowStyle Hidden
     }
     catch {
         $script:controlCenterProcess = $null
