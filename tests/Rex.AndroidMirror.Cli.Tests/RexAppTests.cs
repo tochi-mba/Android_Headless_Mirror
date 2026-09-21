@@ -241,7 +241,7 @@ public sealed class RexAppTests
         var console = ConsoleWithInput();
         console.Input.PushKey(ConsoleKey.DownArrow); // Runtime controls
         console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, 13); // Exit main
+        PushDown(console, 14); // Exit main (Display transports adds one menu item)
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
