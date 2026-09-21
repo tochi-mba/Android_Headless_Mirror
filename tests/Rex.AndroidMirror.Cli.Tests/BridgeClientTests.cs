@@ -17,7 +17,7 @@ public sealed class BridgeClientTests
         };
         var client = new BridgeClient(package.Paths, runner);
 
-        var status = await client.GetStatusAsync();
+        var status = await client.GetStatusAsync(TestContext.Current.CancellationToken);
 
         Assert.True(status.SetupComplete);
         Assert.True(status.AutostartEnabled);
@@ -41,7 +41,7 @@ public sealed class BridgeClientTests
         };
         var client = new BridgeClient(package.Paths, runner);
 
-        var devices = await client.GetDevicesAsync();
+        var devices = await client.GetDevicesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(3, devices.Count);
         Assert.False(devices[0].IsTcp);
@@ -61,7 +61,7 @@ public sealed class BridgeClientTests
         };
         var client = new BridgeClient(package.Paths, runner);
 
-        var rows = await client.ListAndroidSettingsAsync("USB123", "global");
+        var rows = await client.ListAndroidSettingsAsync("USB123", "global", TestContext.Current.CancellationToken);
 
         Assert.Equal(2, rows.Count);
         Assert.Equal(("adb_enabled", "1", "protected"), rows[0]);
@@ -83,7 +83,8 @@ public sealed class BridgeClientTests
             serial: "USB123",
             ns: "secure",
             key: "font_scale",
-            value: "1.15");
+            value: "1.15",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         var call = Assert.Single(runner.Calls);
         Assert.Equal("powershell", call.Kind);
@@ -112,7 +113,7 @@ public sealed class BridgeClientTests
         };
         var client = new BridgeClient(package.Paths, runner);
 
-        using var result = await client.InvokeAsync("status");
+        using var result = await client.InvokeAsync("status", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("READY", result.RootElement.GetProperty("Text").GetString());
     }
@@ -130,7 +131,7 @@ public sealed class BridgeClientTests
         var client = new BridgeClient(package.Paths, runner);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            client.InvokeAsync("settings-set", serial: "USB", ns: "secure", key: "x", value: "1"));
+            client.InvokeAsync("settings-set", serial: "USB", ns: "secure", key: "x", value: "1", cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Equal("permission denied", ex.Message);
     }
@@ -146,7 +147,7 @@ public sealed class BridgeClientTests
         var client = new BridgeClient(package.Paths, runner);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            client.InvokeAsync("status"));
+            client.InvokeAsync("status", cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains("bridge crashed", ex.Message);
     }
@@ -161,7 +162,7 @@ public sealed class BridgeClientTests
         };
         var client = new BridgeClient(package.Paths, runner);
 
-        using var _ = await client.InvokeAsync("status");
+        using var _ = await client.InvokeAsync("status", cancellationToken: TestContext.Current.CancellationToken);
 
         var call = Assert.Single(runner.Calls);
         Assert.Equal(new[] { "-Action", "status" }, call.Arguments);
