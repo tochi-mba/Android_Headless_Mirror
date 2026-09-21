@@ -282,6 +282,103 @@ public sealed class MachineModeTests
     }
 
     [Fact]
+    public async Task ShortcutInstall_UsesShortcutScriptAndReturnsJson()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "shortcut", "install" },
+            package.Paths,
+            runner,
+            new FakeBridgeClient(),
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        var call = Assert.Single(runner.Calls);
+        Assert.Equal("powershell", call.Kind);
+        Assert.Equal(package.Paths.InstallRexShortcut, call.FileName);
+
+        using var doc = JsonDocument.Parse(result.Json);
+        Assert.True(doc.RootElement.GetProperty("data").GetProperty("installed").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ShortcutRemove_UsesRemovalScriptAndReturnsJson()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "shortcut", "remove" },
+            package.Paths,
+            runner,
+            new FakeBridgeClient(),
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        var call = Assert.Single(runner.Calls);
+        Assert.Equal(package.Paths.RemoveRexShortcut, call.FileName);
+
+        using var doc = JsonDocument.Parse(result.Json);
+        Assert.False(doc.RootElement.GetProperty("data").GetProperty("installed").GetBoolean());
+    }
+
+    [Fact]
+    public async Task SmartMachineMode_StartsReadyDeviceWithoutPrompting()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = new RexStatus(
+                true, false, false, false, false,
+                "adb.exe", "scrcpy.exe",
+                new[] { new RexDevice("USB123", "device", false, "", "", "Android") })
+        };
+
+        var result = await MachineMode.RunAsync(
+            new[] { "smart" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Single(runner.Calls);
+
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Equal("StartMirror", data.GetProperty("decision").GetString());
+        Assert.False(data.GetProperty("interactiveRequired").GetBoolean());
+    }
+
+    [Fact]
+    public async Task SmartMachineMode_ReportsWizardRequirementInsteadOfPrompting()
+    {
+        using var package = new TempPackage();
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = new RexStatus(
+                false, false, false, false, false,
+                "", "", Array.Empty<RexDevice>())
+        };
+
+        var result = await MachineMode.RunAsync(
+            new[] { "smart" },
+            package.Paths,
+            new FakeProcessRunner(),
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Equal("SetupRequired", data.GetProperty("decision").GetString());
+        Assert.True(data.GetProperty("interactiveRequired").GetBoolean());
+    }
+
+    [Fact]
     public async Task ProcessFailure_IsStillValidJson()
     {
         using var package = new TempPackage();
