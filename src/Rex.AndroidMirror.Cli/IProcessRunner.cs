@@ -16,4 +16,9 @@ public interface IProcessRunner
         CancellationToken cancellationToken = default);
 
     Task<int> OpenAsync(string target, string? workingDirectory = null);
+
+    Task<int> StartDetachedAsync(
+        string fileName,
+        IEnumerable<string> arguments,
+        string workingDirectory);
 }
