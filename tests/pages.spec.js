@@ -131,21 +131,49 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(page.getByText(/authenticate from the PC/)).toBeVisible();
   });
 
-  test('pattern guide documents every per-device lock mode', async ({ page }) => {
+  test('pattern guide documents the geometry accuracy hierarchy and calibration fallback', async ({ page }) => {
     const section = page.locator('#pattern-guide');
     await expect(section).toBeVisible();
-    await expect(section.getByText('Pattern', { exact: true })).toBeVisible();
-    await expect(section.getByText(/PIN \/ password \/ other/)).toBeVisible();
-    await expect(section.getByText('No screen lock', { exact: true })).toBeVisible();
-    await expect(section.getByText('Ask later', { exact: true })).toBeVisible();
+    await expect(section).toContainText('Exact pattern-cell bounds');
+    await expect(section).toContainText('Runtime LockPatternView bounds');
+    await expect(section).toContainText('Saved per-device calibration');
+    await expect(section).toContainText('Estimated fallback');
+    await expect(section).toContainText('Ctrl+Alt+C');
+    await expect(section).toContainText('Shift+arrows');
+    await expect(section).toContainText('Ctrl+arrows');
   });
 
-  test('pattern guide privacy and manual fallback are explicit', async ({ page }) => {
+  test('pattern guide privacy distinguishes geometry from the unlock credential', async ({ page }) => {
     const section = page.locator('#pattern-guide');
-    await expect(section).toContainText(/click-through/i);
-    await expect(section).toContainText('Ctrl+Alt+P');
-    await expect(section).toContainText('never stored');
-    await expect(section).toContainText('No ADB touch injection');
+    await expect(section).toContainText('The unlock path is never stored');
+    await expect(section).toContainText('four normalized bounds');
+    await expect(section).toContainText('geometry, not the credential');
+  });
+
+  test('controls separate native Android pinch from PC-only host zoom', async ({ page }) => {
+    const section = page.locator('#controls');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('Pinch naturally → Android pinches.');
+    await expect(section).toContainText('No keyboard modifier is required');
+    await expect(section).toContainText('Hold Ctrl + pinch → magnify the mirror.');
+    await expect(section).toContainText('The phone receives no pinch');
+    await expect(section).toContainText('Reset zoom');
+    await expect(section).toContainText('Windows 11');
+    await expect(section).toContainText('Precision Touchpad');
+  });
+
+  test('controls expose the always-available sleep action', async ({ page }) => {
+    const section = page.locator('#controls');
+    await expect(section.locator('.toolbar-demo-button', { hasText: 'Sleep phone' })).toBeVisible();
+    await expect(section).toContainText('re-sends scrcpy’s screen-off command');
+    await expect(section).toContainText('PC mirror continues');
+  });
+
+  test('FAQ explains native touchpad pinch without Ctrl', async ({ page }) => {
+    const summary = page.getByText('Can I pinch TikTok with my laptop touchpad like I would on the phone?');
+    await summary.click();
+    await expect(page.getByText(/pinch or spread with two fingers/)).toBeVisible();
+    await expect(page.getByText(/You do not hold Ctrl/)).toBeVisible();
   });
 
   test('FAQ covers no-lock devices and lock-type changes', async ({ page }) => {
@@ -154,6 +182,12 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
 
     await page.getByText('What if I change my phone from pattern to PIN, or remove the lock?').click();
     await expect(page.getByText(/RESET_LOCK_SCREEN_CHOICES\.bat/)).toBeVisible();
+  });
+
+  test('FAQ documents PC-only pattern calibration', async ({ page }) => {
+    await page.getByText('What if the pattern dots are not perfectly aligned on my phone?').click();
+    await expect(page.getByText(/Ctrl\+Alt\+C/)).toBeVisible();
+    await expect(page.getByText(/no physical phone interaction is required/)).toBeVisible();
   });
 
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
