@@ -38,6 +38,21 @@ try {
     Assert-True ($output -match "CLI already available") "Bootstrap should report the existing CLI."
     Assert-True (Test-Path (Join-Path $cliDir "rex.exe")) "Existing rex.exe must not be removed."
 
+    $quietOut = Join-Path $Temp "quiet-stdout.txt"
+    $quietErr = Join-Path $Temp "quiet-stderr.txt"
+    $quietArgs = @(
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", (Join-Path $Temp "Bootstrap-RexCli.ps1"),
+        "-Quiet"
+    )
+
+    $quietProcess = Start-Process -FilePath "powershell.exe" -ArgumentList $quietArgs -WorkingDirectory $Temp -Wait -PassThru -RedirectStandardOutput $quietOut -RedirectStandardError $quietErr
+    Assert-True ($quietProcess.ExitCode -eq 0) "Quiet bootstrap should succeed."
+    $quietText = if (Test-Path $quietOut) { Get-Content $quietOut -Raw } else { "" }
+    Assert-True ([string]::IsNullOrWhiteSpace($quietText)) "Quiet bootstrap must not contaminate machine-mode stdout."
+
     Write-Host "REX CLI bootstrap behavior passed." -ForegroundColor Green
 }
 finally {
