@@ -293,6 +293,14 @@ class RepositoryContractTests(unittest.TestCase):
                 "ManualShowSeconds",
                 "TrailHoldMilliseconds",
                 "FrameMilliseconds",
+                "AutoDiscoverGeometry",
+                "DiscoveryPollMilliseconds",
+                "CalibrationEnabled",
+                "CalibrationHotkey",
+                "CalibrationStepPixels",
+                "CalibrationFineStepPixels",
+                "CalibrationDirectory",
+                "FallbackToEstimatedGeometry",
             },
         )
 
@@ -326,6 +334,14 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreaterEqual(overlay["WindowPollMilliseconds"], 50)
         self.assertGreaterEqual(overlay["KeyguardPollMilliseconds"], 250)
         self.assertGreaterEqual(overlay["FrameMilliseconds"], 12)
+        self.assertTrue(overlay["AutoDiscoverGeometry"])
+        self.assertGreaterEqual(overlay["DiscoveryPollMilliseconds"], 1000)
+        self.assertTrue(overlay["CalibrationEnabled"])
+        self.assertEqual(overlay["CalibrationHotkey"], "Ctrl+Alt+C")
+        self.assertGreater(overlay["CalibrationStepPixels"], 0)
+        self.assertGreater(overlay["CalibrationFineStepPixels"], 0)
+        self.assertEqual(overlay["CalibrationDirectory"], "pattern-calibration")
+        self.assertTrue(overlay["FallbackToEstimatedGeometry"])
 
     # ---------- Pattern overlay ----------
 
@@ -362,13 +378,25 @@ class RepositoryContractTests(unittest.TestCase):
             with self.subTest(needle=needle):
                 self.assertNotIn(needle, text)
 
-    def test_overlay_does_not_persist_pattern_or_cursor_path(self):
+    def test_overlay_persists_only_calibration_geometry_not_pattern_or_cursor_path(self):
         text = self.read("PatternOverlay.ps1")
-        for writer in ["Set-Content", "Add-Content", "Out-File", "Export-Csv"]:
+        for writer in ["Add-Content", "Out-File", "Export-Csv"]:
             with self.subTest(writer=writer):
                 self.assertNotIn(writer, text)
+
         self.assertNotIn("state.json", text)
         self.assertIn("$trail.Points.Clear()", text)
+        self.assertIn("function Save-PatternCalibration", text)
+
+        start = text.index("function Save-PatternCalibration")
+        end = text.index("function Remove-PatternCalibration", start)
+        save = text[start:end]
+        for forbidden in ["$trail", "Points", "Cursor", "Path="]:
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, save)
+
+        for field in ["Left", "Top", "Right", "Bottom", "Serial"]:
+            self.assertIn(field, save)
 
     def test_overlay_window_is_click_through_and_non_activating(self):
         text = self.read("PatternOverlay.ps1")
@@ -405,6 +433,48 @@ class RepositoryContractTests(unittest.TestCase):
         ]:
             self.assertIn(contract, text)
 
+    def test_overlay_discovers_runtime_pattern_geometry_before_estimate(self):
+        text = self.read("PatternOverlay.ps1")
+        for contract in [
+            "uiautomator dump --compressed",
+            "Get-PatternGeometryFromUiXml",
+            "LockPatternView",
+            "lockPatternView",
+            '"ui-dots"',
+            '"ui-view"',
+            "Get-EffectivePatternGeometry",
+        ]:
+            self.assertIn(contract, text)
+
+        effective_start = text.index("function Get-EffectivePatternGeometry")
+        effective_end = text.index("function Get-GridBoundsNormalizedFromPoints", effective_start)
+        effective = text[effective_start:effective_end]
+        self.assertLess(effective.index('"ui-dots"'), effective.index("$script:calibrationGeometry"))
+        self.assertLess(effective.index("$script:calibrationGeometry"), effective.rindex("$script:discoveredGeometry"))
+
+    def test_overlay_calibration_is_per_device_and_keyboard_only(self):
+        text = self.read("PatternOverlay.ps1")
+        for contract in [
+            "CalibrationHotkey",
+            "Start-CalibrationMode",
+            "Adjust-CalibrationDraft",
+            "Save-PatternCalibration",
+            "Get-CalibrationPath",
+            "ARROWS MOVE",
+            "SHIFT+ARROWS RESIZE",
+            "ENTER SAVE",
+            "ESC CANCEL",
+            "R RESET",
+        ]:
+            self.assertIn(contract, text)
+
+        self.assertIn("CalibrationDirectory", text)
+        self.assertNotIn("input tap", text.lower())
+        self.assertNotIn("input swipe", text.lower())
+
+    def test_runtime_calibration_directory_is_gitignored(self):
+        self.assertIn("pattern-calibration/", self.read(".gitignore"))
+
     def test_supervisor_migrates_old_state_shape_for_device_profiles(self):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn("function Ensure-StateShape", text)
@@ -418,11 +488,13 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("kill-server", text)
         self.assertNotIn("adb.exe", text)
 
-    def test_lock_screen_choice_reset_preserves_other_state(self):
+    def test_lock_screen_choice_reset_also_clears_pattern_calibration(self):
         text = self.read("Reset-LockScreenChoices.ps1")
         self.assertIn("DeviceProfiles", text)
         self.assertIn("PreferredSerial", self.read("Start-PhoneMirror.ps1"))
-        self.assertNotIn("Remove-Item", text)
+        self.assertIn("CalibrationDirectory", text)
+        self.assertIn("Remove-CalibrationForSerial", text)
+        self.assertIn("Remove-AllCalibrations", text)
         self.assertIn('if ($Serial -eq "ALL")', text)
 
     # ---------- Setup/install security ----------
