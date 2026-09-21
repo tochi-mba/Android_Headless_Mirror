@@ -271,9 +271,11 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
   });
 
   test('FAQ documents PC-only pattern calibration', async ({ page }) => {
-    await page.getByText('What if the pattern dots are not perfectly aligned on my phone?').click();
-    await expect(page.getByText(/Ctrl\+Alt\+C/)).toBeVisible();
-    await expect(page.getByText(/no physical phone interaction is required/)).toBeVisible();
+    const summary = page.getByText('What if the pattern dots are not perfectly aligned on my phone?');
+    const details = summary.locator('..');
+    await summary.click();
+    await expect(details.getByText(/Ctrl\+Alt\+C/)).toBeVisible();
+    await expect(details.getByText(/no physical phone interaction is required/)).toBeVisible();
   });
 
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
