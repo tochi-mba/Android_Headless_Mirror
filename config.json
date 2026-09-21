@@ -31,7 +31,7 @@
     "Enabled": true,
     "PromptPerDevice": true,
     "AutoShowOnKeyguard": true,
-    "ManualToggleHotkey": true,
+    "ManualToggleHotkey": "Ctrl+Alt+P",
     "KeyguardPollMilliseconds": 750,
     "WindowPollMilliseconds": 100,
     "Opacity": 0.9,
@@ -39,6 +39,9 @@
     "GridCenterY": 0.62,
     "GridSizeRelativeToWidth": 0.62,
     "DotRadiusRelativeToWidth": 0.026,
-    "ShowCursorTrail": true
+    "ShowCursorTrail": true,
+    "ManualShowSeconds": 20,
+    "TrailHoldMilliseconds": 350,
+    "FrameMilliseconds": 16
   }
 }
