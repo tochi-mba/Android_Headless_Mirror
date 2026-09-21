@@ -335,6 +335,8 @@ $exercised = @(
     @(
         "RefreshAllButton","ResetHostZoomButton","ScreenshotButton","OpenScreenshotFolderButton",
         "SavePcSettingsButton","ReloadPcSettingsButton","DeviceAutoRotateCheck",
+        "DisplayRefreshButton","DisplayStartScrcpyButton","DisplayOpenWirelessButton",
+        "SaveDisplaySettingsButton","ReloadDisplaySettingsButton",
         "WifiOnButton","WifiOffButton","MobileDataOnButton","MobileDataOffButton",
         "AirplaneOnButton","AirplaneOffButton","ApplyWmSizeButton","ResetWmSizeButton",
         "ApplyWmDensityButton","ResetWmDensityButton","DeviceWakeButton","DeviceSleepButton",
