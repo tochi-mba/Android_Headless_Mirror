@@ -141,6 +141,9 @@
       <TabItem x:Name="ControlsTab" Header="Controls">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="24">
+            <Border Background="{StaticResource Signal}" CornerRadius="3" HorizontalAlignment="Left" Padding="9,4" Margin="0,0,0,10">
+              <TextBlock Text="CONTROLS" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+            </Border>
             <TextBlock Text="Mirror controls" FontSize="26" FontWeight="SemiBold"/>
             <TextBlock Text="Runtime controls for the active scrcpy session." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
 
@@ -208,6 +211,9 @@
       <TabItem x:Name="PcSettingsTab" Header="PC / mirror settings">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="24">
+            <Border Background="{StaticResource Signal}" CornerRadius="3" HorizontalAlignment="Left" Padding="9,4" Margin="0,0,0,10">
+              <TextBlock Text="PC / MIRROR" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+            </Border>
             <TextBlock Text="PC / mirror settings" FontSize="26" FontWeight="SemiBold"/>
             <TextBlock Text="Settings applied by the Windows wrapper or on the next mirror session." Foreground="{StaticResource Muted}" Margin="0,5,0,22"/>
 
