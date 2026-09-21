@@ -138,14 +138,14 @@ function Get-ScrcpyShortcutMap {
     return @{
         fullscreen       = @{ Key=[AHMScrcpyControlNative]::VK_F11; Alt=$false; Shift=$false; Repeat=1 }
         fit              = @{ Key=(Convert-ToVirtualKey "w"); Alt=$true; Shift=$false; Repeat=1 }
-        pixel-perfect    = @{ Key=(Convert-ToVirtualKey "g"); Alt=$true; Shift=$false; Repeat=1 }
-        rotate-left      = @{ Key=[AHMScrcpyControlNative]::VK_LEFT; Alt=$true; Shift=$false; Repeat=1 }
-        rotate-right     = @{ Key=[AHMScrcpyControlNative]::VK_RIGHT; Alt=$true; Shift=$false; Repeat=1 }
-        flip-horizontal  = @{ Key=[AHMScrcpyControlNative]::VK_LEFT; Alt=$true; Shift=$true; Repeat=1 }
-        flip-vertical    = @{ Key=[AHMScrcpyControlNative]::VK_UP; Alt=$true; Shift=$true; Repeat=1 }
+        "pixel-perfect" = @{ Key=(Convert-ToVirtualKey "g"); Alt=$true; Shift=$false; Repeat=1 }
+        "rotate-left" = @{ Key=[AHMScrcpyControlNative]::VK_LEFT; Alt=$true; Shift=$false; Repeat=1 }
+        "rotate-right" = @{ Key=[AHMScrcpyControlNative]::VK_RIGHT; Alt=$true; Shift=$false; Repeat=1 }
+        "flip-horizontal" = @{ Key=[AHMScrcpyControlNative]::VK_LEFT; Alt=$true; Shift=$true; Repeat=1 }
+        "flip-vertical" = @{ Key=[AHMScrcpyControlNative]::VK_UP; Alt=$true; Shift=$true; Repeat=1 }
         pause            = @{ Key=(Convert-ToVirtualKey "z"); Alt=$true; Shift=$false; Repeat=1 }
         resume           = @{ Key=(Convert-ToVirtualKey "z"); Alt=$true; Shift=$true; Repeat=1 }
-        reset-capture    = @{ Key=(Convert-ToVirtualKey "r"); Alt=$true; Shift=$true; Repeat=1 }
+        "reset-capture" = @{ Key=(Convert-ToVirtualKey "r"); Alt=$true; Shift=$true; Repeat=1 }
         fps              = @{ Key=(Convert-ToVirtualKey "i"); Alt=$true; Shift=$false; Repeat=1 }
         home             = @{ Key=(Convert-ToVirtualKey "h"); Alt=$true; Shift=$false; Repeat=1 }
         back             = @{ Key=(Convert-ToVirtualKey "b"); Alt=$true; Shift=$false; Repeat=1 }
@@ -154,17 +154,17 @@ function Get-ScrcpyShortcutMap {
         power            = @{ Key=(Convert-ToVirtualKey "p"); Alt=$true; Shift=$false; Repeat=1 }
         sleep            = @{ Key=(Convert-ToVirtualKey "o"); Alt=$true; Shift=$false; Repeat=1 }
         wake             = @{ Key=(Convert-ToVirtualKey "o"); Alt=$true; Shift=$true; Repeat=1 }
-        rotate-device    = @{ Key=(Convert-ToVirtualKey "r"); Alt=$true; Shift=$false; Repeat=1 }
+        "rotate-device" = @{ Key=(Convert-ToVirtualKey "r"); Alt=$true; Shift=$false; Repeat=1 }
         notifications    = @{ Key=(Convert-ToVirtualKey "n"); Alt=$true; Shift=$false; Repeat=1 }
-        quick-settings   = @{ Key=(Convert-ToVirtualKey "n"); Alt=$true; Shift=$false; Repeat=2 }
-        collapse-panels  = @{ Key=(Convert-ToVirtualKey "n"); Alt=$true; Shift=$true; Repeat=1 }
-        volume-down      = @{ Key=[AHMScrcpyControlNative]::VK_DOWN; Alt=$true; Shift=$false; Repeat=1 }
-        volume-up        = @{ Key=[AHMScrcpyControlNative]::VK_UP; Alt=$true; Shift=$false; Repeat=1 }
+        "quick-settings" = @{ Key=(Convert-ToVirtualKey "n"); Alt=$true; Shift=$false; Repeat=2 }
+        "collapse-panels" = @{ Key=(Convert-ToVirtualKey "n"); Alt=$true; Shift=$true; Repeat=1 }
+        "volume-down" = @{ Key=[AHMScrcpyControlNative]::VK_DOWN; Alt=$true; Shift=$false; Repeat=1 }
+        "volume-up" = @{ Key=[AHMScrcpyControlNative]::VK_UP; Alt=$true; Shift=$false; Repeat=1 }
         copy             = @{ Key=(Convert-ToVirtualKey "c"); Alt=$true; Shift=$false; Repeat=1 }
         cut              = @{ Key=(Convert-ToVirtualKey "x"); Alt=$true; Shift=$false; Repeat=1 }
-        paste-sync       = @{ Key=(Convert-ToVirtualKey "v"); Alt=$true; Shift=$false; Repeat=1 }
-        paste-inject     = @{ Key=(Convert-ToVirtualKey "v"); Alt=$true; Shift=$true; Repeat=1 }
-        keyboard-settings = @{ Key=(Convert-ToVirtualKey "k"); Alt=$true; Shift=$false; Repeat=1 }
+        "paste-sync" = @{ Key=(Convert-ToVirtualKey "v"); Alt=$true; Shift=$false; Repeat=1 }
+        "paste-inject" = @{ Key=(Convert-ToVirtualKey "v"); Alt=$true; Shift=$true; Repeat=1 }
+        "keyboard-settings" = @{ Key=(Convert-ToVirtualKey "k"); Alt=$true; Shift=$false; Repeat=1 }
     }
 }
 
