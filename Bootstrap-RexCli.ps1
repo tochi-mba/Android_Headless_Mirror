@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [switch]$Quiet
 )
 
 Set-StrictMode -Version Latest
@@ -14,7 +15,9 @@ $Project = Join-Path $Root "src\Rex.AndroidMirror.Cli\Rex.AndroidMirror.Cli.cspr
 $TempDir = Join-Path $env:TEMP ("rex-cli-bootstrap-" + [guid]::NewGuid().ToString("N"))
 
 function Write-RexBootstrap([string]$Message) {
-    Write-Host ("[rex] " + $Message)
+    if (-not $Quiet) {
+        Write-Host ("[rex] " + $Message)
+    }
 }
 
 if ((Test-Path $CliExe) -and -not $Force) {
