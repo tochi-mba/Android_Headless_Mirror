@@ -177,6 +177,9 @@ class RepositoryContractTests(unittest.TestCase):
             "STOP.bat",
             "DIAGNOSTICS.bat",
             "REMOVE_AUTOSTART.bat",
+            "REX.bat",
+            "Bootstrap-RexCli.ps1",
+            "RexBridge.ps1",
             "Setup.ps1",
             "Install-Autostart.ps1",
             "Remove-Autostart.ps1",
@@ -196,6 +199,15 @@ class RepositoryContractTests(unittest.TestCase):
             ".gitignore",
             ".github/workflows/ci.yml",
             ".github/workflows/pages.yml",
+            ".github/workflows/release.yml",
+            "src/Rex.AndroidMirror.Cli/Rex.AndroidMirror.Cli.csproj",
+            "src/Rex.AndroidMirror.Cli/Program.cs",
+            "src/Rex.AndroidMirror.Cli/RexApp.cs",
+            "src/Rex.AndroidMirror.Cli/RexBrand.cs",
+            "src/Rex.AndroidMirror.Cli/ConfigStore.cs",
+            "src/Rex.AndroidMirror.Cli/BridgeClient.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/Rex.AndroidMirror.Cli.Tests.csproj",
+            "tests/Test-RexCliBootstrap.ps1",
             "tests/Test-PowerShellBehavior.ps1",
             "tests/Test-ControlCenterE2E.ps1",
             "tests/Test-ControlCenterVisual.ps1",
@@ -238,7 +250,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_runtime_artifacts_are_gitignored(self):
         gitignore = self.read(".gitignore")
-        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/"]:
+        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/", "config.json.rex-backup", "config.json.tmp", "config.json.restore-current"]:
             self.assertIn(entry, gitignore)
 
     # ---------- Configuration ----------
@@ -812,6 +824,133 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertIn(option, supervisor)
         self.assertIn("Split-ExtraScrcpyArguments", supervisor)
         self.assertIn("cannot override required Android Headless Mirror option", supervisor)
+
+    # ---------- REX CLI ----------
+
+    def test_rex_cli_uses_stable_spectre_console_and_self_contained_publish(self):
+        project = self.read("src/Rex.AndroidMirror.Cli/Rex.AndroidMirror.Cli.csproj")
+        self.assertIn('Spectre.Console" Version="0.57.2"', project)
+        self.assertIn("<PublishSingleFile>true</PublishSingleFile>", project)
+        self.assertIn("<SelfContained>true</SelfContained>", project)
+        self.assertIn("<TargetFramework>net8.0</TargetFramework>", project)
+
+    def test_rex_cli_has_guided_and_scripted_entry_points(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        for command in [
+            '"status"', '"devices"', '"start"', '"stop"', '"setup"', '"repair"',
+            '"autostart"', '"controls"', '"action"', '"mirror"', '"device"',
+            '"android"', '"config"', '"screenshot"', '"lock-mode"', '"reset-lock"',
+            '"captures"', '"diagnostics"',
+        ]:
+            self.assertIn(command, program)
+        for section_name in [
+            "Runtime controls",
+            "PC / mirror settings",
+            "Device settings",
+            "Advanced Android settings",
+            "Open GUI Control Center",
+            "Setup / repair",
+            "Windows startup",
+            "Captures",
+        ]:
+            self.assertIn(section_name, app)
+
+    def test_rex_cli_first_run_wizard_covers_headless_setup_choices(self):
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        for prompt in [
+            "Run guided setup now?",
+            "Start Android Headless Mirror automatically",
+            "Keep the physical phone display off",
+            "Keep Android awake while USB power is connected",
+            "Precision Touchpad gestures",
+            "Open the GUI Control Center automatically",
+            "Start Android Headless Mirror now?",
+        ]:
+            self.assertIn(prompt, app)
+        self.assertIn("ConfigureLockScreenAsync", app)
+        self.assertIn("WaitForDevicesAsync", app)
+
+    def test_rex_cli_exposes_every_config_and_live_android_namespaces(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        config_store = self.read("src/Rex.AndroidMirror.Cli/ConfigStore.cs")
+        bridge = self.read("RexBridge.ps1")
+        self.assertIn("config list", program)
+        self.assertIn("config get", program)
+        self.assertIn("config set", program)
+        self.assertIn("config restore", program)
+        self.assertIn("Flatten()", config_store)
+        self.assertIn('"settings-list"', bridge)
+        self.assertIn('"settings-get"', bridge)
+        self.assertIn('"settings-set"', bridge)
+        self.assertIn('"settings-delete"', bridge)
+
+    def test_rex_cli_config_writes_are_atomic_and_recoverable(self):
+        store = self.read("src/Rex.AndroidMirror.Cli/ConfigStore.cs")
+        for needle in [
+            'BackupPath => _path + ".rex-backup"',
+            "SaveAtomic",
+            "RestoreBackup",
+            "File.Move(temp, _path, true)",
+            "JsonNode.Parse",
+        ]:
+            self.assertIn(needle, store)
+
+    def test_rex_cli_bridge_reuses_existing_control_backends(self):
+        bridge = self.read("RexBridge.ps1")
+        self.assertIn('DeviceControl.ps1', bridge)
+        self.assertIn('ScrcpyControl.ps1', bridge)
+        self.assertIn("Invoke-ScrcpyNamedShortcut", bridge)
+        self.assertIn("Set-FriendlyAndroidSetting", bridge)
+        self.assertIn("Get-AndroidSettingsNamespace", bridge)
+
+    def test_rex_cli_host_zoom_has_gui_parity(self):
+        bridge = self.read("RexBridge.ps1")
+        chrome = self.read("MirrorChrome.ps1")
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        for command in ["zoom-in", "zoom-out", "reset-zoom"]:
+            self.assertIn(command, bridge)
+            self.assertIn(command, chrome)
+            self.assertIn(command, program)
+
+    def test_rex_cli_bootstrap_verifies_release_checksum_and_has_local_build_fallback(self):
+        bootstrap = self.read("Bootstrap-RexCli.ps1")
+        for needle in [
+            "rex-win-x64.zip",
+            "rex-win-x64.zip.sha256",
+            "Get-FileHash",
+            "SHA256",
+            "dotnet",
+            "PublishSingleFile=true",
+        ]:
+            self.assertIn(needle, bootstrap)
+        self.assertLess(bootstrap.index("Get-FileHash"), bootstrap.index("Expand-Archive"))
+
+    def test_rex_release_workflow_publishes_zip_and_checksum(self):
+        workflow = self.read(".github/workflows/release.yml")
+        self.assertIn("rex-win-x64.zip", workflow)
+        self.assertIn("rex-win-x64.zip.sha256", workflow)
+        self.assertIn("Get-FileHash", workflow)
+        self.assertIn("gh release create", workflow)
+        self.assertIn("contents: write", workflow)
+
+    def test_rex_cli_has_dedicated_unit_and_interactive_tests(self):
+        required = [
+            "tests/Rex.AndroidMirror.Cli.Tests/ConfigStoreTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/AppPathsTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/BridgeClientTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/ProgramTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RexBrandTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RexAppTests.cs",
+        ]
+        for path in required:
+            with self.subTest(path=path):
+                self.assertTrue((ROOT / path).is_file())
+
+        wizard = self.read("tests/Rex.AndroidMirror.Cli.Tests/RexAppTests.cs")
+        self.assertIn("FirstRunWizard_ConfiguresToolsStartupLockAndHeadlessDefaults", wizard)
+        self.assertIn("RuntimeControls_DispatchSleepAndReturnToMainMenu", wizard)
+        self.assertIn("AdvancedAndroid_ProtectedKeyNeverDispatchesAWrite", wizard)
 
     # ---------- Setup/install security ----------
 
