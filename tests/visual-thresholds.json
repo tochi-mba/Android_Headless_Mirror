@@ -7,7 +7,12 @@
     "signalPixelsMin": 80,
     "textPixelsMin": 800,
     "orangePixelsMin": 0,
-    "uniqueColorsMin": 40
+    "uniqueColorsMin": 40,
+    "tabs": {
+      "DiagnosticsTab": {
+        "textPixelsMin": 120
+      }
+    }
   },
   "pages": {
     "darkRatioMin": 0.42,
