@@ -103,6 +103,7 @@ $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
     "Unique-Strings",
     "Select-Device",
     "Build-ScrcpyArguments",
+    "Invoke-Scrcpy",
     "Prepare-DeviceForMirror"
 ))
 
@@ -259,6 +260,33 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-fps=*" }).Count -gt 0) -Message "MaxFps=0 should suppress --max-fps."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--video-bit-rate=*" }).Count -gt 0) -Message "Blank bitrate should suppress --video-bit-rate."
+
+    Write-Host "[powershell] Testing native scrcpy argument boundaries..."
+    $scrcpyArgLog = Join-Path $temp "scrcpy-args.log"
+    $env:AHM_SCRCPY_ARG_LOG = $scrcpyArgLog
+    $fakeScrcpy = Join-Path $temp "fake-scrcpy.cmd"
+    @'
+@echo off
+> "%AHM_SCRCPY_ARG_LOG%" echo [1]=%~1
+>>"%AHM_SCRCPY_ARG_LOG%" echo [2]=%~2
+>>"%AHM_SCRCPY_ARG_LOG%" echo [3]=%~3
+exit /b 23
+'@ | Set-Content -Path $fakeScrcpy -Encoding ASCII
+
+    $nativeArgs = @(
+        "--serial=USB123",
+        "--window-title=Android Device",
+        "--max-fps=60"
+    )
+    $nativeExit = Invoke-Scrcpy $fakeScrcpy $nativeArgs $false
+    Assert-Equal -Expected 23 -Actual $nativeExit -Message "Invoke-Scrcpy should return the native process exit code."
+
+    $received = @(Get-Content $scrcpyArgLog)
+    Assert-Equal -Expected @(
+        "[1]=--serial=USB123",
+        "[2]=--window-title=Android Device",
+        "[3]=--max-fps=60"
+    ) -Actual $received -Message "Native invocation must preserve arguments containing spaces as one argument."
 
     Write-Host "[powershell] Testing real device preparation commands..."
     $prepareLog = Join-Path $temp "prepare.log"
