@@ -30,6 +30,15 @@ public static class AHMScrcpyControlNative
         public UIntPtr dwExtraInfo;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
     public const uint INPUT_KEYBOARD = 1;
     public const uint KEYEVENTF_KEYUP = 0x0002;
 
@@ -52,6 +61,9 @@ public static class AHMScrcpyControlNative
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
@@ -153,6 +165,26 @@ function Get-ScrcpyShortcutMap {
         paste-sync       = @{ Key=(Convert-ToVirtualKey "v"); Alt=$true; Shift=$false; Repeat=1 }
         paste-inject     = @{ Key=(Convert-ToVirtualKey "v"); Alt=$true; Shift=$true; Repeat=1 }
         keyboard-settings = @{ Key=(Convert-ToVirtualKey "k"); Alt=$true; Shift=$false; Repeat=1 }
+    }
+}
+
+function Get-ScrcpyWindowRect([string]$WindowTitle) {
+    Initialize-ScrcpyControlNative
+    $target = [AHMScrcpyControlNative]::FindWindowByExactTitle($WindowTitle)
+    if ($target -eq [IntPtr]::Zero) { return $null }
+
+    $rect = New-Object AHMScrcpyControlNative+RECT
+    if (-not [AHMScrcpyControlNative]::GetWindowRect($target, [ref]$rect)) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        Left = $rect.Left
+        Top = $rect.Top
+        Right = $rect.Right
+        Bottom = $rect.Bottom
+        Width = $rect.Right - $rect.Left
+        Height = $rect.Bottom - $rect.Top
     }
 }
 
