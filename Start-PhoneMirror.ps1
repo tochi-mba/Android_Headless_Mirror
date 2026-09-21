@@ -431,28 +431,72 @@ function Split-ExtraScrcpyArguments([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return @() }
     if ($Text -match '[\r\n\x00]') { throw "ExtraScrcpyArgs contains unsupported characters." }
 
-    # One token may contain quoted segments after an option prefix, for example
-    # --window-x=10 or --crop="100:200:0:0" or --some-option="value with spaces".
-    $matches = [regex]::Matches($Text, '(?:[^\s"'']+|"[^"]*"|''[^'']*'')+')
-    $result = @()
+    $tokens = New-Object System.Collections.Generic.List[string]
+    $builder = New-Object System.Text.StringBuilder
+    $quote = [char]0
+    $escapeNext = $false
+    $doubleQuote = [char]34
+    $singleQuote = [char]39
+    $backslash = [char]92
 
-    foreach ($match in $matches) {
-        $value = [string]$match.Value
-        if ($value.Length -ge 2) {
-            if (
-                ($value.StartsWith('"') -and $value.EndsWith('"')) -or
-                ($value.StartsWith("'") -and $value.EndsWith("'"))
-            ) {
-                $value = $value.Substring(1, $value.Length - 2)
-            }
+    foreach ($ch in $Text.ToCharArray()) {
+        if ($escapeNext) {
+            [void]$builder.Append($ch)
+            $escapeNext = $false
+            continue
         }
 
-        if ($value -match '^(--[^=]+)=(".*"|''.*'')
-        if ($value -match '^--(serial|window-title|mouse)(=|$)' -or $value -in @("--no-control","--no-window","--no-video")) {
+        if ($quote -ne [char]0) {
+            if ($ch -eq $quote) {
+                $quote = [char]0
+                continue
+            }
+
+            if ($quote -eq $doubleQuote -and $ch -eq $backslash) {
+                $escapeNext = $true
+                continue
+            }
+
+            [void]$builder.Append($ch)
+            continue
+        }
+
+        if ($ch -eq $doubleQuote -or $ch -eq $singleQuote) {
+            $quote = $ch
+            continue
+        }
+
+        if ([char]::IsWhiteSpace($ch)) {
+            if ($builder.Length -gt 0) {
+                $tokens.Add($builder.ToString())
+                [void]$builder.Clear()
+            }
+            continue
+        }
+
+        [void]$builder.Append($ch)
+    }
+
+    if ($escapeNext -or $quote -ne [char]0) {
+        throw "ExtraScrcpyArgs contains an unterminated quoted value."
+    }
+
+    if ($builder.Length -gt 0) {
+        $tokens.Add($builder.ToString())
+    }
+
+    $result = @()
+    foreach ($value in $tokens) {
+        if ([string]::IsNullOrWhiteSpace($value)) { continue }
+
+        if (
+            $value -match '^--(serial|window-title|mouse)(=|$)' -or
+            $value -in @("--no-control","--no-window","--no-video")
+        ) {
             throw "ExtraScrcpyArgs cannot override required Android Headless Mirror option '$value'."
         }
 
-        $result += $value
+        $result += [string]$value
     }
 
     return @($result)
