@@ -63,7 +63,7 @@ function Assert-Contains {
     Assert-True -Condition ($Collection -contains $Value) -Message $Message
 }
 
-function Import-SupervisorFunctions {
+function Get-SupervisorFunctionDefinitions {
     param([string[]]$Names)
 
     $tokens = $null
@@ -87,20 +87,27 @@ function Import-SupervisorFunctions {
         $definitions[$_.Name] = $_.Extent.Text
     }
 
+    $selectedDefinitions = @()
     foreach ($name in $Names) {
         Assert-True -Condition $definitions.ContainsKey($name) -Message "Supervisor function '$name' must exist."
-        Invoke-Expression $definitions[$name]
+        $selectedDefinitions += $definitions[$name]
     }
+
+    return $selectedDefinitions
 }
 
-Import-SupervisorFunctions -Names @(
+$functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
     "Get-AdbDevices",
     "Is-PrivateIPv4",
     "Get-PhoneIpCandidates",
     "Unique-Strings",
     "Select-Device",
     "Build-ScrcpyArguments"
-)
+))
+
+foreach ($definition in $functionDefinitions) {
+    Invoke-Expression $definition
+}
 
 Write-Host "[powershell] Testing private IPv4 classification..."
 foreach ($ip in @(
