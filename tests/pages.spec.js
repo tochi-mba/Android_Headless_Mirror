@@ -194,7 +194,7 @@ test.describe('mobile behavior', () => {
 
   test('small phone width remains usable', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 740 });
-    await page.reload();
+    await page.goto('/');
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
