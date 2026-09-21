@@ -249,6 +249,7 @@ strong{font-weight:700;color:var(--text)}
 .rex-terminal-bar{min-height:46px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;gap:18px;background:var(--raised);border-bottom:1px solid var(--line);font:9px var(--mono);letter-spacing:.08em;color:var(--muted)}
 .rex-terminal-state{color:var(--signal);white-space:nowrap}
 .rex-terminal-body{padding:24px;overflow:auto}
+.rex-terminal-body:focus-visible{outline:2px solid var(--signal);outline-offset:-3px}
 .rex-terminal pre{margin:0;color:var(--text);font:11px/1.55 var(--mono);white-space:pre;min-width:620px}
 .rt-signal{color:var(--signal)}
 .rt-muted{color:var(--muted)}
