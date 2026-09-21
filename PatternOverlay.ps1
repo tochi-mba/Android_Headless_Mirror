@@ -903,19 +903,28 @@ $style = $style -bor [AHMOverlayNative]::WS_EX_TRANSPARENT -bor [AHMOverlayNativ
 $window.Hide()
 
 $hotkey = Get-HotkeySpec ([string]$OverlayConfig.ManualToggleHotkey)
+$calibrationHotkey = Get-HotkeySpec ([string]$OverlayConfig.CalibrationHotkey)
 $displaySize = Get-DeviceDisplaySize
 $script:targetHwnd = [IntPtr]::Zero
 $script:targetSeen = $false
 $script:missingSince = $null
 $script:lastWindowPoll = [DateTime]::MinValue
 $script:lastKeyguardPoll = [DateTime]::MinValue
+$script:lastDiscoveryPoll = [DateTime]::MinValue
 $script:keyguardState = "unknown"
 $script:manualOverride = $null
 $script:manualOverrideUntil = [DateTime]::MinValue
 $script:hotkeyWasDown = $false
+$script:calibrationHotkeyWasDown = $false
 $script:leftWasDown = $false
 $script:trailClearAt = [DateTime]::MinValue
 $script:lastBoundsKey = ""
+$script:lastLayout = $null
+$script:discoveredGeometry = $null
+$script:calibrationGeometry = Load-PatternCalibration $Serial
+$script:calibrationMode = $false
+$script:calibrationDraft = $null
+$script:keyLatch = @{}
 
 function Update-Grid {
     $canvas.Children.Clear()
