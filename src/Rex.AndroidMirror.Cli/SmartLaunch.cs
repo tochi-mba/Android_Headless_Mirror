@@ -64,6 +64,29 @@ public sealed class SmartLauncher
         CancellationToken cancellationToken = default)
     {
         var status = await _bridge.GetStatusAsync(cancellationToken);
+
+        // Status is deliberately observational and may not start an ADB daemon.
+        // A desktop shortcut click is an explicit user action, so when no ready
+        // device is already visible we perform one active device probe before
+        // deciding whether to start-and-exit or start-and-wait.
+        if (
+            status.SetupComplete &&
+            !status.MirrorRunning &&
+            !status.Devices.Any(x => x.State == "device")
+        )
+        {
+            try
+            {
+                var devices = await _bridge.GetDevicesAsync(cancellationToken);
+                status = status with { Devices = devices };
+            }
+            catch
+            {
+                // Device discovery failure should not make the smart entry dead.
+                // The supervisor path can still recover and present diagnostics.
+            }
+        }
+
         var decision = SmartLaunchPlanner.Decide(status);
 
         switch (decision)
