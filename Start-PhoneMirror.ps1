@@ -60,6 +60,138 @@ function Log([string]$Message, [string]$Level = "INFO") {
     }
 }
 
+
+function Ensure-StateShape($State) {
+    if ($null -eq $State.PSObject.Properties["PreferredSerial"]) {
+        $State | Add-Member -NotePropertyName PreferredSerial -NotePropertyValue ""
+    }
+    if ($null -eq $State.PSObject.Properties["WirelessHosts"]) {
+        $State | Add-Member -NotePropertyName WirelessHosts -NotePropertyValue @()
+    }
+    if ($null -eq $State.PSObject.Properties["DeviceProfiles"]) {
+        $State | Add-Member -NotePropertyName DeviceProfiles -NotePropertyValue @()
+    }
+
+    return $State
+}
+
+function Get-DeviceProfile($State, [string]$Serial) {
+    if ($null -eq $State.PSObject.Properties["DeviceProfiles"]) { return $null }
+
+    return @($State.DeviceProfiles | Where-Object {
+        [string]$_.Serial -eq $Serial
+    }) | Select-Object -First 1
+}
+
+function Set-DeviceLockScreenMode($State, [string]$Serial, [string]$Mode) {
+    $profiles = @()
+    if ($null -ne $State.PSObject.Properties["DeviceProfiles"]) {
+        $profiles = @($State.DeviceProfiles | Where-Object {
+            [string]$_.Serial -ne $Serial
+        })
+    }
+
+    $profiles += [pscustomobject]@{
+        Serial = $Serial
+        LockScreenMode = $Mode
+    }
+
+    $State.DeviceProfiles = @($profiles)
+    Save-State $State
+}
+
+function Get-DeviceLabel([string]$Adb, [string]$Serial) {
+    try {
+        $manufacturer = (& $Adb -s $Serial shell getprop ro.product.manufacturer 2>$null | Out-String).Trim()
+        $model = (& $Adb -s $Serial shell getprop ro.product.model 2>$null | Out-String).Trim()
+        $label = ((@($manufacturer, $model) | Where-Object {
+            -not [string]::IsNullOrWhiteSpace([string]$_)
+        }) -join " ").Trim()
+
+        if (-not [string]::IsNullOrWhiteSpace($label)) {
+            return $label
+        }
+    }
+    catch {}
+
+    return $Serial
+}
+
+function Get-OrPromptLockScreenMode([string]$Adb, [string]$Serial, $State) {
+    if (-not $Config.PatternOverlay.Enabled) { return "none" }
+
+    $profile = Get-DeviceProfile $State $Serial
+    if ($profile -and -not [string]::IsNullOrWhiteSpace([string]$profile.LockScreenMode)) {
+        $mode = ([string]$profile.LockScreenMode).ToLowerInvariant()
+        if ($mode -in @("pattern", "other", "none")) {
+            return $mode
+        }
+    }
+
+    if (-not $Config.PatternOverlay.PromptPerDevice) {
+        return "none"
+    }
+
+    $deviceLabel = Get-DeviceLabel $Adb $Serial
+
+    try {
+        Add-Type -AssemblyName PresentationFramework -ErrorAction Stop
+        $nl = [Environment]::NewLine
+
+        $hasLockMessage =
+            "Does this Android device use any screen lock?" + $nl + $nl +
+            $deviceLabel + $nl + $Serial + $nl + $nl +
+            "Yes  - it uses a pattern, PIN, password, biometric-backed lock, or another lock method." + $nl +
+            "No   - it has no screen lock. No lock-screen overlay is needed." + $nl +
+            "Cancel - continue this session without saving a choice."
+
+        $hasLock = [System.Windows.MessageBox]::Show(
+            $hasLockMessage,
+            "Android Headless Mirror - lock screen setup",
+            [System.Windows.MessageBoxButton]::YesNoCancel,
+            [System.Windows.MessageBoxImage]::Question
+        )
+
+        if ($hasLock -eq [System.Windows.MessageBoxResult]::No) {
+            Set-DeviceLockScreenMode $State $Serial "none"
+            return "none"
+        }
+
+        if ($hasLock -eq [System.Windows.MessageBoxResult]::Cancel) {
+            return "session-off"
+        }
+
+        $patternMessage =
+            "Does this device use Android pattern unlock?" + $nl + $nl +
+            $deviceLabel + $nl + $Serial + $nl + $nl +
+            "Yes  - show the click-through 3x3 pattern guide while the keyguard is visible." + $nl +
+            "No   - it uses PIN, password, biometric/other lock. Do not show the pattern guide." + $nl +
+            "Cancel - continue this session without saving a choice."
+
+        $isPattern = [System.Windows.MessageBox]::Show(
+            $patternMessage,
+            "Android Headless Mirror - unlock method",
+            [System.Windows.MessageBoxButton]::YesNoCancel,
+            [System.Windows.MessageBoxImage]::Question
+        )
+
+        if ($isPattern -eq [System.Windows.MessageBoxResult]::Yes) {
+            Set-DeviceLockScreenMode $State $Serial "pattern"
+            return "pattern"
+        }
+
+        if ($isPattern -eq [System.Windows.MessageBoxResult]::No) {
+            Set-DeviceLockScreenMode $State $Serial "other"
+            return "other"
+        }
+    }
+    catch {
+        Log "Could not show per-device lock-screen prompt: $($_.Exception.Message)" "WARN"
+    }
+
+    return "session-off"
+}
+
 function Find-Tool([string]$Name) {
     if (Test-Path $ScrcpyBase) {
         $bundled = Get-ChildItem -Path $ScrcpyBase -Filter $Name -File -Recurse -ErrorAction SilentlyContinue |
@@ -76,17 +208,18 @@ function Find-Tool([string]$Name) {
 function Load-State {
     if (Test-Path $StateFile) {
         try {
-            return Get-Content $StateFile -Raw | ConvertFrom-Json
+            return Ensure-StateShape (Get-Content $StateFile -Raw | ConvertFrom-Json)
         }
         catch {
             Log "Ignoring corrupt state.json: $($_.Exception.Message)" "WARN"
         }
     }
 
-    return [pscustomobject]@{
+    return Ensure-StateShape ([pscustomobject]@{
         PreferredSerial = ""
         WirelessHosts = @()
-    }
+        DeviceProfiles = @()
+    })
 }
 
 function Save-State($State) {
@@ -297,7 +430,8 @@ function Select-Device($Devices, $State) {
 function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     $args = New-Object System.Collections.Generic.List[string]
     $args.Add("--serial=$Serial")
-    $args.Add("--window-title=$($Config.WindowTitle)")
+    $sessionTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
+    $args.Add("--window-title=$sessionTitle")
 
     if ($Config.TurnPhysicalScreenOff) {
         $args.Add("--turn-screen-off")
@@ -369,6 +503,43 @@ function Invoke-Scrcpy([string]$Executable, [string[]]$Arguments, [bool]$ShowOut
             $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPreference
         }
     }
+}
+
+
+function Start-PatternOverlay([string]$Serial, [string]$LockScreenMode) {
+    if ($LockScreenMode -ne "pattern") { return $null }
+    if (-not $Config.PatternOverlay.Enabled) { return $null }
+
+    $overlayScript = Join-Path $Root "PatternOverlay.ps1"
+    if (-not (Test-Path $overlayScript)) {
+        Log "Pattern overlay requested but PatternOverlay.ps1 is missing." "WARN"
+        return $null
+    }
+
+    try {
+        $quote = [char]34
+        $argumentLine =
+            "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " +
+            $quote + $overlayScript + $quote +
+            " -Serial " + $quote + $Serial + $quote
+
+        return Start-Process -FilePath "powershell.exe" -ArgumentList $argumentLine -PassThru -WindowStyle Hidden
+    }
+    catch {
+        Log "Could not start pattern overlay: $($_.Exception.Message)" "WARN"
+        return $null
+    }
+}
+
+function Stop-PatternOverlay($Process) {
+    if ($null -eq $Process) { return }
+
+    try {
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
 }
 
 function Prepare-DeviceForMirror([string]$Adb, [string]$Serial) {
@@ -487,12 +658,20 @@ try {
                 }
             }
 
+            $lockScreenMode = Get-OrPromptLockScreenMode $Adb $selected.Serial $State
             Prepare-DeviceForMirror $Adb $selected.Serial
 
             $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
             Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
 
-            $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
+            $overlayProcess = Start-PatternOverlay $selected.Serial $lockScreenMode
+            try {
+                $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
+            }
+            finally {
+                Stop-PatternOverlay $overlayProcess
+            }
+
             Log "scrcpy exited with code $exitCode"
 
             if (Test-Path $StopFile) { break }

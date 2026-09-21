@@ -76,6 +76,13 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(quickStart).toHaveAttribute('href', 'https://github.com/tochi-mba/Android_Headless_Mirror#quick-start');
   });
 
+  test('View source opens GitHub in a separate tab safely', async ({ page }) => {
+    const viewSource = page.getByRole('link', { name: /View source/ });
+    await expect(viewSource).toHaveAttribute('target', '_blank');
+    await expect(viewSource).toHaveAttribute('rel', /noopener/);
+    await expect(viewSource).toHaveAttribute('rel', /noreferrer/);
+  });
+
   test('all same-page navigation anchors resolve and scroll', async ({ page }) => {
     const hrefs = await page.locator('a[href^="#"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('href')));
     for (const href of hrefs) {
@@ -124,6 +131,31 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(page.getByText(/authenticate from the PC/)).toBeVisible();
   });
 
+  test('pattern guide documents every per-device lock mode', async ({ page }) => {
+    const section = page.locator('#pattern-guide');
+    await expect(section).toBeVisible();
+    await expect(section.getByText('Pattern', { exact: true })).toBeVisible();
+    await expect(section.getByText(/PIN \/ password \/ other/)).toBeVisible();
+    await expect(section.getByText('No screen lock', { exact: true })).toBeVisible();
+    await expect(section.getByText('Ask later', { exact: true })).toBeVisible();
+  });
+
+  test('pattern guide privacy and manual fallback are explicit', async ({ page }) => {
+    const section = page.locator('#pattern-guide');
+    await expect(section).toContainText(/click-through/i);
+    await expect(section).toContainText('Ctrl+Alt+P');
+    await expect(section).toContainText('never stored');
+    await expect(section).toContainText('No ADB touch injection');
+  });
+
+  test('FAQ covers no-lock devices and lock-type changes', async ({ page }) => {
+    await page.getByText('What if my phone has no password or screen lock?').click();
+    await expect(page.getByText(/no pattern-overlay process is started/)).toBeVisible();
+
+    await page.getByText('What if I change my phone from pattern to PIN, or remove the lock?').click();
+    await expect(page.getByText(/RESET_LOCK_SCREEN_CHOICES\.bat/)).toBeVisible();
+  });
+
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
     const summary = page.getByText('Does STOP really keep it stopped?');
     await summary.click();
@@ -138,6 +170,72 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
 
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard).toBe('git clone https://github.com/tochi-mba/Android_Headless_Mirror.git');
+  });
+
+  test('trust strip rows align at the reviewed two-column desktop width', async ({ page }) => {
+    await page.setViewportSize({ width: 887, height: 900 });
+    await page.reload();
+
+    const boxes = await page.locator('.trust-grid > div').evaluateAll(nodes =>
+      nodes.map(node => {
+        const rect = node.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })
+    );
+
+    expect(boxes).toHaveLength(4);
+    expect(Math.abs(boxes[0].x - boxes[2].x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(boxes[1].x - boxes[3].x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(boxes[0].width - boxes[2].width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(boxes[1].width - boxes[3].width)).toBeLessThanOrEqual(1);
+  });
+
+  test('reviewed USB and wireless icons use proper inline SVGs', async ({ page }) => {
+    await expect(page.locator('#how .step').first().locator('.step-icon svg')).toHaveCount(1);
+    const wireless = page.getByRole('heading', { name: 'Wireless, when you want it' }).locator('..');
+    await expect(wireless.locator('.feature-symbol svg')).toHaveCount(1);
+    await expect(page.locator('body')).not.toContainText('⌁');
+  });
+
+  test('lifecycle card contains useful state transitions instead of decorative track', async ({ page }) => {
+    const lifecycle = page.locator('.feature-large');
+    await expect(lifecycle.locator('.lifecycle-contract')).toBeVisible();
+    await expect(lifecycle).toContainText('STOP.bat');
+    await expect(lifecycle).toContainText('stop.flag created');
+    await expect(lifecycle).toContainText('autostart blocked');
+    await expect(lifecycle).toContainText('START_NOW.bat');
+    await expect(lifecycle.locator('.state-demo')).toHaveCount(0);
+  });
+
+  test('tested hardware uses a content-sized grid card with centered icon', async ({ page }) => {
+    await page.setViewportSize({ width: 887, height: 900 });
+    await page.reload();
+
+    const grid = page.locator('.tested-devices-grid');
+    const card = page.locator('.tested-device').first();
+    const icon = card.locator('.tested-device-icon');
+
+    const [gridBox, cardBox, iconBox] = await Promise.all([
+      grid.boundingBox(),
+      card.boundingBox(),
+      icon.boundingBox(),
+    ]);
+
+    expect(gridBox).not.toBeNull();
+    expect(cardBox).not.toBeNull();
+    expect(iconBox).not.toBeNull();
+    expect(cardBox.width).toBeLessThan(gridBox.width * 0.7);
+
+    const cardCenter = cardBox.x + cardBox.width / 2;
+    const iconCenter = iconBox.x + iconBox.width / 2;
+    expect(Math.abs(cardCenter - iconCenter)).toBeLessThanOrEqual(2);
+  });
+
+  test('hero preview is a flat product session view, not the old decorative collage', async ({ page }) => {
+    await expect(page.locator('.session-preview')).toBeVisible();
+    await expect(page.locator('.session-details')).toContainText('CURRENT SESSION');
+    await expect(page.locator('.terminal-card')).toHaveCount(0);
+    await expect(page.locator('.connection-line')).toHaveCount(0);
   });
 
   test('desktop layout has no horizontal overflow', async ({ page }) => {
@@ -155,14 +253,14 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
   });
 
-  test('reduced motion disables the travelling connection animation', async ({ page }) => {
+  test('reduced motion removes reveal transforms', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.reload();
 
-    const animationName = await page.locator('.connection-line span').evaluate(
-      element => getComputedStyle(element).animationName
+    const transform = await page.locator('.reveal').first().evaluate(
+      element => getComputedStyle(element).transform
     );
-    expect(animationName).toBe('none');
+    expect(transform).toBe('none');
   });
 
   test('has no serious or critical WCAG 2.x axe violations', async ({ page }) => {

@@ -45,9 +45,10 @@
       <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
+        <a href="#pattern-guide">Pattern guide</a>
         <a href="#compatibility">Compatibility</a>
         <a href="#faq">FAQ</a>
-        <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror">GitHub <span aria-hidden="true">↗</span></a>
+        <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
       </nav>
     </div>
   </header>
@@ -60,39 +61,50 @@
         <p class="hero-lede">A polished Windows wrapper around scrcpy and ADB that makes an Android device feel like a dependable part of your desktop — automatic reconnection, persistent start/stop, diagnostics, and an optional wireless fallback.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
-          <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror">View source <span aria-hidden="true">↗</span></a>
+          <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
         </div>
         <div class="hero-meta" aria-label="Project highlights"><span>No account</span><span>No analytics</span><span>Open source</span></div>
       </div>
 
-      <div class="hero-stage reveal" aria-label="Illustration of Android mirrored on Windows">
-        <div class="desktop-shell">
-          <div class="window-bar">
-            <div class="window-dots"><i></i><i></i><i></i></div>
-            <div class="window-title">Android Headless Mirror</div>
-            <div class="window-status"><span></span> USB connected</div>
-          </div>
-          <div class="desktop-canvas">
-            <div class="terminal-card">
-              <div class="terminal-title">mirror.log</div>
-              <pre><span class="muted">17:22:01</span> supervisor starting
-<span class="muted">17:22:02</span> device <b>authorized</b>
-<span class="muted">17:22:02</span> transport <b>USB</b>
-<span class="muted">17:22:03</span> launching scrcpy
-<span class="success">● mirror active</span></pre>
+      <div class="hero-stage reveal" aria-label="Android Headless Mirror active session preview">
+        <div class="session-preview">
+          <div class="session-titlebar">
+            <div>
+              <span class="session-app-dot" aria-hidden="true"></span>
+              <strong>Android Headless Mirror</strong>
             </div>
-            <div class="phone">
-              <div class="phone-speaker"></div>
-              <div class="phone-screen">
-                <div class="phone-top"><span>17:22</span><span>● ● ▰</span></div>
-                <div class="android-orb">
-                  <svg viewBox="0 0 70 70" aria-hidden="true"><path d="M19 26h32v22a9 9 0 0 1-9 9H28a9 9 0 0 1-9-9V26Z"/><path d="M22 26c1-9 6-14 13-14s12 5 13 14M25 12l-5-7M45 12l5-7"/><circle cx="29" cy="23" r="2"/><circle cx="41" cy="23" r="2"/></svg>
-                </div>
-                <div class="phone-copy"><strong>Connected</strong><span>Controlled from Windows</span></div>
-                <div class="phone-dock"><i></i><i></i><i></i><i></i></div>
+            <span class="session-connected"><i aria-hidden="true"></i> USB connected</span>
+          </div>
+
+          <div class="session-body">
+            <div class="session-device">
+              <div class="session-device-bar">
+                <span>SM-G998B</span>
+                <span>R3CRB04F7PP</span>
+              </div>
+              <div class="session-device-screen">
+                <svg class="session-device-icon" viewBox="0 0 32 32" aria-hidden="true">
+                  <rect x="9" y="3" width="14" height="26" rx="4"/>
+                  <path d="M13 7h6M14 25h4"/>
+                </svg>
+                <strong>Mirror active</strong>
+                <span>Physical display off</span>
               </div>
             </div>
-            <div class="connection-line" aria-hidden="true"><span></span></div>
+
+            <div class="session-details">
+              <div class="session-eyebrow">CURRENT SESSION</div>
+              <dl>
+                <div><dt>Transport</dt><dd><span class="status-dot"></span>USB</dd></div>
+                <div><dt>ADB</dt><dd>Authorized</dd></div>
+                <div><dt>Wake</dt><dd>Active</dd></div>
+                <div><dt>Keep active</dt><dd>On</dd></div>
+              </dl>
+              <div class="session-command">
+                <span>supervisor</span>
+                <code>device ready → launching scrcpy</code>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -114,9 +126,9 @@
         <p>The project handles the repetitive parts around ADB and scrcpy so the normal workflow becomes boring — in the best possible way.</p>
       </div>
       <div class="steps">
-        <article class="step reveal"><span class="step-number">01</span><div class="step-icon">⌁</div><h3>Connect over USB</h3><p>USB is the default and recovery transport. No network setup is required for the normal path.</p></article>
-        <article class="step reveal"><span class="step-number">02</span><div class="step-icon">✓</div><h3>Authorise this PC</h3><p>Approve Android's standard “Allow USB debugging” RSA prompt and choose “Always allow from this computer”.</p></article>
-        <article class="step reveal"><span class="step-number">03</span><div class="step-icon">▣</div><h3>Mirror automatically</h3><p>The supervisor detects an authorised device, wakes it, and launches scrcpy with your configured options.</p></article>
+        <article class="step reveal"><span class="step-number">01</span><div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4m-3 0h6"/></svg></div><h3>Connect over USB</h3><p>USB is the default and recovery transport. No network setup is required for the normal path.</p></article>
+        <article class="step reveal"><span class="step-number">02</span><div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></div><h3>Authorise this PC</h3><p>Approve Android's standard “Allow USB debugging” RSA prompt and choose “Always allow from this computer”.</p></article>
+        <article class="step reveal"><span class="step-number">03</span><div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="3"/><path d="M9 7h6m-4 10h2"/></svg></div><h3>Mirror automatically</h3><p>The supervisor detects an authorised device, wakes it, and launches scrcpy with your configured options.</p></article>
       </div>
     </section>
 
@@ -130,12 +142,15 @@
           <div class="feature-kicker">Lifecycle</div>
           <h3>START and STOP mean exactly what they say.</h3>
           <p>Stopping creates a persistent OFF state. Windows autostart respects it, so the mirror cannot quietly resurrect itself after you explicitly turned it off.</p>
-          <div class="state-demo"><div class="state-pill on"><span></span> START</div><div class="state-track"><i></i></div><div class="state-pill off"><span></span> STOP</div></div>
+          <div class="lifecycle-contract" aria-label="Persistent start and stop lifecycle">
+            <div><code>STOP.bat</code><span>→</span><strong>stop.flag created</strong><span>→</span><em>autostart blocked</em></div>
+            <div><code>START_NOW.bat</code><span>→</span><strong>stop.flag removed</strong><span>→</span><em>supervisor armed</em></div>
+          </div>
         </article>
-        <article class="feature-card reveal"><div class="feature-symbol">↻</div><h3>Auto-open on connect</h3><p>The hidden supervisor stays armed after Windows sign-in. Plug in any authorised Android phone and its mirror opens automatically, with a one-second poll interval by default.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol">◉</div><h3>Headless active session</h3><p>Keep the physical phone display dark while scrcpy keeps the mirrored session active. USB sessions also use Android's plugged-in stay-awake behavior.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol">⌁</div><h3>Wireless, when you want it</h3><p>ADB-over-TCP/IP remains available as an optional fallback, but ships disabled by default.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol">◎</div><h3>Single-instance supervisor</h3><p>A mutex prevents duplicate background supervisors from stacking up at Windows sign-in.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 8a8 8 0 1 1-1 8"/><path d="M5 3v5h5"/></svg></div><h3>Auto-open on connect</h3><p>The hidden supervisor stays armed after Windows sign-in. Plug in any authorised Android phone and its mirror opens automatically, with a one-second poll interval by default.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M9.5 6h5M10 17h4"/></svg></div><h3>Headless active session</h3><p>Keep the physical phone display dark while scrcpy keeps the mirrored session active. USB sessions also use Android's plugged-in stay-awake behavior.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 12a8 8 0 0 1 10 0m-7 3a4 4 0 0 1 4 0"/><circle cx="12" cy="18" r="1"/></svg></div><h3>Wireless, when you want it</h3><p>ADB-over-TCP/IP remains available as an optional fallback, but ships disabled by default.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol pattern-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></div><h3>Black lock screen? Still usable.</h3><p>Pattern-lock phones can opt into a click-through 3×3 visual guide over scrcpy. The pattern is never saved or replayed.</p></article>
       </div>
     </section>
 
@@ -167,19 +182,64 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
       </div>
     </section>
 
-    <section class="section container" id="compatibility">
-      <div class="compat-card reveal">
-        <div>
-          <div class="eyebrow signal">Compatibility</div>
-          <h2>Built for Android devices.<br>Tested on real hardware.</h2>
-          <p>Android Headless Mirror is designed around standard ADB and scrcpy, not Samsung-only APIs. It should work anywhere those standard tools work, but broad hardware compatibility is not claimed as tested.</p>
+    <section class="section container pattern-section" id="pattern-guide">
+      <div class="pattern-grid">
+        <div class="section-heading reveal">
+          <div class="eyebrow signal">Pattern lock guide</div>
+          <h2>When Android gives scrcpy a black lock screen, keep the coordinates visible.</h2>
+          <p>On some secure lock screens the video frame is black even though scrcpy still sends touch coordinates correctly. For devices that actually use Android pattern unlock, Android Headless Mirror can draw a visual-only guide over the scrcpy window.</p>
+
+          <div class="mode-list" aria-label="Per-device lock screen modes">
+            <div><span class="mode-dot pattern"></span><strong>Pattern</strong><small>3×3 overlay available</small></div>
+            <div><span class="mode-dot other"></span><strong>PIN / password / other</strong><small>No pattern overlay</small></div>
+            <div><span class="mode-dot none"></span><strong>No screen lock</strong><small>No overlay process at all</small></div>
+            <div><span class="mode-dot later"></span><strong>Ask later</strong><small>Nothing saved for this session</small></div>
+          </div>
         </div>
-        <div class="tested-device">
+
+        <div class="pattern-demo reveal" aria-label="Visual example of the click-through 3 by 3 pattern guide">
+          <div class="pattern-demo-bar">
+            <span>Android Device [R3CRB04F7PP]</span>
+            <span class="pattern-demo-state">KEYGUARD · GUIDE ON</span>
+          </div>
+          <div class="pattern-demo-screen">
+            <div class="pattern-demo-label">PATTERN GUIDE · CTRL + ALT + P TO TOGGLE</div>
+            <div class="pattern-dots" aria-hidden="true">
+              <i></i><i></i><i></i>
+              <i></i><i></i><i></i>
+              <i></i><i></i><i></i>
+              <svg viewBox="0 0 300 300" preserveAspectRatio="none">
+                <path d="M50 50 L150 50 L250 150 L150 250" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pattern-facts">
+        <article class="pattern-fact reveal"><span>01</span><h3>Click-through by design</h3><p>The overlay never takes focus or mouse input. Your drag goes to scrcpy underneath; the guide only supplies visible landmarks.</p></article>
+        <article class="pattern-fact reveal"><span>02</span><h3>Per phone, asked once</h3><p>Each authorized device can independently be Pattern, Other lock, or No lock. Change your lock type later? Reset the saved choice and reconnect.</p></article>
+        <article class="pattern-fact reveal"><span>03</span><h3>OEM-tolerant fallback</h3><p>Keyguard detection uses multiple generic Android signals. If an OEM reports them differently, <strong>Ctrl+Alt+P</strong> manually shows the guide while scrcpy is focused.</p></article>
+        <article class="pattern-fact reveal"><span>04</span><h3>The pattern is never stored</h3><p>No ADB touch injection, no pattern file, no replay. The optional cursor trail exists in memory only and disappears shortly after the drag ends.</p></article>
+      </div>
+    </section>
+
+    <section class="section container" id="compatibility">
+      <div class="compat-heading reveal">
+        <div class="eyebrow signal">Compatibility</div>
+        <h2>Built for Android devices.<br>Tested on real hardware.</h2>
+        <p>Android Headless Mirror is designed around standard ADB and scrcpy, not Samsung-only APIs. It should work anywhere those standard tools work, but broad hardware compatibility is not claimed as tested.</p>
+      </div>
+
+      <div class="tested-devices-grid" aria-label="Hardware tested by this project">
+        <article class="tested-device reveal">
           <div class="device-badge">TESTED</div>
-          <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="9" y="3" width="14" height="26" rx="4"/><path d="M13 7h6M14 25h4"/></svg>
+          <div class="tested-device-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><rect x="9" y="3" width="14" height="26" rx="4"/><path d="M13 7h6M14 25h4"/></svg>
+          </div>
           <strong>Samsung Galaxy S21 Ultra</strong>
           <span>SM-G998B · Windows 10/11 · USB ADB</span>
-        </div>
+        </article>
       </div>
     </section>
 
@@ -195,6 +255,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
           <div><span>02</span><p><strong>STOP does not kill the global ADB server.</strong> It shuts down only this package's own processes.</p></div>
           <div><span>03</span><p><strong>No first-unlock bypass.</strong> Android's secure boot and post-reboot PIN requirements remain intact.</p></div>
           <div><span>04</span><p><strong>No cloud dependency.</strong> The core mirror path is your Windows PC, ADB, scrcpy, and the connected Android device.</p></div>
+          <div><span>05</span><p><strong>Pattern privacy stays local and ephemeral.</strong> The visual guide does not store, transmit, inject or replay unlock coordinates.</p></div>
         </div>
       </div>
     </section>
@@ -206,7 +267,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
           <h2>Clone it. Run setup. Authorise Android.</h2>
           <p>Setup fetches the official Windows x64 scrcpy release and verifies its SHA-256 checksum before extraction.</p>
           <div class="install-actions">
-            <a class="button button-primary" href="https://github.com/tochi-mba/Android_Headless_Mirror">Open repository <span aria-hidden="true">↗</span></a>
+            <a class="button button-primary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">Open repository <span aria-hidden="true">↗</span></a>
             <a class="text-link" href="https://github.com/tochi-mba/Android_Headless_Mirror#quick-start" target="_blank" rel="noopener noreferrer">Read quick start ↗</a>
           </div>
         </div>
@@ -224,6 +285,11 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
         <details class="reveal"><summary>Can it control the phone while the physical screen is off?</summary><p>Yes, scrcpy supports turning the physical display off while keeping the mirrored display active. The exact behavior can vary by Android version and manufacturer.</p></details>
         <details class="reveal"><summary>Can it unlock the phone for me?</summary><p>It wakes the device and asks Android to dismiss the keyguard when authentication is not required. If a secure PIN/password is required, it does not bypass it. When ADB remains available, scrcpy can show the lock screen so you can authenticate from the PC. After a full reboot, some Android/OEM configurations require the first unlock on the physical device before ADB becomes available.</p></details>
         <details class="reveal"><summary>Does STOP really keep it stopped?</summary><p>Yes. STOP creates a persistent state file and shuts down the package's mirror and supervisor. Windows autostart respects that state until you explicitly run START again.</p></details>
+        <details class="reveal"><summary>What if my phone has no password or screen lock?</summary><p>Choose “No” when the one-time prompt asks whether the device uses any screen lock. The choice is saved for that phone and no pattern-overlay process is started.</p></details>
+        <details class="reveal"><summary>What if I use PIN, password, fingerprint or another lock instead of a pattern?</summary><p>Choose that the phone has a lock, then choose “No” when asked whether it is a pattern. The device is saved as an “other” lock type and the pattern guide is not started.</p></details>
+        <details class="reveal"><summary>Does the pattern guide know or save my unlock pattern?</summary><p>No. It is a transparent visual layer only. Mouse input continues to scrcpy underneath. The guide never stores, transmits, injects or replays the pattern; its optional drag trail exists only in memory and is cleared shortly after use.</p></details>
+        <details class="reveal"><summary>What if automatic lock-screen detection is wrong on my phone?</summary><p>With the scrcpy window focused, press <strong>Ctrl+Alt+P</strong> to manually toggle the pattern guide for a short period. Keyguard reporting varies by Android version and OEM, so the manual fallback is intentional.</p></details>
+        <details class="reveal"><summary>What if I change my phone from pattern to PIN, or remove the lock?</summary><p>Run <code>RESET_LOCK_SCREEN_CHOICES.bat</code>, clear that device’s saved choice, then reconnect it. The setup prompt appears again.</p></details>
         <details class="reveal"><summary>Does it require Wi-Fi?</summary><p>No. USB is the default path. Wireless ADB is optional and disabled by default.</p></details>
         <details class="reveal"><summary>Will another Android phone work?</summary><p>Yes. The supervisor targets any authorised Android device. A preferred serial only influences selection when multiple ready devices are present; it does not lock the project to the first phone you used.</p></details>
       </div>
@@ -232,7 +298,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
     <section class="final-cta">
       <div class="container final-cta-inner reveal">
         <div><span class="eyebrow signal">A REX Technologies product</span><h2>Make Android part of your desktop.</h2></div>
-        <a class="button button-light" href="https://github.com/tochi-mba/Android_Headless_Mirror">View on GitHub <span aria-hidden="true">↗</span></a>
+        <a class="button button-light" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View on GitHub <span aria-hidden="true">↗</span></a>
       </div>
     </section>
   </main>
@@ -240,7 +306,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
   <footer class="site-footer">
     <div class="container footer-grid">
       <div><a class="brand footer-brand" href="#top" aria-label="Android Headless Mirror, by REX Technologies"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span><span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span></a><p>Open-source Windows orchestration for Android mirroring with scrcpy + ADB. A REX Technologies product.</p></div>
-      <div class="footer-links"><a href="https://github.com/tochi-mba/Android_Headless_Mirror">Repository</a><a href="https://github.com/Genymobile/scrcpy">scrcpy</a><a href="#security">Security</a></div>
+      <div class="footer-links"><a href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">Repository</a><a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a><a href="#security">Security</a></div>
       <div class="footer-copy">© <span id="year"></span> REX Technologies · Built for Android, tested on S21 Ultra.</div>
     </div>
   </footer>

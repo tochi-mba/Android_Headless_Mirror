@@ -26,6 +26,7 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Can turn the physical Android display off while keeping the PC mirror active.
 - Keeps the active session alive using scrcpy `--keep-active`, and also uses `--stay-awake` for plugged-in USB sessions.
 - Works with any authorised Android device; a preferred serial is only a preference when multiple ready devices are present.
+- Can show a click-through 3×3 pattern guide over scrcpy when a secure lock screen renders black, without storing or replaying the pattern.
 - Provides persistent **START / STOP** semantics.
 - Can start automatically when Windows signs in.
 - Includes diagnostics and rotating logs.
@@ -68,6 +69,47 @@ A stock Android device intentionally keeps some operations outside ADB automatio
 
 These are Android security boundaries, not launcher failures. On devices where ADB remains available while locked, the mirrored lock screen can be used from the PC.
 
+## Pattern-lock visual guide
+
+Some Android/OEM combinations accept lock-screen touch input through scrcpy while rendering the secure lock screen as a black frame. For phones that use Android pattern unlock, Android Headless Mirror can place a **visual-only 3×3 guide** over the scrcpy client area.
+
+The first time each authorised phone is seen, the PC asks about that device's lock setup:
+
+- **No screen lock** → saves `none`; no overlay process is started.
+- **Pattern lock** → saves `pattern`; the pattern guide is available for that phone.
+- **PIN/password/biometric/other lock** → saves `other`; no pattern guide is started.
+- **Cancel / ask later** → saves nothing and runs that session without the overlay.
+
+The choice is stored **per ADB serial** in `state.json`, so different phones on the same PC can use different modes.
+
+### How the pattern guide works
+
+- The guide is a transparent, always-on-top Windows overlay aligned to the scrcpy **client area**.
+- It uses click-through + no-activate window styles, so mouse input continues to scrcpy underneath.
+- It follows scrcpy when the window moves/resizes and is DPI/multi-monitor aware.
+- It tries to show automatically when generic Android keyguard signals report a locked device.
+- OEM keyguard reporting is not perfectly consistent, so **Ctrl+Alt+P** manually toggles the guide for 20 seconds while the matching scrcpy window is focused.
+- The 3×3 grid geometry is normalized to the fitted Android video area so letterboxing and landscape/portrait resizing are accounted for.
+- Grid center, size, dot radius, opacity, polling intervals, trail duration and hotkey are configurable under `PatternOverlay` in `config.json`.
+
+### Pattern privacy
+
+The overlay never persists or replays the unlock credential:
+
+- it does **not** call ADB touch-injection commands;
+- it does **not** store, log, transmit or replay pattern coordinates;
+- scrcpy remains the only input path;
+- the optional cursor trail exists only in memory and is cleared shortly after the drag ends;
+- `state.json` stores only the device serial and the selected mode (`pattern`, `other`, or `none`).
+
+If a phone changes lock type later, run:
+
+```
+RESET_LOCK_SCREEN_CHOICES.bat
+```
+
+You can reset one serial or all saved lock-screen choices; the next connection prompts again.
+
 ## Start and stop behavior
 
 The package has a persistent OFF state.
@@ -85,6 +127,7 @@ STOP:
 - creates `stop.flag`;
 - closes scrcpy;
 - stops this package's background supervisor;
+- stops any pattern-guide sidecar started by this package;
 - leaves the shared Windows ADB server alone.
 
 The `stop.flag` remains present, so Windows autostart will not resurrect the mirror.
@@ -167,6 +210,13 @@ Useful values in `config.json`:
 - `VideoBitRate`: video quality/bandwidth setting.
 - `PreferredSerial`: optional fixed ADB serial.
 - `RestartOnUnexpectedExit`: relaunch scrcpy after an unexpected failure while the supervisor is enabled.
+- `PatternOverlay.Enabled`: enable per-device pattern-guide support.
+- `PatternOverlay.PromptPerDevice`: ask once per new device about its lock-screen type.
+- `PatternOverlay.AutoShowOnKeyguard`: automatically show the guide when OEM-tolerant keyguard signals report a lock screen.
+- `PatternOverlay.ManualToggleHotkey`: manual fallback hotkey; default `Ctrl+Alt+P`.
+- `PatternOverlay.GridCenterX` / `GridCenterY` / `GridSizeRelativeToWidth`: normalized grid geometry for OEM/device tuning.
+- `PatternOverlay.ShowCursorTrail`: draw a temporary in-memory cursor trail while dragging over the guide.
+
 
 ## Samsung notes
 
@@ -200,12 +250,14 @@ Tests:
 python tests\test_package.py
 ```
 
-The repository also includes a Windows GitHub Actions workflow that:
+The repository also includes Windows and browser CI that:
 
-- validates JSON;
-- parses PowerShell files for syntax errors;
+- validates JSON and PowerShell syntax;
 - verifies launcher/script references;
-- runs the Python package tests.
+- runs static package contracts;
+- runs executable behavior tests under **PowerShell 7 and Windows PowerShell 5.1**;
+- exercises overlay keyguard parsing, aspect-ratio geometry, hotkey parsing, state migration and reset behavior;
+- runs Chromium desktop/mobile tests plus axe accessibility checks for GitHub Pages.
 
 Hardware integration still requires a real Android device.
 

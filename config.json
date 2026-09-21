@@ -26,5 +26,22 @@
     "KeepFiles": 5
   },
   "DismissKeyguardWhenPossible": true,
-  "KeepActiveDuringMirror": true
+  "KeepActiveDuringMirror": true,
+  "PatternOverlay": {
+    "Enabled": true,
+    "PromptPerDevice": true,
+    "AutoShowOnKeyguard": true,
+    "ManualToggleHotkey": "Ctrl+Alt+P",
+    "KeyguardPollMilliseconds": 750,
+    "WindowPollMilliseconds": 100,
+    "Opacity": 0.9,
+    "GridCenterX": 0.5,
+    "GridCenterY": 0.62,
+    "GridSizeRelativeToWidth": 0.62,
+    "DotRadiusRelativeToWidth": 0.026,
+    "ShowCursorTrail": true,
+    "ManualShowSeconds": 20,
+    "TrailHoldMilliseconds": 350,
+    "FrameMilliseconds": 16
+  }
 }
