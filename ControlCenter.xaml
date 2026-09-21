@@ -257,6 +257,49 @@
               <TextBlock Text="Disabled by default. USB remains the recovery path." Foreground="{StaticResource Muted}" Margin="0,6,0,0"/>
             </GroupBox>
 
+            <GroupBox Header="Video / window">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Video codec" VerticalAlignment="Center"/>
+                <ComboBox x:Name="PcVideoCodecCombo" Grid.Row="0" Grid.Column="1" Margin="0,4">
+                  <ComboBoxItem Content="H.264 — lowest latency" Tag="h264"/>
+                  <ComboBoxItem Content="H.265 — better compression" Tag="h265"/>
+                  <ComboBoxItem Content="AV1 — device support varies" Tag="av1"/>
+                </ComboBox>
+                <CheckBox x:Name="PcFullscreenCheck" Grid.Row="1" Grid.Column="1" Content="Start fullscreen"/>
+                <CheckBox x:Name="PcAlwaysOnTopCheck" Grid.Row="2" Grid.Column="1" Content="Keep scrcpy always on top"/>
+                <CheckBox x:Name="PcDisableScreensaverCheck" Grid.Row="1" Grid.Column="2" Content="Disable PC screensaver while mirroring" Margin="18,5,0,5"/>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Audio">
+              <CheckBox x:Name="PcAudioEnabledCheck" Content="Forward Android audio to this PC"/>
+              <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Audio codec" VerticalAlignment="Center"/>
+                <ComboBox x:Name="PcAudioCodecCombo" Grid.Row="0" Grid.Column="1" Margin="0,4">
+                  <ComboBoxItem Content="Opus" Tag="opus"/>
+                  <ComboBoxItem Content="AAC" Tag="aac"/>
+                  <ComboBoxItem Content="FLAC" Tag="flac"/>
+                  <ComboBoxItem Content="Raw PCM" Tag="raw"/>
+                </ComboBox>
+                <TextBlock Grid.Row="1" Text="Audio buffer (ms)" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcAudioBufferText" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                <CheckBox x:Name="PcAudioDupCheck" Grid.Row="0" Grid.Column="2" Grid.RowSpan="2" Content="Duplicate playback on device too (Android 13+)" Margin="18,5,0,5"/>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Recording">
+              <CheckBox x:Name="PcRecordOnStartCheck" Content="Record automatically when the next mirror session starts"/>
+              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Recording folder" Width="190" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcRecordDirectoryText" Width="360"/>
+              </StackPanel>
+              <TextBlock Text="scrcpy records clean device-timestamped video/audio. Runtime stop/start recording is not available in scrcpy 4.1, so this applies on the next mirror launch." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+            </GroupBox>
+
             <GroupBox Header="Advanced scrcpy launch">
               <TextBlock Text="Extra raw scrcpy arguments" Margin="0,0,0,6"/>
               <TextBox x:Name="PcExtraScrcpyArgsText" AcceptsReturn="False"/>
@@ -400,6 +443,7 @@
 
     <Border Grid.Row="2" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="12,0">
       <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <TextBlock x:Name="StatusBarText" Text="Ready" Foreground="{StaticResource Muted}" VerticalAlignment="Center" FontSize="11"/>
         <TextBlock Grid.Column="1" HorizontalAlignment="Right" Text="REX Technologies" Foreground="{StaticResource Signal}" VerticalAlignment="Center" FontFamily="Consolas" FontSize="10"/>
       </Grid>
