@@ -161,6 +161,26 @@ The toolbar's **Sleep phone** button sends scrcpy's own “turn device screen of
 
 For mouse users, **Ctrl + mouse wheel** also controls the PC-only frame zoom. This is separate from Android pinch-to-zoom.
 
+### Control Center
+
+The toolbar's **Controls** button opens the Windows Control Center for the currently mirrored device. It is organized by responsibility rather than exposing one giant list:
+
+- **Controls** — runtime scrcpy actions: fullscreen, fit, pixel-perfect, display rotation/flip, pause/resume, capture reset, FPS counter, Home/Back/Recent Apps/Menu, power, sleep/wake, Android orientation request, notification/Quick Settings panels, volume, clipboard actions, keyboard settings, host-zoom reset and screenshots.
+- **PC / mirror settings** — wrapper/session behavior, video quality, codec, audio, recording-on-start, touchpad behavior, host zoom, pattern-guide behavior, wireless ADB and advanced raw scrcpy arguments.
+- **<device> settings** — friendly ADB-backed controls for brightness, timeout, auto-rotate, font scale, show touches, stay-awake, animation scales, dark mode, Wi-Fi/mobile-data/airplane commands and display size/density overrides.
+- **Advanced Android** — live enumeration of the connected phone's system, secure and global Settings Provider namespaces with search, read/write/delete and risk labels.
+- **Diagnostics** — device identity, Android/API version, ADB state, capability probes and recent command status.
+
+The Advanced Android page is intentionally **runtime-driven**. It does not assume that every OEM/version exposes the same keys. Android Headless Mirror asks that phone what keys exist and displays the result.
+
+Some keys are protected by the wrapper (adb_enabled, development_settings_enabled, android_id and device identity fields) because changing them casually could sever the headless recovery path or mutate identity. Other sensitive/advanced changes require confirmation and still surface the exact Android/OEM permission failure if the shell user is not allowed to modify them.
+
+### Screenshots and recording
+
+- **Save screenshot** uses adb exec-out screencap -p and writes under captures/screenshots/ by default.
+- **Record on next session** uses scrcpy's native recording pipeline and writes under captures/recordings/ by default.
+- scrcpy 4.1 does not provide a dynamic start/stop-recording shortcut, so recording-on-start is explicitly presented as a next-session setting rather than pretending it is live.
+
 ## Start and stop behavior
 
 The package has a persistent OFF state.
