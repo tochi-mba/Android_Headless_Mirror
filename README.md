@@ -209,6 +209,7 @@ After setup, Windows also gets a **REX** desktop shortcut. It launches `REX.bat 
 After setup, the same CLI becomes the day-to-day workspace:
 
 - **Runtime controls** — scrcpy controls plus PC-only host zoom in/out/reset.
+- **Display transports** — scrcpy plus Windows Wireless Display orchestration, DeX guidance, and explicit protected-playback verification.
 - **PC / mirror settings** — categorized common settings plus an **All settings browser** over every leaf in `config.json`.
 - **Device settings** — friendly Android settings using the same ADB backend as the GUI.
 - **Advanced Android** — live `system`, `secure` and `global` Settings Provider browsing/search/write/delete with protected-key guardrails.
@@ -226,6 +227,7 @@ REX.bat agent capabilities
 REX.bat agent status
 REX.bat agent devices
 REX.bat agent smart
+REX.bat agent display probe
 ```
 
 The following are equivalent:
@@ -250,6 +252,11 @@ rex controls --serial USB123
 rex action sleep --serial USB123
 rex mirror zoom-in --serial USB123
 rex mirror reset-zoom --serial USB123
+rex display probe
+rex display start --transport scrcpy
+rex display receiver open
+rex display start --transport windows-miracast
+rex display verify protected pass
 rex device set brightness 180 --serial USB123
 rex device set animation-scale 0.5 --serial USB123
 rex android list global --filter animation --serial USB123
@@ -281,6 +288,23 @@ Release builds publish `rex.exe` as a .NET 8 **self-contained, single-file Windo
 3. when no matching release asset exists, can build the CLI locally if a .NET 8 SDK is installed.
 
 The PowerShell/ADB/scrcpy implementation remains shared with the GUI; the CLI is a presentation/orchestration layer rather than a second Android-control implementation.
+
+### Display transports
+
+REX separates the **ADB control plane** from the display transport. Normal mirroring continues to use scrcpy. Windows Wireless Display is treated as a separate external-display path that can run while ADB remains connected.
+
+`rex display probe` reports:
+
+- scrcpy availability;
+- Windows Wireless Display optional-feature state;
+- Wi-Fi driver Miracast receive reporting;
+- independent ADB control availability;
+- whether a connected Samsung device is a DeX candidate;
+- local normal/protected playback verification state.
+
+REX does **not** implement Miracast, Wi-Fi Direct or HDCP, and it does not claim protected playback works merely because Windows reports Wireless Display support. Use `rex display verify protected pass|fail|clear` only after manually testing the exact phone/PC/driver/application chain.
+
+Local verification is stored in `display-verification.json` and is ignored by Git. See `docs/DISPLAY_TRANSPORTS.md` and `docs/DISPLAY_COMPATIBILITY.md`.
 
 ### Screenshots and recording
 
