@@ -153,6 +153,17 @@ $overlayFunctionDefinitions = @(Get-OverlayFunctionDefinitions -Names @(
     "Get-KeyguardStateFromText",
     "Get-FittedContentRect",
     "Get-PatternGridPoints",
+    "ConvertFrom-AndroidBounds",
+    "New-PatternGeometry",
+    "Get-PatternGeometryFromUiXml",
+    "Get-PatternPointsFromGeometry",
+    "Get-CalibrationPath",
+    "Convert-CalibrationRecordToGeometry",
+    "Load-PatternCalibration",
+    "Save-PatternCalibration",
+    "Remove-PatternCalibration",
+    "Get-GridBoundsNormalizedFromPoints",
+    "Clamp-CalibrationBounds",
     "Get-HotkeySpec"
 ))
 
@@ -256,6 +267,60 @@ $points = @(Get-PatternGridPoints $portraitRect $overlayConfig)
 Assert-Equal -Expected 9 -Actual $points.Count -Message "Pattern guide must always contain nine points."
 Assert-Equal -Expected ([Math]::Round($portraitRect.X + ($portraitRect.Width * 0.5), 3)) -Actual ([Math]::Round($points[4].X, 3)) -Message "Middle pattern dot should use configured horizontal center."
 Assert-Equal -Expected ([Math]::Round($portraitRect.Y + ($portraitRect.Height * 0.6), 3)) -Actual ([Math]::Round($points[4].Y, 3)) -Message "Middle pattern dot should use configured vertical center."
+
+Write-Host "[powershell] Testing Android UI hierarchy pattern discovery..."
+$viewXml = @'
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
+    <node class="com.android.internal.widget.LockPatternView" resource-id="com.android.systemui:id/lockPatternView" content-desc="Pattern area" bounds="[140,820][940,1620]" />
+  </node>
+</hierarchy>
+'@
+$viewGeometry = Get-PatternGeometryFromUiXml $viewXml
+Assert-True -Condition ($null -ne $viewGeometry) -Message "LockPatternView should be discovered from UI hierarchy."
+Assert-Equal -Expected "ui-view" -Actual $viewGeometry.Source -Message "Parent LockPatternView should produce ui-view geometry."
+Assert-Equal -Expected 1080.0 -Actual $viewGeometry.ScreenWidth -Message "Hierarchy should infer Android screen width."
+Assert-Equal -Expected 2400.0 -Actual $viewGeometry.ScreenHeight -Message "Hierarchy should infer Android screen height."
+Assert-Equal -Expected ([Math]::Round((140.0 + (800.0 / 6.0)) / 1080.0, 6)) -Actual ([Math]::Round($viewGeometry.GridBoundsNormalized.Left, 6)) -Message "Parent view should derive first-column center at one sixth."
+Assert-Equal -Expected ([Math]::Round((820.0 + (800.0 / 6.0)) / 2400.0, 6)) -Actual ([Math]::Round($viewGeometry.GridBoundsNormalized.Top, 6)) -Message "Parent view should derive first-row center at one sixth."
+
+$dotsXml = @'
+<hierarchy rotation="0">
+  <node class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
+    <node class="com.android.internal.widget.LockPatternView" resource-id="com.android.systemui:id/lockPatternView" content-desc="Pattern area" bounds="[140,820][940,1620]">
+      <node class="android.view.View" content-desc="Pattern cell 1" bounds="[270,970][330,1030]" />
+      <node class="android.view.View" content-desc="Pattern cell 2" bounds="[510,970][570,1030]" />
+      <node class="android.view.View" content-desc="Pattern cell 3" bounds="[750,970][810,1030]" />
+      <node class="android.view.View" content-desc="Pattern cell 4" bounds="[270,1190][330,1250]" />
+      <node class="android.view.View" content-desc="Pattern cell 5" bounds="[510,1190][570,1250]" />
+      <node class="android.view.View" content-desc="Pattern cell 6" bounds="[750,1190][810,1250]" />
+      <node class="android.view.View" content-desc="Pattern cell 7" bounds="[270,1410][330,1470]" />
+      <node class="android.view.View" content-desc="Pattern cell 8" bounds="[510,1410][570,1470]" />
+      <node class="android.view.View" content-desc="Pattern cell 9" bounds="[750,1410][810,1470]" />
+    </node>
+  </node>
+</hierarchy>
+'@
+$dotsGeometry = Get-PatternGeometryFromUiXml $dotsXml
+Assert-Equal -Expected "ui-dots" -Actual $dotsGeometry.Source -Message "Nine explicit virtual cells should outrank parent-view geometry."
+Assert-True -Condition $dotsGeometry.ExactDots -Message "Virtual-cell geometry should be marked exact."
+Assert-Equal -Expected ([Math]::Round(300.0 / 1080.0, 6)) -Actual ([Math]::Round($dotsGeometry.GridBoundsNormalized.Left, 6)) -Message "Exact dot geometry should use virtual-cell centers."
+Assert-Equal -Expected ([Math]::Round(780.0 / 1080.0, 6)) -Actual ([Math]::Round($dotsGeometry.GridBoundsNormalized.Right, 6)) -Message "Exact dot geometry should use outer virtual-cell centers."
+Assert-True -Condition ($null -eq (Get-PatternGeometryFromUiXml "<hierarchy><node class='android.widget.TextView' bounds='[0,0][1080,2400]' /></hierarchy>")) -Message "Unrelated UI hierarchy should not invent pattern geometry."
+
+Write-Host "[powershell] Testing discovered geometry mapping into scrcpy client coordinates..."
+$mapped = Get-PatternPointsFromGeometry $viewGeometry 540 1200 1080 2400 $overlayConfig
+Assert-Equal -Expected "ui-view" -Actual $mapped.Source -Message "Mapped layout should preserve geometry source."
+Assert-Equal -Expected 9 -Actual @($mapped.Points).Count -Message "Discovered geometry should map to nine client points."
+Assert-Equal -Expected ([Math]::Round((140.0 + (800.0 / 6.0)) / 2.0, 3)) -Actual ([Math]::Round($mapped.Points[0].X, 3)) -Message "Android X coordinates should map proportionally into scrcpy content."
+Assert-Equal -Expected ([Math]::Round((820.0 + (800.0 / 6.0)) / 2.0, 3)) -Actual ([Math]::Round($mapped.Points[0].Y, 3)) -Message "Android Y coordinates should map proportionally into scrcpy content."
+
+Write-Host "[powershell] Testing calibration bounds validation..."
+$clamped = Clamp-CalibrationBounds ([pscustomobject]@{ Left = -0.1; Top = 0.2; Right = 1.2; Bottom = 0.8 })
+Assert-Equal -Expected 0.0 -Actual ([Math]::Round($clamped.Left, 4)) -Message "Calibration should clamp left edge."
+Assert-Equal -Expected 1.0 -Actual ([Math]::Round($clamped.Right, 4)) -Message "Calibration should clamp right edge."
+$invalidCalibration = Convert-CalibrationRecordToGeometry ([pscustomobject]@{ Left = 0.8; Top = 0.2; Right = 0.2; Bottom = 0.8 })
+Assert-True -Condition ($null -eq $invalidCalibration) -Message "Inverted calibration bounds should be rejected."
 
 Write-Host "[powershell] Testing overlay hotkey parsing..."
 $hotkey = Get-HotkeySpec "Ctrl+Alt+P"
