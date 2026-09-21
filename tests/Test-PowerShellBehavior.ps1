@@ -8,6 +8,7 @@ $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $SupervisorPath = Join-Path $Root "Start-PhoneMirror.ps1"
 $StopPath = Join-Path $Root "Stop-PhoneMirror.ps1"
 $OverlayPath = Join-Path $Root "PatternOverlay.ps1"
+$MirrorChromePath = Join-Path $Root "MirrorChrome.ps1"
 $ResetLockScreenPath = Join-Path $Root "Reset-LockScreenChoices.ps1"
 
 $script:Assertions = 0
@@ -175,6 +176,11 @@ foreach ($definition in $overlayFunctionDefinitions) {
 Write-Host "[powershell] Testing overlay script safe-load mode..."
 & $OverlayPath -Serial "TEST_SERIAL" -TestOnly
 Assert-True -Condition $true -Message "PatternOverlay.ps1 -TestOnly should execute without creating WPF state."
+
+Write-Host "[powershell] Testing mirror-toolbar script safe-load mode..."
+& $MirrorChromePath -Serial "TEST_SERIAL" -TestOnly
+Assert-True -Condition $true -Message "MirrorChrome.ps1 -TestOnly should compile native helpers without creating a toolbar or magnifier."
+
 
 Write-Host "[powershell] Testing non-pattern modes never launch an overlay..."
 Assert-True -Condition ($null -eq (Start-PatternOverlay "USB123" "none")) -Message "No-lock mode must not start an overlay."
@@ -438,7 +444,8 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     foreach ($expected in @(
         "--serial=USB123",
         "--window-title=Android Device [USB123]",
-        "--turn-screen-off",
+        "--mouse=sdk",
+        "--turn-screen-off"
         "--stay-awake",
         "--keep-active",
         "--max-size=1920",
@@ -605,279 +612,8 @@ exit /b 0
 
     $stopSource = Get-Content $StopPath -Raw
     Assert-False -Condition ($stopSource -match 'kill-server') -Message "STOP must not kill the shared ADB server."
-}
-finally {
-    if (Test-Path $temp) {
-        Remove-Item -Recurse -Force $temp -ErrorAction SilentlyContinue
-    }
-}
-
-Write-Host ""
-Write-Host "PowerShell behavior tests passed: $script:Assertions assertions." -ForegroundColor Green
-) -Message "Calibration file names should sanitize ADB serials."
-
-        $loadedCalibration = Load-PatternCalibration "USB:123"
-        Assert-Equal -Expected "calibration" -Actual $loadedCalibration.Source -Message "Saved calibration should reload as calibration geometry."
-        Assert-Equal -Expected 0.20 -Actual ([Math]::Round($loadedCalibration.GridBoundsNormalized.Left, 2)) -Message "Saved calibration should preserve left bound."
-        Assert-Equal -Expected 0.72 -Actual ([Math]::Round($loadedCalibration.GridBoundsNormalized.Bottom, 2)) -Message "Saved calibration should preserve bottom bound."
-
-        $calibrationJson = Get-Content $calibrationPath -Raw
-        Assert-False -Condition ($calibrationJson -match '(?i)trail|cursor|patternpoints|gesture') -Message "Calibration file must contain geometry only, never gesture/cursor path data."
-
-        Remove-PatternCalibration "USB:123"
-        Assert-False -Condition (Test-Path $calibrationPath) -Message "Calibration removal should delete only that device file."
-    }
-    finally {
-        $script:Root = $originalRoot
-        if ($hadOverlayConfig) {
-            $script:OverlayConfig = $originalOverlayConfig
-        }
-        else {
-            Remove-Variable -Name OverlayConfig -Scope Script -ErrorAction SilentlyContinue
-        }
-    }
-
-    $fakeAdb = Join-Path $temp "fake-adb.cmd"
-    @'
-@echo off
-echo List of devices attached
-echo USB123 device product:oriole model:Pixel_6 transport_id:1
-echo 192.168.1.40:5555 device product:oriole model:Pixel_6 transport_id:2
-echo AUTH unauthorized transport_id:3
-echo OFF offline transport_id:4
-echo NOPERM no permissions transport_id:5
-'@ | Set-Content -Path $fakeAdb -Encoding ASCII
-
-    $devices = @(Get-AdbDevices $fakeAdb)
-    Assert-Equal -Expected 5 -Actual $devices.Count -Message "Get-AdbDevices should parse all known ADB states."
-    Assert-Equal -Expected "USB123" -Actual $devices[0].Serial -Message "First serial should parse."
-    Assert-False -Condition $devices[0].IsTcp -Message "USB serial must not be classified as TCP."
-    Assert-True -Condition $devices[1].IsTcp -Message "host:port serial must be classified as TCP."
-    Assert-Equal -Expected "unauthorized" -Actual $devices[2].State -Message "Unauthorized state should parse."
-    Assert-Equal -Expected "offline" -Actual $devices[3].State -Message "Offline state should parse."
-    Assert-Equal -Expected "no permissions" -Actual $devices[4].State -Message "No-permissions state should parse."
-
-    Write-Host "[powershell] Testing device selection..."
-    $state = [pscustomobject]@{ PreferredSerial = "" }
-    $script:Config = [pscustomobject]@{
-        PreferredSerial = ""
-        PreferUsb = $true
-    }
-    $selected = Select-Device $devices $state
-    Assert-Equal -Expected "USB123" -Actual $selected.Serial -Message "USB should win over TCP by default."
-
-    $state.PreferredSerial = "192.168.1.40:5555"
-    $selected = Select-Device $devices $state
-    Assert-Equal -Expected "192.168.1.40:5555" -Actual $selected.Serial -Message "Saved preferred serial should win."
-
-    $script:Config.PreferredSerial = "USB123"
-    $selected = Select-Device $devices $state
-    Assert-Equal -Expected "USB123" -Actual $selected.Serial -Message "Configured preferred serial should override saved state."
-
-    $script:Config.PreferredSerial = ""
-    $state.PreferredSerial = "MISSING_DEVICE"
-    $selected = Select-Device $devices $state
-    Assert-Equal -Expected "USB123" -Actual $selected.Serial -Message "A missing learned/preferred phone must not block another authorised USB Android device."
-
-    $nonReady = @(
-        [pscustomobject]@{ Serial = "A"; State = "offline"; IsTcp = $false },
-        [pscustomobject]@{ Serial = "B"; State = "unauthorized"; IsTcp = $false }
-    )
-    $selected = Select-Device $nonReady $state
-    Assert-True -Condition ($null -eq $selected) -Message "Non-ready devices must never be selected."
-
-    Write-Host "[powershell] Testing phone IP extraction..."
-    $fakeIpAdb = Join-Path $temp "fake-ip-adb.cmd"
-    @'
-@echo off
-echo 3: rmnet0    inet 10.123.45.67/32 scope global rmnet0
-echo 12: swlan0    inet 192.168.43.1/24 brd 192.168.43.255 scope global swlan0
-echo 13: wlan0     inet 192.168.43.1/24 brd 192.168.43.255 scope global wlan0
-echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
-'@ | Set-Content -Path $fakeIpAdb -Encoding ASCII
-
-    $ips = @(Get-PhoneIpCandidates $fakeIpAdb "USB123")
-    Assert-Equal -Expected @("192.168.43.1") -Actual $ips -Message "Wi-Fi/hotspot interfaces should be preferred and deduplicated."
-
-    Write-Host "[powershell] Testing scrcpy argument construction..."
-    $script:Config = [pscustomobject]@{
-        WindowTitle = "Android Device"
-        TurnPhysicalScreenOff = $true
-        StayAwakeWhenUsb = $true
-        KeepActiveDuringMirror = $true
-        DismissKeyguardWhenPossible = $true
-        WakeBeforeMirror = $true
-        PowerOffOnClose = $false
-        MaxSize = 1920
-        MaxFps = 60
-        VideoBitRate = "12M"
-        PreferredSerial = ""
-        PreferUsb = $true
-    }
-
-    $usbArgs = @(Build-ScrcpyArguments "USB123" $false)
-    foreach ($expected in @(
-        "--serial=USB123",
-        "--window-title=Android Device [USB123]",
-        "--turn-screen-off",
-        "--stay-awake",
-        "--keep-active",
-        "--max-size=1920",
-        "--max-fps=60",
-        "--video-bit-rate=12M"
-    )) {
-        Assert-Contains -Collection $usbArgs -Value $expected -Message "USB scrcpy args should include $expected."
-    }
-    Assert-False -Condition ($usbArgs -contains "--power-off-on-close") -Message "Disabled power-off-on-close should not be emitted."
-
-    $tcpArgs = @(Build-ScrcpyArguments "192.168.1.40:5555" $true)
-    Assert-False -Condition ($tcpArgs -contains "--stay-awake") -Message "TCP sessions should not receive the USB stay-awake flag."
-    Assert-Contains -Collection $tcpArgs -Value "--keep-active" -Message "TCP sessions should still receive --keep-active."
-
-    $script:Config.PowerOffOnClose = $true
-    $script:Config.KeepActiveDuringMirror = $false
-    $script:Config.MaxSize = 0
-    $script:Config.MaxFps = 0
-    $script:Config.VideoBitRate = ""
-    $minimalArgs = @(Build-ScrcpyArguments "USB123" $false)
-    Assert-Contains -Collection $minimalArgs -Value "--power-off-on-close" -Message "Enabled power-off-on-close should be emitted."
-    Assert-False -Condition ($minimalArgs -contains "--keep-active") -Message "Disabled KeepActiveDuringMirror should suppress --keep-active."
-    Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
-    Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-fps=*" }).Count -gt 0) -Message "MaxFps=0 should suppress --max-fps."
-    Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--video-bit-rate=*" }).Count -gt 0) -Message "Blank bitrate should suppress --video-bit-rate."
-
-    Write-Host "[powershell] Testing native scrcpy argument boundaries..."
-    $scrcpyArgLog = Join-Path $temp "scrcpy-args.log"
-    $env:AHM_SCRCPY_ARG_LOG = $scrcpyArgLog
-    $fakeScrcpy = Join-Path $temp "fake-scrcpy.exe"
-    $probeSource = @'
-using System;
-using System.IO;
-
-public static class ArgProbe
-{
-    public static int Main(string[] args)
-    {
-        File.WriteAllLines(
-            Environment.GetEnvironmentVariable("AHM_SCRCPY_ARG_LOG"),
-            args
-        );
-
-        Console.Error.WriteLine("INFO: scrcpy-server: 1 file pushed, 0 skipped.");
-
-        int exitCode;
-        if (!int.TryParse(Environment.GetEnvironmentVariable("AHM_SCRCPY_EXIT_CODE"), out exitCode))
-        {
-            exitCode = 23;
-        }
-
-        return exitCode;
-    }
-}
-'@
-    $probeSourceFile = Join-Path $temp "ArgProbe.cs"
-    Set-Content -Path $probeSourceFile -Value $probeSource -Encoding UTF8
-
-    $cscCandidates = @(
-        (Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"),
-        (Join-Path $env:WINDIR "Microsoft.NET\Framework\v4.0.30319\csc.exe")
-    )
-    $csc = $cscCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-    Assert-True -Condition (-not [string]::IsNullOrWhiteSpace([string]$csc)) -Message "A .NET Framework C# compiler should be available on Windows."
-
-    & $csc /nologo /target:exe "/out:$fakeScrcpy" $probeSourceFile
-    Assert-Equal -Expected 0 -Actual $LASTEXITCODE -Message "Native argument probe should compile."
-    Assert-True -Condition (Test-Path $fakeScrcpy) -Message "Native argument probe executable should exist."
-
-    $nativeArgs = @(
-        "--serial=USB123",
-        "--window-title=Android Device [USB123]",
-        "--max-fps=60"
-    )
-    $nativeExit = Invoke-Scrcpy $fakeScrcpy $nativeArgs $false
-    Assert-Equal -Expected 23 -Actual $nativeExit -Message "Invoke-Scrcpy should return the native process exit code."
-
-    $received = @(Get-Content $scrcpyArgLog | ForEach-Object { [string]$_ })
-    Assert-Equal -Expected @(
-        "--serial=USB123",
-        "--window-title=Android Device [USB123]",
-        "--max-fps=60"
-    ) -Actual $received -Message "Native .exe invocation must preserve every scrcpy argument boundary."
-
-    Write-Host "[powershell] Testing healthy native stderr does not become a supervisor failure..."
-    $env:AHM_SCRCPY_EXIT_CODE = "0"
-    $healthyExit = Invoke-Scrcpy $fakeScrcpy $nativeArgs $false
-    Assert-Equal -Expected 0 -Actual $healthyExit -Message "Informational native stderr must not turn a healthy scrcpy exit into a PowerShell failure."
-    Assert-Equal -Expected "Stop" -Actual $ErrorActionPreference -Message "Invoke-Scrcpy must restore the caller's ErrorActionPreference."
-
-    Write-Host "[powershell] Testing real device preparation commands..."
-    $prepareLog = Join-Path $temp "prepare.log"
-    $env:AHM_PREPARE_LOG = $prepareLog
-    $fakePrepareAdb = Join-Path $temp "fake-prepare-adb.cmd"
-    @'
-@echo off
-echo %*>>"%AHM_PREPARE_LOG%"
-exit /b 0
-'@ | Set-Content -Path $fakePrepareAdb -Encoding ASCII
-
-    Prepare-DeviceForMirror $fakePrepareAdb "USB123"
-
-    $prepareLines = @(Get-Content $prepareLog)
-    Assert-True -Condition (@($prepareLines | Where-Object { $_ -match '-s USB123 shell input keyevent KEYCODE_WAKEUP' }).Count -eq 1) -Message "Prepare-DeviceForMirror should send KEYCODE_WAKEUP."
-    Assert-True -Condition (@($prepareLines | Where-Object { $_ -match '-s USB123 shell wm dismiss-keyguard' }).Count -eq 1) -Message "Prepare-DeviceForMirror should request best-effort keyguard dismissal."
-
-    $script:Config.WakeBeforeMirror = $false
-    $script:Config.DismissKeyguardWhenPossible = $false
-    Clear-Content $prepareLog
-    Prepare-DeviceForMirror $fakePrepareAdb "USB123"
-    Assert-Equal -Expected 0 -Actual @(Get-Content $prepareLog -ErrorAction SilentlyContinue).Count -Message "Disabled preparation controls should emit no ADB commands."
-
-    Write-Host "[powershell] Testing lock-screen choice reset utility..."
-    $resetSandbox = Join-Path $temp "reset-sandbox"
-    New-Item -ItemType Directory -Force -Path $resetSandbox | Out-Null
-    $isolatedReset = Join-Path $resetSandbox "Reset-LockScreenChoices.ps1"
-    Copy-Item -Path $ResetLockScreenPath -Destination $isolatedReset
-    $resetStatePath = Join-Path $resetSandbox "state.json"
-    [pscustomobject]@{
-        PreferredSerial = "USB123"
-        WirelessHosts = @("192.168.1.20")
-        DeviceProfiles = @(
-            [pscustomobject]@{ Serial = "USB123"; LockScreenMode = "pattern" },
-            [pscustomobject]@{ Serial = "USB456"; LockScreenMode = "none" }
-        )
-    } | ConvertTo-Json -Depth 6 | Set-Content -Path $resetStatePath -Encoding UTF8
-
-    & $isolatedReset -Serial "USB123"
-    $resetState = Get-Content $resetStatePath -Raw | ConvertFrom-Json
-    Assert-Equal -Expected "USB123" -Actual $resetState.PreferredSerial -Message "Resetting lock mode must preserve preferred serial."
-    Assert-Equal -Expected @("192.168.1.20") -Actual @($resetState.WirelessHosts) -Message "Resetting lock mode must preserve wireless hosts."
-    Assert-Equal -Expected 1 -Actual @($resetState.DeviceProfiles).Count -Message "Per-device reset should remove only one device profile."
-    Assert-Equal -Expected "USB456" -Actual @($resetState.DeviceProfiles)[0].Serial -Message "Other device profiles must remain."
-
-    & $isolatedReset -Serial "ALL"
-    $resetState = Get-Content $resetStatePath -Raw | ConvertFrom-Json
-    Assert-Equal -Expected 0 -Actual @($resetState.DeviceProfiles).Count -Message "ALL should clear every lock-screen choice."
-
-    Write-Host "[powershell] Testing real STOP lifecycle in an isolated directory..."
-    $stopSandbox = Join-Path $temp "stop-sandbox"
-    New-Item -ItemType Directory -Force -Path $stopSandbox | Out-Null
-    $isolatedStop = Join-Path $stopSandbox "Stop-PhoneMirror.ps1"
-    Copy-Item -Path $StopPath -Destination $isolatedStop
-
-    & $isolatedStop
-
-    $flag = Join-Path $stopSandbox "stop.flag"
-    Assert-True -Condition (Test-Path $flag) -Message "STOP must persist stop.flag."
-    $flagText = (Get-Content $flag -Raw).Trim()
-    $parsedTimestamp = [DateTime]::MinValue
-    Assert-True -Condition ([DateTime]::TryParse($flagText, [ref]$parsedTimestamp)) -Message "stop.flag should contain a parseable timestamp."
-
-    Write-Host "[powershell] Testing destructive-operation guards..."
-    $supervisor = Get-Content $SupervisorPath -Raw
-    Assert-False -Condition ($supervisor -match 'Remove-Item\s+-Force\s+\$StopFile') -Message "Supervisor must not clear persistent OFF state."
-
-    $stopSource = Get-Content $StopPath -Raw
-    Assert-False -Condition ($stopSource -match 'kill-server') -Message "STOP must not kill the shared ADB server."
+    Assert-True -Condition ($stopSource -match 'PatternOverlay\\.ps1') -Message "STOP should clean pattern overlay sidecars."
+    Assert-True -Condition ($stopSource -match 'MirrorChrome\\.ps1') -Message "STOP should clean mirror toolbar/host-zoom sidecars."
 }
 finally {
     if (Test-Path $temp) {
