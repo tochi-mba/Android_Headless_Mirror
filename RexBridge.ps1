@@ -6,6 +6,7 @@ param(
         "devices",
         "identity",
         "scrcpy-action",
+        "mirror-command",
         "friendly-set",
         "settings-list",
         "settings-get",
@@ -229,6 +230,23 @@ try {
             $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
             $title = "{0} [{1}]" -f ([string]$config.WindowTitle), $Serial
             $result = Invoke-ScrcpyNamedShortcut -WindowTitle $title -Name $Name
+        }
+
+        "mirror-command" {
+            Require-Serial
+            if ($Name -notin @("zoom-in", "zoom-out", "reset-zoom", "open-controls")) {
+                throw "Unsupported mirror command '$Name'."
+            }
+
+            $safeSerial = ($Serial -replace '[^A-Za-z0-9._-]', '_')
+            $runtime = Join-Path (Join-Path $Root "runtime") $safeSerial
+            New-Item -ItemType Directory -Force -Path $runtime | Out-Null
+            Set-Content -Path (Join-Path $runtime "mirror-chrome.command") -Value $Name -Encoding ASCII
+
+            $result = [pscustomobject]@{
+                Ok = $true
+                Text = "Mirror command queued: $Name"
+            }
         }
 
         "friendly-set" {
