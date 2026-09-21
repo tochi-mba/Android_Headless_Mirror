@@ -1075,9 +1075,18 @@ $timer.Add_Tick({
     if (($now - $script:lastKeyguardPoll).TotalMilliseconds -ge [int]$OverlayConfig.KeyguardPollMilliseconds) {
         $script:lastKeyguardPoll = $now
         if ($OverlayConfig.AutoShowOnKeyguard) {
+            $previousKeyguardState = $script:keyguardState
             $script:keyguardState = Get-KeyguardState
+
             if ($script:keyguardState -eq "unlocked") {
                 $script:manualOverride = $null
+                if ($null -ne $script:discoveredGeometry) {
+                    $script:discoveredGeometry = $null
+                    Update-Grid
+                }
+            }
+            elseif ($previousKeyguardState -ne $script:keyguardState) {
+                Update-Grid
             }
         }
     }
@@ -1087,8 +1096,102 @@ $timer.Add_Tick({
         [AHMOverlayNative]::GetForegroundWindow() -eq $script:targetHwnd
     )
 
+    $shouldDiscover = (
+        $OverlayConfig.AutoDiscoverGeometry -and
+        -not $script:calibrationMode -and
+        (
+            $script:keyguardState -eq "locked" -or
+            $null -ne $script:manualOverride
+        )
+    )
+
+    if (
+        $shouldDiscover -and
+        -not (Test-KeyDown 0x01) -and
+        ($now - $script:lastDiscoveryPoll).TotalMilliseconds -ge [int]$OverlayConfig.DiscoveryPollMilliseconds
+    ) {
+        $script:lastDiscoveryPoll = $now
+        $xmlText = Get-UiHierarchyXml
+        if (-not [string]::IsNullOrWhiteSpace([string]$xmlText)) {
+            $geometry = Get-PatternGeometryFromUiXml $xmlText
+            if ($null -ne $geometry) {
+                $script:discoveredGeometry = $geometry
+                Update-Grid
+            }
+        }
+    }
+
+    $calibrationHotkeyDown = $foreground -and (Test-HotkeyDown $calibrationHotkey)
+    if ($calibrationHotkeyDown -and -not $script:calibrationHotkeyWasDown -and $OverlayConfig.CalibrationEnabled) {
+        if ($script:calibrationMode) {
+            Stop-CalibrationMode $true
+        }
+        else {
+            Start-CalibrationMode
+        }
+    }
+    $script:calibrationHotkeyWasDown = $calibrationHotkeyDown
+
+    if ($script:calibrationMode -and $foreground) {
+        $fine = Test-KeyDown 0x11
+        $shift = Test-KeyDown 0x10
+        $stepPixels = if ($fine) {
+            [double]$OverlayConfig.CalibrationFineStepPixels
+        }
+        else {
+            [double]$OverlayConfig.CalibrationStepPixels
+        }
+
+        $contentWidth = if ($script:lastLayout -and $script:lastLayout.ContentRect.Width -gt 0) {
+            [double]$script:lastLayout.ContentRect.Width
+        }
+        else {
+            [Math]::Max(1.0, [double]$canvas.ActualWidth)
+        }
+
+        $contentHeight = if ($script:lastLayout -and $script:lastLayout.ContentRect.Height -gt 0) {
+            [double]$script:lastLayout.ContentRect.Height
+        }
+        else {
+            [Math]::Max(1.0, [double]$canvas.ActualHeight)
+        }
+
+        $stepX = $stepPixels / $contentWidth
+        $stepY = $stepPixels / $contentHeight
+
+        if (Test-KeyPressedOnce 0x25) {
+            Adjust-CalibrationDraft ($(if ($shift) { "shrink-width" } else { "move-left" })) $stepX $stepY
+        }
+        if (Test-KeyPressedOnce 0x27) {
+            Adjust-CalibrationDraft ($(if ($shift) { "grow-width" } else { "move-right" })) $stepX $stepY
+        }
+        if (Test-KeyPressedOnce 0x26) {
+            Adjust-CalibrationDraft ($(if ($shift) { "shrink-height" } else { "move-up" })) $stepX $stepY
+        }
+        if (Test-KeyPressedOnce 0x28) {
+            Adjust-CalibrationDraft ($(if ($shift) { "grow-height" } else { "move-down" })) $stepX $stepY
+        }
+
+        if (Test-KeyPressedOnce 0x0D) {
+            if ($script:calibrationDraft -and (Save-PatternCalibration $Serial $script:calibrationDraft)) {
+                $script:calibrationGeometry = Convert-CalibrationRecordToGeometry $script:calibrationDraft
+            }
+            Stop-CalibrationMode $true
+        }
+
+        if (Test-KeyPressedOnce 0x1B) {
+            Stop-CalibrationMode $true
+        }
+
+        if (Test-KeyPressedOnce 0x52) {
+            Remove-PatternCalibration $Serial
+            $script:calibrationGeometry = $null
+            Stop-CalibrationMode $true
+        }
+    }
+
     $hotkeyDown = $foreground -and (Test-HotkeyDown $hotkey)
-    if ($hotkeyDown -and -not $script:hotkeyWasDown) {
+    if ($hotkeyDown -and -not $script:hotkeyWasDown -and -not $script:calibrationMode) {
         $currentlyVisible = $window.IsVisible
         $script:manualOverride = -not $currentlyVisible
         $script:manualOverrideUntil = $now.AddSeconds([Math]::Max(5, [int]$OverlayConfig.ManualShowSeconds))
