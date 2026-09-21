@@ -1,0 +1,19 @@
+{
+  "windows": {
+    "width": 1040,
+    "height": 760,
+    "darkRatioMin": 0.45,
+    "darkRatioMax": 0.96,
+    "signalPixelsMin": 80,
+    "textPixelsMin": 800,
+    "orangePixelsMin": 0,
+    "uniqueColorsMin": 40
+  },
+  "pages": {
+    "darkRatioMin": 0.42,
+    "darkRatioMax": 0.97,
+    "signalPixelsMin": 60,
+    "textPixelsMin": 500,
+    "uniqueColorsMin": 35
+  }
+}
