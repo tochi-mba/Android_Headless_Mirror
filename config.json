@@ -92,5 +92,16 @@
     "RecordOnStart": false,
     "RecordDirectory": "captures/recordings"
   },
-  "ExtraScrcpyArgs": ""
+  "ExtraScrcpyArgs": "",
+  "Display": {
+    "DefaultTransport": "scrcpy",
+    "ProtectedContentPolicy": "prompt",
+    "WindowsWirelessDisplay": {
+      "Enabled": true,
+      "AutoOpenReceiver": true
+    },
+    "SamsungDex": {
+      "Enabled": true
+    }
+  }
 }
