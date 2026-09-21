@@ -644,9 +644,9 @@ class RepositoryContractTests(unittest.TestCase):
     def test_pages_workflow_uses_official_pages_actions(self):
         workflow = self.read(".github/workflows/pages.yml")
         for action in [
-            "actions/configure-pages@v5",
-            "actions/upload-pages-artifact@v4",
-            "actions/deploy-pages@v4",
+            "actions/configure-pages@v6",
+            "actions/upload-pages-artifact@v5",
+            "actions/deploy-pages@v5",
         ]:
             self.assertIn(action, workflow)
         self.assertIn("path: docs", workflow)
