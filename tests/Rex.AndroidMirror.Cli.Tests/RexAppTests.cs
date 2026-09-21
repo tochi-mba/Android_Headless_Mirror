@@ -209,7 +209,7 @@ public sealed class RexAppTests
         PushDown(console, 4); // Advanced Android settings
         console.Input.PushKey(ConsoleKey.Enter);
         console.Input.PushKey(ConsoleKey.Enter); // system
-        console.Input.PushTextWithEnter(""); // no filter
+        console.Input.PushKey(ConsoleKey.Enter); // empty filter
         console.Input.PushKey(ConsoleKey.Enter); // adb_enabled
         console.Input.PushKey(ConsoleKey.Enter); // Change value
         PushDown(console, 3); // Back from namespace chooser
