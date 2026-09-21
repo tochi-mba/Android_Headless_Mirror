@@ -210,6 +210,10 @@ class RepositoryContractTests(unittest.TestCase):
             "src/Rex.AndroidMirror.Cli/BridgeClient.cs",
             "src/Rex.AndroidMirror.Cli/MachineMode.cs",
             "src/Rex.AndroidMirror.Cli/SmartLaunch.cs",
+            "src/Rex.AndroidMirror.Cli/DisplayModels.cs",
+            "src/Rex.AndroidMirror.Cli/DisplayManager.cs",
+            "src/Rex.AndroidMirror.Cli/WindowsDisplayHostProbe.cs",
+            "src/Rex.AndroidMirror.Cli/DisplayVerificationStore.cs",
             "AGENTS.md",
             "tests/Rex.AndroidMirror.Cli.Tests/Rex.AndroidMirror.Cli.Tests.csproj",
             "tests/Test-RexCliBootstrap.ps1",
@@ -258,7 +262,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_runtime_artifacts_are_gitignored(self):
         gitignore = self.read(".gitignore")
-        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/", "config.json.rex-backup", "config.json.tmp", "config.json.restore-current"]:
+        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/", "display-verification.json", "display-verification.json.tmp", "config.json.rex-backup", "config.json.tmp", "config.json.restore-current"]:
             self.assertIn(entry, gitignore)
 
     # ---------- Configuration ----------
@@ -289,6 +293,7 @@ class RepositoryContractTests(unittest.TestCase):
                 "MirrorChrome",
                 "ControlCenter",
                 "ScrcpySession",
+                "Display",
                 "ExtraScrcpyArgs",
             },
         )
@@ -384,6 +389,23 @@ class RepositoryContractTests(unittest.TestCase):
                 "RecordDirectory",
             },
         )
+        self.assertEqual(
+            set(config["Display"]),
+            {
+                "DefaultTransport",
+                "ProtectedContentPolicy",
+                "WindowsWirelessDisplay",
+                "SamsungDex",
+            },
+        )
+        self.assertEqual(
+            set(config["Display"]["WindowsWirelessDisplay"]),
+            {"Enabled", "AutoOpenReceiver"},
+        )
+        self.assertEqual(
+            set(config["Display"]["SamsungDex"]),
+            {"Enabled"},
+        )
 
     def test_config_defaults_are_safe_and_bounded(self):
         config = json.loads(self.read("config.json"))
@@ -402,6 +424,10 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreater(config["Logging"]["MaxBytes"], 100_000)
         self.assertGreaterEqual(config["Logging"]["KeepFiles"], 1)
         self.assertEqual(config["WindowTitle"], "Android Device")
+        self.assertEqual(config["Display"]["DefaultTransport"], "scrcpy")
+        self.assertEqual(config["Display"]["ProtectedContentPolicy"], "prompt")
+        self.assertTrue(config["Display"]["WindowsWirelessDisplay"]["Enabled"])
+        self.assertTrue(config["Display"]["SamsungDex"]["Enabled"])
 
         overlay = config["PatternOverlay"]
         self.assertTrue(overlay["Enabled"])
