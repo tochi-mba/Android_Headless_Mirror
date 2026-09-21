@@ -15,7 +15,10 @@ $LogFile = Join-Path $LogDir "mirror.log"
 $ScrcpyBase = Join-Path $Root "tools\scrcpy"
 
 if (Test-Path $StopFile) {
-    Remove-Item -Force $StopFile -ErrorAction SilentlyContinue
+    if ($Foreground) {
+        Write-Host "Android Headless Mirror is stopped. Run START_NOW.bat to enable it."
+    }
+    exit 0
 }
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
@@ -25,7 +28,7 @@ if (-not (Test-Path $ConfigFile)) {
 $Config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
 
 $createdNew = $false
-$Mutex = New-Object System.Threading.Mutex($true, "Local\S21HeadlessMirrorSupervisor", [ref]$createdNew)
+$Mutex = New-Object System.Threading.Mutex($true, "Local\AndroidHeadlessMirrorSupervisor", [ref]$createdNew)
 if (-not $createdNew) {
     exit 0
 }
@@ -324,10 +327,10 @@ function Show-FirstUseHint {
     try {
         Add-Type -AssemblyName PresentationFramework -ErrorAction SilentlyContinue
         [System.Windows.MessageBox]::Show(
-            "The Galaxy S21 Ultra is connected, but USB debugging is not authorised.`n`n" +
-            "On the phone, unlock it once and accept 'Allow USB debugging'. Tick 'Always allow from this computer'.`n`n" +
-            "After that, this launcher can reconnect automatically.",
-            "S21 Headless Mirror - one-time setup"
+            "An Android device is connected, but this computer is not authorised for ADB debugging.`n`n" +
+            "Unlock the device and accept 'Allow USB debugging'. Tick 'Always allow from this computer'.`n`n" +
+            "After that, Android Headless Mirror can reconnect automatically.",
+            "Android Headless Mirror - one-time setup"
         ) | Out-Null
     }
     catch {
@@ -360,7 +363,7 @@ try {
 
             $unauthorized = @($devices | Where-Object { $_.State -eq "unauthorized" })
             if ($unauthorized.Count -gt 0 -and -not $unauthorizedNoticeShown) {
-                Log "Phone detected but USB debugging is unauthorized." "WARN"
+                Log "Android device detected, but this computer is not authorised for ADB debugging." "WARN"
                 Show-FirstUseHint
                 $unauthorizedNoticeShown = $true
             }
@@ -428,9 +431,6 @@ try {
     Log "Supervisor stopped."
 }
 finally {
-    if (Test-Path $StopFile) {
-        Remove-Item -Force $StopFile -ErrorAction SilentlyContinue
-    }
     if ($Mutex) {
         try { $Mutex.ReleaseMutex() | Out-Null } catch {}
         $Mutex.Dispose()

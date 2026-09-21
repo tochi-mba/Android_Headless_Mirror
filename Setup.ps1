@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ToolsDir = Join-Path $Root "tools"
 $ScrcpyBase = Join-Path $ToolsDir "scrcpy"
-$TempDir = Join-Path $env:TEMP ("s21-mirror-setup-" + [guid]::NewGuid().ToString("N"))
+$TempDir = Join-Path $env:TEMP ("android-headless-mirror-setup-" + [guid]::NewGuid().ToString("N"))
 
 function Write-Step([string]$Message) {
     Write-Host ("[setup] " + $Message)
@@ -32,7 +32,7 @@ try {
     }
     else {
         Write-Step "Downloading the latest official scrcpy Windows x64 release..."
-        $headers = @{ "User-Agent" = "S21-Headless-Mirror" }
+        $headers = @{ "User-Agent" = "Android-Headless-Mirror" }
         $release = Invoke-RestMethod `
             -Uri "https://api.github.com/repos/Genymobile/scrcpy/releases/latest" `
             -Headers $headers `
