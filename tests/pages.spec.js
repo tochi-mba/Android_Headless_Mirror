@@ -75,6 +75,10 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
       await expect(page.locator('#' + id)).toHaveCount(1);
     }
 
+    const menu = page.getByRole('button', { name: 'Toggle navigation' });
+    if (await menu.isVisible()) {
+      await menu.click();
+    }
     await page.getByRole('link', { name: 'Features' }).click();
     await expect(page.locator('#features')).toBeInViewport();
   });
