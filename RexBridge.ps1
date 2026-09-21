@@ -6,6 +6,7 @@ param(
         "devices",
         "identity",
         "scrcpy-action",
+        "focus-active-mirror",
         "mirror-command",
         "friendly-set",
         "settings-list",
@@ -259,6 +260,12 @@ try {
             $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
             $title = "{0} [{1}]" -f ([string]$config.WindowTitle), $Serial
             $result = Invoke-ScrcpyNamedShortcut -WindowTitle $title -Name $Name
+        }
+
+        "focus-active-mirror" {
+            $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+            $prefix = ([string]$config.WindowTitle) + " ["
+            $result = Focus-ScrcpyWindow -WindowTitlePrefix $prefix
         }
 
         "mirror-command" {
