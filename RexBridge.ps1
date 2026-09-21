@@ -37,6 +37,13 @@ $StopPath = Join-Path $Root "stop.flag"
 . (Join-Path $Root "ScrcpyControl.ps1")
 
 function Find-RexTool([string]$ToolName) {
+    if ($ToolName -eq "adb.exe" -and -not [string]::IsNullOrWhiteSpace($env:REX_ADB_PATH)) {
+        if (Test-Path $env:REX_ADB_PATH) { return $env:REX_ADB_PATH }
+    }
+    if ($ToolName -eq "scrcpy.exe" -and -not [string]::IsNullOrWhiteSpace($env:REX_SCRCPY_PATH)) {
+        if (Test-Path $env:REX_SCRCPY_PATH) { return $env:REX_SCRCPY_PATH }
+    }
+
     $base = Join-Path $Root "tools\scrcpy"
 
     if (Test-Path $base) {
