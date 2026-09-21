@@ -67,5 +67,17 @@
     "CtrlTouchpadPinchToHostZoom": true,
     "TouchpadPinchThreshold": 0.018,
     "TouchpadBaseRadiusRelativeToClient": 0.22
+  },
+  "ControlCenter": {
+    "Enabled": true,
+    "OpenOnLaunch": false,
+    "DockToMirror": true,
+    "AlwaysOnTop": true,
+    "Width": 1040,
+    "Height": 760,
+    "RememberLastTab": true,
+    "ConfirmSensitiveDeviceWrites": true,
+    "AdvancedSettingsWritesEnabled": true,
+    "ScreenshotDirectory": "captures/screenshots"
   }
 }
