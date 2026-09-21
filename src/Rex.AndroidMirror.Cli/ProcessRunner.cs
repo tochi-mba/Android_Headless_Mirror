@@ -101,4 +101,27 @@ public sealed class ProcessRunner : IProcessRunner
         await Task.Yield();
         return 0;
     }
+
+    public async Task<int> StartDetachedAsync(
+        string fileName,
+        IEnumerable<string> arguments,
+        string workingDirectory)
+    {
+        var start = new ProcessStartInfo
+        {
+            FileName = fileName,
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        foreach (var argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(start);
+        await Task.Yield();
+        return process is null ? -1 : 0;
+    }
 }
