@@ -166,16 +166,16 @@ function Get-PatternGeometryFromUiXml([string]$XmlText) {
     $screenBottom = 0.0
 
     foreach ($node in $nodes) {
-        $bounds = ConvertFrom-AndroidBounds ([string]$node.bounds)
+        $bounds = ConvertFrom-AndroidBounds ([string]$node.GetAttribute("bounds"))
         if ($null -eq $bounds) { continue }
 
         $screenRight = [Math]::Max($screenRight, $bounds.Right)
         $screenBottom = [Math]::Max($screenBottom, $bounds.Bottom)
 
-        $className = [string]$node.class
-        $resourceId = [string]$node.'resource-id'
-        $contentDescription = [string]$node.'content-desc'
-        $text = [string]$node.text
+        $className = [string]$node.GetAttribute("class")
+        $resourceId = [string]$node.GetAttribute("resource-id")
+        $contentDescription = [string]$node.GetAttribute("content-desc")
+        $text = [string]$node.GetAttribute("text")
         $searchText = "$className $resourceId $contentDescription $text"
 
         $score = 0
@@ -220,7 +220,7 @@ function Get-PatternGeometryFromUiXml([string]$XmlText) {
     # than deriving centers from the parent view bounds.
     $dotCandidates = @()
     foreach ($child in @($patternView.Node.SelectNodes(".//node"))) {
-        $bounds = ConvertFrom-AndroidBounds ([string]$child.bounds)
+        $bounds = ConvertFrom-AndroidBounds ([string]$child.GetAttribute("bounds"))
         if ($null -eq $bounds) { continue }
 
         if (
@@ -233,10 +233,10 @@ function Get-PatternGeometryFromUiXml([string]$XmlText) {
         }
 
         $childText = (
-            ([string]$child.class) + " " +
-            ([string]$child.'resource-id') + " " +
-            ([string]$child.'content-desc') + " " +
-            ([string]$child.text)
+            ([string]$child.GetAttribute("class")) + " " +
+            ([string]$child.GetAttribute("resource-id")) + " " +
+            ([string]$child.GetAttribute("content-desc")) + " " +
+            ([string]$child.GetAttribute("text"))
         )
 
         if ($childText -notmatch '(?i)(pattern.*cell|cell.*pattern|pattern\s*cell)') {
