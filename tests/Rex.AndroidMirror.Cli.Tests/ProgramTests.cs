@@ -27,12 +27,20 @@ public sealed class ProgramTests
         Assert.Equal("USB123", Program.GetOption(args, "--serial"));
     }
 
+    public static TheoryData<string[], string[]> MachineArgumentCases => new()
+    {
+        { new[] { "agent", "status" }, new[] { "status" } },
+        { new[] { "--json", "status" }, new[] { "status" } },
+        { new[] { "status", "--json" }, new[] { "status" } },
+        { new[] { "--plain", "status" }, new[] { "status" } },
+        {
+            new[] { "agent", "--json", "android", "list", "global" },
+            new[] { "android", "list", "global" }
+        },
+    };
+
     [Theory]
-    [InlineData(new[] { "agent", "status" }, new[] { "status" })]
-    [InlineData(new[] { "--json", "status" }, new[] { "status" })]
-    [InlineData(new[] { "status", "--json" }, new[] { "status" })]
-    [InlineData(new[] { "--plain", "status" }, new[] { "status" })]
-    [InlineData(new[] { "agent", "--json", "android", "list", "global" }, new[] { "android", "list", "global" })]
+    [MemberData(nameof(MachineArgumentCases))]
     public void GetMachineArgs_NormalizesAgentAndMachineFlags(string[] input, string[] expected)
     {
         Assert.Equal(expected, Program.GetMachineArgs(input));
