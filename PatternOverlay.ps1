@@ -209,7 +209,7 @@ function Get-PatternGeometryFromUiXml([string]$XmlText) {
     $patternView = @(
         $nodeInfo |
             Where-Object { $_.Score -ge 50 } |
-            Sort-Object Score -Descending, @{ Expression = { $_.Bounds.Width * $_.Bounds.Height }; Descending = $true }
+            Sort-Object @{ Expression = { $_.Score }; Descending = $true }, @{ Expression = { $_.Bounds.Width * $_.Bounds.Height }; Descending = $true }
     ) | Select-Object -First 1
 
     if ($null -eq $patternView) { return $null }
@@ -762,6 +762,114 @@ function Test-HotkeyDown($Spec) {
     }
 
     return Test-KeyDown ([int]$Spec.Key)
+}
+
+function Test-KeyPressedOnce([int]$VirtualKey) {
+    $key = [string]$VirtualKey
+    $down = Test-KeyDown $VirtualKey
+    $wasDown = $false
+
+    if ($script:keyLatch.ContainsKey($key)) {
+        $wasDown = [bool]$script:keyLatch[$key]
+    }
+
+    $script:keyLatch[$key] = $down
+    return ($down -and -not $wasDown)
+}
+
+function Copy-NormalizedBounds($Bounds) {
+    if ($null -eq $Bounds) { return $null }
+
+    return [pscustomobject]@{
+        Left = [double]$Bounds.Left
+        Top = [double]$Bounds.Top
+        Right = [double]$Bounds.Right
+        Bottom = [double]$Bounds.Bottom
+    }
+}
+
+function Clamp-CalibrationBounds($Bounds) {
+    if ($null -eq $Bounds) { return $null }
+
+    $minSpan = 0.08
+    $left = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Left))
+    $top = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Top))
+    $right = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Right))
+    $bottom = [Math]::Max(0.0, [Math]::Min(1.0, [double]$Bounds.Bottom))
+
+    if (($right - $left) -lt $minSpan) {
+        $center = ($left + $right) / 2.0
+        $left = $center - ($minSpan / 2.0)
+        $right = $center + ($minSpan / 2.0)
+    }
+
+    if (($bottom - $top) -lt $minSpan) {
+        $center = ($top + $bottom) / 2.0
+        $top = $center - ($minSpan / 2.0)
+        $bottom = $center + ($minSpan / 2.0)
+    }
+
+    if ($left -lt 0) { $right -= $left; $left = 0.0 }
+    if ($right -gt 1) { $left -= ($right - 1.0); $right = 1.0 }
+    if ($top -lt 0) { $bottom -= $top; $top = 0.0 }
+    if ($bottom -gt 1) { $top -= ($bottom - 1.0); $bottom = 1.0 }
+
+    return [pscustomobject]@{
+        Left = [Math]::Max(0.0, $left)
+        Top = [Math]::Max(0.0, $top)
+        Right = [Math]::Min(1.0, $right)
+        Bottom = [Math]::Min(1.0, $bottom)
+    }
+}
+
+function Start-CalibrationMode {
+    if (-not $OverlayConfig.CalibrationEnabled) { return }
+    if ($null -eq $script:lastLayout) { Update-Grid }
+    if ($null -eq $script:lastLayout) { return }
+
+    $bounds = Get-GridBoundsNormalizedFromPoints $script:lastLayout.Points $script:lastLayout.ContentRect
+    if ($null -eq $bounds) { return }
+
+    $script:calibrationDraft = Copy-NormalizedBounds $bounds
+    $script:calibrationMode = $true
+    $script:manualOverride = $true
+    $script:manualOverrideUntil = [DateTime]::MaxValue
+    Update-Grid
+}
+
+function Stop-CalibrationMode([bool]$KeepVisible) {
+    $script:calibrationMode = $false
+    $script:calibrationDraft = $null
+
+    if ($KeepVisible) {
+        $script:manualOverride = $true
+        $script:manualOverrideUntil = (Get-Date).AddSeconds([Math]::Max(5, [int]$OverlayConfig.ManualShowSeconds))
+    }
+    else {
+        $script:manualOverride = $null
+    }
+
+    Update-Grid
+}
+
+function Adjust-CalibrationDraft([string]$Action, [double]$StepX, [double]$StepY) {
+    if ($null -eq $script:calibrationDraft) { return }
+
+    $b = Copy-NormalizedBounds $script:calibrationDraft
+
+    switch ($Action) {
+        "move-left"  { $b.Left -= $StepX; $b.Right -= $StepX }
+        "move-right" { $b.Left += $StepX; $b.Right += $StepX }
+        "move-up"    { $b.Top -= $StepY; $b.Bottom -= $StepY }
+        "move-down"  { $b.Top += $StepY; $b.Bottom += $StepY }
+        "shrink-width"  { $b.Left += ($StepX / 2.0); $b.Right -= ($StepX / 2.0) }
+        "grow-width"    { $b.Left -= ($StepX / 2.0); $b.Right += ($StepX / 2.0) }
+        "shrink-height" { $b.Top += ($StepY / 2.0); $b.Bottom -= ($StepY / 2.0) }
+        "grow-height"   { $b.Top -= ($StepY / 2.0); $b.Bottom += ($StepY / 2.0) }
+    }
+
+    $script:calibrationDraft = Clamp-CalibrationBounds $b
+    Update-Grid
 }
 
 $window = New-Object System.Windows.Window
