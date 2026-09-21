@@ -273,6 +273,9 @@ function Select-Device($Devices, $State) {
     $ready = @($Devices | Where-Object { $_.State -eq "device" })
     if ($ready.Count -eq 0) { return $null }
 
+    # An explicitly configured serial is a preference, not a device lock.
+    # The learned serial is also only a preference. If it is absent, any
+    # other authorised USB Android device may be selected.
     $preferred = [string]$Config.PreferredSerial
     if ([string]::IsNullOrWhiteSpace($preferred)) {
         $preferred = [string]$State.PreferredSerial
@@ -304,6 +307,10 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
         $args.Add("--stay-awake")
     }
 
+    if ($Config.KeepActiveDuringMirror) {
+        $args.Add("--keep-active")
+    }
+
     if ($Config.PowerOffOnClose) {
         $args.Add("--power-off-on-close")
     }
@@ -321,6 +328,49 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     }
 
     return @($args)
+}
+
+function Prepare-DeviceForMirror([string]$Adb, [string]$Serial) {
+    if ($Config.WakeBeforeMirror) {
+        try {
+            & $Adb -s $Serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
+        }
+        catch {
+            Log "Wake command failed; continuing." "WARN"
+        }
+    }
+
+    if ($Config.DismissKeyguardWhenPossible) {
+        try {
+            # Android only dismisses the keyguard here when authentication is not
+            # required (for example, an insecure/trusted keyguard). If credentials
+            # are required, Android keeps the security boundary intact.
+            & $Adb -s $Serial shell wm dismiss-keyguard 2>$null | Out-Null
+        }
+        catch {
+            Log "Keyguard dismiss request failed; continuing with the lock screen visible." "WARN"
+        }
+    }
+}
+
+function Wait-ForDeviceDisconnect([string]$Adb, [string]$Serial) {
+    Log "Mirror closed cleanly; waiting for $Serial to disconnect before auto-opening again."
+
+    while (-not (Test-Path $StopFile)) {
+        $devices = @(Get-AdbDevices $Adb)
+        $stillConnected = @(
+            $devices | Where-Object {
+                $_.Serial -eq $Serial -and $_.State -eq "device"
+            }
+        )
+
+        if ($stillConnected.Count -eq 0) {
+            Log "Device $Serial disconnected; armed for automatic launch on next connection."
+            return
+        }
+
+        Start-Sleep -Seconds ([int]$Config.PollSeconds)
+    }
 }
 
 function Show-FirstUseHint {
@@ -361,21 +411,26 @@ try {
         try {
             $devices = @(Get-AdbDevices $Adb)
 
-            $unauthorized = @($devices | Where-Object { $_.State -eq "unauthorized" })
-            if ($unauthorized.Count -gt 0 -and -not $unauthorizedNoticeShown) {
-                Log "Android device detected, but this computer is not authorised for ADB debugging." "WARN"
-                Show-FirstUseHint
-                $unauthorizedNoticeShown = $true
-            }
-
             $selected = Select-Device $devices $State
 
             if (-not $selected) {
+                $unauthorized = @($devices | Where-Object { $_.State -eq "unauthorized" })
+                if ($unauthorized.Count -gt 0 -and -not $unauthorizedNoticeShown) {
+                    Log "Android device detected, but this computer is not authorised for ADB debugging." "WARN"
+                    Show-FirstUseHint
+                    $unauthorizedNoticeShown = $true
+                }
+                elseif ($unauthorized.Count -eq 0) {
+                    $unauthorizedNoticeShown = $false
+                }
+
                 Try-WirelessConnections $Adb $State
                 Start-Sleep -Seconds ([int]$Config.PollSeconds)
                 continue
             }
 
+            # At least one usable device exists, so do not interrupt the user just
+            # because a second attached phone is still unauthorized.
             $unauthorizedNoticeShown = $false
 
             if (-not $selected.IsTcp) {
@@ -391,14 +446,7 @@ try {
                 }
             }
 
-            if ($Config.WakeBeforeMirror) {
-                try {
-                    & $Adb -s $selected.Serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
-                }
-                catch {
-                    Log "Wake command failed; continuing." "WARN"
-                }
-            }
+            Prepare-DeviceForMirror $Adb $selected.Serial
 
             $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
             Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
@@ -409,10 +457,13 @@ try {
 
             if (Test-Path $StopFile) { break }
 
-            # A clean exit generally means the user intentionally closed the mirror.
+            # If the user intentionally closes the mirror while the phone remains
+            # connected, do not immediately reopen it. Keep the hidden supervisor alive
+            # and arm automatic launch again after a real disconnect/reconnect cycle.
             if ($exitCode -eq 0) {
-                Log "Clean scrcpy exit; supervisor stopping until next login/START_NOW."
-                break
+                Wait-ForDeviceDisconnect $Adb $selected.Serial
+                if (Test-Path $StopFile) { break }
+                continue
             }
 
             if (-not $Config.RestartOnUnexpectedExit) {
@@ -420,7 +471,19 @@ try {
                 break
             }
 
-            Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+            # A cable pull/device restart is not a scrcpy crash. If the selected
+            # transport is gone, return directly to the 1-second connection poll.
+            # Only use the longer retry delay when the device is still online and
+            # scrcpy itself failed unexpectedly.
+            $afterExit = @(Get-AdbDevices $Adb)
+            $stillOnline = @(
+                $afterExit | Where-Object {
+                    $_.Serial -eq $selected.Serial -and $_.State -eq "device"
+                }
+            )
+            if ($stillOnline.Count -gt 0) {
+                Start-Sleep -Seconds ([int]$Config.RetrySeconds)
+            }
         }
         catch {
             Log "Loop error: $($_.Exception.Message)" "ERROR"

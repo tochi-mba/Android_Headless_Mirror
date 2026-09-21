@@ -21,10 +21,11 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Verifies the scrcpy ZIP against the release SHA-256 checksums before extraction.
 - Prefers USB for the reliable recovery path.
 - Waits for an authorised Android device instead of failing if it is disconnected or still booting.
+- Auto-opens the mirror when an authorised phone is connected, with a 1-second detection interval by default.
 - Wakes the device before launching scrcpy.
 - Can turn the physical Android display off while keeping the PC mirror active.
-- Keeps the device awake while connected over USB.
-- Remembers a preferred ADB serial.
+- Keeps the active session alive using scrcpy `--keep-active`, and also uses `--stay-awake` for plugged-in USB sessions.
+- Works with any authorised Android device; a preferred serial is only a preference when multiple ready devices are present.
 - Provides persistent **START / STOP** semantics.
 - Can start automatically when Windows signs in.
 - Includes diagnostics and rotating logs.
@@ -38,7 +39,34 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 4. On the first ADB connection, Android should show **Allow USB debugging?**
 5. Select **Always allow from this computer** and press **Allow**.
 
-After authorisation, the supervisor can reconnect to the device automatically.
+After authorisation, the hidden supervisor stays armed in the background. Connecting any authorised Android phone opens the mirror automatically (normally within the 1-second poll interval). It wakes the device, asks Android to dismiss the keyguard when authentication is not required, then launches scrcpy. If you manually close scrcpy while that phone remains connected, it stays closed until you disconnect and reconnect it.
+
+## Headless day-to-day behavior
+
+The design goal is that, after the one-time Android/ADB trust setup, normal use happens entirely from the Windows PC:
+
+1. Windows signs in and starts the hidden supervisor.
+2. An authorised Android phone is connected over USB.
+3. The supervisor notices it within the configured poll interval (1 second by default).
+4. The phone is woken.
+5. Android receives a best-effort `wm dismiss-keyguard` request. Android only dismisses the keyguard when credentials are not required.
+6. scrcpy opens automatically.
+7. `--keep-active` periodically signals user activity so inactivity does not turn the session off.
+8. On USB, `--stay-awake` additionally asks Android to stay awake while plugged in.
+9. The physical display can remain off while the PC mirror stays active.
+
+If the phone is securely locked but ADB remains available, scrcpy can still present the lock screen so you can authenticate from the PC rather than touching the phone.
+
+### Security boundaries that cannot be automated safely
+
+A stock Android device intentionally keeps some operations outside ADB automation:
+
+- the **first ADB RSA authorisation** must be approved on the Android device;
+- after a **full reboot**, some devices/OEM configurations require the first PIN/password unlock before USB data/ADB becomes available;
+- if Android revokes this computer's ADB authorisation, the RSA prompt must be approved again;
+- this project does **not** store or inject a PIN/password to bypass a secure keyguard.
+
+These are Android security boundaries, not launcher failures. On devices where ADB remains available while locked, the mirrored lock screen can be used from the PC.
 
 ## Start and stop behavior
 
@@ -130,7 +158,9 @@ USB remains the recommended recovery path because legacy ADB TCP/IP normally doe
 Useful values in `config.json`:
 
 - `TurnPhysicalScreenOff`: turn the physical device display off while mirrored.
-- `StayAwakeWhenUsb`: request scrcpy's USB stay-awake behavior.
+- `StayAwakeWhenUsb`: use scrcpy `--stay-awake` while the active device is physically plugged in; scrcpy restores the previous Android setting when it closes.
+- `KeepActiveDuringMirror`: use scrcpy `--keep-active` to periodically signal user activity while mirroring, including TCP/IP sessions.
+- `DismissKeyguardWhenPossible`: ask Android to dismiss the keyguard before mirroring when authentication is not required; it does not bypass a secure PIN/password.
 - `PowerOffOnClose`: optionally power the device display off when scrcpy closes.
 - `MaxSize`: maximum encoded video dimension.
 - `MaxFps`: frame-rate cap.

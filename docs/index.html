@@ -132,8 +132,8 @@
           <p>Stopping creates a persistent OFF state. Windows autostart respects it, so the mirror cannot quietly resurrect itself after you explicitly turned it off.</p>
           <div class="state-demo"><div class="state-pill on"><span></span> START</div><div class="state-track"><i></i></div><div class="state-pill off"><span></span> STOP</div></div>
         </article>
-        <article class="feature-card reveal"><div class="feature-symbol">↻</div><h3>Automatic recovery</h3><p>Waits for the device, reconnects after unexpected failures, and prefers USB when multiple transports are visible.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol">◉</div><h3>Screen-off mirroring</h3><p>Keep the physical phone display dark while the mirrored display remains usable on the PC.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol">↻</div><h3>Auto-open on connect</h3><p>The hidden supervisor stays armed after Windows sign-in. Plug in any authorised Android phone and its mirror opens automatically, with a one-second poll interval by default.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol">◉</div><h3>Headless active session</h3><p>Keep the physical phone display dark while scrcpy keeps the mirrored session active. USB sessions also use Android's plugged-in stay-awake behavior.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol">⌁</div><h3>Wireless, when you want it</h3><p>ADB-over-TCP/IP remains available as an optional fallback, but ships disabled by default.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol">◎</div><h3>Single-instance supervisor</h3><p>A mutex prevents duplicate background supervisors from stacking up at Windows sign-in.</p></article>
       </div>
@@ -207,7 +207,7 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
           <p>Setup fetches the official Windows x64 scrcpy release and verifies its SHA-256 checksum before extraction.</p>
           <div class="install-actions">
             <a class="button button-primary" href="https://github.com/tochi-mba/Android_Headless_Mirror">Open repository <span aria-hidden="true">↗</span></a>
-            <a class="text-link" href="https://github.com/tochi-mba/Android_Headless_Mirror#quick-start">Read quick start →</a>
+            <a class="text-link" href="https://github.com/tochi-mba/Android_Headless_Mirror#quick-start" target="_blank" rel="noopener noreferrer">Read quick start ↗</a>
           </div>
         </div>
         <div class="command-block">
@@ -222,9 +222,10 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
       <div class="faq-list">
         <details class="reveal"><summary>Is this only for Samsung phones?</summary><p>No. The project uses standard Android ADB and scrcpy. The Samsung Galaxy S21 Ultra (SM-G998B) is simply the hardware currently tested by this project.</p></details>
         <details class="reveal"><summary>Can it control the phone while the physical screen is off?</summary><p>Yes, scrcpy supports turning the physical display off while keeping the mirrored display active. The exact behavior can vary by Android version and manufacturer.</p></details>
-        <details class="reveal"><summary>Will it bypass my PIN after a reboot?</summary><p>No. Android can require the first PIN/password unlock after a full reboot before some USB or data functionality becomes available. This project intentionally does not bypass that security boundary.</p></details>
+        <details class="reveal"><summary>Can it unlock the phone for me?</summary><p>It wakes the device and asks Android to dismiss the keyguard when authentication is not required. If a secure PIN/password is required, it does not bypass it. When ADB remains available, scrcpy can show the lock screen so you can authenticate from the PC. After a full reboot, some Android/OEM configurations require the first unlock on the physical device before ADB becomes available.</p></details>
         <details class="reveal"><summary>Does STOP really keep it stopped?</summary><p>Yes. STOP creates a persistent state file and shuts down the package's mirror and supervisor. Windows autostart respects that state until you explicitly run START again.</p></details>
         <details class="reveal"><summary>Does it require Wi-Fi?</summary><p>No. USB is the default path. Wireless ADB is optional and disabled by default.</p></details>
+        <details class="reveal"><summary>Will another Android phone work?</summary><p>Yes. The supervisor targets any authorised Android device. A preferred serial only influences selection when multiple ready devices are present; it does not lock the project to the first phone you used.</p></details>
       </div>
     </section>
 

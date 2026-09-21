@@ -243,6 +243,8 @@ class RepositoryContractTests(unittest.TestCase):
                 "WakeBeforeMirror",
                 "TurnPhysicalScreenOff",
                 "StayAwakeWhenUsb",
+                "KeepActiveDuringMirror",
+                "DismissKeyguardWhenPossible",
                 "PowerOffOnClose",
                 "MaxSize",
                 "MaxFps",
@@ -273,6 +275,10 @@ class RepositoryContractTests(unittest.TestCase):
     def test_config_defaults_are_safe_and_bounded(self):
         config = json.loads(self.read("config.json"))
         self.assertTrue(config["PreferUsb"])
+        self.assertTrue(config["StayAwakeWhenUsb"])
+        self.assertTrue(config["KeepActiveDuringMirror"])
+        self.assertTrue(config["DismissKeyguardWhenPossible"])
+        self.assertEqual(config["PollSeconds"], 1)
         self.assertFalse(config["Wireless"]["Enabled"])
         self.assertFalse(config["Wireless"]["EnableTcpipWhenUsbAvailable"])
         self.assertEqual(config["Wireless"]["Port"], 5555)
@@ -339,11 +345,13 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("AndroidHeadlessMirrorSupervisor", text)
         self.assertIn("if (-not $createdNew)", text)
 
-    def test_clean_scrcpy_exit_does_not_relaunch(self):
+    def test_clean_scrcpy_exit_rearms_after_disconnect(self):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn("if ($exitCode -eq 0)", text)
-        self.assertIn("Clean scrcpy exit; supervisor stopping", text)
-        self.assertIn("break", text[text.index("if ($exitCode -eq 0)") :])
+        self.assertIn("Wait-ForDeviceDisconnect", text)
+        clean_exit = text[text.index("if ($exitCode -eq 0)") :]
+        self.assertIn("continue", clean_exit)
+        self.assertIn("armed for automatic launch on next connection", text)
 
     def test_unexpected_restart_is_configurable(self):
         text = self.read("Start-PhoneMirror.ps1")
@@ -357,12 +365,50 @@ class RepositoryContractTests(unittest.TestCase):
             "--window-title=",
             "--turn-screen-off",
             "--stay-awake",
+            "--keep-active",
             "--power-off-on-close",
             "--max-size=",
             "--max-fps=",
             "--video-bit-rate=",
         ]:
             self.assertIn(arg, text)
+
+    def test_device_preparation_wakes_and_best_effort_dismisses_keyguard(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        start = text.index("function Prepare-DeviceForMirror")
+        end = text.index("function Wait-ForDeviceDisconnect", start)
+        prepare = text[start:end]
+        self.assertIn("KEYCODE_WAKEUP", prepare)
+        self.assertIn("wm dismiss-keyguard", prepare)
+        self.assertIn("DismissKeyguardWhenPossible", prepare)
+        self.assertIn("authentication is not", prepare)
+
+    def test_any_authorized_usb_device_can_fallback_when_preferred_is_absent(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        start = text.index("function Select-Device")
+        end = text.index("function Build-ScrcpyArguments", start)
+        select = text[start:end]
+        self.assertIn("preferred", select)
+        self.assertIn("if ($Config.PreferUsb)", select)
+        self.assertIn("return $usb[0]", select)
+        self.assertNotIn("LockToPreferredDevice", select)
+
+    def test_unauthorized_secondary_phone_does_not_interrupt_usable_device(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        loop_start = text.index("while (-not (Test-Path $StopFile))", text.index("$State = Load-State"))
+        loop = text[loop_start:]
+        selected = loop.index("$selected = Select-Device")
+        hint = loop.index("Show-FirstUseHint")
+        no_selected = loop.index("if (-not $selected)")
+        self.assertLess(selected, no_selected)
+        self.assertLess(no_selected, hint)
+
+    def test_unexpected_disconnect_returns_to_fast_connection_poll(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn("$afterExit = @(Get-AdbDevices $Adb)", text)
+        self.assertIn("$stillOnline", text)
+        self.assertIn("Start-Sleep -Seconds ([int]$Config.RetrySeconds)", text)
+        self.assertEqual(json.loads(self.read("config.json"))["PollSeconds"], 1)
 
     def test_wireless_tcpip_is_guarded_by_two_config_flags(self):
         text = self.read("Start-PhoneMirror.ps1")
@@ -492,6 +538,16 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("brand-company", html)
         self.assertIn("Android Headless Mirror, by REX Technologies", html)
         self.assertIn("A REX Technologies product", html)
+
+    def test_quick_start_opens_github_in_new_tab(self):
+        html = self.read("docs/index.html")
+        match = re.search(
+            r'<a class="text-link"[^>]*href="https://github\.com/tochi-mba/Android_Headless_Mirror#quick-start"[^>]*>',
+            html,
+        )
+        self.assertIsNotNone(match)
+        self.assertIn('target="_blank"', match.group(0))
+        self.assertIn('rel="noopener noreferrer"', match.group(0))
 
     # ---------- Static Pages contracts ----------
 

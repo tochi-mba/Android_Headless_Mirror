@@ -102,7 +102,8 @@ $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
     "Get-PhoneIpCandidates",
     "Unique-Strings",
     "Select-Device",
-    "Build-ScrcpyArguments"
+    "Build-ScrcpyArguments",
+    "Prepare-DeviceForMirror"
 ))
 
 foreach ($definition in $functionDefinitions) {
@@ -187,6 +188,11 @@ echo NOPERM no permissions transport_id:5
     $selected = Select-Device $devices $state
     Assert-Equal -Expected "USB123" -Actual $selected.Serial -Message "Configured preferred serial should override saved state."
 
+    $script:Config.PreferredSerial = ""
+    $state.PreferredSerial = "MISSING_DEVICE"
+    $selected = Select-Device $devices $state
+    Assert-Equal -Expected "USB123" -Actual $selected.Serial -Message "A missing learned/preferred phone must not block another authorised USB Android device."
+
     $nonReady = @(
         [pscustomobject]@{ Serial = "A"; State = "offline"; IsTcp = $false },
         [pscustomobject]@{ Serial = "B"; State = "unauthorized"; IsTcp = $false }
@@ -212,6 +218,9 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         WindowTitle = "Android Device"
         TurnPhysicalScreenOff = $true
         StayAwakeWhenUsb = $true
+        KeepActiveDuringMirror = $true
+        DismissKeyguardWhenPossible = $true
+        WakeBeforeMirror = $true
         PowerOffOnClose = $false
         MaxSize = 1920
         MaxFps = 60
@@ -226,6 +235,7 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         "--window-title=Android Device",
         "--turn-screen-off",
         "--stay-awake",
+        "--keep-active",
         "--max-size=1920",
         "--max-fps=60",
         "--video-bit-rate=12M"
@@ -236,16 +246,41 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
 
     $tcpArgs = @(Build-ScrcpyArguments "192.168.1.40:5555" $true)
     Assert-False -Condition ($tcpArgs -contains "--stay-awake") -Message "TCP sessions should not receive the USB stay-awake flag."
+    Assert-Contains -Collection $tcpArgs -Value "--keep-active" -Message "TCP sessions should still receive --keep-active."
 
     $script:Config.PowerOffOnClose = $true
+    $script:Config.KeepActiveDuringMirror = $false
     $script:Config.MaxSize = 0
     $script:Config.MaxFps = 0
     $script:Config.VideoBitRate = ""
     $minimalArgs = @(Build-ScrcpyArguments "USB123" $false)
     Assert-Contains -Collection $minimalArgs -Value "--power-off-on-close" -Message "Enabled power-off-on-close should be emitted."
+    Assert-False -Condition ($minimalArgs -contains "--keep-active") -Message "Disabled KeepActiveDuringMirror should suppress --keep-active."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-fps=*" }).Count -gt 0) -Message "MaxFps=0 should suppress --max-fps."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--video-bit-rate=*" }).Count -gt 0) -Message "Blank bitrate should suppress --video-bit-rate."
+
+    Write-Host "[powershell] Testing real device preparation commands..."
+    $prepareLog = Join-Path $temp "prepare.log"
+    $env:AHM_PREPARE_LOG = $prepareLog
+    $fakePrepareAdb = Join-Path $temp "fake-prepare-adb.cmd"
+    @'
+@echo off
+echo %*>>"%AHM_PREPARE_LOG%"
+exit /b 0
+'@ | Set-Content -Path $fakePrepareAdb -Encoding ASCII
+
+    Prepare-DeviceForMirror $fakePrepareAdb "USB123"
+
+    $prepareLines = @(Get-Content $prepareLog)
+    Assert-True -Condition (@($prepareLines | Where-Object { $_ -match '-s USB123 shell input keyevent KEYCODE_WAKEUP' }).Count -eq 1) -Message "Prepare-DeviceForMirror should send KEYCODE_WAKEUP."
+    Assert-True -Condition (@($prepareLines | Where-Object { $_ -match '-s USB123 shell wm dismiss-keyguard' }).Count -eq 1) -Message "Prepare-DeviceForMirror should request best-effort keyguard dismissal."
+
+    $script:Config.WakeBeforeMirror = $false
+    $script:Config.DismissKeyguardWhenPossible = $false
+    Clear-Content $prepareLog
+    Prepare-DeviceForMirror $fakePrepareAdb "USB123"
+    Assert-Equal -Expected 0 -Actual @(Get-Content $prepareLog -ErrorAction SilentlyContinue).Count -Message "Disabled preparation controls should emit no ADB commands."
 
     Write-Host "[powershell] Testing real STOP lifecycle in an isolated directory..."
     $stopSandbox = Join-Path $temp "stop-sandbox"

@@ -1,6 +1,6 @@
 {
   "WindowTitle": "Android Device",
-  "PollSeconds": 2,
+  "PollSeconds": 1,
   "RetrySeconds": 4,
   "WakeBeforeMirror": true,
   "TurnPhysicalScreenOff": true,
@@ -24,5 +24,7 @@
     "Enabled": true,
     "MaxBytes": 2097152,
     "KeepFiles": 5
-  }
+  },
+  "DismissKeyguardWhenPossible": true,
+  "KeepActiveDuringMirror": true
 }
