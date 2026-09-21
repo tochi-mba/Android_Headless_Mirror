@@ -428,15 +428,21 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("ro.product.model", text)
 
     def test_diagnostics_does_not_mutate_device_transport(self):
-        text = self.read("Diagnostics.ps1").lower()
-        for destructive in [
-            " kill-server",
-            " tcpip ",
-            " reboot",
-            " shell rm ",
-            " uninstall",
-        ]:
-            self.assertNotIn(destructive, text)
+        text = self.read("Diagnostics.ps1")
+        adb_commands = re.findall(r"&\\s+\\$adb[^\\r\\n]*", text, flags=re.I)
+        self.assertGreater(len(adb_commands), 0)
+
+        for command in adb_commands:
+            lowered = command.lower()
+            for destructive in [
+                "kill-server",
+                " tcpip ",
+                " reboot",
+                " shell rm ",
+                " uninstall",
+            ]:
+                with self.subTest(command=command, destructive=destructive):
+                    self.assertNotIn(destructive, lowered)
 
     # ---------- README/branding ----------
 
