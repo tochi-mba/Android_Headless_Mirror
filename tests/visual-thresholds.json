@@ -3,7 +3,7 @@
     "width": 1040,
     "height": 760,
     "darkRatioMin": 0.45,
-    "darkRatioMax": 0.96,
+    "darkRatioMax": 0.9995,
     "signalPixelsMin": 80,
     "textPixelsMin": 800,
     "orangePixelsMin": 0,
