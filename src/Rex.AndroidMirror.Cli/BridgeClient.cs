@@ -20,12 +20,12 @@ public sealed record RexStatus(
     string ScrcpyPath,
     IReadOnlyList<RexDevice> Devices);
 
-public sealed class BridgeClient
+public sealed class BridgeClient : IBridgeClient
 {
     private readonly AppPaths _paths;
-    private readonly ProcessRunner _runner;
+    private readonly IProcessRunner _runner;
 
-    public BridgeClient(AppPaths paths, ProcessRunner runner)
+    public BridgeClient(AppPaths paths, IProcessRunner runner)
     {
         _paths = paths;
         _runner = runner;
