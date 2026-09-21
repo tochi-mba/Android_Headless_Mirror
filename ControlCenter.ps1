@@ -178,6 +178,18 @@ function Load-PcSettings {
 
     (C "PcWirelessEnabledCheck").IsChecked = [bool]$Config.Wireless.Enabled
     (C "PcWirelessTcpipBootstrapCheck").IsChecked = [bool]$Config.Wireless.EnableTcpipWhenUsbAvailable
+
+    Select-ComboTag (C "PcVideoCodecCombo") ([string]$Config.ScrcpySession.VideoCodec)
+    (C "PcFullscreenCheck").IsChecked = [bool]$Config.ScrcpySession.Fullscreen
+    (C "PcAlwaysOnTopCheck").IsChecked = [bool]$Config.ScrcpySession.AlwaysOnTop
+    (C "PcDisableScreensaverCheck").IsChecked = [bool]$Config.ScrcpySession.DisableScreensaver
+    (C "PcAudioEnabledCheck").IsChecked = [bool]$Config.ScrcpySession.AudioEnabled
+    Select-ComboTag (C "PcAudioCodecCombo") ([string]$Config.ScrcpySession.AudioCodec)
+    (C "PcAudioBufferText").Text = [string]$Config.ScrcpySession.AudioBufferMs
+    (C "PcAudioDupCheck").IsChecked = [bool]$Config.ScrcpySession.AudioDup
+    (C "PcRecordOnStartCheck").IsChecked = [bool]$Config.ScrcpySession.RecordOnStart
+    (C "PcRecordDirectoryText").Text = [string]$Config.ScrcpySession.RecordDirectory
+
     (C "PcExtraScrcpyArgsText").Text = [string]$Config.ExtraScrcpyArgs
 }
 
@@ -213,6 +225,18 @@ function Save-PcSettings {
         return
     }
 
+    $audioBuffer = 0
+    if (-not [int]::TryParse((C "PcAudioBufferText").Text, [ref]$audioBuffer) -or $audioBuffer -lt 0 -or $audioBuffer -gt 5000) {
+        Set-Status "Audio buffer must be 0-5000 ms." $true
+        return
+    }
+
+    $recordDirectory = (C "PcRecordDirectoryText").Text.Trim()
+    if ([string]::IsNullOrWhiteSpace($recordDirectory) -or $recordDirectory -match '(^|[\\/])\.\.([\\/]|$)' -or $recordDirectory -match '[\r\n\x00]') {
+        Set-Status "Recording folder must be a safe relative path." $true
+        return
+    }
+
     $Config.TurnPhysicalScreenOff = [bool](C "PcTurnScreenOffCheck").IsChecked
     $Config.StayAwakeWhenUsb = [bool](C "PcStayAwakeCheck").IsChecked
     $Config.KeepActiveDuringMirror = [bool](C "PcKeepActiveCheck").IsChecked
@@ -235,6 +259,18 @@ function Save-PcSettings {
 
     $Config.Wireless.Enabled = [bool](C "PcWirelessEnabledCheck").IsChecked
     $Config.Wireless.EnableTcpipWhenUsbAvailable = [bool](C "PcWirelessTcpipBootstrapCheck").IsChecked
+
+    $Config.ScrcpySession.VideoCodec = Get-ComboTag (C "PcVideoCodecCombo")
+    $Config.ScrcpySession.Fullscreen = [bool](C "PcFullscreenCheck").IsChecked
+    $Config.ScrcpySession.AlwaysOnTop = [bool](C "PcAlwaysOnTopCheck").IsChecked
+    $Config.ScrcpySession.DisableScreensaver = [bool](C "PcDisableScreensaverCheck").IsChecked
+    $Config.ScrcpySession.AudioEnabled = [bool](C "PcAudioEnabledCheck").IsChecked
+    $Config.ScrcpySession.AudioCodec = Get-ComboTag (C "PcAudioCodecCombo")
+    $Config.ScrcpySession.AudioBufferMs = $audioBuffer
+    $Config.ScrcpySession.AudioDup = [bool](C "PcAudioDupCheck").IsChecked
+    $Config.ScrcpySession.RecordOnStart = [bool](C "PcRecordOnStartCheck").IsChecked
+    $Config.ScrcpySession.RecordDirectory = $recordDirectory
+
     $Config.ExtraScrcpyArgs = $rawArgs
 
     Add-TestAction "pc-settings:save"
