@@ -49,7 +49,7 @@
     "CalibrationHotkey": "Ctrl+Alt+C",
     "CalibrationStepPixels": 8,
     "CalibrationFineStepPixels": 1,
-    "CalibrationFile": "pattern-calibration.json",
-    "FallbackToEstimatedGeometry": true
+    "FallbackToEstimatedGeometry": true,
+    "CalibrationDirectory": "pattern-calibration"
   }
 }
