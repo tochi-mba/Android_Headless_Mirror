@@ -73,6 +73,7 @@ public static class RexBrand
     {
         return new SelectionPrompt<string>()
             .Title($"[{Text}]{Markup.Escape(title)}[/]")
+            .UseConverter(choice => Markup.Escape(choice))
             .PageSize(16)
             .HighlightStyle(new Style(SignalColor, decoration: Decoration.Bold))
             .MoreChoicesText($"[{Muted}](move up/down to reveal more)[/]")
