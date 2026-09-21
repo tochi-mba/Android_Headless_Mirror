@@ -183,6 +183,7 @@ class RepositoryContractTests(unittest.TestCase):
             "Start-PhoneMirror.ps1",
             "Stop-PhoneMirror.ps1",
             "PatternOverlay.ps1",
+            "MirrorChrome.ps1",
             "Reset-LockScreenChoices.ps1",
             "RESET_LOCK_SCREEN_CHOICES.bat",
             "Start-Hidden.vbs",
@@ -230,7 +231,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_runtime_artifacts_are_gitignored(self):
         gitignore = self.read(".gitignore")
-        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log"]:
+        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/"]:
             self.assertIn(entry, gitignore)
 
     # ---------- Configuration ----------
@@ -258,6 +259,7 @@ class RepositoryContractTests(unittest.TestCase):
                 "Wireless",
                 "Logging",
                 "PatternOverlay",
+                "MirrorChrome",
             },
         )
         self.assertEqual(
@@ -301,6 +303,21 @@ class RepositoryContractTests(unittest.TestCase):
                 "CalibrationFineStepPixels",
                 "CalibrationDirectory",
                 "FallbackToEstimatedGeometry",
+        self.assertEqual(
+            set(config["MirrorChrome"]),
+            {
+                "Enabled",
+                "SleepButton",
+                "HostZoomEnabled",
+                "ZoomStep",
+                "MinZoom",
+                "MaxZoom",
+                "ToolbarInsetPixels",
+                "PollMilliseconds",
+                "CtrlWheelZoom",
+            },
+        )
+
             },
         )
 
@@ -342,6 +359,16 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreater(overlay["CalibrationFineStepPixels"], 0)
         self.assertEqual(overlay["CalibrationDirectory"], "pattern-calibration")
         self.assertTrue(overlay["FallbackToEstimatedGeometry"])
+        chrome = config["MirrorChrome"]
+        self.assertTrue(chrome["Enabled"])
+        self.assertTrue(chrome["SleepButton"])
+        self.assertTrue(chrome["HostZoomEnabled"])
+        self.assertTrue(chrome["CtrlWheelZoom"])
+        self.assertGreater(chrome["ZoomStep"], 0)
+        self.assertGreaterEqual(chrome["MinZoom"], 1.0)
+        self.assertGreater(chrome["MaxZoom"], chrome["MinZoom"])
+        self.assertGreaterEqual(chrome["PollMilliseconds"], 12)
+        self.assertGreaterEqual(chrome["ToolbarInsetPixels"], 0)
 
     # ---------- Pattern overlay ----------
 
@@ -497,6 +524,62 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("Remove-AllCalibrations", text)
         self.assertIn('if ($Serial -eq "ALL")', text)
 
+    # ---------- Mirror toolbar / multitouch / host zoom ----------
+
+    def test_scrcpy_forces_sdk_mouse_mode_for_ctrl_drag_multitouch(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn('$args.Add("--mouse=sdk")', text)
+
+    def test_mirror_toolbar_is_started_for_every_scrcpy_session_and_cleaned_up(self):
+        text = self.read("Start-PhoneMirror.ps1")
+        self.assertIn("function Start-MirrorChrome", text)
+        self.assertIn("MirrorChrome.ps1", text)
+        self.assertIn("$chromeProcess = Start-MirrorChrome", text)
+        self.assertIn("Stop-MirrorChrome $chromeProcess", text)
+
+    def test_mirror_toolbar_sleep_button_uses_scrcpy_screen_off_shortcut(self):
+        text = self.read("MirrorChrome.ps1")
+        self.assertIn("Sleep phone", text)
+        self.assertIn("SendScrcpyScreenOffShortcut", text)
+        self.assertIn("VK_LMENU", text)
+        self.assertIn("VK_O", text)
+        self.assertIn("turns the Android physical display off while", text)
+
+    def test_host_zoom_is_local_ctrl_wheel_and_has_reset_control(self):
+        text = self.read("MirrorChrome.ps1")
+        for contract in [
+            "WH_MOUSE_LL",
+            "WM_MOUSEWHEEL",
+            "VK_CONTROL",
+            "StartWheelHook",
+            "TryDequeueWheel",
+            "Magnification.dll",
+            "MagSetWindowSource",
+            "SetMagnifierTransform",
+            "Reset zoom",
+            "Reset-HostZoom",
+        ]:
+            self.assertIn(contract, text)
+
+        self.assertIn("return new IntPtr(1)", text)
+        self.assertIn("$script:zoom = 1.0", text)
+
+    def test_host_zoom_is_view_only_and_does_not_inject_android_touch(self):
+        text = self.read("MirrorChrome.ps1").lower()
+        for forbidden in [
+            "input swipe",
+            "input tap",
+            "input text",
+            "adb.exe",
+            "shell input",
+        ]:
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, text)
+
+    def test_stop_kills_mirror_toolbar_sidecars(self):
+        text = self.read("Stop-PhoneMirror.ps1")
+        self.assertIn("MirrorChrome\\.ps1", text)
+
     # ---------- Setup/install security ----------
 
     def test_setup_verifies_scrcpy_checksum_before_extracting(self):
@@ -592,6 +675,7 @@ class RepositoryContractTests(unittest.TestCase):
         for arg in [
             "--serial=",
             "--window-title=",
+            "--mouse=sdk",
             "--turn-screen-off",
             "--stay-awake",
             "--keep-active",
