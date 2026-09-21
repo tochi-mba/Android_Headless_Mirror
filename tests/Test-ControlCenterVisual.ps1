@@ -187,3 +187,5 @@ finally {
 
 Write-Host ""
 Write-Host ("Control Center visual regression passed: " + $script:Assertions + " assertions.") -ForegroundColor Green
+
+exit 0
