@@ -823,6 +823,9 @@ function New-ToolbarButton([string]$Text) {
 }
 
 $sleepButton = New-ToolbarButton "Sleep phone"
+if (-not $ChromeConfig.SleepButton) {
+    $sleepButton.Visibility = [System.Windows.Visibility]::Collapsed
+}
 $stack.Children.Add($sleepButton) | Out-Null
 
 $zoomLabel = New-Object System.Windows.Controls.TextBlock
