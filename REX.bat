@@ -3,8 +3,11 @@ setlocal
 cd /d "%~dp0"
 
 set "REX_BOOTSTRAP_QUIET="
-if /I "%~1"=="--json" set "REX_BOOTSTRAP_QUIET=-Quiet"
-if /I "%~1"=="--plain" set "REX_BOOTSTRAP_QUIET=-Quiet"
+if /I "%~1"=="agent" set "REX_BOOTSTRAP_QUIET=-Quiet"
+for %%A in (%*) do (
+  if /I "%%~A"=="--json" set "REX_BOOTSTRAP_QUIET=-Quiet"
+  if /I "%%~A"=="--plain" set "REX_BOOTSTRAP_QUIET=-Quiet"
+)
 
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-RexCli.ps1" %REX_BOOTSTRAP_QUIET%
 if errorlevel 1 (
