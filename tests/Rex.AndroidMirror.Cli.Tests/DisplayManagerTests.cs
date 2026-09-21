@@ -23,7 +23,7 @@ public sealed class DisplayManagerTests
             host,
             new DisplayVerificationStore(package.Paths.DisplayVerification));
 
-        var result = await manager.ProbeAsync();
+        var result = await manager.ProbeAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(DisplayTransportIds.Scrcpy, result.CurrentTransport);
         Assert.Equal(CapabilityState.Reported, result.AdbControl);
@@ -45,7 +45,7 @@ public sealed class DisplayManagerTests
             CapabilityState.Reported,
             CapabilityState.Reported);
 
-        var result = await manager.ProbeAsync();
+        var result = await manager.ProbeAsync(TestContext.Current.CancellationToken);
         var wireless = Assert.Single(
             result.Transports,
             x => x.Id == DisplayTransportIds.WindowsMiracast);
@@ -71,7 +71,7 @@ public sealed class DisplayManagerTests
             "pass",
             "manual Netflix test");
 
-        var result = await manager.ProbeAsync();
+        var result = await manager.ProbeAsync(TestContext.Current.CancellationToken);
         var wireless = Assert.Single(
             result.Transports,
             x => x.Id == DisplayTransportIds.WindowsMiracast);
@@ -93,7 +93,7 @@ public sealed class DisplayManagerTests
 
         manager.Verify(DisplayTransportIds.WindowsMiracast, "protected", "fail");
 
-        var result = await manager.ProbeAsync();
+        var result = await manager.ProbeAsync(TestContext.Current.CancellationToken);
         var wireless = Assert.Single(
             result.Transports,
             x => x.Id == DisplayTransportIds.WindowsMiracast);
@@ -114,7 +114,7 @@ public sealed class DisplayManagerTests
 
         manager.Verify(DisplayTransportIds.WindowsMiracast, "normal", "pass");
 
-        var result = await manager.ProbeAsync();
+        var result = await manager.ProbeAsync(TestContext.Current.CancellationToken);
         var wireless = Assert.Single(
             result.Transports,
             x => x.Id == DisplayTransportIds.WindowsMiracast);
@@ -177,7 +177,7 @@ public sealed class DisplayManagerTests
             new FakeDisplayHostProbe(DefaultHost()),
             new DisplayVerificationStore(package.Paths.DisplayVerification));
 
-        var result = await manager.StartAsync(DisplayTransportIds.Scrcpy);
+        var result = await manager.StartAsync(DisplayTransportIds.Scrcpy, TestContext.Current.CancellationToken);
 
         Assert.True(result.Requested);
         Assert.False(File.Exists(package.Paths.StopFlag));
@@ -200,7 +200,7 @@ public sealed class DisplayManagerTests
             host,
             new DisplayVerificationStore(package.Paths.DisplayVerification));
 
-        var result = await manager.StartAsync(DisplayTransportIds.WindowsMiracast);
+        var result = await manager.StartAsync(DisplayTransportIds.WindowsMiracast, TestContext.Current.CancellationToken);
 
         Assert.True(result.Requested);
         Assert.Equal(1, host.OpenCount);
@@ -222,7 +222,7 @@ public sealed class DisplayManagerTests
             new DisplayVerificationStore(package.Paths.DisplayVerification));
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            manager.StartAsync(DisplayTransportIds.WindowsMiracast));
+            manager.StartAsync(DisplayTransportIds.WindowsMiracast, TestContext.Current.CancellationToken));
 
         Assert.Contains("Projecting to this PC", ex.Message);
     }
@@ -237,7 +237,7 @@ public sealed class DisplayManagerTests
             CapabilityState.Unsupported,
             CapabilityState.Reported);
 
-        var result = await manager.ProbeAsync();
+        var result = await manager.ProbeAsync(TestContext.Current.CancellationToken);
         var wireless = Assert.Single(
             result.Transports,
             x => x.Id == DisplayTransportIds.WindowsMiracast);
@@ -255,7 +255,7 @@ public sealed class DisplayManagerTests
             CapabilityState.Unknown,
             CapabilityState.Reported);
 
-        var result = await manager.ProbeAsync();
+        var result = await manager.ProbeAsync(TestContext.Current.CancellationToken);
         var wireless = Assert.Single(
             result.Transports,
             x => x.Id == DisplayTransportIds.WindowsMiracast);
@@ -293,7 +293,7 @@ public sealed class DisplayManagerTests
             package,
             bridge,
             CapabilityState.Reported,
-            CapabilityState.Reported).ProbeAsync();
+            CapabilityState.Reported).ProbeAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(CapabilityState.Unsupported, result.SamsungDexCandidate);
     }
@@ -328,7 +328,7 @@ public sealed class DisplayManagerTests
             package,
             bridge,
             CapabilityState.Reported,
-            CapabilityState.Reported).ProbeAsync();
+            CapabilityState.Reported).ProbeAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(CapabilityState.Unknown, result.SamsungDexCandidate);
         Assert.Equal(CapabilityState.Unknown, result.AdbControl);
