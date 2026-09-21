@@ -52,7 +52,8 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // Precision Touchpad
         console.Input.PushTextWithEnter("n"); // auto-open Control Center
         console.Input.PushTextWithEnter("n"); // start now
-        PushToLastChoice(console, 20); // main menu -> Exit
+        PushDown(console, 13); // main menu -> Exit
+        console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
             package.Paths,
@@ -101,7 +102,8 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // stay awake
         console.Input.PushTextWithEnter("n"); // auto-open controls
         console.Input.PushTextWithEnter("n"); // start now
-        PushToLastChoice(console, 20); // exit
+        PushDown(console, 13); // main menu -> Exit
+        console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
             package.Paths,
@@ -131,8 +133,10 @@ public sealed class RexAppTests
         console.Input.PushKey(ConsoleKey.DownArrow); // Runtime controls
         console.Input.PushKey(ConsoleKey.Enter);
         console.Input.PushKey(ConsoleKey.Enter); // Sleep phone (first)
-        PushToLastChoice(console, 40); // Back in runtime controls
-        PushToLastChoice(console, 40); // Exit main menu
+        PushDown(console, 32); // Back in runtime controls
+        console.Input.PushKey(ConsoleKey.Enter);
+        PushDown(console, 13); // Exit main menu
+        console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
             package.Paths,
@@ -167,8 +171,10 @@ public sealed class RexAppTests
         console.Input.PushKey(ConsoleKey.Enter);
         console.Input.PushKey(ConsoleKey.DownArrow); // Fast 0.5x
         console.Input.PushKey(ConsoleKey.Enter);
-        PushToLastChoice(console, 40); // Back device menu
-        PushToLastChoice(console, 40); // Exit
+        PushDown(console, 17); // Back device menu
+        console.Input.PushKey(ConsoleKey.Enter);
+        PushDown(console, 13); // Exit main menu
+        console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
             package.Paths,
@@ -206,8 +212,10 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter(""); // no filter
         console.Input.PushKey(ConsoleKey.Enter); // adb_enabled
         console.Input.PushKey(ConsoleKey.Enter); // Change value
-        PushToLastChoice(console, 10); // Back from namespace chooser
-        PushToLastChoice(console, 40); // Exit main
+        PushDown(console, 3); // Back from namespace chooser
+        console.Input.PushKey(ConsoleKey.Enter);
+        PushDown(console, 13); // Exit main
+        console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
             package.Paths,
@@ -236,7 +244,8 @@ public sealed class RexAppTests
         var console = ConsoleWithInput();
         console.Input.PushKey(ConsoleKey.DownArrow); // Runtime controls
         console.Input.PushKey(ConsoleKey.Enter);
-        PushToLastChoice(console, 40); // Exit main
+        PushDown(console, 13); // Exit main
+        console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
             package.Paths,
@@ -264,12 +273,6 @@ public sealed class RexAppTests
     {
         for (var i = 0; i < count; i++)
             console.Input.PushKey(ConsoleKey.DownArrow);
-    }
-
-    private static void PushToLastChoice(TestConsole console, int count)
-    {
-        PushDown(console, count);
-        console.Input.PushKey(ConsoleKey.Enter);
     }
 
     private static RexStatus Status(
