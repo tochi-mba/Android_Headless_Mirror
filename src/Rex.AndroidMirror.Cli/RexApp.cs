@@ -284,7 +284,8 @@ public sealed class RexApp
             _console.Write(table);
             _console.MarkupLine(
                 $"[{RexBrand.Muted}]ADB control: {Markup.Escape(probe.AdbControl.ToString().ToLowerInvariant())}. " +
-                $"Samsung DeX candidate: {Markup.Escape(probe.SamsungDexCandidate.ToString().ToLowerInvariant())}.[/]");
+                $"Samsung DeX candidate: {Markup.Escape(probe.SamsungDexCandidate.ToString().ToLowerInvariant())}. " +
+                $"Protected-content policy: {Markup.Escape(probe.ProtectedContentPolicy)}.[/]");
             _console.MarkupLine(
                 $"[{RexBrand.Muted}]Protected playback stays unknown until manually verified on the exact phone, PC, drivers and app.[/]");
 
