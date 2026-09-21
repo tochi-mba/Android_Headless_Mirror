@@ -142,6 +142,49 @@ public sealed class SmartLaunchTests
     }
 
     [Fact]
+    public async Task Launcher_FreshSessionActivelyDiscoversConnectedPhoneBeforePlanning()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = Status()
+        };
+        bridge.Devices.Add(Authorized());
+
+        var result = await new SmartLauncher(package.Paths, runner, bridge)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(SmartLaunchDecision.StartMirror, result.Decision);
+        Assert.False(result.OpenInteractiveCli);
+        Assert.Equal(1, bridge.DeviceQueryCount);
+        Assert.Single(runner.Calls);
+        Assert.Equal(package.Paths.StartBatch, runner.Calls[0].FileName);
+    }
+
+    [Fact]
+    public async Task Launcher_ExistingMirrorDoesNotWakeAdbJustToFocus()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner();
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = Status(
+                supervisor: true,
+                mirror: true)
+        };
+
+        var result = await new SmartLauncher(package.Paths, runner, bridge)
+            .RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(SmartLaunchDecision.FocusMirror, result.Decision);
+        Assert.Equal(0, bridge.DeviceQueryCount);
+        Assert.Empty(runner.Calls);
+        Assert.Single(bridge.Calls);
+        Assert.Equal("focus-active-mirror", bridge.Calls[0].Action);
+    }
+
+    [Fact]
     public async Task Launcher_StartMirror_ClearsPersistentOffAndUsesCanonicalLauncher()
     {
         using var package = new TempPackage();
