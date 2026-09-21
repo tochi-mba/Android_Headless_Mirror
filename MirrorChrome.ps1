@@ -80,7 +80,21 @@ public static class AHMMirrorChromeNative
     public struct InputUnion
     {
         [FieldOffset(0)]
+        public MOUSEINPUT mi;
+
+        [FieldOffset(0)]
         public KEYBDINPUT ki;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public UIntPtr dwExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -93,9 +107,84 @@ public static class AHMMirrorChromeNative
         public UIntPtr dwExtraInfo;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINTER_INFO
+    {
+        public uint pointerType;
+        public uint pointerId;
+        public uint frameId;
+        public uint pointerFlags;
+        public IntPtr sourceDevice;
+        public IntPtr hwndTarget;
+        public POINT ptPixelLocation;
+        public POINT ptHimetricLocation;
+        public POINT ptPixelLocationRaw;
+        public POINT ptHimetricLocationRaw;
+        public uint dwTime;
+        public uint historyCount;
+        public int inputData;
+        public uint dwKeyStates;
+        public ulong performanceCount;
+        public uint buttonChangeType;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINTER_TOUCH_INFO
+    {
+        public POINTER_INFO pointerInfo;
+        public uint touchFlags;
+        public uint touchMask;
+        public RECT rcContact;
+        public RECT rcContactRaw;
+        public uint orientation;
+        public uint pressure;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct TOUCHPAD_SAMPLE
+    {
+        public uint PointerId;
+        public uint PointerFlags;
+        public int X;
+        public int Y;
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate bool RegisterTouchpadCapableWindowDelegate(IntPtr hwnd, bool enable);
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    private delegate bool GetPointerTouchpadInfoDelegate(uint pointerId, out POINTER_TOUCH_INFO info);
+
     public const int WH_MOUSE_LL = 14;
     public const int WM_MOUSEWHEEL = 0x020A;
+    public const int WM_NCHITTEST = 0x0084;
+    public const int WM_POINTERUPDATE = 0x0245;
+    public const int WM_POINTERDOWN = 0x0246;
+    public const int WM_POINTERUP = 0x0247;
+    public const int HTTRANSPARENT = -1;
+
     public const int VK_CONTROL = 0x11;
+
+    public const uint POINTER_FLAG_INCONTACT = 0x00000004;
+    public const uint POINTER_FLAG_DOWN = 0x00010000;
+    public const uint POINTER_FLAG_UPDATE = 0x00020000;
+    public const uint POINTER_FLAG_UP = 0x00040000;
+
+    public const uint INPUT_MOUSE = 0;
+    public const uint INPUT_KEYBOARD = 1;
+    public const uint MOUSEEVENTF_MOVE = 0x0001;
+    public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+    public const uint MOUSEEVENTF_LEFTUP = 0x0004;
+    public const uint MOUSEEVENTF_WHEEL = 0x0800;
+    public const uint MOUSEEVENTF_HWHEEL = 0x01000;
+    public const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
+    public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
+    public const uint KEYEVENTF_KEYUP = 0x0002;
+
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_CYVIRTUALSCREEN = 79;
 
     public const int SW_HIDE = 0;
     public const int SW_SHOWNOACTIVATE = 4;
@@ -114,8 +203,6 @@ public static class AHMMirrorChromeNative
     public const uint SWP_NOSENDCHANGING = 0x0400;
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
 
-    public const uint INPUT_KEYBOARD = 1;
-    public const uint KEYEVENTF_KEYUP = 0x0002;
     public const ushort VK_LMENU = 0xA4;
     public const ushort VK_O = 0x4F;
 
@@ -126,6 +213,12 @@ public static class AHMMirrorChromeNative
     private static IntPtr wheelTarget = IntPtr.Zero;
     private static readonly ConcurrentQueue<int> wheelDeltas = new ConcurrentQueue<int>();
     private static bool magnificationInitialized = false;
+    private static RegisterTouchpadCapableWindowDelegate registerTouchpadWindow;
+    private static GetPointerTouchpadInfoDelegate getTouchpadInfo;
+    private static bool touchpadApiResolved = false;
+    private static POINT savedPinchCursor;
+    private static bool pinchCursorSaved = false;
+    private static bool syntheticPinchDown = false;
 
     [DllImport("user32.dll")]
     public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
@@ -156,6 +249,18 @@ public static class AHMMirrorChromeNative
 
     [DllImport("user32.dll")]
     public static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetCursorPos(int X, int Y);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern IntPtr GetProcAddress(IntPtr hModule, IntPtr lpProcName);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SetWindowPos(
@@ -202,9 +307,6 @@ public static class AHMMirrorChromeNative
     [DllImport("user32.dll")]
     public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
 
-    [DllImport("kernel32.dll")]
-    public static extern IntPtr GetModuleHandle(string lpModuleName);
-
     [DllImport("Magnification.dll", SetLastError = true)]
     public static extern bool MagInitialize();
 
@@ -219,6 +321,178 @@ public static class AHMMirrorChromeNative
 
     [DllImport("Magnification.dll", SetLastError = true)]
     public static extern int MagSetWindowFilterList(IntPtr hwnd, int dwFilterMode, int count, IntPtr[] pHWND);
+
+
+    private static bool ResolveTouchpadApi()
+    {
+        if (touchpadApiResolved)
+        {
+            return registerTouchpadWindow != null && getTouchpadInfo != null;
+        }
+
+        touchpadApiResolved = true;
+
+        IntPtr user32 = GetModuleHandle("user32.dll");
+        if (user32 == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        IntPtr registerPtr = GetProcAddress(user32, new IntPtr(2689));
+        IntPtr infoPtr = GetProcAddress(user32, new IntPtr(2691));
+        if (registerPtr == IntPtr.Zero || infoPtr == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        registerTouchpadWindow = (RegisterTouchpadCapableWindowDelegate)
+            Marshal.GetDelegateForFunctionPointer(registerPtr, typeof(RegisterTouchpadCapableWindowDelegate));
+        getTouchpadInfo = (GetPointerTouchpadInfoDelegate)
+            Marshal.GetDelegateForFunctionPointer(infoPtr, typeof(GetPointerTouchpadInfoDelegate));
+
+        return registerTouchpadWindow != null && getTouchpadInfo != null;
+    }
+
+    public static bool RegisterPrecisionTouchpadWindow(IntPtr hwnd, bool enable)
+    {
+        try
+        {
+            return ResolveTouchpadApi() && registerTouchpadWindow(hwnd, enable);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public static bool TryGetTouchpadSample(uint pointerId, out TOUCHPAD_SAMPLE sample)
+    {
+        sample = new TOUCHPAD_SAMPLE();
+
+        try
+        {
+            if (!ResolveTouchpadApi())
+            {
+                return false;
+            }
+
+            POINTER_TOUCH_INFO info;
+            if (!getTouchpadInfo(pointerId, out info))
+            {
+                return false;
+            }
+
+            sample.PointerId = info.pointerInfo.pointerId;
+            sample.PointerFlags = info.pointerInfo.pointerFlags;
+            sample.X = info.pointerInfo.ptHimetricLocation.X;
+            sample.Y = info.pointerInfo.ptHimetricLocation.Y;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static INPUT KeyboardInput(ushort key, bool up)
+    {
+        INPUT input = new INPUT();
+        input.type = INPUT_KEYBOARD;
+        input.U.ki.wVk = key;
+        input.U.ki.dwFlags = up ? KEYEVENTF_KEYUP : 0;
+        return input;
+    }
+
+    private static INPUT MouseInputAbsolute(int x, int y, uint extraFlags)
+    {
+        int vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
+        int vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        int vw = Math.Max(2, GetSystemMetrics(SM_CXVIRTUALSCREEN));
+        int vh = Math.Max(2, GetSystemMetrics(SM_CYVIRTUALSCREEN));
+
+        int dx = (int)Math.Round(((double)(x - vx) * 65535.0) / (vw - 1));
+        int dy = (int)Math.Round(((double)(y - vy) * 65535.0) / (vh - 1));
+
+        INPUT input = new INPUT();
+        input.type = INPUT_MOUSE;
+        input.U.mi.dx = dx;
+        input.U.mi.dy = dy;
+        input.U.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK | extraFlags;
+        return input;
+    }
+
+    public static bool BeginScrcpyPinch(IntPtr target, int x, int y)
+    {
+        if (target == IntPtr.Zero || syntheticPinchDown)
+        {
+            return false;
+        }
+
+        SetForegroundWindow(target);
+
+        if (GetCursorPos(out savedPinchCursor))
+        {
+            pinchCursorSaved = true;
+        }
+        else
+        {
+            pinchCursorSaved = false;
+        }
+
+        INPUT[] inputs = new INPUT[3];
+        inputs[0] = KeyboardInput((ushort)VK_CONTROL, false);
+        inputs[1] = MouseInputAbsolute(x, y, 0);
+        inputs[2] = MouseInputAbsolute(x, y, MOUSEEVENTF_LEFTDOWN);
+
+        uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+        syntheticPinchDown = sent == inputs.Length;
+        return syntheticPinchDown;
+    }
+
+    public static bool UpdateScrcpyPinch(int x, int y)
+    {
+        if (!syntheticPinchDown)
+        {
+            return false;
+        }
+
+        INPUT[] inputs = new INPUT[1];
+        inputs[0] = MouseInputAbsolute(x, y, 0);
+        return SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT))) == 1;
+    }
+
+    public static void EndScrcpyPinch()
+    {
+        if (!syntheticPinchDown)
+        {
+            return;
+        }
+
+        POINT current;
+        if (!GetCursorPos(out current))
+        {
+            current.X = 0;
+            current.Y = 0;
+        }
+
+        INPUT[] inputs = new INPUT[2];
+        inputs[0] = MouseInputAbsolute(current.X, current.Y, MOUSEEVENTF_LEFTUP);
+        inputs[1] = KeyboardInput((ushort)VK_CONTROL, true);
+        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+
+        syntheticPinchDown = false;
+
+        if (pinchCursorSaved)
+        {
+            SetCursorPos(savedPinchCursor.X, savedPinchCursor.Y);
+            pinchCursorSaved = false;
+        }
+    }
+
+    public static bool IsSyntheticPinchActive()
+    {
+        return syntheticPinchDown;
+    }
 
     public static IntPtr FindWindowByExactTitle(string title)
     {
