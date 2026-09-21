@@ -277,7 +277,16 @@ public static class ArgProbe
             Environment.GetEnvironmentVariable("AHM_SCRCPY_ARG_LOG"),
             args
         );
-        return 23;
+
+        Console.Error.WriteLine("INFO: scrcpy-server: 1 file pushed, 0 skipped.");
+
+        int exitCode;
+        if (!int.TryParse(Environment.GetEnvironmentVariable("AHM_SCRCPY_EXIT_CODE"), out exitCode))
+        {
+            exitCode = 23;
+        }
+
+        return exitCode;
     }
 }
 '@
@@ -309,6 +318,12 @@ public static class ArgProbe
         "--window-title=Android Device",
         "--max-fps=60"
     ) -Actual $received -Message "Native .exe invocation must preserve every scrcpy argument boundary."
+
+    Write-Host "[powershell] Testing healthy native stderr does not become a supervisor failure..."
+    $env:AHM_SCRCPY_EXIT_CODE = "0"
+    $healthyExit = Invoke-Scrcpy $fakeScrcpy $nativeArgs $false
+    Assert-Equal -Expected 0 -Actual $healthyExit -Message "Informational native stderr must not turn a healthy scrcpy exit into a PowerShell failure."
+    Assert-Equal -Expected "Stop" -Actual $ErrorActionPreference -Message "Invoke-Scrcpy must restore the caller's ErrorActionPreference."
 
     Write-Host "[powershell] Testing real device preparation commands..."
     $prepareLog = Join-Path $temp "prepare.log"
