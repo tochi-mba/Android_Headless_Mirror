@@ -61,6 +61,12 @@
     "MaxZoom": 4,
     "ToolbarInsetPixels": 10,
     "PollMilliseconds": 16,
-    "CtrlWheelZoom": true
+    "CtrlWheelZoom": true,
+    "NativeTouchpadGestures": true,
+    "TouchpadPinchToAndroid": true,
+    "CtrlTouchpadPinchToHostZoom": true,
+    "TouchpadPinchThreshold": 0.018,
+    "TouchpadBaseRadiusRelativeToClient": 0.22,
+    "TouchpadScrollScale": 1
   }
 }
