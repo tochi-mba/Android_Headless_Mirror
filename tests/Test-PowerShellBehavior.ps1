@@ -103,6 +103,7 @@ $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
     "Unique-Strings",
     "Select-Device",
     "Build-ScrcpyArguments",
+    "Invoke-Scrcpy",
     "Prepare-DeviceForMirror"
 ))
 
@@ -259,6 +260,55 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-fps=*" }).Count -gt 0) -Message "MaxFps=0 should suppress --max-fps."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--video-bit-rate=*" }).Count -gt 0) -Message "Blank bitrate should suppress --video-bit-rate."
+
+    Write-Host "[powershell] Testing native scrcpy argument boundaries..."
+    $scrcpyArgLog = Join-Path $temp "scrcpy-args.log"
+    $env:AHM_SCRCPY_ARG_LOG = $scrcpyArgLog
+    $fakeScrcpy = Join-Path $temp "fake-scrcpy.exe"
+    $probeSource = @'
+using System;
+using System.IO;
+
+public static class ArgProbe
+{
+    public static int Main(string[] args)
+    {
+        File.WriteAllLines(
+            Environment.GetEnvironmentVariable("AHM_SCRCPY_ARG_LOG"),
+            args
+        );
+        return 23;
+    }
+}
+'@
+    $probeSourceFile = Join-Path $temp "ArgProbe.cs"
+    Set-Content -Path $probeSourceFile -Value $probeSource -Encoding UTF8
+
+    $cscCandidates = @(
+        (Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"),
+        (Join-Path $env:WINDIR "Microsoft.NET\Framework\v4.0.30319\csc.exe")
+    )
+    $csc = $cscCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    Assert-True -Condition (-not [string]::IsNullOrWhiteSpace([string]$csc)) -Message "A .NET Framework C# compiler should be available on Windows."
+
+    & $csc /nologo /target:exe "/out:$fakeScrcpy" $probeSourceFile
+    Assert-Equal -Expected 0 -Actual $LASTEXITCODE -Message "Native argument probe should compile."
+    Assert-True -Condition (Test-Path $fakeScrcpy) -Message "Native argument probe executable should exist."
+
+    $nativeArgs = @(
+        "--serial=USB123",
+        "--window-title=Android Device",
+        "--max-fps=60"
+    )
+    $nativeExit = Invoke-Scrcpy $fakeScrcpy $nativeArgs $false
+    Assert-Equal -Expected 23 -Actual $nativeExit -Message "Invoke-Scrcpy should return the native process exit code."
+
+    $received = @(Get-Content $scrcpyArgLog | ForEach-Object { [string]$_ })
+    Assert-Equal -Expected @(
+        "--serial=USB123",
+        "--window-title=Android Device",
+        "--max-fps=60"
+    ) -Actual $received -Message "Native .exe invocation must preserve every scrcpy argument boundary."
 
     Write-Host "[powershell] Testing real device preparation commands..."
     $prepareLog = Join-Path $temp "prepare.log"

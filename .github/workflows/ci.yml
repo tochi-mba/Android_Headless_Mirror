@@ -80,9 +80,13 @@ jobs:
       - name: Run repository contract tests
         run: python tests\test_package.py
 
-      - name: Run executable PowerShell behavior tests
+      - name: Run executable behavior tests (PowerShell 7)
         shell: pwsh
         run: ./tests/Test-PowerShellBehavior.ps1
+
+      - name: Run executable behavior tests (Windows PowerShell 5.1)
+        shell: powershell
+        run: .\tests\Test-PowerShellBehavior.ps1
 
   pages-browser:
     name: Pages browser + accessibility

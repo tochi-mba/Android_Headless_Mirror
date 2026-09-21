@@ -330,6 +330,20 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     return @($args)
 }
 
+function Invoke-Scrcpy([string]$Executable, [string[]]$Arguments, [bool]$ShowOutput) {
+    # Invoke the native executable with PowerShell's splatted argument array.
+    # This preserves argument boundaries (for example, "--window-title=Android Device")
+    # instead of flattening them into a single command line as Start-Process
+    # -ArgumentList does on Windows PowerShell.
+    & $Executable @Arguments 2>&1 | ForEach-Object {
+        if ($ShowOutput) {
+            Write-Host ([string]$_)
+        }
+    }
+
+    return [int]$LASTEXITCODE
+}
+
 function Prepare-DeviceForMirror([string]$Adb, [string]$Serial) {
     if ($Config.WakeBeforeMirror) {
         try {
@@ -451,8 +465,7 @@ try {
             $args = @(Build-ScrcpyArguments $selected.Serial $selected.IsTcp)
             Log ("Launching scrcpy for {0} ({1}) args={2}" -f $selected.Serial, ($(if ($selected.IsTcp) { "TCP/IP" } else { "USB" })), ($args -join " "))
 
-            $proc = Start-Process -FilePath $Scrcpy -ArgumentList $args -PassThru -Wait
-            $exitCode = $proc.ExitCode
+            $exitCode = Invoke-Scrcpy $Scrcpy $args ([bool]$Foreground)
             Log "scrcpy exited with code $exitCode"
 
             if (Test-Path $StopFile) { break }
