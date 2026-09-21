@@ -146,12 +146,12 @@
           <h2>Diagnostics that tell you the actual state.</h2>
           <p>“USB debugging is off” is not the same thing as “this PC is unauthorized”. The diagnostic path separates the states that matter.</p>
           <div class="diagnostic-tabs" role="tablist" aria-label="Diagnostic examples">
-            <button class="diag-tab active" role="tab" aria-selected="true" data-state="authorized">Authorized</button>
-            <button class="diag-tab" role="tab" aria-selected="false" data-state="unauthorized">Unauthorized</button>
-            <button class="diag-tab" role="tab" aria-selected="false" data-state="offline">Offline</button>
+            <button class="diag-tab active" id="diag-authorized" role="tab" aria-selected="true" aria-controls="diagnostic-panel" tabindex="0" data-state="authorized">Authorized</button>
+            <button class="diag-tab" id="diag-unauthorized" role="tab" aria-selected="false" aria-controls="diagnostic-panel" tabindex="-1" data-state="unauthorized">Unauthorized</button>
+            <button class="diag-tab" id="diag-offline" role="tab" aria-selected="false" aria-controls="diagnostic-panel" tabindex="-1" data-state="offline">Offline</button>
           </div>
         </div>
-        <div class="diagnostic-console reveal" aria-live="polite">
+        <div class="diagnostic-console reveal" id="diagnostic-panel" role="tabpanel" aria-labelledby="diag-authorized" aria-live="polite">
           <div class="console-top"><span>DIAGNOSTICS.bat</span><i></i></div>
           <pre id="diagnostic-output"><span class="console-head">=== Android Headless Mirror Diagnostics ===</span>
 ADB:            <b>OK</b>
