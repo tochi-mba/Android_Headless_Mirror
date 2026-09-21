@@ -1,5 +1,5 @@
 {
-  "WindowTitle": "Galaxy S21 Ultra",
+  "WindowTitle": "Android Device",
   "PollSeconds": 2,
   "RetrySeconds": 4,
   "WakeBeforeMirror": true,
@@ -13,9 +13,9 @@
   "RestartOnUnexpectedExit": true,
   "PreferredSerial": "",
   "Wireless": {
-    "Enabled": true,
+    "Enabled": false,
     "Port": 5555,
-    "EnableTcpipWhenUsbAvailable": true,
+    "EnableTcpipWhenUsbAvailable": false,
     "TrySavedAddresses": true,
     "TryWindowsDefaultGateway": true,
     "ManualHosts": []
