@@ -208,6 +208,7 @@ class RepositoryContractTests(unittest.TestCase):
             "src/Rex.AndroidMirror.Cli/BridgeClient.cs",
             "tests/Rex.AndroidMirror.Cli.Tests/Rex.AndroidMirror.Cli.Tests.csproj",
             "tests/Test-RexCliBootstrap.ps1",
+            "tests/Test-RexBridgeE2E.ps1",
             "tests/Test-PowerShellBehavior.ps1",
             "tests/Test-ControlCenterE2E.ps1",
             "tests/Test-ControlCenterVisual.ps1",
@@ -942,6 +943,22 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("Get-FileHash", workflow)
         self.assertIn("gh release create", workflow)
         self.assertIn("contents: write", workflow)
+
+    def test_rex_cli_has_real_bridge_fake_adb_e2e(self):
+        bridge_test = self.read("tests/Test-RexBridgeE2E.ps1")
+        for needle in [
+            'Invoke-Bridge "status"',
+            'Invoke-Bridge "friendly-set"',
+            'Invoke-Bridge "settings-list"',
+            'Invoke-Bridge "settings-set"',
+            'Invoke-Bridge "set-lock-mode"',
+            'Invoke-Bridge "mirror-command"',
+            'Invoke-Bridge "cmd-services"',
+            "fake-adb.cmd",
+            "REX_ADB_PATH",
+            "REX_SCRCPY_PATH",
+        ]:
+            self.assertIn(needle, bridge_test)
 
     def test_rex_cli_has_dedicated_unit_and_interactive_tests(self):
         required = [
