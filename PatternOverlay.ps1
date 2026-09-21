@@ -716,6 +716,38 @@ function Get-KeyguardState {
     return Get-KeyguardStateFromText $windowText $trustText
 }
 
+
+function Get-UiHierarchyXml {
+    if (-not $OverlayConfig.AutoDiscoverGeometry) { return $null }
+
+    $remote = "/data/local/tmp/ahm-pattern-" + $PID + ".xml"
+
+    try {
+        $previousErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+
+        & $adb -s $Serial shell uiautomator dump --compressed $remote 2>$null | Out-Null
+        $xmlText = (& $adb -s $Serial exec-out cat $remote 2>$null | Out-String).Trim()
+
+        if ($xmlText -match '<hierarchy[\s>]' -and $xmlText -match '</hierarchy>') {
+            return $xmlText
+        }
+    }
+    catch {}
+    finally {
+        try {
+            & $adb -s $Serial shell rm -f $remote 2>$null | Out-Null
+        }
+        catch {}
+
+        if ($null -ne $previousErrorActionPreference) {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+    }
+
+    return $null
+}
+
 function Test-KeyDown([int]$VirtualKey) {
     return (([AHMOverlayNative]::GetAsyncKeyState($VirtualKey) -band 0x8000) -ne 0)
 }
