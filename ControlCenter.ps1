@@ -563,14 +563,22 @@ function Get-FakeAdvancedRows([string]$Namespace) {
 
 function Apply-AdvancedFilter {
     $query = (C "AdvancedSearchText").Text.Trim()
-    $rows = if ([string]::IsNullOrWhiteSpace($query)) {
-        @($script:AdvancedRows)
+
+    if ([string]::IsNullOrWhiteSpace($query)) {
+        $filtered = @($script:AdvancedRows)
     }
     else {
-        @($script:AdvancedRows | Where-Object {
+        $filtered = @($script:AdvancedRows | Where-Object {
             $_.Key -match [regex]::Escape($query) -or
             $_.Value -match [regex]::Escape($query)
         })
+    }
+
+    # PowerShell 5.1 can unwrap a single object emitted by an if-expression.
+    # WPF ItemsSource requires an IEnumerable even when exactly one row matches.
+    $rows = New-Object System.Collections.ArrayList
+    foreach ($row in @($filtered)) {
+        [void]$rows.Add($row)
     }
 
     (C "AdvancedSettingsGrid").ItemsSource = $rows
