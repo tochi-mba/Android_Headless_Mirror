@@ -65,6 +65,7 @@ public sealed class RexApp
                 {
                     "Start / open mirror",
                     "Runtime controls",
+                    "Display transports",
                     "PC / mirror settings",
                     "Device settings",
                     "Advanced Android settings",
@@ -88,6 +89,9 @@ public sealed class RexApp
                         break;
                     case "Runtime controls":
                         await RuntimeControlsAsync();
+                        break;
+                    case "Display transports":
+                        await DisplayTransportsAsync();
                         break;
                     case "PC / mirror settings":
                         await PcSettingsAsync();
@@ -247,6 +251,96 @@ public sealed class RexApp
         await _runner.OpenAsync(_paths.StartBatch, _paths.Root);
         RexBrand.Success(_console, "Supervisor start requested. Connect any authorized Android device and the mirror will open automatically.");
         Pause();
+    }
+
+    private async Task DisplayTransportsAsync()
+    {
+        var manager = new DisplayManager(_paths, _runner, _bridge, _config);
+
+        while (true)
+        {
+            RexBrand.Header(_console, "DISPLAY");
+
+            var probe = await manager.ProbeAsync();
+            var table = new Table()
+                .Border(TableBorder.Rounded)
+                .BorderColor(RexBrand.LineColor)
+                .AddColumn("Transport")
+                .AddColumn("Availability")
+                .AddColumn("Video")
+                .AddColumn("Protected");
+
+            foreach (var transport in probe.Transports)
+            {
+                table.AddRow(
+                    Markup.Escape(transport.Label),
+                    Markup.Escape(transport.Availability.ToString().ToLowerInvariant()),
+                    Markup.Escape(transport.Video.ToString().ToLowerInvariant()),
+                    Markup.Escape(transport.ProtectedOutput.ToString().ToLowerInvariant()));
+            }
+
+            _console.Write(table);
+            _console.MarkupLine(
+                $"[{RexBrand.Muted}]ADB control: {Markup.Escape(probe.AdbControl.ToString().ToLowerInvariant())}. " +
+                $"Samsung DeX candidate: {Markup.Escape(probe.SamsungDexCandidate.ToString().ToLowerInvariant())}.[/]");
+            _console.MarkupLine(
+                $"[{RexBrand.Muted}]Protected playback stays unknown until manually verified on the exact phone, PC, drivers and app.[/]");
+
+            var choice = _console.Prompt(RexBrand.Menu(
+                "Display action",
+                new[]
+                {
+                    "Use scrcpy",
+                    "Open Windows Wireless Display",
+                    "Mark protected playback passed",
+                    "Mark protected playback failed",
+                    "Clear display verification",
+                    "Back",
+                }));
+
+            switch (choice)
+            {
+                case "Use scrcpy":
+                {
+                    var result = await manager.StartAsync(DisplayTransportIds.Scrcpy);
+                    RexBrand.Success(_console, result.Message);
+                    Pause();
+                    break;
+                }
+                case "Open Windows Wireless Display":
+                {
+                    var result = await manager.OpenReceiverAsync();
+                    RexBrand.Success(_console, result.Message);
+                    Pause();
+                    break;
+                }
+                case "Mark protected playback passed":
+                    manager.Verify(
+                        DisplayTransportIds.WindowsMiracast,
+                        "protected",
+                        "pass",
+                        "Recorded from interactive REX workflow.");
+                    RexBrand.Success(_console, "Protected playback marked passed for this PC.");
+                    break;
+                case "Mark protected playback failed":
+                    manager.Verify(
+                        DisplayTransportIds.WindowsMiracast,
+                        "protected",
+                        "fail",
+                        "Recorded from interactive REX workflow.");
+                    RexBrand.Success(_console, "Protected playback marked failed for this PC.");
+                    break;
+                case "Clear display verification":
+                    manager.Verify(
+                        DisplayTransportIds.WindowsMiracast,
+                        "protected",
+                        "clear");
+                    RexBrand.Success(_console, "Display verification cleared.");
+                    break;
+                case "Back":
+                    return;
+            }
+        }
     }
 
     private async Task StopAsync()
