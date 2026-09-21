@@ -27,6 +27,33 @@ public sealed class ProgramTests
         Assert.Equal("USB123", Program.GetOption(args, "--serial"));
     }
 
+    [Theory]
+    [InlineData(new[] { "agent", "status" }, new[] { "status" })]
+    [InlineData(new[] { "--json", "status" }, new[] { "status" })]
+    [InlineData(new[] { "status", "--json" }, new[] { "status" })]
+    [InlineData(new[] { "--plain", "status" }, new[] { "status" })]
+    [InlineData(new[] { "agent", "--json", "android", "list", "global" }, new[] { "android", "list", "global" })]
+    public void GetMachineArgs_NormalizesAgentAndMachineFlags(string[] input, string[] expected)
+    {
+        Assert.Equal(expected, Program.GetMachineArgs(input));
+    }
+
+    [Theory]
+    [InlineData("status")]
+    [InlineData("help")]
+    [InlineData("smart")]
+    public void GetMachineArgs_ReturnsNullForNormalHumanCli(string command)
+    {
+        Assert.Null(Program.GetMachineArgs(new[] { command }));
+    }
+
+    [Fact]
+    public void GetMachineArgs_AllowsCapabilityDiscoveryWithoutSubcommand()
+    {
+        Assert.Empty(Program.GetMachineArgs(new[] { "agent" })!);
+        Assert.Empty(Program.GetMachineArgs(new[] { "--json" })!);
+    }
+
     [Fact]
     public async Task ResolveSerial_UsesExplicitSerialWithoutDeviceLookup()
     {
