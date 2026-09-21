@@ -240,8 +240,9 @@ Click-Control "OpenLogsButton"
 Assert-Contains $script:TestActions "diagnostics:open-logs" "Open logs should dispatch."
 
 Write-Host "[control-center] Verifying every named button has an exercised flow..."
+$NamespaceManager.AddNamespace("d", "http://schemas.microsoft.com/winfx/2006/xaml/presentation")
 $xamlButtons = @(
-    $Xaml.SelectNodes("//Button[@x:Name]", $NamespaceManager) |
+    $Xaml.SelectNodes("//d:Button[@x:Name]", $NamespaceManager) |
         ForEach-Object { [string]$_.GetAttribute("Name", "http://schemas.microsoft.com/winfx/2006/xaml") }
 )
 $exercised = @(
