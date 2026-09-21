@@ -1,6 +1,6 @@
 {
   "WindowTitle": "Android Device",
-  "PollSeconds": 2,
+  "PollSeconds": 1,
   "RetrySeconds": 4,
   "WakeBeforeMirror": true,
   "TurnPhysicalScreenOff": true,
