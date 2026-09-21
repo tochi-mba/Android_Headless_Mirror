@@ -133,7 +133,7 @@ public sealed class SmartLaunchTests
             DefaultStatus = Status(setup: false)
         };
 
-        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync();
+        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(SmartLaunchDecision.SetupRequired, result.Decision);
         Assert.True(result.OpenInteractiveCli);
@@ -155,7 +155,7 @@ public sealed class SmartLaunchTests
                 devices: new[] { Authorized() })
         };
 
-        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync();
+        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(SmartLaunchDecision.StartMirror, result.Decision);
         Assert.False(result.OpenInteractiveCli);
@@ -180,7 +180,7 @@ public sealed class SmartLaunchTests
                 devices: new[] { Authorized() })
         };
 
-        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync();
+        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(SmartLaunchDecision.FocusMirror, result.Decision);
         Assert.False(result.OpenInteractiveCli);
@@ -201,7 +201,7 @@ public sealed class SmartLaunchTests
             DefaultStatus = Status()
         };
 
-        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync();
+        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(SmartLaunchDecision.StartAndWaitForDevice, result.Decision);
         Assert.True(result.OpenInteractiveCli);
@@ -221,7 +221,7 @@ public sealed class SmartLaunchTests
                 devices: new[] { Unauthorized() })
         };
 
-        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync();
+        var result = await new SmartLauncher(package.Paths, runner, bridge).RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(SmartLaunchDecision.WaitForDevice, result.Decision);
         Assert.True(result.OpenInteractiveCli);
@@ -240,7 +240,7 @@ public sealed class SmartLaunchTests
         };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new SmartLauncher(package.Paths, runner, bridge).RunAsync());
+            new SmartLauncher(package.Paths, runner, bridge).RunAsync(TestContext.Current.CancellationToken));
 
         Assert.Contains("Could not request", ex.Message);
     }
