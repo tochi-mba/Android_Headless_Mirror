@@ -51,5 +51,16 @@
     "CalibrationFineStepPixels": 1,
     "FallbackToEstimatedGeometry": true,
     "CalibrationDirectory": "pattern-calibration"
+  },
+  "MirrorChrome": {
+    "Enabled": true,
+    "SleepButton": true,
+    "HostZoomEnabled": true,
+    "ZoomStep": 0.25,
+    "MinZoom": 1,
+    "MaxZoom": 4,
+    "ToolbarInsetPixels": 10,
+    "PollMilliseconds": 16,
+    "CtrlWheelZoom": true
   }
 }
