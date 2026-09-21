@@ -34,11 +34,16 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 
 ## Quick start
 
+### Guided REX CLI
+
 1. On the Android device, enable Developer options and USB debugging.
 2. Connect it to the Windows PC by USB.
-3. Run `SETUP_AND_START.bat`.
-4. On the first ADB connection, Android should show **Allow USB debugging?**
-5. Select **Always allow from this computer** and press **Allow**.
+3. Run `REX.bat`.
+4. The REX first-run wizard checks whether scrcpy/ADB are installed, prepares anything missing, asks whether Windows startup should be enabled, discovers connected devices, records the device's lock-screen type, and guides the headless/mirror defaults.
+5. On the first ADB connection, Android should show **Allow USB debugging?**
+6. Select **Always allow from this computer** and press **Allow**.
+
+The classic `SETUP_AND_START.bat` entry point remains available for people who prefer the original script-first setup.
 
 After authorisation, the hidden supervisor stays armed in the background. Connecting any authorised Android phone opens the mirror automatically (normally within the 1-second poll interval). It wakes the device, asks Android to dismiss the keyguard when authentication is not required, then launches scrcpy. If you manually close scrcpy while that phone remains connected, it stays closed until you disconnect and reconnect it.
 
@@ -174,6 +179,75 @@ The toolbar's **Controls** button opens the Windows Control Center for the curre
 The Advanced Android page is intentionally **runtime-driven**. It does not assume that every OEM/version exposes the same keys. Android Headless Mirror asks that phone what keys exist and displays the result.
 
 Some keys are protected by the wrapper (adb_enabled, development_settings_enabled, android_id and device identity fields) because changing them casually could sever the headless recovery path or mutate identity. Other sensitive/advanced changes require confirmation and still surface the exact Android/OEM permission failure if the shell user is not allowed to modify them.
+
+## REX CLI
+
+`REX.bat` is the single terminal entry point. It bootstraps the self-contained Windows CLI and then opens a REX-branded Spectre.Console application.
+
+### First-run wizard
+
+The first run is state-aware instead of showing a fixed questionnaire. REX checks the current package first, then guides only the work that is needed:
+
+- install/verify scrcpy + ADB;
+- choose whether Android Headless Mirror starts at Windows sign-in;
+- discover attached Android devices and explain unauthorized/offline states;
+- choose **Pattern**, **PIN/password/biometric/other**, **No screen lock**, or ask later for the selected device;
+- choose physical-screen-off and USB stay-awake behavior;
+- offer Precision Touchpad gestures when the Windows capability is relevant;
+- choose whether the GUI Control Center opens automatically;
+- optionally start the supervisor immediately.
+
+After setup, the same CLI becomes the day-to-day workspace:
+
+- **Runtime controls** — scrcpy controls plus PC-only host zoom in/out/reset.
+- **PC / mirror settings** — categorized common settings plus an **All settings browser** over every leaf in `config.json`.
+- **Device settings** — friendly Android settings using the same ADB backend as the GUI.
+- **Advanced Android** — live `system`, `secure` and `global` Settings Provider browsing/search/write/delete with protected-key guardrails.
+- **Control Center** — opens the per-device WPF UI without blocking the terminal.
+- **Diagnostics**, **setup/repair**, **Windows startup**, **captures**, persistent **STOP**, and refresh/status.
+
+### Scriptable commands
+
+The interactive app is optional. The same executable supports automation:
+
+```text
+rex status
+rex devices
+rex start
+rex stop
+rex controls --serial USB123
+rex action sleep --serial USB123
+rex mirror zoom-in --serial USB123
+rex mirror reset-zoom --serial USB123
+rex device set brightness 180 --serial USB123
+rex device set animation-scale 0.5 --serial USB123
+rex android list global --filter animation --serial USB123
+rex android get secure some_key --serial USB123
+rex android set system font_scale 1.15 --serial USB123
+rex config list --filter MirrorChrome
+rex config get MaxFps
+rex config set MaxFps 90
+rex config restore
+rex autostart on
+rex screenshot --serial USB123
+rex diagnostics
+```
+
+When exactly one authorized Android device is connected, `--serial` can be omitted. If multiple authorized devices are present, the scripted CLI requires an explicit serial rather than guessing.
+
+### Safe config changes
+
+REX preserves the type of the existing JSON setting when `config set` is used. Before each successful write it keeps the previous valid file as `config.json.rex-backup`. `rex config restore` swaps the current and previous versions, allowing a one-step undo/redo without hand-editing JSON.
+
+### CLI distribution
+
+Release builds publish `rex.exe` as a .NET 8 **self-contained, single-file Windows executable**. `REX.bat`:
+
+1. uses the existing local executable when present;
+2. otherwise looks for `rex-win-x64.zip` plus its SHA-256 checksum in the latest GitHub release and verifies the archive before extraction;
+3. when no matching release asset exists, can build the CLI locally if a .NET 8 SDK is installed.
+
+The PowerShell/ADB/scrcpy implementation remains shared with the GUI; the CLI is a presentation/orchestration layer rather than a second Android-control implementation.
 
 ### Screenshots and recording
 
