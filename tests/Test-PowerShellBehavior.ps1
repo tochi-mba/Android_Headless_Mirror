@@ -249,11 +249,13 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     Assert-Contains -Collection $tcpArgs -Value "--keep-active" -Message "TCP sessions should still receive --keep-active."
 
     $script:Config.PowerOffOnClose = $true
+    $script:Config.KeepActiveDuringMirror = $false
     $script:Config.MaxSize = 0
     $script:Config.MaxFps = 0
     $script:Config.VideoBitRate = ""
     $minimalArgs = @(Build-ScrcpyArguments "USB123" $false)
     Assert-Contains -Collection $minimalArgs -Value "--power-off-on-close" -Message "Enabled power-off-on-close should be emitted."
+    Assert-False -Condition ($minimalArgs -contains "--keep-active") -Message "Disabled KeepActiveDuringMirror should suppress --keep-active."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-fps=*" }).Count -gt 0) -Message "MaxFps=0 should suppress --max-fps."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--video-bit-rate=*" }).Count -gt 0) -Message "Blank bitrate should suppress --video-bit-rate."
