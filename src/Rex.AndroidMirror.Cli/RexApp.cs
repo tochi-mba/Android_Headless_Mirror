@@ -6,16 +6,26 @@ namespace Rex.AndroidMirror.Cli;
 public sealed class RexApp
 {
     private readonly AppPaths _paths;
-    private readonly ProcessRunner _runner;
-    private readonly BridgeClient _bridge;
+    private readonly IProcessRunner _runner;
+    private readonly IBridgeClient _bridge;
     private readonly ConfigStore _config;
+    private readonly IAnsiConsole _console;
+    private readonly bool _pauseEnabled;
 
-    public RexApp(AppPaths paths, ProcessRunner runner, BridgeClient bridge, ConfigStore config)
+    public RexApp(
+        AppPaths paths,
+        IProcessRunner runner,
+        IBridgeClient bridge,
+        ConfigStore config,
+        IAnsiConsole? console = null,
+        bool pauseEnabled = true)
     {
         _paths = paths;
         _runner = runner;
         _bridge = bridge;
         _config = config;
+        _console = console ?? _console.Console;
+        _pauseEnabled = pauseEnabled;
     }
 
     public async Task<int> RunAsync()
@@ -27,8 +37,8 @@ public sealed class RexApp
         }
         catch (Exception ex)
         {
-            RexBrand.Header("RECOVERY");
-            RexBrand.Error(ex.Message);
+            RexBrand.Header(_console, "RECOVERY");
+            RexBrand.Error(_console, ex.Message);
             return 1;
         }
 
@@ -42,10 +52,10 @@ public sealed class RexApp
 
         while (true)
         {
-            RexBrand.Header();
+            RexBrand.Header(_console, );
             RenderStatus(status);
 
-            var choice = AnsiConsole.Prompt(RexBrand.Menu(
+            var choice = _console.Prompt(RexBrand.Menu(
                 "What do you want to do?",
                 new[]
                 {
@@ -107,7 +117,7 @@ public sealed class RexApp
             }
             catch (Exception ex)
             {
-                RexBrand.Error(ex.Message);
+                RexBrand.Error(_console, ex.Message);
                 Pause();
             }
 
@@ -117,7 +127,7 @@ public sealed class RexApp
 
     private async Task<bool> RunOnboardingAsync(RexStatus initial)
     {
-        RexBrand.Header("FIRST RUN");
+        RexBrand.Header(_console, "FIRST RUN");
 
         var table = new Table().Border(TableBorder.Rounded).BorderColor(Color.Parse(RexBrand.Line));
         table.AddColumn("Check");
@@ -126,17 +136,17 @@ public sealed class RexApp
         table.AddRow("ADB", initial.AdbPath.Length > 0 ? "[#D7FF3F]Found[/]" : "[#858D83]Needs setup[/]");
         table.AddRow("scrcpy", initial.ScrcpyPath.Length > 0 ? "[#D7FF3F]Found[/]" : "[#858D83]Needs setup[/]");
         table.AddRow("Windows startup", initial.AutostartEnabled ? "[#D7FF3F]Enabled[/]" : "[#858D83]Not configured[/]");
-        AnsiConsole.Write(RexBrand.Panel("SETUP CHECK", table));
+        _console.Write(RexBrand.Panel("SETUP CHECK", table));
 
-        AnsiConsole.MarkupLine(
+        _console.MarkupLine(
             $"[{RexBrand.Muted}]REX can install/verify scrcpy + ADB, configure startup, discover Android devices and set sane defaults. No administrator rights are requested.[/]");
 
-        if (!AnsiConsole.Confirm("Run guided setup now?", true))
+        if (!_console.Confirm("Run guided setup now?", true))
             return false;
 
         await RunScriptAsync("Installing and verifying Android tools", _paths.Setup, new[] { "-SkipAutostart" });
 
-        var enableAutostart = AnsiConsole.Confirm(
+        var enableAutostart = _console.Confirm(
             "Start Android Headless Mirror automatically when you sign in to Windows?",
             true);
         await SetAutostartAsync(enableAutostart);
@@ -151,36 +161,36 @@ public sealed class RexApp
         }
         else
         {
-            RexBrand.Warn(
+            RexBrand.Warn(_console, 
                 "No authorized Android device is available yet. You can finish setup now; when you connect one, approve USB debugging once and REX will detect it.");
         }
 
-        var turnOff = AnsiConsole.Confirm(
+        var turnOff = _console.Confirm(
             "Keep the physical phone display off while the PC mirror stays active?",
             true);
         _config.Set("TurnPhysicalScreenOff", turnOff.ToString().ToLowerInvariant());
 
-        var stayAwake = AnsiConsole.Confirm(
+        var stayAwake = _console.Confirm(
             "Keep Android awake while USB power is connected?",
             true);
         _config.Set("StayAwakeWhenUsb", stayAwake.ToString().ToLowerInvariant());
 
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
         {
-            var touchpad = AnsiConsole.Confirm(
+            var touchpad = _console.Confirm(
                 "Enable Windows 11 Precision Touchpad gestures when supported?",
                 true);
             _config.Set("MirrorChrome.NativeTouchpadGestures", touchpad.ToString().ToLowerInvariant());
         }
 
-        var openControls = AnsiConsole.Confirm(
+        var openControls = _console.Confirm(
             "Open the GUI Control Center automatically with each mirror?",
             false);
         _config.Set("ControlCenter.OpenOnLaunch", openControls.ToString().ToLowerInvariant());
 
-        RexBrand.Success("Guided setup is complete.");
+        RexBrand.Success(_console, "Guided setup is complete.");
 
-        if (AnsiConsole.Confirm("Start Android Headless Mirror now?", true))
+        if (_console.Confirm("Start Android Headless Mirror now?", true))
             await StartAsync();
 
         Pause();
@@ -190,7 +200,7 @@ public sealed class RexApp
     private async Task<RexStatus> GetStatusWithSpinnerAsync()
     {
         RexStatus? status = null;
-        await AnsiConsole.Status()
+        await _console.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse(RexBrand.Signal))
             .StartAsync("Checking Android Headless Mirror...", async _ =>
@@ -201,7 +211,7 @@ public sealed class RexApp
         return status ?? throw new InvalidOperationException("Could not read package status.");
     }
 
-    private static void RenderStatus(RexStatus status)
+    private void RenderStatus(RexStatus status)
     {
         var device = status.Devices.FirstOrDefault(x => x.State == "device");
         var grid = new Grid();
@@ -218,7 +228,7 @@ public sealed class RexApp
         else
             grid.AddRow("[#858D83]DEVICE[/]", Markup.Escape(RexBrand.DeviceLabel(device)));
 
-        AnsiConsole.Write(RexBrand.Panel("STATUS", grid));
+        _console.Write(RexBrand.Panel("STATUS", grid));
     }
 
     private async Task StartAsync()
@@ -227,14 +237,14 @@ public sealed class RexApp
             File.Delete(_paths.StopFlag);
 
         await _runner.OpenAsync(_paths.StartBatch, _paths.Root);
-        RexBrand.Success("Supervisor start requested. Connect any authorized Android device and the mirror will open automatically.");
+        RexBrand.Success(_console, "Supervisor start requested. Connect any authorized Android device and the mirror will open automatically.");
         Pause();
     }
 
     private async Task StopAsync()
     {
         await RunScriptAsync("Stopping Android Headless Mirror", _paths.Stop);
-        RexBrand.Success("Persistent OFF is active. Startup will not resurrect the mirror until you start it again.");
+        RexBrand.Success(_console, "Persistent OFF is active. Startup will not resurrect the mirror until you start it again.");
         Pause();
     }
 
@@ -278,8 +288,8 @@ public sealed class RexApp
 
         while (true)
         {
-            RexBrand.Header($"CONTROLS · {device.DisplayName}");
-            var choice = AnsiConsole.Prompt(RexBrand.Menu(
+            RexBrand.Header(_console, $"CONTROLS · {device.DisplayName}");
+            var choice = _console.Prompt(RexBrand.Menu(
                 "Runtime mirror action",
                 actions.Keys.Concat(new[] { "Back" })));
 
@@ -290,7 +300,7 @@ public sealed class RexApp
                 serial: device.Serial,
                 name: actions[choice]);
 
-            RexBrand.Success($"Sent {choice}.");
+            RexBrand.Success(_console, $"Sent {choice}.");
             await Task.Delay(180);
         }
     }
@@ -299,8 +309,8 @@ public sealed class RexApp
     {
         while (true)
         {
-            RexBrand.Header("PC / MIRROR SETTINGS");
-            var choice = AnsiConsole.Prompt(RexBrand.Menu(
+            RexBrand.Header(_console, "PC / MIRROR SETTINGS");
+            var choice = _console.Prompt(RexBrand.Menu(
                 "Settings",
                 new[]
                 {
@@ -344,16 +354,16 @@ public sealed class RexApp
     {
         if (rows.Count == 0)
         {
-            RexBrand.Warn("No settings matched this category.");
+            RexBrand.Warn(_console, "No settings matched this category.");
             Pause();
             return;
         }
 
         while (true)
         {
-            RexBrand.Header("SETTINGS");
+            RexBrand.Header(_console, "SETTINGS");
             var labels = rows.Select(x => $"{x.Path} = {x.Value}").ToArray();
-            var choice = AnsiConsole.Prompt(RexBrand.Menu(
+            var choice = _console.Prompt(RexBrand.Menu(
                 "Choose a setting",
                 labels.Concat(new[] { "Back" })));
 
@@ -363,19 +373,19 @@ public sealed class RexApp
             var leaf = rows[index];
             var current = _config.Get(leaf.Path);
 
-            var value = AnsiConsole.Ask(
+            var value = _console.Ask(
                 $"New value for [#D7FF3F]{Markup.Escape(leaf.Path)}[/] ([#858D83]{Markup.Escape(current.Value)}[/]):",
                 current.Value);
 
             try
             {
                 _config.Set(leaf.Path, value);
-                RexBrand.Success($"{leaf.Path} saved.");
+                RexBrand.Success(_console, $"{leaf.Path} saved.");
                 rows = _config.Flatten().Where(x => rows.Any(old => old.Path == x.Path)).ToArray();
             }
             catch (Exception ex)
             {
-                RexBrand.Error(ex.Message);
+                RexBrand.Error(_console, ex.Message);
                 Pause();
             }
 
@@ -390,8 +400,8 @@ public sealed class RexApp
 
         while (true)
         {
-            RexBrand.Header($"DEVICE SETTINGS · {device.DisplayName}");
-            var choice = AnsiConsole.Prompt(RexBrand.Menu(
+            RexBrand.Header(_console, $"DEVICE SETTINGS · {device.DisplayName}");
+            var choice = _console.Prompt(RexBrand.Menu(
                 "Android setting",
                 new[]
                 {
@@ -424,7 +434,7 @@ public sealed class RexApp
             if (choice == "Save screenshot")
             {
                 using var shot = await _bridge.InvokeAsync("screenshot", serial: device.Serial);
-                RexBrand.Success(shot.RootElement.TryGetProperty("Path", out var p) ? p.GetString() ?? "Screenshot saved." : "Screenshot saved.");
+                RexBrand.Success(_console, shot.RootElement.TryGetProperty("Path", out var p) ? p.GetString() ?? "Screenshot saved." : "Screenshot saved.");
                 Pause();
                 continue;
             }
@@ -439,30 +449,30 @@ public sealed class RexApp
             var text = result.RootElement.TryGetProperty("Text", out var node)
                 ? node.GetString() ?? "Updated."
                 : "Updated.";
-            RexBrand.Success(text);
+            RexBrand.Success(_console, text);
             Pause();
         }
     }
 
-    private static (string Id, string Value) PromptFriendlySetting(string choice)
+    private (string Id, string Value) PromptFriendlySetting(string choice)
     {
         return choice switch
         {
-            "Brightness" => ("brightness", AnsiConsole.Ask("Brightness 1-255:", 128).ToString()),
+            "Brightness" => ("brightness", _console.Ask("Brightness 1-255:", 128).ToString()),
             "Brightness mode" => ("brightness-mode", Pick("Mode", ("Manual", "0"), ("Automatic", "1"))),
             "Screen timeout" => ("screen-timeout-ms", Pick("Timeout", ("15 seconds", "15000"), ("30 seconds", "30000"), ("1 minute", "60000"), ("2 minutes", "120000"), ("5 minutes", "300000"), ("10 minutes", "600000"), ("30 minutes", "1800000"))),
-            "Auto rotate" => ("auto-rotate", AnsiConsole.Confirm("Enable auto rotate?", true) ? "1" : "0"),
+            "Auto rotate" => ("auto-rotate", _console.Confirm("Enable auto rotate?", true) ? "1" : "0"),
             "Fixed rotation" => ("user-rotation", Pick("Rotation", ("0 degrees", "0"), ("90 degrees", "1"), ("180 degrees", "2"), ("270 degrees", "3"))),
             "Font scale" => ("font-scale", Pick("Font scale", ("Small 0.85x", "0.85"), ("Default 1.0x", "1.0"), ("Large 1.15x", "1.15"), ("Extra large 1.30x", "1.30"))),
-            "Show physical touches" => ("show-touches", AnsiConsole.Confirm("Show Android touch indicators?") ? "1" : "0"),
-            "Stay awake while plugged in" => ("stay-awake", AnsiConsole.Confirm("Stay awake on all charging sources?", true) ? "7" : "0"),
+            "Show physical touches" => ("show-touches", _console.Confirm("Show Android touch indicators?") ? "1" : "0"),
+            "Stay awake while plugged in" => ("stay-awake", _console.Confirm("Stay awake on all charging sources?", true) ? "7" : "0"),
             "Animation speed" => ("animation-window", Pick("Animation scale", ("Off", "0"), ("Fast 0.5x", "0.5"), ("Default 1x", "1"), ("Slow 1.5x", "1.5"))),
             "Dark mode" => ("dark-mode", Pick("Theme", ("Automatic", "auto"), ("Light", "no"), ("Dark", "yes"))),
             "Wi-Fi" => ("wifi", Pick("Wi-Fi", ("Enable", "enable"), ("Disable", "disable"))),
             "Mobile data" => ("mobile-data", Pick("Mobile data", ("Enable", "enable"), ("Disable", "disable"))),
             "Airplane mode" => ("airplane-mode", Pick("Airplane mode", ("Enable", "enable"), ("Disable", "disable"))),
-            "Display size override" => ("wm-size", AnsiConsole.Ask("Size (for example 1080x2400, or reset):", "reset")),
-            "Display density override" => ("wm-density", AnsiConsole.Ask("Density 120-1000, or reset:", "reset")),
+            "Display size override" => ("wm-size", _console.Ask("Size (for example 1080x2400, or reset):", "reset")),
+            "Display density override" => ("wm-density", _console.Ask("Density 120-1000, or reset:", "reset")),
             _ => throw new InvalidOperationException($"Unknown setting '{choice}'."),
         };
     }
@@ -474,14 +484,14 @@ public sealed class RexApp
 
         while (true)
         {
-            RexBrand.Header($"ADVANCED ANDROID · {device.DisplayName}");
-            var ns = AnsiConsole.Prompt(RexBrand.Menu(
+            RexBrand.Header(_console, $"ADVANCED ANDROID · {device.DisplayName}");
+            var ns = _console.Prompt(RexBrand.Menu(
                 "Settings Provider namespace",
                 new[] { "system", "secure", "global", "Back" }));
             if (ns == "Back") return;
 
             var rows = await _bridge.ListAndroidSettingsAsync(device.Serial, ns);
-            var filter = AnsiConsole.Ask("Filter key/value (leave blank for all):", string.Empty);
+            var filter = _console.Ask("Filter key/value (leave blank for all):", string.Empty);
             var filtered = rows
                 .Where(x => string.IsNullOrWhiteSpace(filter) ||
                             x.Key.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
@@ -491,43 +501,43 @@ public sealed class RexApp
 
             if (filtered.Length == 0)
             {
-                RexBrand.Warn("No settings matched.");
+                RexBrand.Warn(_console, "No settings matched.");
                 Pause();
                 continue;
             }
 
             var labels = filtered.Select(x => $"{x.Key} = {x.Value} [{x.Risk}]").ToArray();
-            var selected = AnsiConsole.Prompt(RexBrand.Menu(
+            var selected = _console.Prompt(RexBrand.Menu(
                 $"{ns} settings",
                 labels.Concat(new[] { "Back" })));
             if (selected == "Back") continue;
 
             var row = filtered[Array.IndexOf(labels, selected)];
-            var action = AnsiConsole.Prompt(RexBrand.Menu(
+            var action = _console.Prompt(RexBrand.Menu(
                 row.Key,
                 new[] { "Change value", "Delete key", "Back" }));
             if (action == "Back") continue;
 
             if (row.Risk == "protected")
             {
-                RexBrand.Warn("REX protects this key because changing it can break ADB recovery or device identity.");
+                RexBrand.Warn(_console, "REX protects this key because changing it can break ADB recovery or device identity.");
                 Pause();
                 continue;
             }
 
-            if (!AnsiConsole.Confirm($"Apply {action.ToLowerInvariant()} to {ns}/{row.Key}?", false))
+            if (!_console.Confirm($"Apply {action.ToLowerInvariant()} to {ns}/{row.Key}?", false))
                 continue;
 
             if (action == "Change value")
             {
-                var newValue = AnsiConsole.Ask("New value:", row.Value);
+                var newValue = _console.Ask("New value:", row.Value);
                 using var result = await _bridge.InvokeAsync(
                     "settings-set",
                     serial: device.Serial,
                     ns: ns,
                     key: row.Key,
                     value: newValue);
-                RexBrand.Success("Android setting write completed.");
+                RexBrand.Success(_console, "Android setting write completed.");
             }
             else
             {
@@ -536,7 +546,7 @@ public sealed class RexApp
                     serial: device.Serial,
                     ns: ns,
                     key: row.Key);
-                RexBrand.Success("Android setting delete completed.");
+                RexBrand.Success(_console, "Android setting delete completed.");
             }
 
             Pause();
@@ -561,15 +571,15 @@ public sealed class RexApp
             _paths.Root,
             captureOutput: false);
 
-        RexBrand.Success($"Control Center opened for {device.DisplayName}.");
+        RexBrand.Success(_console, $"Control Center opened for {device.DisplayName}.");
     }
 
     private async Task DiagnosticsAsync()
     {
-        RexBrand.Header("DIAGNOSTICS");
+        RexBrand.Header(_console, "DIAGNOSTICS");
         var result = await _runner.RunPowerShellAsync(_paths.Diagnostics);
         var body = string.IsNullOrWhiteSpace(result.StdOut) ? result.StdErr : result.StdOut;
-        AnsiConsole.Write(RexBrand.Panel("SYSTEM REPORT", new Text(body.Trim())));
+        _console.Write(RexBrand.Panel("SYSTEM REPORT", new Text(body.Trim())));
         Pause();
     }
 
@@ -578,14 +588,14 @@ public sealed class RexApp
         var autostart = before.AutostartEnabled;
         await RunScriptAsync("Verifying / repairing scrcpy and ADB", _paths.Setup, new[] { "-SkipAutostart" });
         await SetAutostartAsync(autostart);
-        RexBrand.Success("Repair completed without changing your startup preference.");
+        RexBrand.Success(_console, "Repair completed without changing your startup preference.");
         Pause();
     }
 
     private async Task AutostartAsync()
     {
         var status = await _bridge.GetStatusAsync();
-        var choice = AnsiConsole.Prompt(RexBrand.Menu(
+        var choice = _console.Prompt(RexBrand.Menu(
             $"Windows startup is currently {(status.AutostartEnabled ? "enabled" : "disabled")}",
             new[] { "Enable", "Disable", "Back" }));
 
@@ -599,12 +609,12 @@ public sealed class RexApp
         await RunScriptAsync(
             enabled ? "Enabling Windows startup" : "Disabling Windows startup",
             enabled ? _paths.InstallAutostart : _paths.RemoveAutostart);
-        RexBrand.Success(enabled ? "Windows startup enabled." : "Windows startup disabled.");
+        RexBrand.Success(_console, enabled ? "Windows startup enabled." : "Windows startup disabled.");
     }
 
     private async Task CapturesAsync()
     {
-        var choice = AnsiConsole.Prompt(RexBrand.Menu(
+        var choice = _console.Prompt(RexBrand.Menu(
             "Captures",
             new[] { "Save screenshot now", "Open captures folder", "Back" }));
 
@@ -624,13 +634,13 @@ public sealed class RexApp
         var path = shot.RootElement.TryGetProperty("Path", out var p)
             ? p.GetString() ?? "Screenshot saved."
             : "Screenshot saved.";
-        RexBrand.Success(path);
+        RexBrand.Success(_console, path);
         Pause();
     }
 
     private async Task ConfigureLockScreenAsync(RexDevice device)
     {
-        var choice = AnsiConsole.Prompt(RexBrand.Menu(
+        var choice = _console.Prompt(RexBrand.Menu(
             $"Unlock method for {device.DisplayName}",
             new[]
             {
@@ -660,7 +670,7 @@ public sealed class RexApp
             "set-lock-mode",
             serial: device.Serial,
             value: mode);
-        RexBrand.Success($"Saved lock-screen mode: {mode}.");
+        RexBrand.Success(_console, $"Saved lock-screen mode: {mode}.");
     }
 
     private async Task<IReadOnlyList<RexDevice>> WaitForDevicesAsync()
@@ -668,11 +678,11 @@ public sealed class RexApp
         var devices = await _bridge.GetDevicesAsync();
         if (devices.Count > 0) return devices;
 
-        if (!AnsiConsole.Confirm("No Android device is detected. Wait for a USB device now?", true))
+        if (!_console.Confirm("No Android device is detected. Wait for a USB device now?", true))
             return devices;
 
         var deadline = DateTime.UtcNow.AddSeconds(45);
-        await AnsiConsole.Status()
+        await _console.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse(RexBrand.Signal))
             .StartAsync("Waiting for Android device...", async ctx =>
@@ -698,12 +708,12 @@ public sealed class RexApp
             var unauthorized = devices.FirstOrDefault(x => x.State == "unauthorized");
             if (unauthorized is not null)
             {
-                RexBrand.Warn(
+                RexBrand.Warn(_console, 
                     $"Android device {unauthorized.Serial} is connected but not authorized. Unlock it once, approve 'Allow USB debugging', and select 'Always allow from this computer'.");
             }
             else
             {
-                RexBrand.Warn("No authorized Android device is currently connected.");
+                RexBrand.Warn(_console, "No authorized Android device is currently connected.");
             }
             Pause();
             return null;
@@ -712,12 +722,12 @@ public sealed class RexApp
         return ChooseDevice(authorized, "Choose Android device");
     }
 
-    private static RexDevice ChooseDevice(IReadOnlyList<RexDevice> devices, string title)
+    private RexDevice ChooseDevice(IReadOnlyList<RexDevice> devices, string title)
     {
         if (devices.Count == 1) return devices[0];
 
         var labels = devices.Select(RexBrand.DeviceLabel).ToArray();
-        var selected = AnsiConsole.Prompt(RexBrand.Menu(title, labels));
+        var selected = _console.Prompt(RexBrand.Menu(title, labels));
         return devices[Array.IndexOf(labels, selected)];
     }
 
@@ -728,7 +738,7 @@ public sealed class RexApp
     {
         ProcessResult? result = null;
 
-        await AnsiConsole.Status()
+        await _console.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse(RexBrand.Signal))
             .StartAsync(label + "...", async _ =>
@@ -746,15 +756,16 @@ public sealed class RexApp
         }
     }
 
-    private static string Pick(string title, params (string Label, string Value)[] options)
+    private string Pick(string title, params (string Label, string Value)[] options)
     {
-        var choice = AnsiConsole.Prompt(RexBrand.Menu(title, options.Select(x => x.Label)));
+        var choice = _console.Prompt(RexBrand.Menu(title, options.Select(x => x.Label)));
         return options.First(x => x.Label == choice).Value;
     }
 
-    private static void Pause()
+    private void Pause()
     {
-        AnsiConsole.MarkupLine($"[{RexBrand.Muted}]Press Enter to continue...[/]");
+        if (!_pauseEnabled) return;
+        _console.MarkupLine($"[{RexBrand.Muted}]Press Enter to continue...[/]");
         Console.ReadLine();
     }
 }
