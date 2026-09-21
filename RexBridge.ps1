@@ -36,7 +36,7 @@ $StopPath = Join-Path $Root "stop.flag"
 . (Join-Path $Root "DeviceControl.ps1")
 . (Join-Path $Root "ScrcpyControl.ps1")
 
-function Find-RexTool([string]$ToolName) {
+function Find-RexPackagedTool([string]$ToolName) {
     if ($ToolName -eq "adb.exe" -and -not [string]::IsNullOrWhiteSpace($env:REX_ADB_PATH)) {
         if (Test-Path $env:REX_ADB_PATH) { return $env:REX_ADB_PATH }
     }
@@ -45,12 +45,20 @@ function Find-RexTool([string]$ToolName) {
     }
 
     $base = Join-Path $Root "tools\scrcpy"
+    if (-not (Test-Path $base)) { return $null }
 
-    if (Test-Path $base) {
-        $tool = Get-ChildItem -Path $base -Filter $ToolName -File -Recurse -ErrorAction SilentlyContinue |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1
-        if ($tool) { return $tool.FullName }
+    $tool = Get-ChildItem -Path $base -Filter $ToolName -File -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1
+
+    if ($tool) { return $tool.FullName }
+    return $null
+}
+
+function Find-RexTool([string]$ToolName) {
+    $packaged = Find-RexPackagedTool $ToolName
+    if (-not [string]::IsNullOrWhiteSpace([string]$packaged)) {
+        return $packaged
     }
 
     $command = Get-Command $ToolName -ErrorAction SilentlyContinue
@@ -59,10 +67,13 @@ function Find-RexTool([string]$ToolName) {
     return $null
 }
 
-function Get-AdbRows([string]$Adb) {
+function Get-AdbRows([string]$Adb, [switch]$StartServer) {
     if ([string]::IsNullOrWhiteSpace($Adb)) { return @() }
 
-    & $Adb start-server 2>$null | Out-Null
+    if ($StartServer) {
+        & $Adb start-server 2>$null | Out-Null
+    }
+
     $rows = @()
 
     foreach ($line in @(& $Adb devices -l 2>&1)) {
@@ -97,6 +108,10 @@ function Get-AdbRows([string]$Adb) {
     }
 
     return @($rows)
+}
+
+function Test-AdbServerAlreadyRunning {
+    return ($null -ne (Get-Process -Name "adb" -ErrorAction SilentlyContinue | Select-Object -First 1))
 }
 
 function Get-PackageProcess([string]$ProcessName, [string]$Needle) {
@@ -191,21 +206,28 @@ try {
 
     switch ($Action) {
         "status" {
-            $adb = Find-RexTool "adb.exe"
-            $scrcpy = Find-RexTool "scrcpy.exe"
+            # Status is intentionally observational. It reports only tools owned by
+            # this package (or explicit test overrides) and never starts an ADB daemon.
+            $adb = Find-RexPackagedTool "adb.exe"
+            $scrcpy = Find-RexPackagedTool "scrcpy.exe"
             $supervisor = Get-PackageProcess "powershell.exe" "Start-PhoneMirror.ps1"
             if (-not $supervisor) {
                 $supervisor = Get-PackageProcess "pwsh.exe" "Start-PhoneMirror.ps1"
             }
 
             $mirror = Get-Process -Name "scrcpy" -ErrorAction SilentlyContinue | Select-Object -First 1
-            $devices = if ($adb) { @(Get-AdbRows $adb) } else { @() }
+            $explicitAdb = -not [string]::IsNullOrWhiteSpace($env:REX_ADB_PATH)
+            $canObserveDevices = (
+                -not [string]::IsNullOrWhiteSpace([string]$adb) -and
+                ($explicitAdb -or (Test-AdbServerAlreadyRunning))
+            )
+            $devices = if ($canObserveDevices) { @(Get-AdbRows $adb) } else { @() }
 
             $result = [pscustomobject]@{
                 Ok = $true
                 Root = $Root
                 ConfigPresent = (Test-Path $ConfigPath)
-                SetupComplete = (-not [string]::IsNullOrWhiteSpace($adb) -and -not [string]::IsNullOrWhiteSpace($scrcpy))
+                SetupComplete = (-not [string]::IsNullOrWhiteSpace([string]$adb) -and -not [string]::IsNullOrWhiteSpace([string]$scrcpy))
                 AdbPath = [string]$adb
                 ScrcpyPath = [string]$scrcpy
                 AutostartEnabled = (Get-AutostartState)
@@ -220,7 +242,7 @@ try {
             $adb = Require-Adb
             $result = [pscustomobject]@{
                 Ok = $true
-                Devices = @(Get-AdbRows $adb)
+                Devices = @(Get-AdbRows $adb -StartServer)
             }
         }
 
