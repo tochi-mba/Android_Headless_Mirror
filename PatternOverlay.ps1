@@ -401,18 +401,18 @@ $window.Hide()
 
 $hotkey = Get-HotkeySpec ([string]$OverlayConfig.ManualToggleHotkey)
 $displaySize = Get-DeviceDisplaySize
-$targetHwnd = [IntPtr]::Zero
-$targetSeen = $false
-$missingSince = $null
-$lastWindowPoll = [DateTime]::MinValue
-$lastKeyguardPoll = [DateTime]::MinValue
-$keyguardState = "unknown"
-$manualOverride = $null
-$manualOverrideUntil = [DateTime]::MinValue
-$hotkeyWasDown = $false
-$leftWasDown = $false
-$trailClearAt = [DateTime]::MinValue
-$lastBoundsKey = ""
+$script:targetHwnd = [IntPtr]::Zero
+$script:targetSeen = $false
+$script:missingSince = $null
+$script:lastWindowPoll = [DateTime]::MinValue
+$script:lastKeyguardPoll = [DateTime]::MinValue
+$script:keyguardState = "unknown"
+$script:manualOverride = $null
+$script:manualOverrideUntil = [DateTime]::MinValue
+$script:hotkeyWasDown = $false
+$script:leftWasDown = $false
+$script:trailClearAt = [DateTime]::MinValue
+$script:lastBoundsKey = ""
 
 function Update-Grid {
     $canvas.Children.Clear()
@@ -456,19 +456,19 @@ $timer.Interval = [TimeSpan]::FromMilliseconds([Math]::Max(12, [int]$OverlayConf
 $timer.Add_Tick({
     $now = Get-Date
 
-    if (($now - $lastWindowPoll).TotalMilliseconds -ge [int]$OverlayConfig.WindowPollMilliseconds) {
-        $lastWindowPoll = $now
+    if (($now - $script:lastWindowPoll).TotalMilliseconds -ge [int]$OverlayConfig.WindowPollMilliseconds) {
+        $script:lastWindowPoll = $now
 
-        if ($targetHwnd -eq [IntPtr]::Zero -or -not [AHMOverlayNative]::IsWindow($targetHwnd)) {
-            $targetHwnd = [AHMOverlayNative]::FindWindowByExactTitle($WindowTitle)
+        if ($script:targetHwnd -eq [IntPtr]::Zero -or -not [AHMOverlayNative]::IsWindow($script:targetHwnd)) {
+            $script:targetHwnd = [AHMOverlayNative]::FindWindowByExactTitle($WindowTitle)
         }
 
-        if ($targetHwnd -ne [IntPtr]::Zero -and [AHMOverlayNative]::IsWindow($targetHwnd)) {
-            $targetSeen = $true
-            $missingSince = $null
+        if ($script:targetHwnd -ne [IntPtr]::Zero -and [AHMOverlayNative]::IsWindow($script:targetHwnd)) {
+            $script:targetSeen = $true
+            $script:missingSince = $null
 
             $rect = New-Object AHMOverlayNative+RECT
-            if ([AHMOverlayNative]::TryGetClientScreenRect($targetHwnd, [ref]$rect)) {
+            if ([AHMOverlayNative]::TryGetClientScreenRect($script:targetHwnd, [ref]$rect)) {
                 $width = [Math]::Max(1, $rect.Right - $rect.Left)
                 $height = [Math]::Max(1, $rect.Bottom - $rect.Top)
 
@@ -483,17 +483,17 @@ $timer.Add_Tick({
                 ) | Out-Null
 
                 $boundsKey = "$($rect.Left),$($rect.Top),$width,$height,$($canvas.ActualWidth),$($canvas.ActualHeight)"
-                if ($boundsKey -ne $lastBoundsKey -and $canvas.ActualWidth -gt 0 -and $canvas.ActualHeight -gt 0) {
-                    $lastBoundsKey = $boundsKey
+                if ($boundsKey -ne $script:lastBoundsKey -and $canvas.ActualWidth -gt 0 -and $canvas.ActualHeight -gt 0) {
+                    $script:lastBoundsKey = $boundsKey
                     Update-Grid
                 }
             }
         }
-        elseif ($targetSeen) {
-            if ($null -eq $missingSince) {
-                $missingSince = $now
+        elseif ($script:targetSeen) {
+            if ($null -eq $script:missingSince) {
+                $script:missingSince = $now
             }
-            elseif (($now - $missingSince).TotalMilliseconds -gt 3000) {
+            elseif (($now - $script:missingSince).TotalMilliseconds -gt 3000) {
                 $timer.Stop()
                 $window.Close()
                 return
@@ -501,42 +501,42 @@ $timer.Add_Tick({
         }
     }
 
-    if (($now - $lastKeyguardPoll).TotalMilliseconds -ge [int]$OverlayConfig.KeyguardPollMilliseconds) {
-        $lastKeyguardPoll = $now
+    if (($now - $script:lastKeyguardPoll).TotalMilliseconds -ge [int]$OverlayConfig.KeyguardPollMilliseconds) {
+        $script:lastKeyguardPoll = $now
         if ($OverlayConfig.AutoShowOnKeyguard) {
-            $keyguardState = Get-KeyguardState
-            if ($keyguardState -eq "unlocked") {
-                $manualOverride = $null
+            $script:keyguardState = Get-KeyguardState
+            if ($script:keyguardState -eq "unlocked") {
+                $script:manualOverride = $null
             }
         }
     }
 
     $foreground = (
-        $targetHwnd -ne [IntPtr]::Zero -and
-        [AHMOverlayNative]::GetForegroundWindow() -eq $targetHwnd
+        $script:targetHwnd -ne [IntPtr]::Zero -and
+        [AHMOverlayNative]::GetForegroundWindow() -eq $script:targetHwnd
     )
 
     $hotkeyDown = $foreground -and (Test-HotkeyDown $hotkey)
-    if ($hotkeyDown -and -not $hotkeyWasDown) {
+    if ($hotkeyDown -and -not $script:hotkeyWasDown) {
         $currentlyVisible = $window.IsVisible
-        $manualOverride = -not $currentlyVisible
-        $manualOverrideUntil = $now.AddSeconds([Math]::Max(5, [int]$OverlayConfig.ManualShowSeconds))
+        $script:manualOverride = -not $currentlyVisible
+        $script:manualOverrideUntil = $now.AddSeconds([Math]::Max(5, [int]$OverlayConfig.ManualShowSeconds))
     }
-    $hotkeyWasDown = $hotkeyDown
+    $script:hotkeyWasDown = $hotkeyDown
 
-    if ($null -ne $manualOverride -and $now -gt $manualOverrideUntil) {
-        $manualOverride = $null
+    if ($null -ne $script:manualOverride -and $now -gt $script:manualOverrideUntil) {
+        $script:manualOverride = $null
     }
 
-    $autoVisible = ($OverlayConfig.AutoShowOnKeyguard -and $keyguardState -eq "locked")
-    if ($null -ne $manualOverride) {
-        $shouldShow = [bool]$manualOverride
+    $autoVisible = ($OverlayConfig.AutoShowOnKeyguard -and $script:keyguardState -eq "locked")
+    if ($null -ne $script:manualOverride) {
+        $shouldShow = [bool]$script:manualOverride
     }
     else {
         $shouldShow = [bool]$autoVisible
     }
 
-    $shouldShow = $shouldShow -and $foreground -and $targetHwnd -ne [IntPtr]::Zero
+    $shouldShow = $shouldShow -and $foreground -and $script:targetHwnd -ne [IntPtr]::Zero
 
     if ($shouldShow) {
         if (-not $window.IsVisible) {
@@ -565,7 +565,7 @@ $timer.Add_Tick({
             $cursor = New-Object AHMOverlayNative+POINT
             if ([AHMOverlayNative]::GetCursorPos([ref]$cursor)) {
                 $rect = New-Object AHMOverlayNative+RECT
-                if ([AHMOverlayNative]::TryGetClientScreenRect($targetHwnd, [ref]$rect)) {
+                if ([AHMOverlayNative]::TryGetClientScreenRect($script:targetHwnd, [ref]$rect)) {
                     $physicalWidth = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
                     $physicalHeight = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
                     $scaleX = $canvas.ActualWidth / $physicalWidth
@@ -580,14 +580,14 @@ $timer.Add_Tick({
                 }
             }
         }
-        elseif ($leftWasDown) {
-            $trailClearAt = $now.AddMilliseconds([Math]::Max(0, [int]$OverlayConfig.TrailHoldMilliseconds))
+        elseif ($script:leftWasDown) {
+            $script:trailClearAt = $now.AddMilliseconds([Math]::Max(0, [int]$OverlayConfig.TrailHoldMilliseconds))
         }
-        elseif ($trail.Points.Count -gt 0 -and $now -ge $trailClearAt) {
+        elseif ($trail.Points.Count -gt 0 -and $now -ge $script:trailClearAt) {
             $trail.Points.Clear()
         }
 
-        $leftWasDown = $leftDown
+        $script:leftWasDown = $leftDown
     }
 })
 
