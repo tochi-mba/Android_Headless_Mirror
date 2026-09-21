@@ -565,11 +565,10 @@ public sealed class RexApp
             "-Serial", device.Serial,
         };
 
-        _ = await _runner.RunAsync(
+        _ = await _runner.StartDetachedAsync(
             "powershell.exe",
             args,
-            _paths.Root,
-            captureOutput: false);
+            _paths.Root);
 
         RexBrand.Success(_console, $"Control Center opened for {device.DisplayName}.");
     }
