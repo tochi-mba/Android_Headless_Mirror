@@ -20,7 +20,7 @@ public sealed class WindowsDisplayHostProbeTests
                 "Wireless Display Supported: Yes (Graphics Driver: Yes, Wi-Fi Driver: Yes)",
                 ""));
 
-        var result = await new WindowsDisplayHostProbe(runner, "C:\\test").ProbeAsync();
+        var result = await new WindowsDisplayHostProbe(runner, "C:\\test").ProbeAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result.WirelessDisplayFeature);
     }
@@ -37,7 +37,7 @@ public sealed class WindowsDisplayHostProbeTests
             new ProcessResult(0, "Installed", ""),
             new ProcessResult(0, driverOutput, ""));
 
-        var result = await new WindowsDisplayHostProbe(runner, "C:\\test").ProbeAsync();
+        var result = await new WindowsDisplayHostProbe(runner, "C:\\test").ProbeAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result.MiracastReceive);
     }
@@ -49,7 +49,7 @@ public sealed class WindowsDisplayHostProbeTests
             new ProcessResult(1, "", "access denied"),
             new ProcessResult(1, "", "no wlan"));
 
-        var result = await new WindowsDisplayHostProbe(runner, "C:\\test").ProbeAsync();
+        var result = await new WindowsDisplayHostProbe(runner, "C:\\test").ProbeAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(CapabilityState.Unknown, result.WirelessDisplayFeature);
         Assert.Equal(CapabilityState.Unknown, result.MiracastReceive);
@@ -61,7 +61,7 @@ public sealed class WindowsDisplayHostProbeTests
         var runner = new QueueProcessRunner();
         var probe = new WindowsDisplayHostProbe(runner, "C:\\test");
 
-        var code = await probe.OpenReceiverSetupAsync();
+        var code = await probe.OpenReceiverSetupAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(0, code);
         Assert.Equal("ms-settings:project", runner.OpenedTarget);
