@@ -146,10 +146,6 @@ if ([string]::IsNullOrWhiteSpace([string]$adb)) {
 
 $WindowTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
 
-Add-Type -AssemblyName PresentationFramework
-Add-Type -AssemblyName PresentationCore
-Add-Type -AssemblyName WindowsBase
-
 $nativeSource = @'
 using System;
 using System.Runtime.InteropServices;
@@ -313,6 +309,10 @@ try {
     [AHMOverlayNative]::SetProcessDpiAwarenessContext([IntPtr](-4)) | Out-Null
 }
 catch {}
+
+Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName PresentationCore
+Add-Type -AssemblyName WindowsBase
 
 function Get-DeviceDisplaySize {
     try {
