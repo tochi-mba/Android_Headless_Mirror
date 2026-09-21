@@ -993,15 +993,24 @@ class RepositoryContractTests(unittest.TestCase):
         agents = self.read("AGENTS.md")
         rex_bat = self.read("REX.bat")
         bootstrap = self.read("Bootstrap-RexCli.ps1")
+
+        self.assertIn('"agent"', program)
         self.assertIn('"--plain"', program)
         self.assertIn('"--json"', program)
+        self.assertIn("GetMachineArgs", program)
         self.assertIn("ProtocolVersion = 1", machine)
         self.assertIn("non-interactive-json", machine)
         self.assertIn("exactly one JSON document", agents)
-        self.assertIn("--json capabilities", agents)
+        self.assertIn("REX.bat agent capabilities", agents)
+        self.assertIn("REX.bat status --json", agents)
         self.assertIn("REX_BOOTSTRAP_QUIET", rex_bat)
+        self.assertIn('if /I "%~1"=="agent"', rex_bat)
+        self.assertIn("for %%A in (%*)", rex_bat)
         self.assertIn("-Quiet", rex_bat)
         self.assertIn("[switch]$Quiet", bootstrap)
+
+        # Keep one machine contract. Do not let a second agent implementation drift.
+        self.assertFalse((ROOT / "src/Rex.AndroidMirror.Cli/AgentCli.cs").exists())
 
     def test_rex_smart_desktop_shortcut_is_first_class_and_state_driven(self):
         install = self.read("Install-Rex-Shortcut.ps1")
