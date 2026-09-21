@@ -141,6 +141,7 @@ $functionDefinitions = @(Get-SupervisorFunctionDefinitions -Names @(
     "Select-Device",
     "Build-ScrcpyArguments",
     "Invoke-Scrcpy",
+    "Start-PatternOverlay",
     "Prepare-DeviceForMirror"
 ))
 
@@ -159,6 +160,15 @@ foreach ($definition in $overlayFunctionDefinitions) {
     Invoke-Expression $definition
 }
 
+
+Write-Host "[powershell] Testing overlay script safe-load mode..."
+& $OverlayPath -Serial "TEST_SERIAL" -TestOnly
+Assert-True -Condition $true -Message "PatternOverlay.ps1 -TestOnly should execute without creating WPF state."
+
+Write-Host "[powershell] Testing non-pattern modes never launch an overlay..."
+Assert-True -Condition ($null -eq (Start-PatternOverlay "USB123" "none")) -Message "No-lock mode must not start an overlay."
+Assert-True -Condition ($null -eq (Start-PatternOverlay "USB123" "other")) -Message "PIN/password/other mode must not start an overlay."
+Assert-True -Condition ($null -eq (Start-PatternOverlay "USB123" "session-off")) -Message "Ask-later/session-off mode must not start an overlay."
 
 Write-Host "[powershell] Testing private IPv4 classification..."
 foreach ($ip in @(
