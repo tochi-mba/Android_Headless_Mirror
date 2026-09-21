@@ -273,6 +273,9 @@ function Select-Device($Devices, $State) {
     $ready = @($Devices | Where-Object { $_.State -eq "device" })
     if ($ready.Count -eq 0) { return $null }
 
+    # An explicitly configured serial is a preference, not a device lock.
+    # The learned serial is also only a preference. If it is absent, any
+    # other authorised USB Android device may be selected.
     $preferred = [string]$Config.PreferredSerial
     if ([string]::IsNullOrWhiteSpace($preferred)) {
         $preferred = [string]$State.PreferredSerial
@@ -281,24 +284,6 @@ function Select-Device($Devices, $State) {
     if (-not [string]::IsNullOrWhiteSpace($preferred)) {
         $match = $ready | Where-Object { $_.Serial -eq $preferred } | Select-Object -First 1
         if ($match) { return $match }
-
-        if ($Config.LockToPreferredDevice) {
-            # ADB-over-TCP/IP uses host:port instead of the USB serial. Only allow
-            # a TCP fallback if its host was learned from the preferred USB device.
-            if ($Config.Wireless.Enabled -and $null -ne $State.WirelessHosts) {
-                $knownHosts = @(Unique-Strings @($State.WirelessHosts))
-                $knownTcp = @(
-                    $ready | Where-Object {
-                        if (-not $_.IsTcp) { return $false }
-                        $hostPart = ([string]$_.Serial) -replace ':\d+$', ''
-                        return $knownHosts -contains $hostPart
-                    }
-                )
-                if ($knownTcp.Count -gt 0) { return $knownTcp[0] }
-            }
-
-            return $null
-        }
     }
 
     if ($Config.PreferUsb) {
