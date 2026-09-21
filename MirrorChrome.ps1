@@ -273,6 +273,9 @@ public static class AHMMirrorChromeNative
         uint uFlags
     );
 
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool SetProcessDpiAwarenessContext(IntPtr dpiContext);
+
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
@@ -728,6 +731,11 @@ if ($TestOnly) {
     return
 }
 
+try {
+    [AHMMirrorChromeNative]::SetProcessDpiAwarenessContext([IntPtr](-4)) | Out-Null
+}
+catch {}
+
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
@@ -900,7 +908,7 @@ function Ensure-Magnifier {
 
     [AHMMirrorChromeNative]::ExcludeWindowsFromMagnifier(
         $script:magnifierChild,
-        @($script:magnifierHost, $toolbarHwnd)
+        @($script:magnifierHost, $toolbarHwnd, $gestureHwnd)
     )
 
     return $true
@@ -1237,10 +1245,17 @@ $timer.Add_Tick({
                     $gestureWindow.Show()
                 }
 
-                $gestureWindow.Left = $rect.Left
-                $gestureWindow.Top = $rect.Top
-                $gestureWindow.Width = $width
-                $gestureWindow.Height = $height
+                [AHMMirrorChromeNative]::SetWindowPos(
+                    $gestureHwnd,
+                    [AHMMirrorChromeNative]::HWND_TOPMOST,
+                    $rect.Left,
+                    $rect.Top,
+                    $width,
+                    $height,
+                    [AHMMirrorChromeNative]::SWP_NOACTIVATE -bor
+                    [AHMMirrorChromeNative]::SWP_NOSENDCHANGING -bor
+                    [AHMMirrorChromeNative]::SWP_SHOWWINDOW
+                ) | Out-Null
             }
 
             if (-not $toolbar.IsVisible) {
@@ -1248,9 +1263,22 @@ $timer.Add_Tick({
             }
 
             $toolbar.UpdateLayout()
-            $inset = [double]$ChromeConfig.ToolbarInsetPixels
-            $toolbar.Left = $rect.Right - $toolbar.ActualWidth - $inset
-            $toolbar.Top = $rect.Top + $inset
+            $dpi = [System.Windows.Media.VisualTreeHelper]::GetDpi($toolbar)
+            $toolbarWidth = [Math]::Max(1, [int][Math]::Ceiling($toolbar.ActualWidth * $dpi.DpiScaleX))
+            $toolbarHeight = [Math]::Max(1, [int][Math]::Ceiling($toolbar.ActualHeight * $dpi.DpiScaleY))
+            $inset = [int][Math]::Round([double]$ChromeConfig.ToolbarInsetPixels)
+
+            [AHMMirrorChromeNative]::SetWindowPos(
+                $toolbarHwnd,
+                [AHMMirrorChromeNative]::HWND_TOPMOST,
+                $rect.Right - $toolbarWidth - $inset,
+                $rect.Top + $inset,
+                $toolbarWidth,
+                $toolbarHeight,
+                [AHMMirrorChromeNative]::SWP_NOACTIVATE -bor
+                [AHMMirrorChromeNative]::SWP_NOSENDCHANGING -bor
+                [AHMMirrorChromeNative]::SWP_SHOWWINDOW
+            ) | Out-Null
 
             $rectKey = "$($rect.Left),$($rect.Top),$width,$height"
             if ($rectKey -ne $script:lastRectKey) {
