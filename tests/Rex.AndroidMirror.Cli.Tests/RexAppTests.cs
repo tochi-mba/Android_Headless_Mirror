@@ -52,7 +52,7 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // Precision Touchpad
         console.Input.PushTextWithEnter("n"); // auto-open Control Center
         console.Input.PushTextWithEnter("n"); // start now
-        PushDown(console, 13); // main menu -> Exit
+        PushDown(console, 14); // main menu -> Exit
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -102,7 +102,7 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // stay awake
         console.Input.PushTextWithEnter("n"); // auto-open controls
         console.Input.PushTextWithEnter("n"); // start now
-        PushDown(console, 13); // main menu -> Exit
+        PushDown(console, 14); // main menu -> Exit
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -135,7 +135,7 @@ public sealed class RexAppTests
         console.Input.PushKey(ConsoleKey.Enter); // Sleep phone (first)
         PushDown(console, 32); // Back in runtime controls
         console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, 13); // Exit main menu
+        PushDown(console, 14); // Exit main menu
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
@@ -165,7 +165,7 @@ public sealed class RexAppTests
         bridge.DefaultStatus = Status(setup: true, devices: new[] { device });
 
         var console = ConsoleWithInput();
-        PushDown(console, 3); // Device settings
+        PushDown(console, 4); // Device settings
         console.Input.PushKey(ConsoleKey.Enter);
         PushDown(console, 8); // Animation speed
         console.Input.PushKey(ConsoleKey.Enter);
@@ -173,7 +173,7 @@ public sealed class RexAppTests
         console.Input.PushKey(ConsoleKey.Enter);
         PushDown(console, 17); // Back device menu
         console.Input.PushKey(ConsoleKey.Enter);
-        PushDown(console, 13); // Exit main menu
+        PushDown(console, 14); // Exit main menu
         console.Input.PushKey(ConsoleKey.Enter);
 
         var app = new RexApp(
