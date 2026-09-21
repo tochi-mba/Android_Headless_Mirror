@@ -22,12 +22,11 @@ public static class Program
 
             if (
                 args.Length > 0 &&
-                (args[0].Equals("--json", StringComparison.OrdinalIgnoreCase) ||
-                 args[0].Equals("agent", StringComparison.OrdinalIgnoreCase))
+                args[0].Equals("--json", StringComparison.OrdinalIgnoreCase)
             )
             {
                 var machineArgs = args.Skip(1).ToArray();
-                var result = await AgentCli.RunAsync(
+                var result = await MachineMode.RunAsync(
                     machineArgs,
                     paths,
                     runner,
