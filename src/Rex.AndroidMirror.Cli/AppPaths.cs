@@ -21,6 +21,7 @@ public sealed class AppPaths
     public string Logs => Path.Combine(Root, "logs");
     public string Captures => Path.Combine(Root, "captures");
     public string DisplayVerification => Path.Combine(Root, "display-verification.json");
+    public string RootState => Path.Combine(Root, "root-state.json");
 
     private AppPaths(string root)
     {
