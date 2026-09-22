@@ -490,7 +490,7 @@ function Split-ExtraScrcpyArguments([string]$Text) {
         if ([string]::IsNullOrWhiteSpace($value)) { continue }
 
         if (
-            $value -match '^--(serial|window-title|mouse)(=|$)' -or
+            $value -match '^--(serial|window-title|mouse|shortcut-mod)(=|$)' -or
             $value -in @("--no-control","--no-window","--no-video")
         ) {
             throw "ExtraScrcpyArgs cannot override required Android Headless Mirror option '$value'."
@@ -509,6 +509,9 @@ function Build-ScrcpyArguments([string]$Serial, [bool]$IsTcp) {
     $args.Add("--window-title=$sessionTitle")
     # scrcpy's Ctrl+click-and-drag pinch simulation requires SDK mouse mode.
     $args.Add("--mouse=sdk")
+    # REX runtime controls intentionally use one deterministic scrcpy MOD.
+    # Prevent ExtraScrcpyArgs from changing this or GUI actions can silently stop matching.
+    $args.Add("--shortcut-mod=lalt")
 
     if ($Config.TurnPhysicalScreenOff) {
         $args.Add("--turn-screen-off")
