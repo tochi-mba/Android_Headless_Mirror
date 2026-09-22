@@ -36,6 +36,32 @@ public sealed class ConfigStore
         return ToLeaf(path, node);
     }
 
+    public bool EnsureBooleanDefault(string path, bool defaultValue)
+    {
+        var root = Load();
+        var segments = Split(path);
+        if (segments.Length == 0)
+            throw new ArgumentException("Config path is required.", nameof(path));
+
+        JsonNode current = root;
+        for (var i = 0; i < segments.Length - 1; i++)
+        {
+            current = current[segments[i]]
+                ?? throw new KeyNotFoundException($"Unknown config parent '{string.Join('.', segments[..(i + 1)])}'.");
+        }
+
+        var parent = current as JsonObject
+            ?? throw new InvalidOperationException($"'{string.Join('.', segments[..^1])}' is not an object.");
+
+        var key = segments[^1];
+        if (parent[key] is not null)
+            return false;
+
+        parent[key] = JsonValue.Create(defaultValue);
+        SaveAtomic(root);
+        return true;
+    }
+
     public void Set(string path, string rawValue)
     {
         var root = Load();
