@@ -315,6 +315,62 @@ function Set-FriendlyAndroidSetting {
     }
 }
 
+function Set-AndroidRotationOverride {
+    param(
+        [Parameter(Mandatory = $true)][string]$AdbPath,
+        [Parameter(Mandatory = $true)][string]$Serial,
+        [Parameter(Mandatory = $true)][ValidateSet("auto","0","1","2","3")][string]$Mode
+    )
+
+    if ($Mode -eq "auto") {
+        $auto = Set-AndroidSetting $AdbPath $Serial system accelerometer_rotation "1"
+        return [pscustomobject]@{
+            Ok = [bool]$auto.Ok
+            ExitCode = $auto.ExitCode
+            Text = if ($auto.Ok) {
+                "Automatic rotation restored."
+            }
+            else {
+                "Could not restore automatic rotation: " + $auto.Text
+            }
+        }
+    }
+
+    # Set the target quarter-turn first while auto rotation is still active.
+    # Only disable the sensor after the target value is accepted, so a partial
+    # failure does not strand the phone in an old forced orientation.
+    $rotation = Set-AndroidSetting $AdbPath $Serial system user_rotation $Mode
+    if (-not $rotation.Ok) {
+        return [pscustomobject]@{
+            Ok = $false
+            ExitCode = $rotation.ExitCode
+            Text = "Could not set forced rotation: " + $rotation.Text
+        }
+    }
+
+    $lock = Set-AndroidSetting $AdbPath $Serial system accelerometer_rotation "0"
+    if (-not $lock.Ok) {
+        return [pscustomobject]@{
+            Ok = $false
+            ExitCode = $lock.ExitCode
+            Text = "Rotation value was accepted, but Android/OEM refused the rotation lock: " + $lock.Text
+        }
+    }
+
+    $degrees = switch ($Mode) {
+        "0" { 0 }
+        "1" { 90 }
+        "2" { 180 }
+        "3" { 270 }
+    }
+
+    return [pscustomobject]@{
+        Ok = $true
+        ExitCode = 0
+        Text = "Android rotation locked to " + $degrees + " degrees (best effort; app/OEM policies may still override it)."
+    }
+}
+
 function Get-FriendlyAndroidState {
     param(
         [Parameter(Mandatory = $true)][string]$AdbPath,
