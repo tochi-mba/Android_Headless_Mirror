@@ -805,30 +805,4 @@ public sealed class MachineModeTests
             doc.RootElement.GetProperty("error").GetProperty("message").GetString());
     }
 
-    private static FakeBridgeClient RootBridge()
-    {
-        var device = new RexDevice(
-            "USB123",
-            "device",
-            false,
-            "Samsung",
-            "SM-G998B",
-            "Samsung Galaxy S21 Ultra");
-
-        var bridge = new FakeBridgeClient
-        {
-            DefaultStatus = new RexStatus(
-                true,
-                false,
-                false,
-                false,
-                false,
-                "adb.exe",
-                "scrcpy.exe",
-                new[] { device })
-        };
-        bridge.Devices.Add(device);
-        return bridge;
-    }
-
 }
