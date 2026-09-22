@@ -200,6 +200,11 @@ public sealed class AdbTests
         var text = DeviceStateText.Describe([new AdbDevice("X", "unauthorized", false, "", "")]);
         Assert.Contains("Allow", text);
         Assert.Contains("Connect", DeviceStateText.Describe([]));
+        Assert.Equal("Setup required", DeviceStateText.Header(setupRequired: true, []));
+        Assert.Equal("No phone connected", DeviceStateText.Header(setupRequired: false, []));
+        Assert.Contains("approve USB debugging", DeviceStateText.Header(
+            setupRequired: false,
+            [new AdbDevice("X", "unauthorized", false, "", "")]));
     }
 
     [Fact]
