@@ -9,6 +9,7 @@ public sealed class RexAppTests
     public void MainMenu_ExposesDisplayTransportsAndKeepsExitLast()
     {
         Assert.Contains("Display transports", RexApp.MainMenuChoices);
+        Assert.Contains("Privileged Android", RexApp.MainMenuChoices);
         Assert.Equal("Exit", RexApp.MainMenuChoices[^1]);
         Assert.Equal(
             RexApp.MainMenuChoices.Count,
