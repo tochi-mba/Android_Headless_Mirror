@@ -862,21 +862,26 @@ class RepositoryContractTests(unittest.TestCase):
         end = text.index("$script:gestureHook", start)
         function = text[start:end]
 
-        ctrl_check = function.index("$ctrlPhysicallyDown")
-        android_branch = function.index("$ChromeConfig.TouchpadPinchToAndroid")
-        begin = function.index("BeginScrcpyPinch")
-        self.assertLess(ctrl_check, android_branch)
-        self.assertLess(android_branch, begin)
+        self.assertIn("$hostModifierDown = Test-HostZoomModifierDown", function)
+        self.assertIn("$ChromeConfig.TouchpadPinchToAndroid", function)
+        self.assertIn("BeginScrcpyPinch", function)
         self.assertIn('$script:touchpadGestureKind = "device"', function)
+        self.assertNotIn("$ctrlPhysicallyDown", function)
 
-    def test_ctrl_plus_native_touchpad_pinch_is_host_zoom_not_android_pinch(self):
+        host_branch = function.index("$hostModifierDown -and")
+        android_branch = function.index("$ChromeConfig.TouchpadPinchToAndroid")
+        self.assertLess(host_branch, android_branch)
+
+    def test_alt_plus_native_touchpad_pinch_is_host_zoom_not_android_pinch(self):
         text = self.read("MirrorChrome.ps1")
         start = text.index("function Update-TouchpadGesture")
         end = text.index("$script:gestureHook", start)
         function = text[start:end]
-        self.assertIn("$ChromeConfig.CtrlTouchpadPinchToHostZoom", function)
+        self.assertIn("$ChromeConfig.TouchpadPinchToHostZoom", function)
+        self.assertIn("$hostModifierDown", function)
         self.assertIn('$script:touchpadGestureKind = "host"', function)
-        self.assertIn("Get-ClampedHostZoom", function)
+        self.assertIn("Get-HostZoomFromGesture", function)
+        self.assertIn("HostZoomPinchSensitivity", function)
 
     def test_windows_without_precision_touchpad_api_falls_back_cleanly(self):
         text = self.read("MirrorChrome.ps1")
@@ -902,12 +907,12 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("VK_O", text)
         self.assertIn("turns the Android physical display off while", text)
 
-    def test_host_zoom_is_local_ctrl_wheel_and_has_reset_control(self):
+    def test_host_zoom_is_local_alt_wheel_and_has_reset_control(self):
         text = self.read("MirrorChrome.ps1")
         for contract in [
             "WH_MOUSE_LL",
             "WM_MOUSEWHEEL",
-            "VK_CONTROL",
+            "VK_MENU",
             "StartWheelHook",
             "TryDequeueWheel",
             "Magnification.dll",
