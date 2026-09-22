@@ -699,4 +699,136 @@ public sealed class MachineModeTests
             },
             DateTimeOffset.UtcNow);
 
+    [Fact]
+    public async Task RootStatus_ReturnsStructuredPassiveMachineJson()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "2000\n", "")
+        };
+        var bridge = RootBridge();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "root", "status" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        var root = doc.RootElement;
+        Assert.True(root.GetProperty("ok").GetBoolean());
+        Assert.Equal("root.status", root.GetProperty("command").GetString());
+
+        var data = root.GetProperty("data");
+        Assert.Equal("USB123", data.GetProperty("serial").GetString());
+        Assert.Equal("suDetected", data.GetProperty("state").GetString());
+        Assert.Equal(2000, data.GetProperty("adbUid").GetInt32());
+        Assert.True(data.GetProperty("suVisible").GetBoolean());
+    }
+
+    [Fact]
+    public async Task RootStatus_DoesNotInvokeSuInMachineMode()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "2000\n", "")
+        };
+
+        var result = await MachineMode.RunAsync(
+            new[] { "root", "probe" },
+            package.Paths,
+            runner,
+            RootBridge(),
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.DoesNotContain(
+            runner.Calls,
+            x => x.Arguments.Contains("su") && x.Arguments.Contains("-c"));
+    }
+
+    [Fact]
+    public async Task Capabilities_AdvertiseRootSurfaceAndSafetyContract()
+    {
+        using var package = new TempPackage();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "capabilities" },
+            package.Paths,
+            new FakeProcessRunner(),
+            new FakeBridgeClient(),
+            package.Config);
+
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+
+        Assert.Contains(
+            data.GetProperty("commands").EnumerateArray(),
+            x => x.GetString() == "root");
+
+        var rootCommands = data.GetProperty("rootCommands");
+        Assert.True(rootCommands.GetArrayLength() >= 10);
+        Assert.Contains(
+            rootCommands.EnumerateArray(),
+            x => x.GetString() == "root request");
+
+        var safety = data.GetProperty("rootSafety");
+        Assert.True(safety.GetProperty("passiveStatusDoesNotInvokeSu").GetBoolean());
+        Assert.False(safety.GetProperty("rawShell").GetBoolean());
+        Assert.False(safety.GetProperty("rootV1Writes").GetBoolean());
+    }
+
+    [Fact]
+    public async Task RootStatus_MultipleDevicesRequiresSerialInMachineMode()
+    {
+        using var package = new TempPackage();
+        var bridge = RootBridge();
+        bridge.Devices.Add(
+            new RexDevice("USB456", "device", false, "Google", "Pixel", "Pixel"));
+
+        var result = await MachineMode.RunAsync(
+            new[] { "root", "status" },
+            package.Paths,
+            new FakeProcessRunner(),
+            bridge,
+            package.Config);
+
+        Assert.NotEqual(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains(
+            "--serial",
+            doc.RootElement.GetProperty("error").GetProperty("message").GetString());
+    }
+
+    private static FakeBridgeClient RootBridge()
+    {
+        var device = new RexDevice(
+            "USB123",
+            "device",
+            false,
+            "Samsung",
+            "SM-G998B",
+            "Samsung Galaxy S21 Ultra");
+
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = new RexStatus(
+                true,
+                false,
+                false,
+                false,
+                false,
+                "adb.exe",
+                "scrcpy.exe",
+                new[] { device })
+        };
+        bridge.Devices.Add(device);
+        return bridge;
+    }
+
 }
