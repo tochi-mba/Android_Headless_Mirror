@@ -103,8 +103,14 @@ public sealed class StateStore
     {
         lock (_gate)
         {
-            mutate(_state);
-            Save();
+            using var transaction = CrossProcessFileLock.Acquire(_path);
+
+            // Reload while holding the cross-process lock. The in-memory snapshot may be
+            // older than a CLI or second process update made since this store was created.
+            var latest = Load(_path);
+            mutate(latest);
+            Save(latest);
+            _state = latest;
         }
     }
 
@@ -196,9 +202,9 @@ public sealed class StateStore
         return profile;
     }
 
-    private void Save()
+    private void Save(StateDocument state)
     {
-        var json = JsonSerializer.Serialize(_state, RexJsonContext.Default.StateDocument) + Environment.NewLine;
+        var json = JsonSerializer.Serialize(state, RexJsonContext.Default.StateDocument) + Environment.NewLine;
         AtomicFile.Write(_path, json, keepBackupAt: null, validate: null);
     }
 
