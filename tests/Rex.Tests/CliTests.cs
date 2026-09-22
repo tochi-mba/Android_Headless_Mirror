@@ -149,6 +149,22 @@ public sealed class CliTests
     }
 
     [Fact]
+    public async Task Config_SetRejectsMalformedExtraArgsInMachineMode()
+    {
+        using var package = new TestPackage();
+        var context = new CliContext(package.Paths);
+
+        var result = await MachineMode.RunAsync(["config", "set", "Mirror.ExtraArgs", "\"unterminated"], context);
+
+        Assert.Equal(1, result.ExitCode);
+        var doc = JsonNode.Parse(result.Json)!.AsObject();
+        Assert.False(doc["ok"]!.GetValue<bool>());
+        Assert.Equal("FormatException", doc["error"]!["type"]!.GetValue<string>());
+        Assert.Equal(string.Empty, context.Config.Get("Mirror.ExtraArgs").Value);
+        Assert.DoesNotContain('\n', result.Json);
+    }
+
+    [Fact]
     public async Task UnknownCommand_FailsWithOneJsonDocument()
     {
         using var package = new TestPackage();
