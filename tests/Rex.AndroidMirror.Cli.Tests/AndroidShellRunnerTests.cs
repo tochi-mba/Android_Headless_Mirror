@@ -41,7 +41,9 @@ public sealed class AndroidShellRunnerTests
         var result = await shell.RunAsync(
             "adb.exe",
             "USB123",
-            new PrivilegedCommand("id", "id", new[] { "-u" }));
+            new PrivilegedCommand("id", "id", new[] { "-u" }),
+            rootMode: null,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Ok);
         var call = Assert.Single(runner.Calls);
@@ -66,7 +68,8 @@ public sealed class AndroidShellRunnerTests
             "adb.exe",
             "USB123",
             new PrivilegedCommand("root.id", "id", new[] { "-u" }),
-            RootExecutionMode.Su);
+            RootExecutionMode.Su,
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Ok);
         var call = Assert.Single(runner.Calls);
@@ -93,7 +96,8 @@ public sealed class AndroidShellRunnerTests
                 "root.files",
                 "cat",
                 new[] { "/data/user/0/a;reboot" }),
-            RootExecutionMode.Su);
+            RootExecutionMode.Su,
+            TestContext.Current.CancellationToken);
 
         var call = Assert.Single(runner.Calls);
         Assert.Equal("cat '/data/user/0/a;reboot'", call.Arguments[^1]);
@@ -119,7 +123,9 @@ public sealed class AndroidShellRunnerTests
                 "bounded",
                 "cat",
                 new[] { "/proc/cpuinfo" },
-                MaxOutputCharacters: 16));
+                MaxOutputCharacters: 16),
+            rootMode: null,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Truncated);
         Assert.Contains("[REX output truncated]", result.StdOut);
