@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <UseWindowsForms>true</UseWindowsForms>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Rex.Tests</RootNamespace>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Rex.Core\Rex.Core.csproj" />
+    <ProjectReference Include="..\..\src\Rex.Cli\Rex.Cli.csproj" />
+    <!-- Built (not referenced) so the end-to-end tests can launch them. -->
+    <ProjectReference Include="..\..\src\Rex.Mirror\Rex.Mirror.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Rex.FakeAdb\Rex.FakeAdb.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Rex.FakeScrcpy\Rex.FakeScrcpy.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+</Project>

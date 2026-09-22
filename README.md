@@ -1,586 +1,125 @@
 # Android Headless Mirror
 
-**A REX Technologies product.**
+**A REX Technologies product.** Your Android phone, in one window on your Windows PC.
 
-**Website:** https://tochi-mba.github.io/Android_Headless_Mirror/
+Website: https://tochi-mba.github.io/Android_Headless_Mirror/
 
-Android Headless Mirror is a Windows helper around [scrcpy](https://github.com/Genymobile/scrcpy) and ADB for people who want an Android phone to behave more like a device they can operate from their PC.
+Plug the phone in and it appears on screen. The phone's own display stays off, so it does not
+burn battery or react to stray touches while you use it from the PC. Everything lives in a single
+window: the mirror, the controls, the phone settings and the app settings. No floating toolbars,
+no separate settings windows.
 
-It is intended for **Android devices generally**. The current hardware-tested setup is:
+It works with any Android phone that supports USB debugging. The hardware this project is
+developed and tested on is a Samsung Galaxy S21 Ultra (SM-G998B) on Windows 11.
 
-- Samsung Galaxy S21 Ultra
-- Model: SM-G998B
-- Windows 10/11
-- USB ADB + scrcpy
+## What you get
 
-Other Android devices should work where standard ADB and scrcpy work, but they have not all been hardware-tested by this project.
-
-## What it does
-
-- Downloads the official Windows x64 scrcpy release during setup.
-- Verifies the scrcpy ZIP against the release SHA-256 checksums before extraction.
-- Prefers USB for the reliable recovery path.
-- Waits for an authorised Android device instead of failing if it is disconnected or still booting.
-- Auto-opens the mirror when an authorised phone is connected, with a 1-second detection interval by default.
-- Wakes the device before launching scrcpy.
-- Defaults to keeping the physical Android screen off while mirroring; on devices that tie physical touch to display power, this also suppresses accidental handset touches while PC control remains active.
-- Keeps the active session alive using scrcpy `--keep-active`, and also uses `--stay-awake` for plugged-in USB sessions.
-- Works with any authorised Android device; a preferred serial is only a preference when multiple ready devices are present.
-- Can show a click-through 3×3 pattern guide over scrcpy when a secure lock screen renders black, without storing or replaying the pattern.
-- Provides persistent **START / STOP** semantics.
-- Can start automatically when Windows signs in.
-- Includes diagnostics and rotating logs.
-- Supports optional ADB-over-TCP/IP fallback, disabled by default.
-- Detects and uses an **existing** Android root environment through a capability-gated Privileged Android layer, with passive discovery, explicit authorization, per-boot verification and read-only Root v1 tooling.
+- **One window.** The mirror fills the left; a side panel holds Controls, Phone, Settings and Info.
+- **Automatic.** The app waits in the tray, opens when an authorised phone connects, restarts the
+  mirror if it crashes, and stays closed after you stop it until the phone reconnects.
+- **Real gestures.** Two fingers on a Windows Precision Touchpad become two fingers on the phone:
+  pinch, rotate and pan exactly like on the glass (TikTok included). Hold **Alt** to zoom or pan the
+  PC view instead; **Alt + wheel** and **Alt + drag** do the same with a mouse. The zoom is a true
+  scaled surface, so clicks always land where you see them, and a small navigator shows where you are.
+- **Phone controls.** Home, back, recents, power, screen off/on, volume, notifications, quick
+  settings, rotation, clipboard both ways, screenshots.
+- **Phone settings.** Brightness, timeout, forced rotation, dark mode, text size, animations, stay
+  awake, Wi-Fi, mobile data, airplane mode, display size and density, plus a searchable browser for
+  the raw Android settings provider (keys that would cut off ADB are protected).
+- **Pattern-lock guide.** Some phones mirror their secure lock screen as black. For pattern locks the
+  app draws a nine-dot guide, positioned from Android's own UI layout when available, with keyboard
+  calibration as a fallback. The pattern itself is never stored or replayed.
+- **Command line and agent mode.** `rex.exe` scripts everything; `rex agent ...` and `rex --json ...`
+  emit exactly one JSON document and never prompt.
 
 ## Quick start
 
-### Guided REX CLI
-
-1. On the Android device, enable Developer options and USB debugging.
-2. Connect it to the Windows PC by USB.
-3. Run `REX.bat`.
-4. The REX first-run wizard checks whether scrcpy/ADB are installed, prepares anything missing, asks whether Windows startup should be enabled, discovers connected devices, records the device's lock-screen type, and guides the headless/mirror defaults.
-5. On the first ADB connection, Android should show **Allow USB debugging?**
-6. Select **Always allow from this computer** and press **Allow**.
-
-The classic `SETUP_AND_START.bat` entry point remains available for people who prefer the original script-first setup.
-
-After authorisation, the hidden supervisor stays armed in the background. Connecting any authorised Android phone opens the mirror automatically (normally within the 1-second poll interval). It wakes the device, asks Android to dismiss the keyguard when authentication is not required, then launches scrcpy. If you manually close scrcpy while that phone remains connected, it stays closed until you disconnect and reconnect it.
-
-## Headless day-to-day behavior
-
-The design goal is that, after the one-time Android/ADB trust setup, normal use happens entirely from the Windows PC:
-
-1. Windows signs in and starts the hidden supervisor.
-2. An authorised Android phone is connected over USB.
-3. The supervisor notices it within the configured poll interval (1 second by default).
-4. The phone is woken.
-5. Android receives a best-effort `wm dismiss-keyguard` request. Android only dismisses the keyguard when credentials are not required.
-6. scrcpy opens automatically.
-7. `--keep-active` periodically signals user activity so inactivity does not turn the session off.
-8. On USB, `--stay-awake` additionally asks Android to stay awake while plugged in.
-9. The physical display can remain off while the PC mirror stays active.
-
-If the phone is securely locked but ADB remains available, scrcpy can still present the lock screen so you can authenticate from the PC rather than touching the phone.
-
-### Security boundaries that cannot be automated safely
-
-A stock Android device intentionally keeps some operations outside ADB automation:
-
-- the **first ADB RSA authorisation** must be approved on the Android device;
-- after a **full reboot**, some devices/OEM configurations require the first PIN/password unlock before USB data/ADB becomes available;
-- if Android revokes this computer's ADB authorisation, the RSA prompt must be approved again;
-- this project does **not** store or inject a PIN/password to bypass a secure keyguard.
-
-These are Android security boundaries, not launcher failures. On devices where ADB remains available while locked, the mirrored lock screen can be used from the PC.
-
-## Pattern-lock visual guide
-
-Some Android/OEM combinations accept lock-screen touch input through scrcpy while rendering the secure lock screen as a black frame. For phones that use Android pattern unlock, Android Headless Mirror can place a **visual-only 3×3 guide** over the scrcpy client area.
-
-The first time each authorised phone is seen, the PC asks about that device's lock setup:
-
-- **No screen lock** → saves `none`; no overlay process is started.
-- **Pattern lock** → saves `pattern`; the pattern guide is available for that phone.
-- **PIN/password/biometric/other lock** → saves `other`; no pattern guide is started.
-- **Cancel / ask later** → saves nothing and runs that session without the overlay.
-
-The choice is stored **per ADB serial** in `state.json`, so different phones on the same PC can use different modes.
-
-### How the pattern guide works
-
-The overlay uses the most accurate geometry source available, in this order:
-
-1. **Exact Android pattern-cell bounds** from the current UI hierarchy, when the OEM exposes the nine virtual cells.
-2. **Android `LockPatternView` bounds** from the current UI hierarchy. AOSP places the three pattern centers in each axis at the centers of the three equal cells, so the outer centers are at 1/6 and 5/6 of the runtime view bounds.
-3. **Saved per-device calibration** when an OEM exposes a padded/non-standard pattern container or hides the widget completely.
-4. **Estimated geometry** only as the final fallback.
-
-Runtime discovery uses `uiautomator dump` only while the pattern guide is relevant. The hierarchy is read in memory and is not retained.
-
-The guide itself:
-
-- is a transparent, always-on-top Windows overlay aligned to the scrcpy **client area**;
-- is click-through + no-activate, so mouse input continues to scrcpy underneath;
-- follows scrcpy across move/resize and mixed-DPI/multi-monitor layouts;
-- maps Android screen coordinates into the fitted scrcpy video area, including letterboxing and orientation changes;
-- tries to show automatically when generic Android keyguard signals report a locked device;
-- can be shown manually with **Ctrl+Alt+P** when OEM keyguard reporting is unreliable.
-
-### Calibration fallback
-
-Press **Ctrl+Alt+C** while the matching scrcpy window is focused to enter calibration mode.
-
-Calibration never requires touching the phone. Use only the PC keyboard:
-
-- **Arrow keys** — move the grid.
-- **Shift + arrows** — resize the grid.
-- **Ctrl + arrows** — fine 1-pixel adjustment.
-- **Enter** — save calibration for this ADB serial.
-- **Esc** — cancel without saving.
-- **R** — remove the saved calibration and return to automatic discovery/fallback.
-
-Saved calibration contains only four normalized geometry numbers (left/top/right/bottom) for that phone. It does not contain the pattern path.
-
-### Pattern privacy
-
-The overlay never persists or replays the unlock credential:
-
-- it does **not** call ADB touch-injection commands;
-- it does **not** store, log, transmit or replay the gesture path;
-- optional calibration stores only the pattern-grid rectangle, never the unlock sequence;
-- scrcpy remains the only input path;
-- the optional cursor trail exists only in memory and is cleared shortly after the drag ends;
-- `state.json` stores only the device serial and the selected mode (`pattern`, `other`, or `none`).
-
-If a phone changes lock type later, run:
-
-```
-RESET_LOCK_SCREEN_CHOICES.bat
-```
-
-You can reset one serial or all saved lock-screen choices; matching saved pattern calibration is cleared at the same time and the next connection prompts again.
-
-## Mirror controls
-
-Android Headless Mirror adds a small always-on-top toolbar to each active mirror.
-
-### Native touchpad pinch
-
-On **Windows 11 with a Precision Touchpad**, two-finger touchpad gestures are read through the Windows Precision Touchpad pointer API:
-
-- **Pinch/spread with two fingers** → Android receives a real two-finger pinch/rotate gesture through scrcpy.
-- **Two-finger slide** → Android scrolls, with configurable REX sensitivity, deadzone and per-sample fling limits.
-- **Hold physical Alt + pinch/spread** → zoom the **PC mirror frame only**. Android receives no pinch.
-- **Hold physical Alt + two-finger slide while host zoom is active** → pan the magnified PC viewport.
-- **Alt + mouse wheel** → mouse fallback for PC-only host zoom.
-- Host zoom persists after Alt is released.
-- When host zoom is not 100%, the toolbar shows **Reset zoom** and, when enabled, the zoom navigator/minimap.
-
-REX intentionally leaves **Ctrl** and **Shift** to scrcpy/Android gesture semantics. scrcpy uses Ctrl+click-and-move for Android pinch/rotate simulation, Shift+click-and-move for vertical two-finger tilt, and Ctrl+Shift+click-and-move for horizontal tilt. REX therefore reserves **Alt** for Windows-only magnification.
-
-scrcpy is forced to SDK mouse mode so its virtual-finger multitouch path is always available to the bridge.
-
-On Windows versions/hardware where the Precision Touchpad API is unavailable, normal mirroring remains available and scrcpy's **Ctrl + left-drag** pinch simulation remains the compatibility fallback.
-
-### Physical screen / touch guard
-
-REX defaults `TurnPhysicalScreenOff` to **on**. scrcpy turns the physical phone panel off while continuing to mirror and accept PC-injected input. On devices where the touchscreen follows display power, this also prevents accidental physical touches on the handset. This is intentionally not described as a universal digitizer-disable feature: the hardware power button, OEM wake gestures, or device-specific behavior can wake the panel again.
-
-### Sleep phone
-
-The toolbar's **Sleep phone** button re-sends scrcpy's screen-off action whenever the physical phone panel has been woken; the PC mirror continues operating normally.
-
-### Forced Android rotation
-
-The Device settings page separates Android orientation from scrcpy's PC-side display rotation. **Rotation override** offers Automatic, 0°, 90°, 180° and 270°. Forced modes write Android's `user_rotation` first, then disable sensor-driven rotation; Automatic re-enables the sensor. This is best effort because individual apps and OEM policies may still request their own orientation.
-
-### Mouse-only host zoom
-
-For mouse users, **Alt + mouse wheel** controls the PC-only frame zoom. This is deliberately different from scrcpy's Ctrl/Shift Android gesture modifiers.
-
-### Control Center
-
-The toolbar's **Controls** button opens the Windows Control Center for the currently mirrored device. It is organized by responsibility rather than exposing one giant list:
-
-- **Controls** — runtime scrcpy actions: fullscreen, fit, pixel-perfect, display rotation/flip, pause/resume, capture reset, FPS counter, Home/Back/Recent Apps/Menu, power, sleep/wake, Android orientation request, notification/Quick Settings panels, volume, clipboard actions, keyboard settings, host-zoom reset and screenshots.
-- **PC / mirror settings** — wrapper/session behavior, video quality, codec, audio, recording-on-start, touchpad behavior, host zoom, pattern-guide behavior, wireless ADB and advanced raw scrcpy arguments.
-- **<device> settings** — friendly ADB-backed controls for brightness, timeout, auto-rotate, best-effort forced orientation (Auto / 0° / 90° / 180° / 270°), font scale, show touches, stay-awake, animation scales, dark mode, Wi-Fi/mobile-data/airplane commands and display size/density overrides.
-- **Advanced Android** — live enumeration of the connected phone's system, secure and global Settings Provider namespaces with search, read/write/delete and risk labels.
-- **Diagnostics** — device identity, Android/API version, ADB state, capability probes and recent command status.
-
-The Advanced Android page is intentionally **runtime-driven**. It does not assume that every OEM/version exposes the same keys. Android Headless Mirror asks that phone what keys exist and displays the result.
-
-Some keys are protected by the wrapper (adb_enabled, development_settings_enabled, android_id and device identity fields) because changing them casually could sever the headless recovery path or mutate identity. Other sensitive/advanced changes require confirmation and still surface the exact Android/OEM permission failure if the shell user is not allowed to modify them.
-
-## REX CLI
-
-`REX.bat` is the single terminal entry point. It bootstraps the self-contained Windows CLI and then opens a REX-branded Spectre.Console application.
-
-### First-run wizard
-
-The first run is state-aware instead of showing a fixed questionnaire. REX checks the current package first, then guides only the work that is needed:
-
-- install/verify scrcpy + ADB;
-- choose whether Android Headless Mirror starts at Windows sign-in;
-- discover attached Android devices and explain unauthorized/offline states;
-- choose **Pattern**, **PIN/password/biometric/other**, **No screen lock**, or ask later for the selected device;
-- choose the default-on physical screen/touch guard and USB stay-awake behavior;
-- offer Precision Touchpad gestures when the Windows capability is relevant;
-- choose whether the GUI Control Center opens automatically;
-- optionally start the supervisor immediately.
-
-After setup, Windows also gets a **REX** desktop shortcut. It launches `REX.bat smart` and behaves contextually:
-
-- setup incomplete -> open the guided first-run wizard;
-- mirror already running -> focus the existing mirror instead of starting a duplicate;
-- authorized Android device connected + mirror stopped -> explicitly start the system and mirror;
-- no authorized Android device + supervisor stopped -> start the supervisor and open a waiting/status experience;
-- no authorized Android device + supervisor already running -> keep the existing supervisor and avoid a duplicate;
-- persistent OFF is cleared because clicking the REX shortcut is itself an explicit start action.
-
-After setup, the same CLI becomes the day-to-day workspace:
-
-- **Runtime controls** — scrcpy controls plus PC-only host zoom in/out/reset.
-- **Display transports** — scrcpy plus Windows Wireless Display orchestration, DeX guidance, and explicit protected-playback verification.
-- **Privileged Android** — passive root detection, explicit authorization, provider metadata and read-only diagnostics/files/process/app/hardware/network/log inspection when root is already available on the device.
-- **PC / mirror settings** — categorized common settings plus an **All settings browser** over every leaf in `config.json`.
-- **Device settings** — friendly Android settings using the same ADB backend as the GUI.
-- **Advanced Android** — live `system`, `secure` and `global` Settings Provider browsing/search/write/delete with protected-key guardrails.
-- **Control Center** — opens the per-device WPF UI without blocking the terminal.
-- **Diagnostics**, **setup/repair**, **Windows startup**, **captures**, persistent **STOP**, and refresh/status.
-
-### Scriptable commands
-
-The interactive app is optional. The same executable supports automation.
-
-For coding agents and other automation, use the prompt-free machine interface. The explicit agent form is preferred:
+1. Clone or download this repository.
+2. Run `REX.bat`. The first run prepares the app (from a release, or a local build if the .NET 10
+   SDK is installed), then opens it.
+3. Press **Install scrcpy** in the app. The official Genymobile release is downloaded and its SHA-256
+   checksum is verified before anything is installed.
+4. On the phone: Settings → About phone → tap *Build number* seven times, then Developer options →
+   **USB debugging**.
+5. Plug the phone in and tap **Allow** (tick *Always allow from this computer*).
+
+The mirror opens by itself. Tick **Start with Windows** in Settings and it will wait in the tray after
+every sign-in.
+
+## Everyday use
+
+| Want to…                       | Do this                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| Zoom the PC view               | Alt + mouse wheel, or Alt + pinch on the touchpad             |
+| Pan while zoomed               | Alt + drag, Alt + two-finger slide, or drag the navigator     |
+| Pinch inside a phone app       | Two-finger pinch on the touchpad (no modifier)                |
+| Turn the phone screen off/on   | The moon icon in the top bar / **Wake** in Controls           |
+| Go fullscreen                  | F11; Esc returns to your previous window                       |
+| Show fullscreen controls       | Move the pointer to the top edge; the translucent HUD fades after 3 seconds |
+| Force phone orientation        | HUD → Rotation → Portrait / Landscape / Auto, or Ctrl+Alt+U / L / A |
+| Turn only the PC view          | HUD → Rotation → View ↶ / ↷, or Ctrl+Alt+Left / Right          |
+| Show or hide the pattern guide | Ctrl+Alt+P; Ctrl+Alt+C calibrates it with the arrow keys      |
+| Stop the mirror                | **Stop mirror** in Controls; the app keeps waiting in the tray |
+| Quit completely                | Tray icon → **Quit**                                          |
+
+Closing the window keeps the app running in the tray (change this in Settings → Windows).
+
+Fullscreen hides the title bar, taskbar, sidebar and status bar, and fits the complete phone display
+without stretching or cropping it. Use Alt + wheel/pinch to zoom; **Fit** in the HUD restores the
+whole screen. The HUD keeps Back, Home, Recents, Rotation and Exit within reach without reserving
+screen space. Disconnecting returns to the normal window. Portrait and Landscape change Android's
+rotation lock; **Auto** restores sensor rotation. Some Android apps enforce their own orientation;
+the separate View controls can still turn the mirrored image.
+
+## Command line
+
+`REX.bat <command>` runs the CLI (`REX.bat` alone opens the app). Examples:
 
 ```text
-REX.bat agent capabilities
-REX.bat agent status
-REX.bat agent devices
-REX.bat agent smart
-REX.bat agent display probe
-REX.bat agent root status
-REX.bat agent root capabilities
-REX.bat agent root status
-REX.bat agent root capabilities
+rex status                         app, mirror and phone state
+rex action sleep                   turn the phone screen off (rex action list)
+rex zoom in | out | reset          PC-side zoom of the open mirror
+rex screenshot                     save a PNG of the phone screen
+rex phone set brightness 180       friendly phone settings (rex phone get)
+rex android list global --filter animation
+rex config set Mirror.MaxFps 90    app settings, with one-step undo (rex config restore)
+rex autostart on | off
 ```
 
-The following are equivalent:
-
-```text
-REX.bat agent status
-REX.bat --json status
-REX.bat status --json
-REX.bat --plain status
-```
-
-`agent`, `--plain`, and `--json` all select the same versioned JSON protocol. Machine mode emits exactly one JSON document, no Spectre/ANSI UI, and never prompts. The batch bootstrap is quiet so its own status text cannot corrupt stdout. See `AGENTS.md` for the full coding-agent shell contract.
-
-Human-readable commands remain available:
-
-```text
-rex status
-rex devices
-rex start
-rex stop
-rex controls --serial USB123
-rex action sleep --serial USB123
-rex mirror zoom-in --serial USB123
-rex mirror reset-zoom --serial USB123
-rex display probe
-rex display start --transport scrcpy
-rex display receiver open
-rex display start --transport windows-miracast
-rex display verify protected pass
-rex root status
-rex root request
-rex root capabilities
-rex root diagnostics
-rex root processes
-rex root hardware
-rex root network
-rex root logs kernel
-rex device set brightness 180 --serial USB123
-rex device set animation-scale 0.5 --serial USB123
-rex android list global --filter animation --serial USB123
-rex android get secure some_key --serial USB123
-rex android set system font_scale 1.15 --serial USB123
-rex config list --filter MirrorChrome
-rex config get MaxFps
-rex config set MaxFps 90
-rex config restore
-rex autostart on
-rex shortcut install
-rex shortcut remove
-rex screenshot --serial USB123
-rex diagnostics
-```
-
-When exactly one authorized Android device is connected, `--serial` can be omitted. If multiple authorized devices are present, the scripted CLI requires an explicit serial rather than guessing.
-
-### Safe config changes
-
-REX preserves the type of the existing JSON setting when `config set` is used. Before each successful write it keeps the previous valid file as `config.json.rex-backup`. `rex config restore` swaps the current and previous versions, allowing a one-step undo/redo without hand-editing JSON.
-
-### CLI distribution
-
-Release builds publish `rex.exe` as a .NET 8 **self-contained, single-file Windows executable**. `REX.bat`:
-
-1. uses the existing local executable when present;
-2. otherwise looks for `rex-win-x64.zip` plus its SHA-256 checksum in the latest GitHub release and verifies the archive before extraction;
-3. when no matching release asset exists, can build the CLI locally if a .NET 8 SDK is installed.
-
-The PowerShell/ADB/scrcpy implementation remains shared with the GUI; the CLI is a presentation/orchestration layer rather than a second Android-control implementation.
-
-### Display transports
-
-REX separates the **ADB control plane** from the display transport. Normal mirroring continues to use scrcpy. Windows Wireless Display is treated as a separate external-display path that can run while ADB remains connected.
-
-`rex display probe` reports:
-
-- scrcpy availability;
-- Windows Wireless Display optional-feature state;
-- Wi-Fi driver Miracast receive reporting;
-- independent ADB control availability;
-- whether a connected Samsung device is a DeX candidate;
-- local normal/protected playback verification state.
-
-REX does **not** implement Miracast, Wi-Fi Direct or HDCP, and it does not claim protected playback works merely because Windows reports Wireless Display support. Use `rex display verify protected pass|fail|clear` only after manually testing the exact phone/PC/driver/application chain.
-
-Local verification is stored in `display-verification.json` and is ignored by Git. See `docs/DISPLAY_TRANSPORTS.md` and `docs/DISPLAY_COMPATIBILITY.md`.
-
-### Privileged Android / root support
-
-REX can detect and use an **existing** Android root environment without changing the normal ADB control plane.
-
-`rex root status` and `rex root probe` are passive: they inspect the current ADB shell, boot ID, SELinux mode and whether `su` is visible, but they do **not** invoke `su` or trigger a root-manager prompt.
-
-`rex root request` is the explicit authorization boundary. If a root provider grants access, REX fingerprints the resulting privilege profile and probes individual capabilities instead of assuming that UID 0 means unrestricted access. This matters for restricted profiles such as KernelSU configurations.
-
-Root verification is cached locally only for the same device serial and Android boot ID in `root-state.json`. A reboot invalidates the previous boot's verification automatically.
-
-Root v1 is deliberately read-only and includes:
-
-- privileged diagnostics;
-- private filesystem list/stat/bounded text reads;
-- process inspection;
-- package/private-app-data inspection;
-- hardware and thermal metadata;
-- network diagnostics;
-- kernel logs;
-- system properties.
-
-REX recognizes best-effort signals for Magisk, KernelSU, APatch and generic/unknown `su` providers. Provider detection is metadata; actual capability probes decide what REX can use.
-
-Root v1 does **not** install root, unlock bootloaders, patch/flash boot images, modify AVB, hide root, expose an arbitrary root shell, write partitions, or bypass DRM/secure video.
-
-See `docs/ROOT_ARCHITECTURE.md`, `docs/ROOT_SECURITY.md` and `docs/ROOT_COMPATIBILITY.md`.
-
-### Privileged Android / Root v1
-
-REX can detect and use an **existing** Android root environment without changing normal ADB/scrcpy behavior for unrooted devices.
-
-The privilege model is capability-driven rather than a single `rooted=true` flag:
-
-- `rex root status`, `probe`, and `capabilities` are passive and **never invoke `su`**;
-- `rex root request` is the explicit operation that may trigger a Magisk/KernelSU/APatch/other superuser prompt;
-- successful verification is scoped to the Android serial plus current Android boot ID;
-- provider identity is metadata only — actual private-data/process/kernel/network/etc. capability probes determine what REX can use;
-- UID 0 is not treated as proof that every privileged capability works;
-- Root v1 public feature commands are read-only.
-
-Read-only Root v1 tools include privileged diagnostics, bounded filesystem list/stat/read, process inspection, private application/package inspection, hardware/kernel telemetry, network diagnostics, bounded kernel logs, and system-property inspection.
-
-REX Root v1 deliberately does **not** install root, unlock bootloaders, patch/flash boot images, modify AVB, write partitions, hide root, bypass integrity checks, expose arbitrary root shell/exec, or bypass DRM/protected video paths.
-
-Root configuration defaults to:
-
-- passive probing enabled;
-- automatic authorization requests disabled;
-- read-only operations enabled;
-- reversible/system/device-critical writes disabled;
-- raw root shell disabled.
-
-The Control Center exposes the same compiled machine API as the CLI; the WPF layer does not maintain a second `su` implementation.
-
-See:
-
-- `docs/ROOT_ARCHITECTURE.md`
-- `docs/ROOT_CAPABILITIES.md`
-- `docs/ROOT_SECURITY.md`
-- `docs/ROOT_COMPATIBILITY.md`
-
-### Screenshots and recording
-
-- **Save screenshot** uses adb exec-out screencap -p and writes under captures/screenshots/ by default.
-- **Record on next session** uses scrcpy's native recording pipeline and writes under captures/recordings/ by default.
-- scrcpy 4.1 does not provide a dynamic start/stop-recording shortcut, so recording-on-start is explicitly presented as a next-session setting rather than pretending it is live.
-
-## Start and stop behavior
-
-The package has a persistent OFF state.
-
-### Stop
-
-Run:
-
-```
-STOP.bat
-```
-
-STOP:
-
-- creates `stop.flag`;
-- closes scrcpy;
-- stops this package's background supervisor;
-- stops any pattern-guide sidecar started by this package;
-- stops the mirror toolbar / host-zoom / touchpad-gesture sidecar;
-- stops any open per-device Control Center;
-- leaves the shared Windows ADB server alone.
-
-The `stop.flag` remains present, so Windows autostart will not resurrect the mirror.
-
-### Start
-
-Run:
-
-```
-START_NOW.bat
-```
-
-or:
-
-```
-START_WITH_LOG.bat
-```
-
-An explicit start removes `stop.flag` and launches the supervisor again.
-
-`SETUP_AND_START.bat` also counts as an explicit start.
-
-## Diagnostics
-
-Run:
-
-```
-DIAGNOSTICS.bat
-```
-
-Diagnostics reports:
-
-- ADB availability/version;
-- scrcpy availability/version;
-- whether the package is persistently OFF;
-- whether the supervisor is running;
-- whether scrcpy is running;
-- connected ADB serials;
-- ADB state: `device`, `unauthorized`, `offline`, or not detected;
-- manufacturer/model when ADB is authorised;
-- recent state/log information.
-
-If ADB reports:
-
-```
-unauthorized
-```
-
-that means the computer is not yet authorised for ADB. It does **not** necessarily mean USB debugging is disabled. Unlock the Android device and approve the RSA prompt.
-
-## Wireless ADB
-
-Wireless fallback is deliberately disabled by default.
-
-In `config.json`:
-
-```json
-"Wireless": {
-  "Enabled": false,
-  "Port": 5555,
-  "EnableTcpipWhenUsbAvailable": false
-}
-```
-
-If you explicitly enable it, the supervisor can bootstrap legacy `adb tcpip` while USB is available and remember candidate private IP addresses.
-
-USB remains the recommended recovery path because legacy ADB TCP/IP normally does not survive a phone reboot.
-
-## Configuration
-
-Useful values in `config.json`:
-
-- `TurnPhysicalScreenOff`: defaults to `true`. Uses scrcpy's screen-off mode while mirrored; PC/scrcpy-injected control remains active, and on devices that tie touch input to display power the handset touch surface is inactive until the panel wakes. Hardware power/OEM wake gestures can still wake it.
-- `StayAwakeWhenUsb`: use scrcpy `--stay-awake` while the active device is physically plugged in; scrcpy restores the previous Android setting when it closes.
-- `KeepActiveDuringMirror`: use scrcpy `--keep-active` to periodically signal user activity while mirroring, including TCP/IP sessions.
-- `DismissKeyguardWhenPossible`: ask Android to dismiss the keyguard before mirroring when authentication is not required; it does not bypass a secure PIN/password.
-- `PowerOffOnClose`: optionally power the device display off when scrcpy closes.
-- `MaxSize`: maximum encoded video dimension.
-- `MaxFps`: frame-rate cap.
-- `VideoBitRate`: video quality/bandwidth setting.
-- `PreferredSerial`: optional fixed ADB serial.
-- `RestartOnUnexpectedExit`: relaunch scrcpy after an unexpected failure while the supervisor is enabled.
-- `PatternOverlay.Enabled`: enable per-device pattern-guide support.
-- `PatternOverlay.PromptPerDevice`: ask once per new device about its lock-screen type.
-- `PatternOverlay.AutoShowOnKeyguard`: automatically show the guide when OEM-tolerant keyguard signals report a lock screen.
-- `PatternOverlay.ManualToggleHotkey`: manual fallback hotkey; default `Ctrl+Alt+P`.
-- `PatternOverlay.GridCenterX` / `GridCenterY` / `GridSizeRelativeToWidth`: normalized grid geometry for OEM/device tuning.
-- `PatternOverlay.ShowCursorTrail`: draw a temporary in-memory cursor trail while dragging over the guide.
-- `PatternOverlay.AutoDiscoverGeometry`: discover the runtime Android pattern widget/cell bounds before using any estimate.
-- `PatternOverlay.CalibrationHotkey`: enter keyboard-only calibration; default `Ctrl+Alt+C`.
-- `PatternOverlay.CalibrationDirectory`: per-device normalized geometry files; ignored by Git.
-- `MirrorChrome.SleepButton`: show the persistent **Sleep phone** toolbar action.
-- `MirrorChrome.NativeTouchpadGestures`: enable Windows 11 Precision Touchpad gesture bridging when supported.
-- `MirrorChrome.TouchpadPinchToAndroid`: map a native two-finger pinch/spread to Android multitouch.
-- `MirrorChrome.HostZoomModifier`: reserved modifier for Windows-only magnification; currently `alt`.
-- `MirrorChrome.TouchpadPinchToHostZoom` / `WheelToHostZoom`: enable **Alt + pinch** and **Alt + wheel** PC-only magnification.
-- `MirrorChrome.AndroidPinchSensitivity` / `HostZoomPinchSensitivity`: independently tune Android pinch and Windows magnification response.
-- `MirrorChrome.TouchpadScrollSensitivity` / `TouchpadScrollDeadzone` / `TouchpadScrollMaxDeltaPerSample`: tame two-finger scrolling and cap accidental flings.
-- `MirrorChrome.TouchpadPinchThreshold` / `TouchpadPinchDominanceRatio`: distinguish intentional pinch from ordinary two-finger scrolling.
-- `MirrorChrome.ShowZoomMinimap` / `HostPanSensitivity`: control the zoom navigator and viewport panning.
-- `MirrorChrome.HostZoomEnabled`: enable persistent PC-only frame magnification and **Reset zoom**.
-- `ControlCenter.Enabled`: enable the per-device Windows Control Center.
-- `ControlCenter.ConfirmSensitiveDeviceWrites`: confirm advanced Android writes before execution.
-- `ControlCenter.ScreenshotDirectory`: screenshot output directory.
-- `ScrcpySession.VideoCodec`: `h264`, `h265` or `av1` for the next mirror session.
-- `ScrcpySession.AudioEnabled` / `AudioCodec` / `AudioBufferMs` / `AudioDup`: scrcpy audio preferences.
-- `ScrcpySession.Fullscreen` / `AlwaysOnTop` / `DisableScreensaver`: window behavior at session start.
-- `ScrcpySession.RecordOnStart` / `RecordDirectory`: native scrcpy recording settings.
-- `ExtraScrcpyArgs`: validated advanced argument escape hatch. Required wrapper invariants such as device serial, window title, SDK mouse mode and an interactive window cannot be overridden.
-
-
-
-## Samsung notes
-
-On Samsung devices, security features such as Auto Blocker or USB restrictions while locked can interfere with ADB. These settings vary by One UI version.
-
-Changing USB security settings reduces protection against someone with physical access to the phone, so only change them when you understand the trade-off.
-
-After a full Android reboot, the device may require a first PIN/password unlock before some USB/data functionality becomes available. This project does not attempt to bypass Android's secure first-unlock behavior.
-
-## Autostart
-
-Setup installs a per-user Windows startup shortcut named:
-
-```
-Android Headless Mirror.lnk
-```
-
-Remove it with:
-
-```
-REMOVE_AUTOSTART.bat
-```
-
-The remover also cleans up the old `S21 Headless Mirror.lnk` name from earlier versions.
+When several phones are connected, pass `--serial <SERIAL>`. The machine-readable contract for
+scripts and coding agents is documented in [AGENTS.md](AGENTS.md).
+
+## How it works
+
+- `src/Rex.Mirror` is the WPF desktop app. It embeds scrcpy's window as a child of its own viewport,
+  scales that surface for zoom, and draws the pattern guide and navigator on a transparent overlay.
+- `src/Rex.Core` holds everything without a UI: configuration, ADB client, scrcpy arguments, the
+  installer, state, geometry and the pipe protocol. The app and the CLI share it.
+- `src/Rex.Cli` is `rex.exe`. Commands that need the live mirror talk to the app over a per-user
+  named pipe; everything else uses ADB directly.
+- `tests/` contains the xUnit suite, a fake `adb.exe` and a fake `scrcpy.exe` that let the whole
+  app run end to end in CI without a phone, plus the Playwright checks for the website.
+- `assets/make-icon.ps1` renders `assets/rex.ico` from the REX phone mark.
+
+Configuration lives in `config.json` (list it with `rex config list`). Per-machine state such as
+phone serials, lock-screen answers and window placement lives in `state.json`, which is never committed.
+
+## Security notes
+
+- USB debugging gives this PC full control of the phone. Only authorise computers you trust.
+- Wireless ADB is off by default. USB remains the recovery path.
+- The app never stores or injects a PIN, password or pattern. After a reboot some phones require the
+  first unlock on the device itself; that is an Android boundary, not something the app bypasses.
+- Nothing needs administrator rights and nothing leaves the PC.
 
 ## Development
 
-Tests:
-
 ```powershell
-python tests\test_package.py
-powershell -NoProfile -File tests\Test-MirrorInteractionBehavior.ps1
+dotnet build Rex.sln
+dotnet test --project tests/Rex.Tests/Rex.Tests.csproj
+npm ci; npm run test:pages
 ```
 
-The repository includes Windows and browser CI that:
-
-- validates JSON, XAML, JavaScript and PowerShell syntax;
-- verifies launcher/script references and runtime-artifact ignore rules;
-- runs static repository/package contracts;
-- runs supervisor/overlay behavior under **PowerShell 7 and Windows PowerShell 5.1**;
-- runs the real WPF Control Center against deterministic fake-device/fake-ADB backends and exercises every top-level tab and every named button flow;
-- verifies scrcpy runtime action dispatch, PC settings validation/save/discard, friendly Android controls, advanced namespace search/write/delete/protected-key blocking, diagnostics and failure paths;
-- renders all five Control Center tabs at a fixed 1040×760 target and gates them with screenshot color/contrast/visual-entropy/layout thresholds;
-- runs Chromium desktop/mobile behavior, screenshot thresholds and axe accessibility checks for GitHub Pages;
-- uploads WPF and Pages screenshot/metric artifacts on every CI run for visual diagnosis.
-
-Hardware integration still requires a real Android device. CI deliberately proves deterministic command construction/UI behavior without claiming that every OEM grants every ADB setting permission.
-
-## Security
-
-USB debugging gives an authorised computer significant control over the connected Android device. Only permanently authorise computers you trust.
-
-Wireless ADB exposes an additional network-access path and is therefore opt-in rather than enabled by default.
+The test suite runs the real app against the fake phone tooling and saves screenshots under
+`artifacts/screens`. CI does the same on `windows-latest` and publishes `rex-win-x64` as an artifact.
+Tagging `v*` publishes a release archive with its checksum, which `REX.bat` then installs.

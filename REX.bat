@@ -2,20 +2,27 @@
 setlocal
 cd /d "%~dp0"
 
-set "REX_BOOTSTRAP_QUIET="
-if /I "%~1"=="agent" set "REX_BOOTSTRAP_QUIET=-Quiet"
+rem REX.bat            opens Android Headless Mirror
+rem REX.bat <command>  runs the command line (rex help)
+
+set "REX_QUIET="
+if /I "%~1"=="agent" set "REX_QUIET=-Quiet"
 for %%A in (%*) do (
-  if /I "%%~A"=="--json" set "REX_BOOTSTRAP_QUIET=-Quiet"
-  if /I "%%~A"=="--plain" set "REX_BOOTSTRAP_QUIET=-Quiet"
+  if /I "%%~A"=="--json" set "REX_QUIET=-Quiet"
+  if /I "%%~A"=="--plain" set "REX_QUIET=-Quiet"
 )
 
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-RexCli.ps1" %REX_BOOTSTRAP_QUIET%
-if errorlevel 1 (
-  if not defined REX_BOOTSTRAP_QUIET (
-    echo.
-    echo REX CLI bootstrap failed. See the error above.
+if not exist "%~dp0tools\rex\rex.exe" (
+  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-Rex.ps1" %REX_QUIET%
+  if errorlevel 1 (
+    if not defined REX_QUIET echo REX could not be prepared. See the messages above.
+    exit /b 1
   )
-  exit /b 1
+)
+
+if "%~1"=="" (
+  start "" "%~dp0tools\rex\RexMirror.exe"
+  exit /b 0
 )
 
 "%~dp0tools\rex\rex.exe" %*

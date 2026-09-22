@@ -1,668 +1,217 @@
 <!doctype html>
 <html lang="en" class="no-js">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Android Headless Mirror turns a Windows PC into a reliable Android control surface using scrcpy and ADB, with USB-first recovery, multi-transport display support, diagnostics, and capability-gated read-only tools for already-rooted devices.">
-  <meta name="robots" content="index,follow">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#080A09">
-  <meta property="og:title" content="Android Headless Mirror — REX Technologies">
-  <meta property="og:description" content="A REX Technologies product for operating Android from Windows with USB-first scrcpy + ADB, display orchestration, diagnostics, and optional read-only privileged inspection on already-rooted devices.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/">
-  <meta name="twitter:card" content="summary">
-  <link rel="canonical" href="https://tochi-mba.github.io/Android_Headless_Mirror/">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="manifest" href="site.webmanifest">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <script>document.documentElement.classList.replace("no-js","js");</script>
-  <noscript><style>@media(max-width:720px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
-  <title>Android Headless Mirror — control Android from Windows — REX Technologies</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Android Headless Mirror puts your Android phone in one window on your Windows PC. Automatic over USB, real touchpad gestures, phone controls and settings, all built on scrcpy and ADB.">
+<meta name="robots" content="index,follow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080A09">
+<meta property="og:title" content="Android Headless Mirror — REX Technologies">
+<meta property="og:description" content="Your Android phone, in one window on your Windows PC. Automatic over USB, real touchpad gestures, phone controls and settings.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://tochi-mba.github.io/Android_Headless_Mirror/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.classList.replace("no-js","js");</script>
+<noscript><style>@media(max-width:760px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
+<title>Android Headless Mirror — your phone in one window — REX Technologies</title>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <div class="ambient ambient-one" aria-hidden="true"></div>
-  <div class="ambient ambient-two" aria-hidden="true"></div>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ambient ambient-one" aria-hidden="true"></div>
+<div class="ambient ambient-two" aria-hidden="true"></div>
 
-  <header class="site-header">
-    <div class="container nav-wrap">
-      <a class="brand" href="#top" aria-label="Android Headless Mirror, by REX Technologies">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg>
-        </span>
-        <span class="brand-lockup">
-          <span class="brand-company">REX Technologies</span>
-          <span class="brand-name">Android Headless Mirror</span>
-        </span>
-      </a>
-      <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav">
-        <span class="sr-only">Toggle navigation</span><span></span><span></span>
-      </button>
-      <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
-        <a href="#how">How it works</a>
-        <a href="#features">Features</a>
-        <a href="#display">Display</a>
-        <a href="#privileged">Privileged</a>
-        <a href="#controls">Controls</a>
-        <a href="#control-center">Control Center</a>
-        <a href="#cli">REX CLI</a>
-        <a href="#pattern-guide">Pattern guide</a>
-        <a href="#compatibility">Compatibility</a>
-        <a href="#faq">FAQ</a>
-        <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
-      </nav>
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a class="brand" href="#top" aria-label="Android Headless Mirror, by REX Technologies">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span>
+      <span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span><span></span><span></span></button>
+    <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#gestures">Gestures</a>
+      <a href="#install">Install</a>
+      <a href="#cli">CLI</a>
+      <a href="#faq">FAQ</a>
+      <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero container" id="top">
+    <div class="hero-copy reveal">
+      <div class="eyebrow signal"><span class="pulse-dot"></span> Windows 11 · USB · scrcpy + ADB</div>
+      <h1>Your phone.<br><span>One window.</span></h1>
+      <p class="hero-lede">Plug your Android phone in and it appears on your PC with its own screen off. The mirror, the phone controls and every setting live in a single window. No floating toolbars, no second app.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
+        <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="hero-meta" aria-label="Project highlights"><span>Open source</span><span>No account</span><span>Nothing leaves your PC</span></div>
     </div>
-  </header>
 
-  <main id="main">
-    <section class="hero container" id="top">
-      <div class="hero-copy reveal">
-        <div class="eyebrow signal"><span class="pulse-dot"></span> Windows + Android · USB-first</div>
-        <h1>Your Android.<br><span>Right where you work.</span></h1>
-        <p class="hero-lede">A polished Windows wrapper around scrcpy and ADB that makes Android feel native on your desktop — automatic reconnection, persistent start/stop, touchpad gestures, lock-screen guidance, diagnostics, multi-transport display orchestration, capability-gated privileged inspection, and optional wireless fallback.</p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
-          <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
+    <div class="hero-stage reveal" aria-label="Preview of the Android Headless Mirror window">
+      <div class="app-window">
+        <div class="app-topbar">
+          <span class="app-title">Android Headless Mirror</span>
+          <span class="app-chip"><i aria-hidden="true"></i>Galaxy S21 Ultra · USB · 74%</span>
+          <span class="app-zoom">100%</span>
         </div>
-        <div class="hero-meta" aria-label="Project highlights"><span>No account</span><span>No analytics</span><span>Open source</span></div>
-      </div>
-
-      <div class="hero-stage reveal" aria-label="Android Headless Mirror active session preview">
-        <div class="session-preview">
-          <div class="session-titlebar">
-            <div>
-              <span class="session-app-dot" aria-hidden="true"></span>
-              <strong>Android Headless Mirror</strong>
-            </div>
-            <span class="session-connected"><i aria-hidden="true"></i> USB connected</span>
-          </div>
-
-          <div class="session-body">
-            <div class="session-device">
-              <div class="session-device-bar">
-                <span>SM-G998B</span>
-                <span>R3CRB04F7PP</span>
-              </div>
-              <div class="session-device-screen">
-                <svg class="session-device-icon" viewBox="0 0 32 32" aria-hidden="true">
-                  <rect x="9" y="3" width="14" height="26" rx="4"/>
-                  <path d="M13 7h6M14 25h4"/>
-                </svg>
-                <strong>Mirror active</strong>
-                <span>Physical display off</span>
-              </div>
-            </div>
-
-            <div class="session-details">
-              <div class="session-eyebrow">CURRENT SESSION</div>
-              <dl>
-                <div><dt>Transport</dt><dd><span class="status-dot"></span>USB</dd></div>
-                <div><dt>ADB</dt><dd>Authorized</dd></div>
-                <div><dt>Wake</dt><dd>Active</dd></div>
-                <div><dt>Keep active</dt><dd>On</dd></div>
-              </dl>
-              <div class="session-command">
-                <span>supervisor</span>
-                <code>device ready → launching scrcpy</code>
-              </div>
+        <div class="app-body">
+          <div class="app-mirror">
+            <div class="app-phone">
+              <span class="app-phone-time">09:41</span>
+              <span class="app-phone-dots"><i></i><i></i><i></i><i></i></span>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="trust-strip">
-      <div class="container trust-grid">
-        <div><strong>USB first</strong><span>Reliable recovery path</span></div>
-        <div><strong>Persistent OFF</strong><span>STOP means stop</span></div>
-        <div><strong>Local control</strong><span>scrcpy + ADB</span></div>
-        <div><strong>Hardware tested</strong><span>Galaxy S21 Ultra · SM-G998B</span></div>
-      </div>
-    </section>
-
-    <section class="section container" id="how">
-      <div class="section-heading reveal">
-        <div class="eyebrow signal">Simple by design</div>
-        <h2>Plug in. Authorise once. Use your phone from Windows.</h2>
-        <p>The project handles the repetitive parts around ADB and scrcpy so the normal workflow becomes boring — in the best possible way.</p>
-      </div>
-      <div class="steps">
-        <article class="step reveal"><span class="step-number">01</span><div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4m-3 0h6"/></svg></div><h3>Connect over USB</h3><p>USB is the default and recovery transport. No network setup is required for the normal path.</p></article>
-        <article class="step reveal"><span class="step-number">02</span><div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></div><h3>Authorise this PC</h3><p>Approve Android's standard “Allow USB debugging” RSA prompt and choose “Always allow from this computer”.</p></article>
-        <article class="step reveal"><span class="step-number">03</span><div class="step-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="3"/><path d="M9 7h6m-4 10h2"/></svg></div><h3>Mirror automatically</h3><p>The supervisor detects an authorised device, wakes it, and launches scrcpy with your configured options.</p></article>
-      </div>
-    </section>
-
-    <section class="section container" id="features">
-      <div class="section-heading reveal">
-        <div class="eyebrow signal">Built for daily use</div>
-        <h2>The little details that make it feel reliable.</h2>
-      </div>
-      <div class="bento">
-        <article class="feature-card feature-large reveal">
-          <div class="feature-kicker">Lifecycle</div>
-          <h3>START and STOP mean exactly what they say.</h3>
-          <p>Stopping creates a persistent OFF state. Windows autostart respects it, so the mirror cannot quietly resurrect itself after you explicitly turned it off.</p>
-          <div class="lifecycle-contract" aria-label="Persistent start and stop lifecycle">
-            <div><code>STOP.bat</code><span>→</span><strong>stop.flag created</strong><span>→</span><em>autostart blocked</em></div>
-            <div><code>START_NOW.bat</code><span>→</span><strong>stop.flag removed</strong><span>→</span><em>supervisor armed</em></div>
-          </div>
-        </article>
-        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 8a8 8 0 1 1-1 8"/><path d="M5 3v5h5"/></svg></div><h3>Auto-open on connect</h3><p>The hidden supervisor stays armed after Windows sign-in. Plug in any authorised Android phone and its mirror opens automatically, with a one-second poll interval by default.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M9.5 6h5M10 17h4"/></svg></div><h3>Headless active session</h3><p>Keep the physical display dark, re-send screen-off from the always-on mirror toolbar whenever needed, and keep the PC mirror active.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 12a8 8 0 0 1 10 0m-7 3a4 4 0 0 1 4 0"/><circle cx="12" cy="18" r="1"/></svg></div><h3>Wireless, when you want it</h3><p>ADB-over-TCP/IP remains available as an optional fallback, but ships disabled by default.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8M12 18v3"/><path d="M7 10h10"/></svg></div><h3>Choose the right display path.</h3><p>scrcpy remains the default capture path. Windows Wireless Display can be orchestrated separately while USB ADB stays connected for control.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"/><path d="M9 12h6M12 9v6"/></svg></div><h3>Privilege is a capability, not a checkbox.</h3><p>On an already-rooted device, REX can passively detect a usable route, explicitly request authorization, then expose only read-only features whose capability probes actually succeed.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol pattern-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></div><h3>Black lock screen? Still usable.</h3><p>Pattern-lock phones can use runtime Android geometry first and keyboard-only calibration only when the OEM hides the real pattern view.</p></article>
-      </div>
-    </section>
-
-    <section class="section container" id="display">
-      <div class="section-heading reveal">
-        <div class="eyebrow signal">Display transports</div>
-        <h2>Control stays on ADB. Presentation can change.</h2>
-        <p>REX treats the Android control plane and the display plane separately, so normal scrcpy mirroring and an external Windows Wireless Display path can coexist with the same device connection.</p>
-      </div>
-      <div class="steps">
-        <article class="step reveal"><span class="step-number">01</span><h3>scrcpy by default</h3><p>Low-latency capture, audio, screenshots, recording, input and headless screen-off behavior stay on the proven scrcpy path.</p></article>
-        <article class="step reveal"><span class="step-number">02</span><h3>Wireless Display when needed</h3><p>REX probes the Windows optional feature and Miracast receive reporting, then opens the system receiver setup instead of reimplementing Wi-Fi Direct or HDCP.</p></article>
-        <article class="step reveal"><span class="step-number">03</span><h3>Verify protected playback</h3><p>Protected playback is never inferred from capability strings. The exact phone, PC, drivers and application must be manually tested before REX records the path as verified.</p></article>
-      </div>
-    </section>
-    <section class="section container privileged-section" id="privileged">
-      <div class="privileged-grid">
-        <div class="section-heading reveal">
-          <div class="eyebrow signal">Privileged Android · Root v1</div>
-          <h2>Root is a capability. Not a boolean.</h2>
-          <p>Normal ADB stays the default control plane. When a device is already rooted, REX can discover that environment without prompting, request authorization only when you ask, then expose only the read-only capabilities that actually verify.</p>
-
-          <div class="root-principles" aria-label="Root v1 design principles">
-            <div><span>01</span><p><strong>Passive first.</strong> <code>rex root status</code> checks ADB UID, boot ID, SELinux state and whether <code>su</code> is visible. It never invokes <code>su</code>.</p></div>
-            <div><span>02</span><p><strong>Authorization is explicit.</strong> <code>rex root request</code> is the only Root v1 action that intentionally asks the device's superuser provider for access.</p></div>
-            <div><span>03</span><p><strong>Verification expires with the boot.</strong> Cached trust is scoped to the Android serial + boot ID, so a reboot cannot silently inherit the previous session.</p></div>
-          </div>
-        </div>
-
-        <div class="root-console reveal" aria-label="Preview of REX privileged Android capability status">
-          <div class="root-console-bar">
-            <span>REX · PRIVILEGED ANDROID</span>
-            <span class="root-console-state">● VERIFIED THIS BOOT</span>
-          </div>
-          <div class="root-console-body">
-            <div class="root-identity">
-              <div>
-                <span class="root-label">STATE</span>
-                <strong>granted</strong>
-              </div>
-              <div>
-                <span class="root-label">PROVIDER</span>
-                <strong>Magisk</strong>
-              </div>
-              <div>
-                <span class="root-label">EFFECTIVE UID</span>
-                <strong>0</strong>
-              </div>
-              <div>
-                <span class="root-label">SELINUX</span>
-                <strong>Enforcing</strong>
-              </div>
+          <aside class="app-sidebar">
+            <div class="app-tabs"><span class="active">Controls</span><span>Phone</span><span>Settings</span><span>Info</span></div>
+            <div class="app-tiles">
+              <span>Home</span><span>Back</span><span>Recents</span>
+              <span>Sleep</span><span>Wake</span><span>Rotate</span>
+              <span>Vol +</span><span>Vol −</span><span>Screenshot</span>
             </div>
-            <div class="root-command"><span>PS&gt;</span><code>rex root capabilities</code></div>
-            <div class="root-capabilities" aria-hidden="true">
-              <div><span>private app data</span><em>VERIFIED</em></div>
-              <div><span>process inspection</span><em>VERIFIED</em></div>
-              <div><span>hardware telemetry</span><em>VERIFIED</em></div>
-              <div><span>network diagnostics</span><em>VERIFIED</em></div>
-              <div><span>kernel logs</span><em class="restricted">RESTRICTED</em></div>
-            </div>
-            <div class="root-boundary">Provider identity is metadata. Individual capability probes decide what REX can actually use.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="root-toolkit reveal">
-        <div>
-          <span class="advanced-label">READ-ONLY TOOLKIT</span>
-          <strong>Inspection without turning REX into a raw root shell.</strong>
-          <p>Diagnostics, bounded filesystem reads, process and package inspection, private app data, hardware, network state, kernel logs and system properties are exposed as structured operations.</p>
-        </div>
-        <div class="root-tool-list">
-          <code>root diagnostics</code>
-          <code>root files list|stat|read</code>
-          <code>root processes / process &lt;pid&gt;</code>
-          <code>root app &lt;package&gt;</code>
-          <code>root hardware / network</code>
-          <code>root logs kernel / properties</code>
-        </div>
-      </div>
-
-      <div class="root-safety-note reveal">
-        <strong>Root v1 safety boundary</strong>
-        <p>There is no root installation: REX does not unlock bootloaders, patch or flash boot images, alter AVB, hide root, expose an arbitrary root shell, write partitions, or provide DRM bypass. Root access also does not make Android secure/protected video capturable.</p>
-        <div class="root-doc-links">
-          <a href="https://github.com/tochi-mba/Android_Headless_Mirror/blob/main/docs/ROOT_ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Architecture ↗</a>
-          <a href="https://github.com/tochi-mba/Android_Headless_Mirror/blob/main/docs/ROOT_SECURITY.md" target="_blank" rel="noopener noreferrer">Security model ↗</a>
-          <a href="https://github.com/tochi-mba/Android_Headless_Mirror/blob/main/docs/ROOT_COMPATIBILITY.md" target="_blank" rel="noopener noreferrer">Compatibility ledger ↗</a>
-        </div>
-      </div>
-    </section>
-    <section class="section container controls-section" id="controls">
-      <div class="controls-head reveal">
-        <div>
-          <div class="eyebrow signal">Desktop-native controls</div>
-          <h2>Use the touchpad like the phone.<br>Use Alt when you only want the PC view.</h2>
-        </div>
-        <p>Android gestures and desktop magnification stay intentionally separate, so the same touchpad can control the app or just magnify the mirror without ambiguity.</p>
-      </div>
-
-      <div class="controls-layout">
-        <div class="gesture-cards">
-          <article class="gesture-card reveal">
-            <div class="gesture-visual touchpad-visual" aria-hidden="true">
-              <span class="finger finger-a"></span>
-              <span class="finger finger-b"></span>
-              <span class="gesture-arrow left"></span>
-              <span class="gesture-arrow right"></span>
-            </div>
-            <div class="gesture-copy">
-              <span class="gesture-kicker">WINDOWS 11 · PRECISION TOUCHPAD</span>
-              <h3>Pinch naturally → Android pinches.</h3>
-              <p>Two fingers pinch or spread on the laptop touchpad. Android receives the corresponding two-finger pinch/rotate gesture through scrcpy. No keyboard modifier is required.</p>
-            </div>
-          </article>
-
-          <article class="gesture-card reveal">
-            <div class="gesture-visual zoom-visual" aria-hidden="true">
-              <kbd>Alt</kbd>
-              <span>+</span>
-              <div class="mini-touchpad"><i></i><i></i></div>
-            </div>
-            <div class="gesture-copy">
-              <span class="gesture-kicker">PC-ONLY VIEW</span>
-              <h3>Hold Alt + pinch → magnify the mirror.</h3>
-              <p>The phone receives no pinch. The Windows frame zoom persists after Alt is released. Alt + two-finger slide pans the zoomed viewport, and <strong>Reset zoom</strong> appears only above 100%.</p>
-            </div>
-          </article>
-        </div>
-
-        <div class="toolbar-demo reveal" aria-label="Example always-on mirror toolbar">
-          <div class="toolbar-demo-label">ALWAYS AVAILABLE ON THE MIRROR</div>
-          <div class="toolbar-shell">
-            <span class="toolbar-demo-button">Sleep phone</span>
-            <span class="toolbar-zoom">175%</span>
-            <span class="toolbar-demo-button toolbar-reset">Reset zoom</span>
-          </div>
-          <div class="toolbar-notes">
-            <div><span>01</span><p><strong>Sleep phone</strong> re-sends scrcpy’s screen-off command while the PC mirror continues.</p></div>
-            <div><span>02</span><p><strong>Reset zoom</strong> only appears when the Windows-side magnifier is not at 100%.</p></div>
-            <div><span>03</span><p><strong>Mouse fallback:</strong> Alt + wheel controls host zoom. Ctrl and Shift remain available for scrcpy’s Android pinch/rotate and tilt gestures.</p></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="controls-compat reveal"><strong>Smooth by default:</strong> two-finger scroll sensitivity is intentionally conservative, small motion is dead-zoned, and each sample is capped so one swipe cannot fling through several screens. Android pinch and PC host-zoom sensitivity are independently adjustable in Control Center.</div>
-      <p class="controls-compat reveal"><strong>Compatibility:</strong> native two-finger Precision Touchpad bridging uses the Windows 11 touchpad pointer API. Windows 10 and unsupported hardware keep normal mirroring and scrcpy’s compatibility gesture path.</p>
-    </section>
-
-    <section class="section container control-center-section" id="control-center">
-      <div class="control-center-heading reveal">
-        <div>
-          <div class="eyebrow signal">Windows Control Center</div>
-          <h2>Everything in one place.<br>PC settings stay PC-side. Device settings stay device-side.</h2>
-        </div>
-        <p>The mirror toolbar keeps the essentials visible. <strong>Controls</strong> opens the full per-device workspace with runtime actions, display transport state, capability-gated privileged inspection, mirror preferences, Android settings, live Settings Provider keys and diagnostics.</p>
-      </div>
-
-      <div class="control-center-preview reveal" aria-label="Preview of the Windows Control Center">
-        <div class="cc-titlebar">
-          <div><span class="cc-dot"></span><strong>Samsung Galaxy S21 Ultra</strong><span>SM-G998B · Android 15 · R3CRB04F7PP</span></div>
-          <span class="cc-connected">CONNECTED</span>
-        </div>
-        <div class="cc-app">
-          <aside class="cc-sidebar" aria-label="Control Center sections">
-            <span class="active">Controls</span>
-            <span>Display</span>
-            <span>Privileged</span>
-            <span>PC / mirror settings</span>
-            <span>Samsung Galaxy S21 Ultra settings</span>
-            <span>Advanced Android</span>
-            <span>Diagnostics</span>
+            <div class="app-status">Mirroring · 1080×2400 · 60 fps</div>
           </aside>
-          <div class="cc-content">
-            <div class="cc-content-title"><span>Mirror controls</span><small>Runtime controls for the active scrcpy session.</small></div>
-            <div class="cc-control-grid">
-              <span>Fullscreen</span><span>Fit window</span><span>Pixel perfect</span><span>Rotate left</span>
-              <span>Rotate right</span><span>Pause display</span><span>Home</span><span>Back</span>
-              <span>Recent apps</span><span class="accent">Sleep phone</span><span>Wake screen</span><span>Quick settings</span>
-              <span>Volume −</span><span>Volume +</span><span>Reset host zoom</span><span class="accent">Save screenshot</span>
-            </div>
-          </div>
         </div>
       </div>
-
-      <div class="control-center-principles">
-        <article class="cc-principle reveal">
-          <span>01</span>
-          <h3>Runtime mirror controls</h3>
-          <p>scrcpy’s real runtime surface is exposed as buttons: window rotation and flip, fullscreen, fit, pixel-perfect, navigation, power, sleep/wake, panels, volume, clipboard, FPS and capture reset.</p>
-        </article>
-        <article class="cc-principle reveal">
-          <span>02</span>
-          <h3>PC / mirror settings</h3>
-          <p>Video codec/quality, audio, recording-on-start, window behavior, touchpad gestures, host zoom, pattern-guide behavior, wireless fallback and validated advanced scrcpy arguments.</p>
-        </article>
-        <article class="cc-principle reveal">
-          <span>03</span>
-          <h3>&lt;device&gt; settings</h3>
-          <p>Brightness, timeout, auto-rotate, best-effort forced orientation (Auto / 0° / 90° / 180° / 270°), font scale, show touches, stay-awake, animation speed, dark mode, connectivity commands and display size/density run on the connected Android through ADB.</p>
-        </article>
-        <article class="cc-principle reveal">
-          <span>04</span>
-          <h3>Advanced Android, live</h3>
-          <p>The phone’s actual <code>system</code>, <code>secure</code> and <code>global</code> Settings Provider keys are enumerated at runtime, searchable and risk-labelled instead of copied from a stale hard-coded catalog.</p>
-        </article>
-      </div>
-
-      <div class="advanced-settings-demo reveal">
-        <div>
-          <span class="advanced-label">ADVANCED ANDROID</span>
-          <strong>Runtime Settings Provider browser</strong>
-          <p>Unsupported or permission-denied writes return the real Android/OEM error. A small protected set guards ADB access and device identity.</p>
-        </div>
-        <div class="settings-table" aria-hidden="true">
-          <div class="settings-head"><span>Key</span><span>Value</span><span>Risk</span></div>
-          <div><span>screen_off_timeout</span><span>60000</span><em>normal</em></div>
-          <div><span>font_scale</span><span>1.0</span><em>normal</em></div>
-          <div><span>window_animation_scale</span><span>1</span><em>advanced</em></div>
-          <div class="protected"><span>adb_enabled</span><span>1</span><em>protected</em></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section container rex-cli-section" id="cli">
-      <div class="rex-cli-heading reveal">
-        <div>
-          <div class="eyebrow signal">REX CLI</div>
-          <h2>One terminal app.<br>Setup wizard, controls, settings and recovery.</h2>
-        </div>
-        <p>Open <code>REX.bat</code> and the CLI works out what state the package is in. First run becomes guided setup. After that, the same app becomes a complete keyboard-driven workspace with GUI parity and a scriptable command surface.</p>
-      </div>
-
-      <div class="rex-terminal reveal" aria-label="Preview of the REX command-line app">
-        <div class="rex-terminal-bar">
-          <span>REX TECHNOLOGIES · ANDROID HEADLESS MIRROR</span>
-          <span class="rex-terminal-state">● USB CONNECTED</span>
-        </div>
-        <div class="rex-terminal-body" tabindex="0" role="region" aria-label="Scrollable REX CLI preview">
-          <pre><span class="rt-signal">██████╗ ███████╗██╗  ██╗
-██╔══██╗██╔════╝╚██╗██╔╝
-██████╔╝█████╗   ╚███╔╝
-██╔══██╗██╔══╝   ██╔██╗
-██║  ██║███████╗██╔╝ ██╗
-╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝</span>
-
-<span class="rt-muted">STATUS</span>
-  SERVICE      <span class="rt-signal">ON</span>
-  SUPERVISOR   <span class="rt-signal">running</span>
-  MIRROR       waiting
-  AUTOSTART    <span class="rt-signal">enabled</span>
-  DEVICE       Samsung Galaxy S21 Ultra · R3CRB04F7PP · USB · device
-
-<span class="rt-text">What do you want to do?</span>
-<span class="rt-selected">❯ Start / open mirror</span>
-  Runtime controls
-  Display transports
-  Privileged Android
-  PC / mirror settings
-  Device settings
-  Advanced Android settings
-  Open GUI Control Center
-  Diagnostics
-  Setup / repair</pre>
-        </div>
-      </div>
-
-      <div class="cli-flow-grid">
-        <article class="cli-flow-card reveal">
-          <span>FIRST RUN</span>
-          <h3>Detect before asking</h3>
-          <p>REX checks scrcpy, ADB, current startup state and connected devices first. It only asks questions that matter for the current machine, then installs a smart <strong>REX</strong> desktop shortcut.</p>
-        </article>
-        <article class="cli-flow-card reveal">
-          <span>SETUP</span>
-          <h3>Guide the headless choices</h3>
-          <p>Choose Windows startup, lock method, physical-screen behavior, USB stay-awake, Precision Touchpad support and whether the GUI Control Center should auto-open.</p>
-        </article>
-        <article class="cli-flow-card reveal">
-          <span>EVERY DAY</span>
-          <h3>Everything from the keyboard</h3>
-          <p>Start/stop, sleep/wake, navigation, rotation, volume, clipboard, host zoom, screenshots, PC settings and Android settings all remain reachable without touching the phone.</p>
-        </article>
-        <article class="cli-flow-card reveal">
-          <span>RECOVERY</span>
-          <h3>Repair without losing intent</h3>
-          <p>Tool repair preserves the user’s startup choice. Config edits create a rollback copy, and protected Android keys cannot silently sever the ADB recovery path.</p>
-        </article>
-      </div>
-
-      <div class="cli-parity reveal">
-        <div class="cli-parity-copy">
-          <div class="eyebrow signal">Two interfaces · one backend</div>
-          <h3>The CLI and Control Center cannot drift.</h3>
-          <p>Both surfaces call the same PowerShell, ADB and scrcpy control layer. Friendly device settings and the live <code>system</code> / <code>secure</code> / <code>global</code> browser are shared rather than reimplemented.</p>
-        </div>
-        <div class="cli-command-list" aria-label="Example REX commands">
-          <code><b>rex</b><span>guided terminal app</span></code>
-          <code><b>rex smart</b><span>setup, start, wait, or focus</span></code>
-          <code><b>rex agent status</b><span>preferred coding-agent JSON mode</span></code>
-          <code><b>rex status --json</b><span>same prompt-free machine contract</span></code>
-          <code><b>rex status</b><span>human-readable package + device state</span></code>
-          <code><b>rex action sleep</b><span>runtime scrcpy action</span></code>
-          <code><b>rex mirror zoom-in</b><span>PC-only host zoom</span></code>
-          <code><b>rex root status</b><span>passive privilege discovery</span></code>
-          <code><b>rex root request</b><span>explicit superuser authorization</span></code>
-          <code><b>rex root diagnostics</b><span>read-only privileged inspection</span></code>
-          <code><b>rex device set brightness 180</b><span>friendly Android setting</span></code>
-          <code><b>rex android list global</b><span>live Settings Provider keys</span></code>
-          <code><b>rex config list</b><span>every PC / mirror setting</span></code>
-          <code><b>rex config restore</b><span>one-step config rollback</span></code>
-        </div>
-      </div>
-
-      <div class="cli-release-note reveal">
-        <div>
-          <span class="advanced-label">ZERO-FRICTION ENTRY</span>
-          <strong><code>REX.bat</code> bootstraps the app.</strong>
-        </div>
-        <p>Release builds ship a self-contained Windows <code>rex.exe</code>. The bootstrap verifies the release ZIP’s SHA-256 checksum before extraction and can build locally from source when a .NET 8 SDK is available. Setup also creates <strong>REX.lnk</strong>: if a mirror already exists it focuses it; if a ready phone is connected it starts the mirror; otherwise it starts/keeps the supervisor waiting. Coding agents can use <code>rex agent …</code> (preferred), <code>--plain</code>, or <code>--json</code> for the same prompt-free, versioned JSON response. The machine flags may appear before or after the command.</p>
-      </div>
-    </section>
-
-    <section class="section diagnostics-section">
-      <div class="container diagnostics-grid">
-        <div class="section-heading reveal">
-          <div class="eyebrow live">Know what is wrong</div>
-          <h2>Diagnostics that tell you the actual state.</h2>
-          <p>“USB debugging is off” is not the same thing as “this PC is unauthorized”. The diagnostic path separates the states that matter.</p>
-          <div class="diagnostic-tabs" role="tablist" aria-label="Diagnostic examples">
-            <button type="button" class="diag-tab active" id="diag-authorized" role="tab" aria-selected="true" aria-controls="diagnostic-panel" tabindex="0" data-state="authorized">Authorized</button>
-            <button type="button" class="diag-tab" id="diag-unauthorized" role="tab" aria-selected="false" aria-controls="diagnostic-panel" tabindex="-1" data-state="unauthorized">Unauthorized</button>
-            <button type="button" class="diag-tab" id="diag-offline" role="tab" aria-selected="false" aria-controls="diagnostic-panel" tabindex="-1" data-state="offline">Offline</button>
-          </div>
-        </div>
-        <div class="diagnostic-console reveal" id="diagnostic-panel" role="tabpanel" aria-labelledby="diag-authorized" aria-live="polite">
-          <div class="console-top"><span>DIAGNOSTICS.bat</span><i></i></div>
-          <pre id="diagnostic-output"><span class="console-head">=== Android Headless Mirror Diagnostics ===</span>
-ADB:            <b>OK</b>
-scrcpy:         <b>OK</b>
-Persistent OFF: no
-Supervisor:     <b>RUNNING</b>
-
-Serial:         R3CRB04F7PP
-ADB state:      <b>device</b>
-Device:         Samsung SM-G998B
-ADB auth:       <span class="success">AUTHORIZED</span></pre>
-        </div>
-      </div>
-    </section>
-
-    <section class="section container pattern-section" id="pattern-guide">
-      <div class="pattern-grid">
-        <div class="section-heading reveal">
-          <div class="eyebrow signal">Pattern lock guide</div>
-          <h2>Discover the real Android pattern geometry first. Calibrate only when the OEM hides it.</h2>
-          <p>When a secure lock screen renders black through scrcpy, the guide now asks Android for the current UI hierarchy and uses the actual pattern widget geometry whenever it is exposed.</p>
-
-          <div class="geometry-priority" aria-label="Pattern geometry accuracy order">
-            <div><span>1</span><strong>Exact pattern-cell bounds</strong><small>Highest confidence when Android exposes all nine virtual cells.</small></div>
-            <div><span>2</span><strong>Runtime LockPatternView bounds</strong><small>Uses Android’s live view rectangle and the AOSP 3×3 cell geometry.</small></div>
-            <div><span>3</span><strong>Saved per-device calibration</strong><small>Only for OEM-specific padding or hidden pattern widgets.</small></div>
-            <div><span>4</span><strong>Estimated fallback</strong><small>Used only when no better geometry source exists.</small></div>
-          </div>
-        </div>
-
-        <div class="pattern-demo reveal" aria-label="Visual example of runtime-discovered pattern geometry">
-          <div class="pattern-demo-bar">
-            <span>Android Device [R3CRB04F7PP]</span>
-            <span class="pattern-demo-state">ANDROID PATTERN VIEW · GUIDE ON</span>
-          </div>
-          <div class="pattern-demo-screen">
-            <div class="pattern-demo-label">SOURCE: LOCKPATTERNVIEW · CTRL + ALT + C TO CALIBRATE</div>
-            <div class="pattern-bounds" aria-hidden="true">
-              <span class="bound-label">runtime bounds</span>
-              <div class="pattern-dots">
-                <i></i><i></i><i></i>
-                <i></i><i></i><i></i>
-                <i></i><i></i><i></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pattern-facts">
-        <article class="pattern-fact reveal"><span>01</span><h3>Android tells us where it is</h3><p>UIAutomator hierarchy data is read at runtime while the guide is relevant. Exact virtual cells outrank parent-view geometry.</p></article>
-        <article class="pattern-fact reveal"><span>02</span><h3>Calibration stays headless</h3><p><strong>Ctrl+Alt+C</strong> enters calibration. Arrow keys move; Shift+arrows resize; Ctrl+arrows fine-adjust; Enter saves; Esc cancels.</p></article>
-        <article class="pattern-fact reveal"><span>03</span><h3>Per-device correction</h3><p>Calibration is saved by ADB serial as four normalized bounds, so resizing the scrcpy window or moving monitors does not invalidate it.</p></article>
-        <article class="pattern-fact reveal"><span>04</span><h3>The unlock path is never stored</h3><p>No pattern sequence, no gesture replay. The optional drag trail is memory-only; calibration stores geometry, not the credential.</p></article>
-      </div>
-
-      <div class="calibration-strip reveal">
-        <span class="calibration-title">CALIBRATION</span>
-        <kbd>← ↑ ↓ →</kbd><span>move</span>
-        <kbd>Shift + arrows</kbd><span>resize</span>
-        <kbd>Ctrl + arrows</kbd><span>fine</span>
-        <kbd>Enter</kbd><span>save</span>
-        <kbd>Esc</kbd><span>cancel</span>
-        <kbd>R</kbd><span>reset</span>
-      </div>
-    </section>
-
-    <section class="section container" id="compatibility">
-      <div class="compat-heading reveal">
-        <div class="eyebrow signal">Compatibility</div>
-        <h2>Built for Android devices.<br>Tested on real hardware.</h2>
-        <p>Android Headless Mirror is designed around standard ADB and scrcpy, not Samsung-only APIs. Core mirroring targets Windows 10/11; native Precision Touchpad pinch bridging is an enhanced Windows 11 path. Broad Android hardware compatibility is not claimed as tested.</p>
-      </div>
-
-      <div class="compat-note reveal">
-        <strong>Root compatibility is runtime-verified separately.</strong>
-        <span>The S21 Ultra is the project's normal ADB/scrcpy hardware baseline. REX does not claim a Magisk, KernelSU, APatch or other root-provider configuration on that phone as tested until a real rooted-device result is recorded.</span>
-      </div>
-
-      <div class="tested-devices-grid" aria-label="Hardware tested by this project">
-        <article class="tested-device reveal">
-          <div class="device-badge">TESTED</div>
-          <div class="tested-device-icon" aria-hidden="true">
-            <svg viewBox="0 0 32 32"><rect x="9" y="3" width="14" height="26" rx="4"/><path d="M13 7h6M14 25h4"/></svg>
-          </div>
-          <strong>Samsung Galaxy S21 Ultra</strong>
-          <span>SM-G998B · Windows 10/11 · USB ADB</span>
-        </article>
-      </div>
-    </section>
-
-    <section class="section container" id="security">
-      <div class="security-grid">
-        <div class="section-heading reveal">
-          <div class="eyebrow signal">Security choices are explicit</div>
-          <h2>Powerful access should stay understandable.</h2>
-          <p>ADB can control a lot of your phone. The project keeps the default path local and wired, and documents where convenience changes the security trade-off.</p>
-        </div>
-        <div class="security-list reveal">
-          <div><span>01</span><p><strong>Wireless ADB is off by default.</strong> Enable it only when you explicitly want network reachability.</p></div>
-          <div><span>02</span><p><strong>STOP does not kill the global ADB server.</strong> It shuts down only this package's own processes.</p></div>
-          <div><span>03</span><p><strong>No first-unlock bypass.</strong> Android's secure boot and post-reboot PIN requirements remain intact.</p></div>
-          <div><span>04</span><p><strong>No cloud dependency.</strong> The core mirror path is your Windows PC, ADB, scrcpy, and the connected Android device.</p></div>
-          <div><span>05</span><p><strong>Pattern privacy stays local.</strong> Runtime UI hierarchy data is not retained; optional calibration saves only the pattern-grid rectangle, never the unlock path.</p></div>
-          <div><span>06</span><p><strong>Root never escalates silently.</strong> Passive root status does not invoke <code>su</code>; authorization is explicit, boot-scoped, capability-tested and Root v1 remains read-only.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="section container" id="install">
-      <div class="install-card reveal">
-        <div class="install-copy">
-          <div class="eyebrow signal">Get started</div>
-          <h2>Clone it. Run setup. Authorise Android.</h2>
-          <p>Setup fetches the official Windows x64 scrcpy release and verifies its SHA-256 checksum before extraction.</p>
-          <div class="install-actions">
-            <a class="button button-primary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">Open repository <span aria-hidden="true">↗</span></a>
-            <a class="text-link" href="https://github.com/tochi-mba/Android_Headless_Mirror#quick-start" target="_blank" rel="noopener noreferrer">Read quick start ↗</a>
-          </div>
-        </div>
-        <div class="command-block">
-          <div class="command-label"><span>PowerShell</span><button class="copy-button" type="button" data-copy="git clone https://github.com/tochi-mba/Android_Headless_Mirror.git">Copy</button></div>
-          <code><span class="prompt">PS&gt;</span> git clone https://github.com/tochi-mba/Android_Headless_Mirror.git</code>
-        </div>
-      </div>
-    </section>
-
-    <section class="section container" id="faq">
-      <div class="section-heading reveal"><div class="eyebrow signal">FAQ</div><h2>The important questions.</h2></div>
-      <div class="faq-list">
-        <details class="reveal"><summary>Is this only for Samsung phones?</summary><p>No. The project uses standard Android ADB and scrcpy. The Samsung Galaxy S21 Ultra (SM-G998B) is simply the hardware currently tested by this project.</p></details>
-        <details class="reveal"><summary>Does REX root my phone?</summary><p>No. Root v1 only uses an existing root environment. It does not unlock the bootloader, install Magisk/KernelSU/APatch, patch or flash boot images, or change verified boot. On an unrooted phone, normal ADB and scrcpy behavior stays unchanged.</p></details>
-        <details class="reveal"><summary>Will REX ask for root access automatically?</summary><p>No. <code>rex root status</code> and the passive probe can report that <code>su</code> is visible without invoking it. A superuser authorization request only happens when you explicitly run <code>rex root request</code> or press the corresponding Privileged action.</p></details>
-        <details class="reveal"><summary>Does root let REX capture Netflix or other protected video?</summary><p>No. Root support and protected display support are separate. REX Root v1 does not bypass DRM, Widevine, secure Android surfaces or HDCP. Protected playback still depends on a supported external-display path and the phone, receiver, drivers and application permitting it.</p></details>
-        <details class="reveal"><summary>Can it control the phone while the physical screen is off?</summary><p>Yes, scrcpy supports turning the physical display off while keeping the mirrored display active. The exact behavior can vary by Android version and manufacturer.</p></details>
-        <details class="reveal"><summary>Can it unlock the phone for me?</summary><p>It wakes the device and asks Android to dismiss the keyguard when authentication is not required. If a secure PIN/password is required, it does not bypass it. When ADB remains available, scrcpy can show the lock screen so you can authenticate from the PC. After a full reboot, some Android/OEM configurations require the first unlock on the physical device before ADB becomes available.</p></details>
-        <details class="reveal"><summary>Does STOP really keep it stopped?</summary><p>Yes. STOP creates a persistent state file and shuts down the package's mirror and supervisor. Windows autostart respects that state until you explicitly run START again.</p></details>
-        <details class="reveal"><summary>What if my phone has no password or screen lock?</summary><p>Choose “No” when the one-time prompt asks whether the device uses any screen lock. The choice is saved for that phone and no pattern-overlay process is started.</p></details>
-        <details class="reveal"><summary>What if I use PIN, password, fingerprint or another lock instead of a pattern?</summary><p>Choose that the phone has a lock, then choose “No” when asked whether it is a pattern. The device is saved as an “other” lock type and the pattern guide is not started.</p></details>
-        <details class="reveal"><summary>Does the pattern guide know or save my unlock pattern?</summary><p>No. The unlock sequence is never stored or replayed. Runtime Android UI hierarchy data is read only to locate the pattern widget. If calibration is needed, only four normalized grid bounds are saved for that device.</p></details>
-        <details class="reveal"><summary>What if the pattern dots are not perfectly aligned on my phone?</summary><p>The guide first tries exact Android pattern-cell bounds, then the runtime LockPatternView bounds. If your OEM still differs, press <strong>Ctrl+Alt+C</strong> and calibrate entirely from the PC with the arrow keys; no physical phone interaction is required.</p></details>
-        <details class="reveal"><summary>What if automatic lock-screen detection is wrong on my phone?</summary><p>With the scrcpy window focused, press <strong>Ctrl+Alt+P</strong> to manually toggle the guide. Geometry discovery and visibility detection are separate, so manual visibility still uses the best available geometry source.</p></details>
-        <details class="reveal"><summary>What if I change my phone from pattern to PIN, or remove the lock?</summary><p>Run <code>RESET_LOCK_SCREEN_CHOICES.bat</code>, clear that device’s saved choice, then reconnect it. The setup prompt appears again.</p></details>
-        <details class="reveal"><summary>Can I pinch TikTok with my laptop touchpad like I would on the phone?</summary><p>On Windows 11 with a Precision Touchpad, yes: pinch or spread with two fingers and the gesture is bridged into Android multitouch automatically. No modifier is required. Ctrl and Shift remain available for scrcpy's own Android gesture semantics.</p></details>
-        <details class="reveal"><summary>How do I zoom only the PC mirror without zooming the Android app?</summary><p>Hold <strong>Alt</strong> and pinch/spread on a supported touchpad, or use Alt + mouse wheel. The mirror magnification persists after Alt is released; Alt + two-finger slide pans the magnified viewport, and <strong>Reset zoom</strong> appears only when the view is above 100%.</p></details>
-        <details class="reveal"><summary>How does forced rotation differ from the Rotate Android button?</summary><p>The scrcpy runtime rotate action asks the active mirrored display to rotate. Device settings → Rotation override changes Android's sensor/user-rotation settings instead, offering Automatic, 0°, 90°, 180° and 270°. It is reversible and best effort because an app or OEM policy may still enforce its own orientation.</p></details>
-        <details class="reveal"><summary>Does REX keep the phone touchscreen inactive while I control it from the PC?</summary><p>By default REX starts scrcpy with the physical phone screen off. On devices where physical touch follows display power, that also suppresses accidental touches on the handset while PC-injected control keeps working. This is screen-off based rather than a universal digitizer-disable API, so the hardware power button or OEM wake gestures can wake the panel again.</p></details>
-        <details class="reveal"><summary>What does the Sleep phone button do?</summary><p>It re-sends scrcpy’s screen-off command to the physical Android display while the mirror stays active. Use it whenever the phone screen has been woken but you want the device dark again.</p></details>
-        <details class="reveal"><summary>Does it require Wi-Fi?</summary><p>No. USB is the default path. Wireless ADB is optional and disabled by default.</p></details>
-        <details class="reveal"><summary>Will another Android phone work?</summary><p>Yes. The supervisor targets any authorised Android device. A preferred serial only influences selection when multiple ready devices are present; it does not lock the project to the first phone you used.</p></details>
-      </div>
-    </section>
-
-    <section class="final-cta">
-      <div class="container final-cta-inner reveal">
-        <div><span class="eyebrow signal">A REX Technologies product</span><h2>Make Android part of your desktop.</h2></div>
-        <a class="button button-light" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View on GitHub <span aria-hidden="true">↗</span></a>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div><a class="brand footer-brand" href="#top" aria-label="Android Headless Mirror, by REX Technologies"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span><span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span></a><p>Open-source Windows orchestration for Android mirroring with scrcpy + ADB. A REX Technologies product.</p></div>
-      <div class="footer-links"><a href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">Repository</a><a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a><a href="#security">Security</a></div>
-      <div class="footer-copy">© <span id="year"></span> REX Technologies · Built for Android, tested on S21 Ultra.</div>
     </div>
-  </footer>
-  <script src="app.js"></script>
+  </section>
+
+  <section class="trust-strip">
+    <div class="container trust-grid">
+      <div><strong>Automatic</strong><span>opens when the phone connects</span></div>
+      <div><strong>Headless</strong><span>phone screen stays off</span></div>
+      <div><strong>One window</strong><span>mirror, controls and settings</span></div>
+      <div><strong>Tested on</strong><span>Galaxy S21 Ultra · SM-G998B</span></div>
+    </div>
+  </section>
+
+  <section class="section container" id="how">
+    <div class="section-heading reveal">
+      <div class="eyebrow signal">Simple by design</div>
+      <h2>Plug in. Allow once. Use your phone from Windows.</h2>
+      <p>The app takes care of ADB and scrcpy so the everyday path is boring, in the best possible way.</p>
+    </div>
+    <div class="steps">
+      <article class="step reveal"><span class="step-number">01</span><h3>Connect over USB</h3><p>USB is the default and the recovery path. No network setup is needed. Wireless ADB is there if you want it, off by default.</p></article>
+      <article class="step reveal"><span class="step-number">02</span><h3>Allow this PC</h3><p>Accept Android's standard “Allow USB debugging” prompt and tick “Always allow from this computer”. That is the only authorisation there is.</p></article>
+      <article class="step reveal"><span class="step-number">03</span><h3>The mirror opens</h3><p>The app waits in the tray, notices the phone, wakes it, dismisses the keyguard where Android allows it and opens the mirror. If scrcpy crashes it restarts.</p></article>
+    </div>
+  </section>
+
+  <section class="section container" id="features">
+    <div class="section-heading reveal">
+      <div class="eyebrow signal">Built for daily use</div>
+      <h2>Everything in one place.</h2>
+    </div>
+    <div class="feature-grid">
+      <article class="feature-card reveal"><h3>One window. True fullscreen.</h3><p>Controls, Phone, Settings and Info stay in the side panel. Press F11 to fill your display. A small translucent HUD fades away; move to the top edge for navigation, rotation, Fit and Exit.</p></article>
+      <article class="feature-card reveal"><h3>Zoom that actually works</h3><p>Alt + wheel or Alt + pinch scales the real video surface, so clicks land where you see them. A small navigator shows where you are; drag it to pan.</p></article>
+      <article class="feature-card reveal"><h3>Phone controls</h3><p>Home, back, recents, power, sleep and wake, volume, notifications, quick settings, rotation, clipboard both ways and screenshots.</p></article>
+      <article class="feature-card reveal"><h3>Phone settings</h3><p>Brightness, timeout, forced rotation, dark mode, text size, animations, stay awake, Wi‑Fi, mobile data, airplane mode, display size and density.</p></article>
+      <article class="feature-card reveal"><h3>Raw Android settings, guarded</h3><p>Browse and edit the Android settings provider with search and risk labels. Keys that would cut off ADB are protected so you cannot lock yourself out.</p></article>
+      <article class="feature-card reveal"><h3>Black lock screen? Still usable</h3><p>Some phones mirror their lock screen as black. For pattern locks the app draws a nine‑dot guide from Android's own layout, with keyboard calibration as a fallback.</p></article>
+    </div>
+  </section>
+
+  <section class="section container" id="gestures">
+    <div class="section-heading reveal">
+      <div class="eyebrow signal">Precision touchpad</div>
+      <h2>Pinch like the phone. Hold Alt for the PC.</h2>
+      <p>Two fingers on the touchpad become two real fingers on the phone. Hold Alt and the same gesture moves the PC view instead. There is no ambiguity and nothing to toggle.</p>
+    </div>
+    <div class="gesture-cards">
+      <article class="gesture-card reveal">
+        <div class="gesture-visual" aria-hidden="true"><span class="finger finger-a"></span><span class="finger finger-b"></span></div>
+        <div class="gesture-copy">
+          <span class="gesture-kicker">No modifier</span>
+          <h3>Pinch, spread, rotate, pan</h3>
+          <p>Both contacts are injected as touches, so TikTok, Maps and Photos see exactly what they would on the glass. Pinch and pan while pinched, just like on the phone.</p>
+        </div>
+      </article>
+      <article class="gesture-card reveal">
+        <div class="gesture-visual" aria-hidden="true"><kbd>Alt</kbd><span class="plus">+</span><span class="finger finger-a"></span><span class="finger finger-b"></span></div>
+        <div class="gesture-copy">
+          <span class="gesture-kicker">Hold Alt</span>
+          <h3>Zoom and pan the PC view</h3>
+          <p>The phone receives nothing. Alt + pinch zooms the mirror, Alt + two‑finger slide pans it, and the zoom stays after you let go. With a mouse use Alt + wheel and Alt + drag.</p>
+        </div>
+      </article>
+    </div>
+    <div class="shortcut-table reveal">
+      <div><kbd>F11</kbd><span>True fullscreen · Esc leaves · top edge reveals controls</span></div>
+      <div><kbd>Ctrl + Alt + L / U / A</kbd><span>Force landscape / portrait / restore auto rotation</span></div>
+      <div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>P</kbd><span>Show or hide the pattern guide</span></div>
+      <div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>C</kbd><span>Calibrate the guide with the arrow keys</span></div>
+      <div><kbd>Alt</kbd><span>+ wheel, pinch or drag: PC‑side zoom and pan</span></div>
+    </div>
+  </section>
+
+  <section class="section container" id="install">
+    <div class="section-heading reveal">
+      <div class="eyebrow signal">Five minutes</div>
+      <h2>Install</h2>
+    </div>
+    <ol class="install-steps reveal">
+      <li><strong>Clone or download the repository.</strong>
+        <div class="command-row"><code id="clone-command">git clone https://github.com/tochi-mba/Android_Headless_Mirror.git</code><button class="copy-button" type="button" data-copy="git clone https://github.com/tochi-mba/Android_Headless_Mirror.git">Copy</button></div></li>
+      <li><strong>Run <code>REX.bat</code>.</strong> The first run prepares the app from a release, or builds it locally if the .NET 10 SDK is installed, then opens it.</li>
+      <li><strong>Press Install scrcpy.</strong> The official Genymobile release is downloaded and its SHA‑256 checksum is verified before anything is installed.</li>
+      <li><strong>Enable USB debugging on the phone.</strong> Settings → About phone → tap Build number seven times, then Developer options → USB debugging.</li>
+      <li><strong>Plug the phone in and tap Allow.</strong> Tick “Always allow from this computer”. The mirror opens by itself.</li>
+    </ol>
+    <p class="install-note reveal">Tick <strong>Start with Windows</strong> in Settings and the app waits in the tray after every sign‑in. Closing the window keeps it running; Quit is in the tray menu.</p>
+  </section>
+
+  <section class="section container" id="cli">
+    <div class="section-heading reveal">
+      <div class="eyebrow signal">Scripts and agents</div>
+      <h2>Everything the window does, from the command line.</h2>
+      <p><code>REX.bat &lt;command&gt;</code> runs <code>rex.exe</code>. Add <code>--json</code> or start with <code>agent</code> and you get exactly one JSON document and no prompts.</p>
+    </div>
+    <pre class="console reveal" tabindex="0" aria-label="Example CLI commands"><code>rex status                        app, mirror and phone state
+rex action sleep                  turn the phone screen off
+rex zoom in | out | reset         PC-side zoom of the open mirror
+rex screenshot                    save a PNG of the phone screen
+rex phone set brightness 180      friendly phone settings
+rex android list global --filter animation
+rex config set Mirror.MaxFps 90   one-step undo: rex config restore
+rex agent capabilities            the machine-readable contract</code></pre>
+  </section>
+
+  <section class="section container" id="faq">
+    <div class="section-heading reveal">
+      <div class="eyebrow signal">Questions</div>
+      <h2>FAQ</h2>
+    </div>
+    <div class="faq reveal">
+      <details><summary>Does it work with phones other than the Galaxy S21 Ultra?</summary><p>Yes. Any Android phone with USB debugging works with scrcpy and ADB. The S21 Ultra is the phone the project is developed and tested on, so its quirks are the ones handled best.</p></details>
+      <details><summary>Why is the lock screen black on the mirror?</summary><p>Some manufacturers mark the secure lock screen as protected content, which Android will not stream. After a reboot you may need to unlock on the phone once. For pattern locks the app draws a guide so you can unlock blind afterwards. The pattern itself is never stored or replayed.</p></details>
+      <details><summary>Can I still touch the phone while it is mirrored?</summary><p>Yes. The screen is off, not locked. Tap the power button or press Wake in the app to turn it back on.</p></details>
+      <details><summary>Is anything sent anywhere?</summary><p>No. There is no account, no telemetry and no server. The only download is scrcpy from its official GitHub release, verified by checksum.</p></details>
+      <details><summary>What does “Stop mirror” do?</summary><p>It closes the mirror and stays in the tray. The app will not reopen until the phone reconnects or you press Start. Quit in the tray menu exits completely.</p></details>
+      <details><summary>Does it need administrator rights or root?</summary><p>No. Everything runs as your user with standard ADB permissions. The app never roots, flashes or modifies the phone.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-wrap">
+    <span>© <span id="year">2026</span> REX Technologies · Android Headless Mirror</span>
+    <span>Built on <a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a> and Android Debug Bridge.</span>
+  </div>
+</footer>
+<script src="app.js" defer></script>
 </body>
 </html>

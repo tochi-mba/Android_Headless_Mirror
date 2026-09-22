@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>rex</AssemblyName>
+    <RootNamespace>Rex.Cli</RootNamespace>
+    <AssemblyTitle>REX command line</AssemblyTitle>
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Rex.Core\Rex.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rex.Tests" />
+  </ItemGroup>
+</Project>

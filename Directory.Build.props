@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Version>2.0.0</Version>
+    <Company>REX Technologies</Company>
+    <Product>Android Headless Mirror</Product>
+    <Copyright>REX Technologies</Copyright>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+</Project>

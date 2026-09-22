@@ -1,184 +1,34 @@
-# Android Headless Mirror
-# Generated/local files only. Source, lockfiles, CI configuration, fixtures and
-# committed test thresholds should remain trackable.
+# Android Headless Mirror: only generated and per-machine files are ignored.
 
-# -----------------------------------------------------------------------------
-# Android Headless Mirror runtime state
-# -----------------------------------------------------------------------------
-
-# Setup downloads scrcpy + adb here. Never commit downloaded executables/tools.
+# Downloaded tools (scrcpy/adb) and the built app (tools/rex). Binaries are never committed.
 tools/
 
-# Runtime logs and ephemeral supervisor/sidecar state.
-logs/
-runtime/
-*.log
-*.pid
-*.stackdump
-
-# Per-machine/per-device state. May contain local ADB serials or endpoints.
+# Per-machine runtime state: phone serials, lock-screen answers, window placement, logs, captures.
 state.json
-stop.flag
-
-# Runtime-created captures and pattern calibration.
+logs/
 captures/
-pattern-calibration/
-
-# REX config transaction/rollback files. config.json itself IS source-controlled.
+*.log
 config.json.rex-backup
 config.json.tmp
-config.json.restore-current
-config.json.rex-*
-config.json.*.tmp
+state.json.tmp
 
-# -----------------------------------------------------------------------------
-# Build, publish and release output
-# -----------------------------------------------------------------------------
-
-# Repository/CI output directories.
+# Build output
+bin/
+obj/
 artifacts/
 dist/
-out/
-publish/
-release/
-
-# .NET build output.
-**/bin/
-**/obj/
-**/TestResults/
+TestResults/
 *.trx
-*.coverage
-*.coveragexml
-coverage*.xml
-coverage*.json
-coverage*.info
-*.nupkg
-*.snupkg
-*.pdb
 
-# Local .NET/NuGet state.
-.dotnet/
-.nuget/
-packages/
-
-# -----------------------------------------------------------------------------
-# Node.js / Playwright
-# -----------------------------------------------------------------------------
-
+# Node / Playwright (Pages tests)
 node_modules/
 playwright-report/
-blob-report/
 test-results/
-.npm/
-.nyc_output/
-*.tsbuildinfo
 
-# Package-manager diagnostic logs. Lockfiles are intentionally NOT ignored.
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# -----------------------------------------------------------------------------
-# Python
-# -----------------------------------------------------------------------------
-
-__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.pyre/
-.pytype/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
-pip-wheel-metadata/
-
-# Virtual environments.
-.venv/
-venv/
-env/
-ENV/
-
-# -----------------------------------------------------------------------------
-# IDE / editor local state
-# -----------------------------------------------------------------------------
-
-# Visual Studio / Rider / JetBrains.
+# Editors and OS
 .vs/
 .idea/
-*.suo
 *.user
-*.userosscache
-*.sln.docstates
-*.csproj.user
-
-# Editor swap/history files. Do not ignore .vscode/ so useful shared settings
-# can still be committed deliberately.
-.history/
-*.swp
-*.swo
-*~
-
-# -----------------------------------------------------------------------------
-# Local environment / secrets
-# -----------------------------------------------------------------------------
-
-.env
-.env.*
-!.env.example
-!.env.template
-!.env.sample
-
-# -----------------------------------------------------------------------------
-# Temporary / patch / backup files
-# -----------------------------------------------------------------------------
-
-*.tmp
-*.temp
-*.bak
-*.old
-*.orig
-*.rej
-*.cache
-
-# -----------------------------------------------------------------------------
-# Windows generated files
-# -----------------------------------------------------------------------------
-
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-Desktop.ini
-$RECYCLE.BIN/
-*.lnk
-
-# Crash dumps.
-*.dmp
-*.mdmp
-
-# -----------------------------------------------------------------------------
-# macOS / Linux desktop metadata
-# -----------------------------------------------------------------------------
-
+*.suo
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
-.Spotlight-V100
-.Trashes
-.fseventsd/
-.directory
-
-# Local display capability verification state
-display-verification.json
-display-verification.json.tmp
-
-# Local per-device privileged verification state
-root-state.json
-root-state.json.tmp
+Thumbs.db

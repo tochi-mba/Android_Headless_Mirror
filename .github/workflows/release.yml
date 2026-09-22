@@ -9,39 +9,34 @@ permissions:
   contents: write
 
 jobs:
-  windows-release:
+  windows:
     runs-on: windows-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "8.0.x"
+          global-json-file: global.json
 
-      - name: Restore CLI
-        run: dotnet restore src\Rex.AndroidMirror.Cli\Rex.AndroidMirror.Cli.csproj
-
-      - name: Publish self-contained REX CLI
+      - name: Publish the app and the CLI
         shell: pwsh
         run: |
-          dotnet publish src\Rex.AndroidMirror.Cli\Rex.AndroidMirror.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist\rex
-          if (-not (Test-Path dist\rex\rex.exe)) {
-            throw "rex.exe was not produced."
+          dotnet publish src/Rex.Mirror/Rex.Mirror.csproj -c Release -r win-x64 --self-contained true -o dist/rex
+          dotnet publish src/Rex.Cli/Rex.Cli.csproj -c Release -r win-x64 --self-contained true -o dist/rex
+          foreach ($exe in "RexMirror.exe", "rex.exe") {
+            if (-not (Test-Path "dist/rex/$exe")) { throw "$exe was not produced." }
           }
 
-      - name: Package and checksum CLI
+      - name: Package and checksum
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\rex\rex.exe -DestinationPath dist\rex-win-x64.zip -Force
-          $hash = (Get-FileHash dist\rex-win-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  rex-win-x64.zip" | Set-Content dist\rex-win-x64.zip.sha256 -Encoding ASCII
+          Compress-Archive -Path dist/rex/* -DestinationPath dist/rex-win-x64.zip -Force
+          $hash = (Get-FileHash dist/rex-win-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  rex-win-x64.zip" | Set-Content dist/rex-win-x64.zip.sha256 -Encoding ASCII
 
-      - name: Create GitHub release and upload CLI
+      - name: Create the GitHub release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" dist\rex-win-x64.zip dist\rex-win-x64.zip.sha256 --repo "${{ github.repository }}" --title "${{ github.ref_name }}" --generate-notes
+          gh release create "${{ github.ref_name }}" dist/rex-win-x64.zip dist/rex-win-x64.zip.sha256 --repo "${{ github.repository }}" --title "${{ github.ref_name }}" --generate-notes

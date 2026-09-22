@@ -5,353 +5,96 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  package-tests:
-    name: Windows package contracts + behavior
+  windows:
+    name: Build, test and publish (Windows)
     runs-on: windows-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - uses: actions/setup-dotnet@v5
         with:
-          python-version: "3.x"
+          global-json-file: global.json
 
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "8.0.x"
+      - name: Restore
+        run: dotnet restore Rex.sln
 
-      - name: Validate JSON files
+      - name: Build (warnings are errors)
+        run: dotnet build Rex.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test --project tests/Rex.Tests/Rex.Tests.csproj -c Release --no-build
+
+      - name: Publish the app and the CLI into one folder
         shell: pwsh
         run: |
-          Get-Content config.json -Raw | ConvertFrom-Json | Out-Null
-          Get-Content docs/site.webmanifest -Raw | ConvertFrom-Json | Out-Null
-          Get-Content package.json -Raw | ConvertFrom-Json | Out-Null
-
-      - name: Validate Control Center XAML
-        shell: powershell
-        run: |
-          [xml](Get-Content ControlCenter.xaml -Raw) | Out-Null
-          Add-Type -AssemblyName PresentationFramework
-          Add-Type -AssemblyName WindowsBase
-          [xml]$xaml = Get-Content ControlCenter.xaml -Raw
-          $reader = New-Object System.Xml.XmlNodeReader $xaml
-          $window = [Windows.Markup.XamlReader]::Load($reader)
-          if ($null -eq $window) { throw "ControlCenter.xaml did not load." }
-          $window.Close()
-
-      - name: Validate every PowerShell file parses
-        shell: pwsh
-        run: |
-          $failed = $false
-
-          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
-            $tokens = $null
-            $errors = $null
-
-            [System.Management.Automation.Language.Parser]::ParseFile(
-              $_.FullName,
-              [ref]$tokens,
-              [ref]$errors
-            ) | Out-Null
-
-            if ($errors.Count -gt 0) {
-              Write-Host "Syntax errors in $($_.FullName)" -ForegroundColor Red
-              $errors | ForEach-Object { Write-Host $_ }
-              $failed = $true
-            }
+          dotnet publish src/Rex.Mirror/Rex.Mirror.csproj -c Release -r win-x64 --self-contained true -o artifacts/rex
+          dotnet publish src/Rex.Cli/Rex.Cli.csproj -c Release -r win-x64 --self-contained true -o artifacts/rex
+          foreach ($exe in "RexMirror.exe", "rex.exe") {
+            if (-not (Test-Path "artifacts/rex/$exe")) { throw "$exe was not produced." }
           }
 
-          if ($failed) {
-            exit 1
-          }
-
-      - name: Verify launcher references
+      - name: Smoke test the published CLI
         shell: pwsh
         run: |
-          $required = @(
-            "REX.bat",
-            "Bootstrap-RexCli.ps1",
-            "RexBridge.ps1",
-            "Setup.ps1",
-            "Start-PhoneMirror.ps1",
-            "Stop-PhoneMirror.ps1",
-            "PatternOverlay.ps1",
-            "MirrorChrome.ps1",
-            "MirrorInteraction.ps1",
-            "ControlCenter.ps1",
-            "ControlCenter.xaml",
-            "DeviceControl.ps1",
-            "ScrcpyControl.ps1",
-            "Reset-LockScreenChoices.ps1",
-            "RESET_LOCK_SCREEN_CHOICES.bat",
-            "Start-Hidden.vbs",
-            "Diagnostics.ps1",
-            "Install-Autostart.ps1",
-            "Remove-Autostart.ps1",
-            "SETUP_AND_START.bat",
-            "START_NOW.bat",
-            "START_WITH_LOG.bat",
-            "STOP.bat",
-            "DIAGNOSTICS.bat",
-            "REMOVE_AUTOSTART.bat",
-            "src\Rex.AndroidMirror.Cli\Rex.AndroidMirror.Cli.csproj",
-            "src\Rex.AndroidMirror.Cli\Program.cs",
-            "tests\Rex.AndroidMirror.Cli.Tests\Rex.AndroidMirror.Cli.Tests.csproj",
-            "tests\Test-RexCliBootstrap.ps1",
-            "tests\Test-MirrorInteractionBehavior.ps1",
-            "tests\Test-ScrcpyControlBehavior.ps1"
-          )
-
-          foreach ($file in $required) {
-            if (-not (Test-Path $file)) {
-              throw "Missing required file: $file"
-            }
-          }
-
-      - name: Run repository contract tests
-        run: python tests\test_package.py
-
-      - name: Restore REX CLI tests
-        run: dotnet restore tests\Rex.AndroidMirror.Cli.Tests\Rex.AndroidMirror.Cli.Tests.csproj
-
-      - name: Build REX CLI with warnings as errors
-        run: dotnet build tests\Rex.AndroidMirror.Cli.Tests\Rex.AndroidMirror.Cli.Tests.csproj -c Release --no-restore
-
-      - name: Run REX CLI unit and interactive tests
-        shell: pwsh
-        run: |
-          dotnet test tests\Rex.AndroidMirror.Cli.Tests\Rex.AndroidMirror.Cli.Tests.csproj -c Release --no-build --logger "trx;LogFileName=rex-cli.trx"
-          if ($LASTEXITCODE -ne 0) { throw "REX CLI test runner failed." }
-
-          $trxPath = "tests\Rex.AndroidMirror.Cli.Tests\TestResults\rex-cli.trx"
-          if (-not (Test-Path $trxPath)) { throw "REX CLI TRX result file was not produced." }
-
-          [xml]$trx = Get-Content $trxPath -Raw
-          $total = [int]$trx.TestRun.ResultSummary.Counters.total
-          $passed = [int]$trx.TestRun.ResultSummary.Counters.passed
-          $failed = [int]$trx.TestRun.ResultSummary.Counters.failed
-
-          Write-Host "REX CLI tests: total=$total passed=$passed failed=$failed"
-
-          if ($total -le 0) { throw "REX CLI test discovery returned zero tests." }
-          if ($failed -ne 0) { throw "REX CLI test suite reported failures." }
-
-      - name: Run REX CLI bootstrap behavior
-        shell: powershell
-        run: .\tests\Test-RexCliBootstrap.ps1
-
-      - name: Run REX desktop shortcut behavior
-        shell: powershell
-        run: .\tests\Test-RexShortcut.ps1
-
-      - name: Run REX bridge fake-ADB E2E
-        shell: powershell
-        run: .\tests\Test-RexBridgeE2E.ps1
-
-      - name: Publish self-contained REX CLI
-        shell: pwsh
-        run: |
-          dotnet publish src\Rex.AndroidMirror.Cli\Rex.AndroidMirror.Cli.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts\rex-cli
-          if (-not (Test-Path artifacts\rex-cli\rex.exe)) { throw "rex.exe was not produced." }
-          if ((Get-ChildItem artifacts\rex-cli -Filter *.dll -File).Count -gt 0) { throw "Single-file publish unexpectedly emitted DLL dependencies." }
-
-      - name: Smoke test published REX CLI
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force artifacts\rex-cli-smoke | Out-Null
-          $env:REX_AHM_ROOT = (Get-Location).Path
-
-          & .\artifacts\rex-cli\rex.exe help | Tee-Object artifacts\rex-cli-smoke\help.txt
+          $env:REX_ROOT = (Get-Location).Path
+          & artifacts/rex/rex.exe help | Tee-Object artifacts/help.txt
           if ($LASTEXITCODE -ne 0) { throw "rex help failed." }
 
-          & .\artifacts\rex-cli\rex.exe status | Tee-Object artifacts\rex-cli-smoke\status.txt
-          if ($LASTEXITCODE -ne 0) { throw "rex status failed." }
-
-          & .\artifacts\rex-cli\rex.exe config get MaxFps | Tee-Object artifacts\rex-cli-smoke\config-get.txt
-          if ($LASTEXITCODE -ne 0) { throw "rex config get failed." }
-
-          & .\artifacts\rex-cli\rex.exe config list --filter MirrorChrome | Tee-Object artifacts\rex-cli-smoke\config-list.txt
-          if ($LASTEXITCODE -ne 0) { throw "rex config list failed." }
-
-          function Assert-MachineJson([string]$Path, [string]$Label) {
-            $raw = Get-Content $Path -Raw
-            if ($raw -match [char]27) { throw "$Label emitted ANSI escape sequences." }
-            $lines = @($raw -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-            if ($lines.Count -ne 1) { throw "$Label must emit exactly one JSON document line." }
-            try {
-              return ($raw | ConvertFrom-Json)
-            }
-            catch {
-              throw "$Label did not emit valid JSON: $($_.Exception.Message)"
-            }
-          }
-
-          & .\artifacts\rex-cli\rex.exe agent display probe | Tee-Object artifacts\rex-cli-smoke\agent-display-probe.json
-          if ($LASTEXITCODE -ne 0) { throw "rex agent display probe failed." }
-          $displayProbe = Assert-MachineJson artifacts\rex-cli-smoke\agent-display-probe.json "rex agent display probe"
-          if (-not $displayProbe.ok -or $displayProbe.command -ne "display.probe") { throw "Display machine protocol contract failed." }
-          if ($displayProbe.data.transports.Count -lt 2) { throw "Display probe did not expose both transport classes." }
-
-          & .\artifacts\rex-cli\rex.exe agent capabilities | Tee-Object artifacts\rex-cli-smoke\agent-capabilities.json
+          $json = & artifacts/rex/rex.exe agent capabilities
           if ($LASTEXITCODE -ne 0) { throw "rex agent capabilities failed." }
-          $agent = Assert-MachineJson artifacts\rex-cli-smoke\agent-capabilities.json "rex agent capabilities"
-          if (-not $agent.ok -or $agent.protocolVersion -ne 1) { throw "Agent machine protocol contract failed." }
-          if ($agent.data.mode -ne "non-interactive-json") { throw "Unexpected agent machine mode identifier." }
-          if (-not ($agent.data.commands -contains "root")) { throw "Agent capabilities did not advertise the root namespace." }
-          if (-not ($agent.data.rootCommands -contains "root status")) { throw "Agent capabilities did not advertise passive root status." }
-          if (-not ($agent.data.rootCommands -contains "root request")) { throw "Agent capabilities did not advertise explicit root authorization." }
-          if (-not $agent.data.rootSafety.passiveStatusDoesNotInvokeSu) { throw "Root passive-probe safety contract is missing." }
-          if ($agent.data.rootSafety.rawShell) { throw "Root v1 must not expose raw shell." }
-          if ($agent.data.rootSafety.rootV1Writes) { throw "Root v1 must remain read-only." }
+          $lines = @($json | Where-Object { $_ -ne "" })
+          if ($lines.Count -ne 1) { throw "Machine mode must emit exactly one line." }
+          $doc = $lines[0] | ConvertFrom-Json
+          if (-not $doc.ok -or $doc.protocolVersion -ne 2) { throw "Machine protocol contract failed." }
 
-          & .\artifacts\rex-cli\rex.exe --plain capabilities | Tee-Object artifacts\rex-cli-smoke\plain-capabilities.json
-          if ($LASTEXITCODE -ne 0) { throw "rex --plain capabilities failed." }
-          $plain = Assert-MachineJson artifacts\rex-cli-smoke\plain-capabilities.json "rex --plain capabilities"
-          if (-not $plain.ok -or $plain.protocolVersion -ne 1) { throw "Plain machine mode protocol contract failed." }
+          $status = (& artifacts/rex/rex.exe --json status) | ConvertFrom-Json
+          if ($status.ok -ne $true) { throw "rex --json status failed." }
 
-          & .\artifacts\rex-cli\rex.exe status --json | Tee-Object artifacts\rex-cli-smoke\suffix-json-status.json
-          if ($LASTEXITCODE -ne 0) { throw "rex status --json failed." }
-          $suffix = Assert-MachineJson artifacts\rex-cli-smoke\suffix-json-status.json "rex status --json"
-          if (-not $suffix.ok -or $suffix.command -ne "status") { throw "Suffix JSON mode routing failed." }
-
-          New-Item -ItemType Directory -Force tools\rex | Out-Null
-          Copy-Item .\artifacts\rex-cli\rex.exe .\tools\rex\rex.exe -Force
-          & .\REX.bat agent capabilities | Tee-Object artifacts\rex-cli-smoke\batch-agent-capabilities.json
-          if ($LASTEXITCODE -ne 0) { throw "REX.bat agent capabilities failed." }
-          $batchAgent = Assert-MachineJson artifacts\rex-cli-smoke\batch-agent-capabilities.json "REX.bat agent capabilities"
-          if (-not $batchAgent.ok -or $batchAgent.protocolVersion -ne 1) { throw "REX.bat agent protocol contract failed." }
-
-          $help = Get-Content artifacts\rex-cli-smoke\help.txt -Raw
-          foreach ($required in @(
-            "REX",
-            "TECHNOLOGIES",
-            "rex android list",
-            "rex config restore",
-            "rex mirror",
-            "rex display probe",
-            "rex root status"
-          )) {
-            if ($help -notmatch [regex]::Escape($required)) {
-              throw "REX CLI help output is missing required content: $required"
-            }
-          }
-
-      - name: Upload REX CLI and terminal smoke artifacts
+      - name: Upload artifacts
         if: always()
-        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
-          name: rex-cli-windows
+          name: rex-win-x64
           path: |
-            artifacts/rex-cli/rex.exe
-            artifacts/rex-cli-smoke/
-            tests/Rex.AndroidMirror.Cli.Tests/TestResults/
+            artifacts/rex/
+            artifacts/screens/
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Run executable behavior tests (PowerShell 7)
-        if: always()
-        shell: pwsh
-        run: ./tests/Test-PowerShellBehavior.ps1
-
-      - name: Run executable behavior tests (Windows PowerShell 5.1)
-        if: always()
-        shell: powershell
-        run: .\tests\Test-PowerShellBehavior.ps1
-
-      - name: Run mirror interaction unit tests (PowerShell 7)
-        if: always()
-        shell: pwsh
-        run: ./tests/Test-MirrorInteractionBehavior.ps1
-
-      - name: Run mirror interaction unit tests (Windows PowerShell 5.1)
-        if: always()
-        shell: powershell
-        run: .\tests\Test-MirrorInteractionBehavior.ps1
-
-      - name: Run scrcpy control contract tests (PowerShell 7)
-        if: always()
-        shell: pwsh
-        run: ./tests/Test-ScrcpyControlBehavior.ps1
-
-      - name: Run scrcpy control contract tests (Windows PowerShell 5.1)
-        if: always()
-        shell: powershell
-        run: .\tests\Test-ScrcpyControlBehavior.ps1
-
-      - name: Run Control Center E2E
-        if: always()
-        shell: powershell
-        run: .\tests\Test-ControlCenterE2E.ps1
-
-      - name: Run Control Center visual regression
-        if: always()
-        shell: powershell
-        run: .\tests\Test-ControlCenterVisual.ps1 -OutputDirectory ".\artifacts\control-center-visual"
-
-      - name: Upload Control Center visual artifacts
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: control-center-visual
-          path: artifacts/control-center-visual/
-          if-no-files-found: ignore
-          retention-days: 14
-
-  pages-browser:
-    name: Pages browser + accessibility
+  pages:
+    name: Pages site
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-      - name: Set up Node
-        uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "22"
 
-      - name: Set up Python web server runtime
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.x"
-
-      - name: Validate JavaScript syntax
+      - name: Validate JavaScript
         run: |
           node --check docs/app.js
           node --check playwright.config.js
           node --check tests/pages.spec.js
 
-      - name: Install browser test dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install test dependencies
+        run: npm ci
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright and axe Pages tests
+      - name: Run Playwright and axe checks
         run: npm run test:pages
 
-      - name: Upload Pages visual screenshots
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: pages-visual
-          path: test-results/visual/
-          if-no-files-found: ignore
-          retention-days: 14
-
       - name: Upload Playwright report
-        if: always()
-        continue-on-error: true
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report/
-          if-no-files-found: ignore
           retention-days: 7
