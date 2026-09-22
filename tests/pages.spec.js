@@ -293,6 +293,7 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('Samsung Galaxy S21 Ultra settings');
     await expect(section).toContainText('Advanced Android');
     await expect(section).toContainText('Diagnostics');
+    await expect(section).toContainText('forced orientation');
     await expect(section).toContainText('Runtime Settings Provider browser');
     await expect(section).toContainText('system');
     await expect(section).toContainText('secure');
@@ -332,6 +333,14 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(page.getByText(/Hold Alt/)).toBeVisible();
     await expect(page.getByText(/Alt \+ mouse wheel/)).toBeVisible();
     await expect(page.getByText(/Alt \+ two-finger slide pans/)).toBeVisible();
+  });
+
+  test('FAQ explains forced rotation versus scrcpy display rotation', async ({ page }) => {
+    const summary = page.getByText('How does forced rotation differ from the Rotate Android button?');
+    await summary.click();
+    await expect(page.getByText(/Rotation override changes Android's sensor\/user-rotation settings/)).toBeVisible();
+    await expect(page.getByText(/Automatic, 0°, 90°, 180° and 270°/)).toBeVisible();
+    await expect(page.getByText(/best effort/)).toBeVisible();
   });
 
   test('FAQ covers no-lock devices and lock-type changes', async ({ page }) => {
