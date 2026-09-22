@@ -176,27 +176,14 @@
     </section>
     <section class="section container" id="privileged">
       <div class="section-heading reveal">
-        <div class="eyebrow signal">Privileged Android</div>
-        <h2>Root is a capability. Not a boolean.</h2>
-        <p>REX keeps ordinary ADB as the default control plane. If the device already exposes a usable root provider, REX can verify it explicitly and unlock a separate read-only inspection layer.</p>
-      </div>
-      <div class="steps">
-        <article class="step reveal"><span class="step-number">01</span><h3>Probe without prompting</h3><p><code>rex root status</code> checks the ADB UID, boot ID, SELinux state and whether <code>su</code> is visible. Passive status never invokes <code>su</code>.</p></article>
-        <article class="step reveal"><span class="step-number">02</span><h3>Authorize deliberately</h3><p><code>rex root request</code> is the explicit boundary. REX then fingerprints the resulting privilege profile instead of assuming UID 0 grants everything.</p></article>
-        <article class="step reveal"><span class="step-number">03</span><h3>Unlock verified tools</h3><p>Diagnostics, bounded file reads, process/app inspection, hardware, network, kernel logs and properties appear only through structured read-only operations.</p></article>
-      </div>
-      <div class="controls-compat reveal"><strong>Root v1 safety:</strong> no root installation, flashing, boot-image patching, AVB changes, root hiding, arbitrary root shell, partition writes or DRM bypass. Verification is scoped to the Android serial + boot ID.</div>
-    </section>
-    <section class="section container" id="privileged">
-      <div class="section-heading reveal">
         <div class="eyebrow signal">Privileged Android · Root v1</div>
-        <h2>Root is discovered carefully. Power is exposed only when it is verified.</h2>
+        <h2>Root is a capability. Not a boolean.</h2>
         <p>REX can use an existing Magisk, KernelSU, APatch, generic <code>su</code>, or root-<code>adbd</code> environment. Provider names are metadata; operation-level capability probes decide what REX can actually use.</p>
       </div>
       <div class="steps">
         <article class="step reveal"><span class="step-number">01</span><h3>Passive first</h3><p><code>rex root status</code> checks the ordinary ADB shell, boot ID, SELinux state and visible <code>su</code> route. It never invokes <code>su</code> and cannot create a superuser prompt.</p></article>
         <article class="step reveal"><span class="step-number">02</span><h3>Authorization is explicit</h3><p><code>rex root request</code> is the intentional escalation step. Verification is scoped to that Android serial and boot, so a reboot invalidates the previous trusted state.</p></article>
-        <article class="step reveal"><span class="step-number">03</span><h3>Read-only by design</h3><p>Root v1 exposes bounded diagnostics, filesystem inspection, processes, private app data, hardware, network state, kernel logs and properties. It has no arbitrary root shell, flashing, integrity bypass or DRM bypass.</p></article>
+        <article class="step reveal"><span class="step-number">03</span><h3>Read-only by design</h3><p>Root v1 exposes bounded diagnostics, filesystem inspection, processes, private app data, hardware, network state, kernel logs and properties. It has no root installation, arbitrary root shell, flashing, integrity bypass or DRM bypass.</p></article>
       </div>
     </section>
     <section class="section container controls-section" id="controls">
