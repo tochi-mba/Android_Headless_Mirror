@@ -61,19 +61,43 @@ public static class Ipc
             ["error"] = response.Error,
         }.ToJsonString();
 
-    public static IpcRequest? ParseRequest(string line)
+    public static IpcRequest? ParseRequest(string line) =>
+        TryParseRequest(line, out var request, out _) ? request : null;
+
+    public static bool TryParseRequest(string line, out IpcRequest? request, out string error)
     {
+        request = null;
+        error = "Malformed request.";
+
         try
         {
             var node = JsonNode.Parse(line)?.AsObject();
-            var command = node?["command"]?.GetValue<string>();
+            if (node is null)
+            {
+                return false;
+            }
+
+            var version = node["v"]?.GetValue<int>();
+            if (version is null)
+            {
+                error = "Missing protocol version.";
+                return false;
+            }
+
+            if (version != ProtocolVersion)
+            {
+                error = $"Unsupported protocol version {version}. Expected {ProtocolVersion}.";
+                return false;
+            }
+
+            var command = node["command"]?.GetValue<string>();
             if (command is null)
             {
-                return null;
+                return false;
             }
 
             var args = new Dictionary<string, string>(StringComparer.Ordinal);
-            if (node!["args"] is JsonObject argsNode)
+            if (node["args"] is JsonObject argsNode)
             {
                 foreach (var pair in argsNode)
                 {
@@ -81,11 +105,13 @@ public static class Ipc
                 }
             }
 
-            return new IpcRequest(command, args);
+            request = new IpcRequest(command, args);
+            error = string.Empty;
+            return true;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException)
         {
-            return null;
+            return false;
         }
     }
 
