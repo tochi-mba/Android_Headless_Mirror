@@ -5,7 +5,6 @@ namespace Rex.AndroidMirror.Cli;
 
 public sealed partial class RootManager
 {
-    private readonly AppPaths _paths;
     private readonly IBridgeClient _bridge;
     private readonly IAndroidShellRunner _shell;
     private readonly RootPolicy _policy;
@@ -19,7 +18,6 @@ public sealed partial class RootManager
         IAndroidShellRunner? shell = null,
         RootStateStore? state = null)
     {
-        _paths = paths;
         _bridge = bridge;
         _policy = new RootPolicy(config);
         _shell = shell ?? new AndroidShellRunner(runner, paths.Root, _policy);
