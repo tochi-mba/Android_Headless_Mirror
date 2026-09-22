@@ -167,16 +167,26 @@ public partial class PhonePanel : UserControl
         }
     }
 
-    private async Task ApplyAsync(string id, string value)
+    private async Task<bool> ApplyAsync(string id, string value)
     {
         if (_loading || Target() is not { } target || _window is null)
         {
-            return;
+            return false;
         }
 
         var result = await target.Adb.ApplyFriendlySettingAsync(target.Serial, id, value);
-        Status.Text = result.Ok ? string.Empty : result.Text;
-        _window.SetStatus(result.Ok ? $"Phone: {id} = {value}" : result.Text, !result.Ok);
+        if (result.Ok)
+        {
+            Status.Text = string.Empty;
+            _window.SetStatus($"Phone: {id} = {value}", error: false);
+            return true;
+        }
+
+        var error = result.Text;
+        _window.SetStatus(error, error: true);
+        await LoadAsync(target.Adb, target.Serial);
+        Status.Text = error;
+        return false;
     }
 
     private async void OnBrightnessCommit(object sender, RoutedEventArgs e) =>
@@ -202,6 +212,12 @@ public partial class PhonePanel : UserControl
 
         var result = await target.Adb.SetRotationOverrideAsync(target.Serial, mode);
         _window.SetStatus(result.Text, !result.Ok);
+        if (!result.Ok)
+        {
+            var error = result.Text;
+            await LoadAsync(target.Adb, target.Serial);
+            Status.Text = error;
+        }
     }
 
     private async void OnDarkMode(object sender, SelectionChangedEventArgs e)
@@ -252,7 +268,9 @@ public partial class PhonePanel : UserControl
 
         var parts = spec.Split(':');
         var value = parts.Length > 1 ? parts[1] : parts[0] == "wm-size" ? WmSize.Text.Trim() : WmDensity.Text.Trim();
-        await ApplyAsync(parts[0], value);
-        Refresh(force: true);
+        if (await ApplyAsync(parts[0], value))
+        {
+            Refresh(force: true);
+        }
     }
 }
