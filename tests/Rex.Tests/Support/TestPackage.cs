@@ -34,8 +34,20 @@ public sealed class TestPackage : IDisposable
     public string FakeScrcpyLog => Path.Combine(ToolsFolder, "fake-scrcpy.log");
     public string FakeAdbScenario => Path.Combine(ToolsFolder, "fake-adb.json");
 
-    public string[] AdbCalls() => File.Exists(FakeAdbLog) ? File.ReadAllLines(FakeAdbLog) : [];
-    public string[] ScrcpyLog() => File.Exists(FakeScrcpyLog) ? File.ReadAllLines(FakeScrcpyLog) : [];
+    public string[] AdbCalls() => ReadLiveLog(FakeAdbLog);
+    public string[] ScrcpyLog() => ReadLiveLog(FakeScrcpyLog);
+
+    private static string[] ReadLiveLog(string path)
+    {
+        if (!File.Exists(path)) return [];
+        // The fake tools continue appending while the app polls. A read must not
+        // deny their write handle (or fail just because a writer already has it).
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        var lines = new List<string>();
+        while (reader.ReadLine() is { } line) lines.Add(line);
+        return lines.ToArray();
+    }
 
     /// <summary>Rewrites the fake adb scenario (devices, properties, settings, keyguard).</summary>
     public void WriteScenario(object scenario) =>

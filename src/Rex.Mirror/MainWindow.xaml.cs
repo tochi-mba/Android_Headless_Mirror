@@ -54,7 +54,10 @@ public partial class MainWindow : Window
         Host.ViewChanged += _ => OnViewChanged();
         Host.ChildFocused += () => _overlay.ClearTrail();
 
-        _hooks.IsActive = () => IsActive && WindowState != WindowState.Minimized && IsVisible;
+        // WPF IsActive can lag when focus crosses into the embedded scrcpy HWND.
+        // Route global hooks using the actual foreground window's root instead.
+        _hooks.IsActive = () => _source is not null && IsVisible && WindowState != WindowState.Minimized &&
+            NativeMethods.GetAncestor(NativeMethods.GetForegroundWindow(), 2) == _source.Handle;
         _hooks.AltWheel = OnAltWheel;
         _hooks.KeyDown = OnHotkey;
 
@@ -451,10 +454,10 @@ public partial class MainWindow : Window
         switch (virtualKey)
         {
             case NativeMethods.VK_F11:
-                ToggleFullscreen();
+                Dispatcher.BeginInvoke(ToggleFullscreen);
                 return true;
             case NativeMethods.VK_ESCAPE when _fullscreen:
-                ToggleFullscreen();
+                Dispatcher.BeginInvoke(ToggleFullscreen);
                 return true;
             case 'L' when ctrl && alt:
                 _ = RunActionAsync("rotation-landscape");

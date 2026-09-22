@@ -267,13 +267,19 @@ public sealed class AppEndToEndTests
 
         public async Task PressKeyAsync(byte key, bool repeat = false)
         {
-            // A background test runner cannot always activate another process until it
-            // has received input. Send a harmless Alt press before requesting focus.
-            keybd_event(0x12, 0, 0, UIntPtr.Zero);
-            keybd_event(0x12, 0, 2, UIntPtr.Zero);
-            SetForegroundWindow(FindMainWindow());
-            await Task.Delay(100, TestContext.Current.CancellationToken);
-            Assert.Equal(FindMainWindow(), GetAncestor(GetForegroundWindow(), 2));
+            // Windows processes injected input asynchronously. Wait for the focus
+            // handover, including the app's redirect into its embedded child, before
+            // sending shortcuts. Never send F11 into an unrelated foreground app.
+            var main = FindMainWindow();
+            for (var attempt = 0; attempt < 20 && GetAncestor(GetForegroundWindow(), 2) != main; attempt++)
+            {
+                keybd_event(0x12, 0, 0, UIntPtr.Zero);
+                keybd_event(0x12, 0, 2, UIntPtr.Zero);
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+                SetForegroundWindow(main);
+                await Task.Delay(100, TestContext.Current.CancellationToken);
+            }
+            Assert.Equal(main, GetAncestor(GetForegroundWindow(), 2));
             keybd_event(key, 0, 0, UIntPtr.Zero);
             if (repeat)
             {
