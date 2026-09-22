@@ -436,6 +436,22 @@ class RepositoryContractTests(unittest.TestCase):
                 "MaxOutputCharacters",
             },
         )
+        self.assertEqual(
+            set(config["Root"]),
+            {
+                "Enabled",
+                "ProbeOnConnect",
+                "RequestAutomatically",
+                "AllowReadOnly",
+                "AllowReversible",
+                "AllowSystemChanges",
+                "AllowDeviceCritical",
+                "RawShellEnabled",
+                "RequestTimeoutSeconds",
+                "CommandTimeoutSeconds",
+                "MaxOutputCharacters",
+            },
+        )
 
     def test_config_defaults_are_safe_and_bounded(self):
         config = json.loads(self.read("config.json"))
@@ -458,6 +474,22 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(config["Display"]["ProtectedContentPolicy"], "prompt")
         self.assertTrue(config["Display"]["WindowsWirelessDisplay"]["Enabled"])
         self.assertTrue(config["Display"]["SamsungDex"]["Enabled"])
+
+        root = config["Root"]
+        self.assertTrue(root["Enabled"])
+        self.assertTrue(root["ProbeOnConnect"])
+        self.assertFalse(root["RequestAutomatically"])
+        self.assertTrue(root["AllowReadOnly"])
+        self.assertFalse(root["AllowReversible"])
+        self.assertFalse(root["AllowSystemChanges"])
+        self.assertFalse(root["AllowDeviceCritical"])
+        self.assertFalse(root["RawShellEnabled"])
+        self.assertGreaterEqual(root["RequestTimeoutSeconds"], 3)
+        self.assertLessEqual(root["RequestTimeoutSeconds"], 60)
+        self.assertGreaterEqual(root["CommandTimeoutSeconds"], 1)
+        self.assertLessEqual(root["CommandTimeoutSeconds"], 120)
+        self.assertGreaterEqual(root["MaxOutputCharacters"], 4096)
+        self.assertLessEqual(root["MaxOutputCharacters"], 4_194_304)
 
         root = config["Root"]
         self.assertTrue(root["Enabled"])
@@ -996,6 +1028,42 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("mount -o rw", features.lower())
         self.assertNotIn("root exec", machine.lower())
         self.assertNotIn("raw shell", program.lower())
+
+    def test_privileged_root_architecture_is_exposed_safely_across_surfaces(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        machine = self.read("src/Rex.AndroidMirror.Cli/MachineMode.cs")
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        xaml = self.read("ControlCenter.xaml")
+        router = self.read("src/Rex.AndroidMirror.Cli/RootCommandRouter.cs")
+        manager = self.read("src/Rex.AndroidMirror.Cli/RootManager.cs")
+        executor = self.read("src/Rex.AndroidMirror.Cli/AndroidShellRunner.cs")
+        policy = self.read("src/Rex.AndroidMirror.Cli/RootPolicy.cs")
+
+        for needle in [
+            "rex root status",
+            "rex root request",
+            "rex root diagnostics",
+            "rex root files",
+        ]:
+            self.assertIn(needle, program)
+
+        self.assertIn('case "root"', machine)
+        self.assertIn("Privileged Android", app)
+        self.assertIn('x:Name="PrivilegedTab"', xaml)
+        self.assertIn("passiveStatusDoesNotInvokeSu", machine)
+        self.assertIn("rootV1Writes = false", machine)
+        self.assertIn("rawShell = false", machine)
+        self.assertIn("RootExecutionMode.Su", manager)
+        self.assertIn("su", executor)
+        self.assertIn("PrivilegeRisk.ReadOnly", router)
+        self.assertIn("AllowDeviceCritical", policy)
+
+        # Root v1 deliberately has no arbitrary privileged shell or flashing path.
+        self.assertNotIn('case "exec"', router)
+        self.assertNotIn('"root exec', program.lower())
+        self.assertNotIn('"root shell', program.lower())
+        self.assertNotIn("flash", router.lower())
+        self.assertNotIn("boot image", router.lower())
 
     def test_rex_cli_first_run_wizard_covers_headless_setup_choices(self):
         app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
