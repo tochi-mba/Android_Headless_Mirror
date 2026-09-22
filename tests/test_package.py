@@ -1192,7 +1192,7 @@ class RepositoryContractTests(unittest.TestCase):
         for prompt in [
             "Run guided setup now?",
             "Start Android Headless Mirror automatically",
-            "Keep the physical phone display off",
+            "Keep the physical phone screen / touch surface inactive",
             "Keep Android awake while USB power is connected",
             "Precision Touchpad gestures",
             "Open the GUI Control Center automatically",
