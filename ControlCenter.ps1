@@ -16,6 +16,7 @@ $XamlPath = Join-Path $Root "ControlCenter.xaml"
 
 . (Join-Path $Root "DeviceControl.ps1")
 . (Join-Path $Root "ScrcpyControl.ps1")
+. (Join-Path $Root "MirrorInteraction.ps1")
 
 $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 
@@ -194,6 +195,7 @@ $script:TargetWindowTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Seria
 $script:DeviceIdentity = $null
 $script:AdvancedRows = @()
 $script:TestActions = New-Object System.Collections.Generic.List[string]
+$script:TestHostZoom = 1.0
 
 $Window.Width = [double]$Config.ControlCenter.Width
 $Window.Height = [double]$Config.ControlCenter.Height
@@ -356,7 +358,65 @@ function Send-MirrorChromeCommand([string]$Command) {
     Set-Content -Path (Join-Path $directory "mirror-chrome.command") -Value $Command -Encoding ASCII
 }
 
-(C "ResetHostZoomButton").Add_Click({ Send-MirrorChromeCommand "reset-zoom" })
+function Get-MirrorChromeStatePath {
+    return Join-Path (Get-RuntimeDirectory) "mirror-chrome-state.json"
+}
+
+function Refresh-HostZoomState {
+    $zoom = 1.0
+
+    if ($TestMode) {
+        $zoom = [double]$script:TestHostZoom
+    }
+    else {
+        $path = Get-MirrorChromeStatePath
+        if (Test-Path $path) {
+            try {
+                $state = Get-Content $path -Raw | ConvertFrom-Json
+                if ($null -ne $state.Zoom) {
+                    $zoom = [double]$state.Zoom
+                }
+            }
+            catch {
+                $zoom = 1.0
+            }
+        }
+    }
+
+    $active = (Test-Path function:Test-HostZoomActive) -and (Test-HostZoomActive $zoom)
+    if (-not (Test-Path function:Test-HostZoomActive)) {
+        $active = ($zoom -gt 1.001)
+    }
+
+    (C "ResetHostZoomButton").IsEnabled = [bool]$active
+    (C "ResetHostZoomButton").Content = if ($active) {
+        "Reset host zoom (" + ("{0:0}%" -f ($zoom * 100.0)) + ")"
+    }
+    else {
+        "Reset host zoom"
+    }
+}
+
+function Set-TestHostZoomState([double]$Zoom) {
+    if (-not $TestMode) {
+        throw "Set-TestHostZoomState is available only in Control Center test mode."
+    }
+
+    $script:TestHostZoom = [Math]::Max(1.0, $Zoom)
+    Refresh-HostZoomState
+}
+
+(C "ResetHostZoomButton").Add_Click({
+    Send-MirrorChromeCommand "reset-zoom"
+    if ($TestMode) {
+        $script:TestHostZoom = 1.0
+        Refresh-HostZoomState
+    }
+})
+
+$script:HostZoomStateTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:HostZoomStateTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+$script:HostZoomStateTimer.Add_Tick({ Refresh-HostZoomState })
 
 function Ensure-ExtraScrcpyArgs {
     if ($null -eq $Config.PSObject.Properties["ExtraScrcpyArgs"]) {
@@ -1287,6 +1347,7 @@ function Refresh-All {
         Refresh-DeviceState
         Refresh-AdvancedRows
         Refresh-DisplayStatus
+        Refresh-HostZoomState
         (C "DiagnosticsText").Text = Get-DiagnosticsText
         Set-Status "Ready."
     }
@@ -1350,6 +1411,16 @@ Load-RootSettings
 Refresh-All
 Restore-ControlCenterTab
 Apply-ControlCenterWindowPlacement
+
+if (-not $TestMode) {
+    $script:HostZoomStateTimer.Start()
+}
+
+$Window.Add_Closed({
+    if ($null -ne $script:HostZoomStateTimer) {
+        $script:HostZoomStateTimer.Stop()
+    }
+})
 
 (C "MainTabs").Add_SelectionChanged({
     Save-ControlCenterTab
