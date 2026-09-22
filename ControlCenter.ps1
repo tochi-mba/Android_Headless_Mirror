@@ -418,6 +418,14 @@ $script:HostZoomStateTimer = New-Object System.Windows.Threading.DispatcherTimer
 $script:HostZoomStateTimer.Interval = [TimeSpan]::FromMilliseconds(250)
 $script:HostZoomStateTimer.Add_Tick({ Refresh-HostZoomState })
 
+function Ensure-SessionBehaviorConfig {
+    if ($null -eq $Config.PSObject.Properties["TurnPhysicalScreenOff"]) {
+        $Config | Add-Member -NotePropertyName TurnPhysicalScreenOff -NotePropertyValue $true
+    }
+}
+
+Ensure-SessionBehaviorConfig
+
 function Ensure-ExtraScrcpyArgs {
     if ($null -eq $Config.PSObject.Properties["ExtraScrcpyArgs"]) {
         $Config | Add-Member -NotePropertyName ExtraScrcpyArgs -NotePropertyValue ""
