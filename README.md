@@ -23,7 +23,7 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Waits for an authorised Android device instead of failing if it is disconnected or still booting.
 - Auto-opens the mirror when an authorised phone is connected, with a 1-second detection interval by default.
 - Wakes the device before launching scrcpy.
-- Can turn the physical Android display off while keeping the PC mirror active.
+- Defaults to keeping the physical Android screen off while mirroring; on devices that tie physical touch to display power, this also suppresses accidental handset touches while PC control remains active.
 - Keeps the active session alive using scrcpy `--keep-active`, and also uses `--stay-awake` for plugged-in USB sessions.
 - Works with any authorised Android device; a preferred serial is only a preference when multiple ready devices are present.
 - Can show a click-through 3×3 pattern guide over scrcpy when a secure lock screen renders black, without storing or replaying the pattern.
@@ -164,9 +164,13 @@ scrcpy is forced to SDK mouse mode so its virtual-finger multitouch path is alwa
 
 On Windows versions/hardware where the Precision Touchpad API is unavailable, normal mirroring remains available and scrcpy's **Ctrl + left-drag** pinch simulation remains the compatibility fallback.
 
+### Physical screen / touch guard
+
+REX defaults `TurnPhysicalScreenOff` to **on**. scrcpy turns the physical phone panel off while continuing to mirror and accept PC-injected input. On devices where the touchscreen follows display power, this also prevents accidental physical touches on the handset. This is intentionally not described as a universal digitizer-disable feature: the hardware power button, OEM wake gestures, or device-specific behavior can wake the panel again.
+
 ### Sleep phone
 
-The toolbar's **Sleep phone** button sends scrcpy's own “turn device screen off while keeping mirroring active” shortcut. It can be pressed again whenever the physical phone display has been woken; the PC mirror continues operating normally.
+The toolbar's **Sleep phone** button re-sends scrcpy's screen-off action whenever the physical phone panel has been woken; the PC mirror continues operating normally.
 
 ### Forced Android rotation
 
@@ -202,7 +206,7 @@ The first run is state-aware instead of showing a fixed questionnaire. REX check
 - choose whether Android Headless Mirror starts at Windows sign-in;
 - discover attached Android devices and explain unauthorized/offline states;
 - choose **Pattern**, **PIN/password/biometric/other**, **No screen lock**, or ask later for the selected device;
-- choose physical-screen-off and USB stay-awake behavior;
+- choose the default-on physical screen/touch guard and USB stay-awake behavior;
 - offer Precision Touchpad gestures when the Windows capability is relevant;
 - choose whether the GUI Control Center opens automatically;
 - optionally start the supervisor immediately.
@@ -488,7 +492,7 @@ USB remains the recommended recovery path because legacy ADB TCP/IP normally doe
 
 Useful values in `config.json`:
 
-- `TurnPhysicalScreenOff`: turn the physical device display off while mirrored.
+- `TurnPhysicalScreenOff`: defaults to `true`. Uses scrcpy's screen-off mode while mirrored; PC/scrcpy-injected control remains active, and on devices that tie touch input to display power the handset touch surface is inactive until the panel wakes. Hardware power/OEM wake gestures can still wake it.
 - `StayAwakeWhenUsb`: use scrcpy `--stay-awake` while the active device is physically plugged in; scrcpy restores the previous Android setting when it closes.
 - `KeepActiveDuringMirror`: use scrcpy `--keep-active` to periodically signal user activity while mirroring, including TCP/IP sessions.
 - `DismissKeyguardWhenPossible`: ask Android to dismiss the keyguard before mirroring when authentication is not required; it does not bypass a secure PIN/password.
