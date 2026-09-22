@@ -311,6 +311,38 @@ public static class AHMMirrorChromeNative
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, IntPtr lpProcName);
 
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern int GetWindowLong32(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    public static void SetNoActivateToolWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        long style = IntPtr.Size == 8
+            ? GetWindowLongPtr64(hwnd, GWL_EXSTYLE).ToInt64()
+            : GetWindowLong32(hwnd, GWL_EXSTYLE);
+
+        style |= WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+
+        if (IntPtr.Size == 8)
+        {
+            SetWindowLongPtr64(hwnd, GWL_EXSTYLE, new IntPtr(style));
+        }
+        else
+        {
+            SetWindowLong32(hwnd, GWL_EXSTYLE, unchecked((int)style));
+        }
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SetWindowPos(
         IntPtr hWnd,
@@ -976,6 +1008,7 @@ $navigatorCanvas.Children.Add($navigatorViewport) | Out-Null
 
 $navigatorWindow.Show()
 $navigatorHwnd = (New-Object System.Windows.Interop.WindowInteropHelper($navigatorWindow)).Handle
+[AHMMirrorChromeNative]::SetNoActivateToolWindow($navigatorHwnd)
 $navigatorWindow.Hide()
 $script:navigatorDragging = $false
 
