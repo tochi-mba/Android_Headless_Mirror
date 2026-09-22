@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Rex.Core;
+using Rex.Tests.Support;
 
 namespace Rex.Tests;
 
@@ -105,6 +106,57 @@ public sealed class ScrcpyTests
         const string sums = "abc123  scrcpy-linux-x86_64-v4.1.tar.gz\nDEADBEEF *scrcpy-win64-v4.1.zip\n";
         Assert.Equal("deadbeef", ScrcpyInstaller.ParseChecksum(sums, "scrcpy-win64-v4.1.zip"));
         Assert.Null(ScrcpyInstaller.ParseChecksum(sums, "missing.zip"));
+    }
+
+    [Fact]
+    public void Installer_FinalizesBesideLegacyPartialInstallWithoutDeletingIt()
+    {
+        using var package = new TestPackage();
+        var source = Path.Combine(package.Root, "verified-source");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "scrcpy.exe"), "new scrcpy");
+        File.WriteAllText(Path.Combine(source, "adb.exe"), "new adb");
+
+        var legacy = Path.Combine(package.Paths.ScrcpyTools, "v4.1");
+        Directory.CreateDirectory(legacy);
+        var legacyAdb = Path.Combine(legacy, "adb.exe");
+        File.WriteAllText(legacyAdb, "locked legacy adb");
+
+        // On Windows this reproduces the important property of a running adb.exe:
+        // the old file cannot be deleted while the handle does not share delete access.
+        using var lockHandle = new FileStream(legacyAdb, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        var tools = ScrcpyInstaller.InstallVerifiedDirectory(
+            package.Paths,
+            source,
+            "v4.1",
+            new string('a', 64));
+
+        Assert.True(tools.IsComplete);
+        Assert.Equal("v4.1", tools.Version);
+        Assert.NotEqual(legacy, Path.GetDirectoryName(tools.Adb));
+        Assert.EndsWith($"v4.1-{new string('a', 12)}", Path.GetDirectoryName(tools.Adb), StringComparison.OrdinalIgnoreCase);
+        Assert.True(File.Exists(legacyAdb));
+    }
+
+    [Fact]
+    public void Installer_ReusesCompleteContentAddressedInstall()
+    {
+        using var package = new TestPackage();
+        var source = Path.Combine(package.Root, "verified-source");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "scrcpy.exe"), "scrcpy");
+        File.WriteAllText(Path.Combine(source, "adb.exe"), "adb");
+        var digest = new string('b', 64);
+
+        var first = ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, source, "v4.1", digest);
+        var second = ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, source, "v4.1", digest);
+
+        Assert.Equal(first.Scrcpy, second.Scrcpy);
+        Assert.Equal(first.Adb, second.Adb);
+        Assert.Equal("v4.1", second.Version);
+        Assert.Single(Directory.GetDirectories(package.Paths.ScrcpyTools)
+            .Where(path => !Path.GetFileName(path).StartsWith(".install-", StringComparison.OrdinalIgnoreCase)));
     }
 
     [Fact]
