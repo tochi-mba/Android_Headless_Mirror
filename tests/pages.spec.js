@@ -227,6 +227,18 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('scrcpy by default');
     await expect(section).toContainText('Verify protected playback');
   });
+
+  test('privileged section explains passive detection, explicit authorization, and Root v1 boundaries', async ({ page }) => {
+    const section = page.locator('#privileged');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('Passive first');
+    await expect(section).toContainText('rex root status');
+    await expect(section).toContainText('Authorization is explicit');
+    await expect(section).toContainText('rex root request');
+    await expect(section).toContainText('Read-only by design');
+    await expect(section).toContainText('no arbitrary root shell');
+    await expect(section).toContainText('no arbitrary root shell', { ignoreCase: true });
+  });
   test('privileged section explains passive probing and Root v1 safety', async ({ page }) => {
     const section = page.locator('#privileged');
     await expect(section).toBeVisible();
@@ -261,6 +273,7 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
   test('Control Center documents the PC/device/advanced separation', async ({ page }) => {
     const section = page.locator('#control-center');
     await expect(section).toBeVisible();
+    await expect(section).toContainText('Privileged');
     await expect(section).toContainText('PC / mirror settings');
     await expect(section).toContainText('Samsung Galaxy S21 Ultra settings');
     await expect(section).toContainText('Advanced Android');
