@@ -1578,6 +1578,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_pages_document_privileged_root_safety_boundary(self):
         html = self.read("docs/index.html")
         self.assertIn('id="privileged"', html)
+        self.assertEqual(html.count('id="privileged"'), 1)
         self.assertIn('href="#privileged"', html)
         self.assertIn("Root is a capability. Not a boolean.", html)
         self.assertIn("rex root status", html)
