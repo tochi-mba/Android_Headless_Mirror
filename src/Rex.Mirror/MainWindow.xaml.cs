@@ -435,20 +435,26 @@ public partial class MainWindow : Window
             return false;
         }
 
-        Host.ZoomStep(delta > 0 ? 1 : -1, screenX - viewport.Left, screenY - viewport.Top, _host.Config.Zoom.WheelStep);
+        var direction = delta > 0 ? 1 : -1;
+        var anchorX = screenX - viewport.Left;
+        var anchorY = screenY - viewport.Top;
+        var step = _host.Config.Zoom.WheelStep;
+        Dispatcher.BeginInvoke(() => Host.ZoomStep(direction, anchorX, anchorY, step));
         return true;
     }
 
     private bool OnHotkey(int virtualKey, bool ctrl, bool alt, bool shift)
     {
-        if (_guide is { IsCalibrating: true } && !ctrl && !alt && _guide.HandleCalibrationKey(virtualKey, ctrl, shift))
+        var guide = _guide;
+        if (guide is { IsCalibrating: true } && !alt && guide.CanHandleCalibrationKey(virtualKey))
         {
-            return true;
-        }
-
-        if (_guide is { IsCalibrating: true } && ctrl && !alt && virtualKey is NativeMethods.VK_LEFT or NativeMethods.VK_UP or NativeMethods.VK_RIGHT or NativeMethods.VK_DOWN)
-        {
-            return _guide.HandleCalibrationKey(virtualKey, ctrl, shift);
+            var plainCalibrationKey = !ctrl;
+            var fineArrowKey = ctrl && virtualKey is NativeMethods.VK_LEFT or NativeMethods.VK_UP or NativeMethods.VK_RIGHT or NativeMethods.VK_DOWN;
+            if (plainCalibrationKey || fineArrowKey)
+            {
+                Dispatcher.BeginInvoke(() => guide.HandleCalibrationKey(virtualKey, ctrl, shift));
+                return true;
+            }
         }
 
         switch (virtualKey)
@@ -460,25 +466,25 @@ public partial class MainWindow : Window
                 Dispatcher.BeginInvoke(ToggleFullscreen);
                 return true;
             case 'L' when ctrl && alt:
-                _ = RunActionAsync("rotation-landscape");
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-landscape"));
                 return true;
             case 'U' when ctrl && alt:
-                _ = RunActionAsync("rotation-portrait");
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-portrait"));
                 return true;
             case 'A' when ctrl && alt:
-                _ = RunActionAsync("rotation-auto");
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-auto"));
                 return true;
             case NativeMethods.VK_LEFT when ctrl && alt:
-                _ = RunActionAsync("rotate-left");
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotate-left"));
                 return true;
             case NativeMethods.VK_RIGHT when ctrl && alt:
-                _ = RunActionAsync("rotate-right");
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotate-right"));
                 return true;
             case 'P' when ctrl && alt:
-                _guide?.Toggle();
+                Dispatcher.BeginInvoke(() => _guide?.Toggle());
                 return true;
             case 'C' when ctrl && alt:
-                _guide?.StartCalibration();
+                Dispatcher.BeginInvoke(() => _guide?.StartCalibration());
                 return true;
             default:
                 return false;
