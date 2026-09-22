@@ -200,6 +200,9 @@ class RepositoryContractTests(unittest.TestCase):
             "README.md",
             "docs/DISPLAY_TRANSPORTS.md",
             "docs/DISPLAY_COMPATIBILITY.md",
+            "docs/ROOT_ARCHITECTURE.md",
+            "docs/ROOT_SECURITY.md",
+            "docs/ROOT_COMPATIBILITY.md",
             ".gitignore",
             ".github/workflows/ci.yml",
             ".github/workflows/pages.yml",
@@ -216,6 +219,14 @@ class RepositoryContractTests(unittest.TestCase):
             "src/Rex.AndroidMirror.Cli/DisplayManager.cs",
             "src/Rex.AndroidMirror.Cli/WindowsDisplayHostProbe.cs",
             "src/Rex.AndroidMirror.Cli/DisplayVerificationStore.cs",
+            "src/Rex.AndroidMirror.Cli/AndroidShellRunner.cs",
+            "src/Rex.AndroidMirror.Cli/RootModels.cs",
+            "src/Rex.AndroidMirror.Cli/RootPolicy.cs",
+            "src/Rex.AndroidMirror.Cli/RootStateStore.cs",
+            "src/Rex.AndroidMirror.Cli/RootManager.cs",
+            "src/Rex.AndroidMirror.Cli/RootFeatureService.cs",
+            "src/Rex.AndroidMirror.Cli/RootCommandRouter.cs",
+            "src/Rex.AndroidMirror.Cli/DeviceCapabilityRegistry.cs",
             "AGENTS.md",
             "tests/Rex.AndroidMirror.Cli.Tests/Rex.AndroidMirror.Cli.Tests.csproj",
             "tests/Test-RexCliBootstrap.ps1",
@@ -264,7 +275,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_runtime_artifacts_are_gitignored(self):
         gitignore = self.read(".gitignore")
-        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/", "display-verification.json", "display-verification.json.tmp", "config.json.rex-backup", "config.json.tmp", "config.json.restore-current"]:
+        for entry in ["tools/", "logs/", "state.json", "stop.flag", "*.log", "pattern-calibration/", "runtime/", "captures/", "test-results/", "artifacts/", "display-verification.json", "display-verification.json.tmp", "root-state.json", "root-state.json.tmp", "config.json.rex-backup", "config.json.tmp", "config.json.restore-current"]:
             self.assertIn(entry, gitignore)
 
     # ---------- Configuration ----------
@@ -296,6 +307,7 @@ class RepositoryContractTests(unittest.TestCase):
                 "ControlCenter",
                 "ScrcpySession",
                 "Display",
+                "Root",
                 "ExtraScrcpyArgs",
             },
         )
@@ -408,6 +420,22 @@ class RepositoryContractTests(unittest.TestCase):
             set(config["Display"]["SamsungDex"]),
             {"Enabled"},
         )
+        self.assertEqual(
+            set(config["Root"]),
+            {
+                "Enabled",
+                "ProbeOnConnect",
+                "RequestAutomatically",
+                "AllowReadOnly",
+                "AllowReversible",
+                "AllowSystemChanges",
+                "AllowDeviceCritical",
+                "RawShellEnabled",
+                "RequestTimeoutSeconds",
+                "CommandTimeoutSeconds",
+                "MaxOutputCharacters",
+            },
+        )
 
     def test_config_defaults_are_safe_and_bounded(self):
         config = json.loads(self.read("config.json"))
@@ -430,6 +458,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(config["Display"]["ProtectedContentPolicy"], "prompt")
         self.assertTrue(config["Display"]["WindowsWirelessDisplay"]["Enabled"])
         self.assertTrue(config["Display"]["SamsungDex"]["Enabled"])
+
+        root = config["Root"]
+        self.assertTrue(root["Enabled"])
+        self.assertTrue(root["ProbeOnConnect"])
+        self.assertFalse(root["RequestAutomatically"])
+        self.assertTrue(root["AllowReadOnly"])
+        self.assertFalse(root["AllowReversible"])
+        self.assertFalse(root["AllowSystemChanges"])
+        self.assertFalse(root["AllowDeviceCritical"])
+        self.assertFalse(root["RawShellEnabled"])
+        self.assertGreaterEqual(root["RequestTimeoutSeconds"], 3)
+        self.assertGreaterEqual(root["CommandTimeoutSeconds"], 1)
+        self.assertGreaterEqual(root["MaxOutputCharacters"], 4096)
 
         overlay = config["PatternOverlay"]
         self.assertTrue(overlay["Enabled"])
@@ -791,6 +832,7 @@ class RepositoryContractTests(unittest.TestCase):
         for header in [
             'Header="Controls"',
             'Header="Display"',
+            'Header="Privileged"',
             'Header="PC / mirror settings"',
             'Header="Device settings"',
             'Header="Advanced Android"',
@@ -884,7 +926,7 @@ class RepositoryContractTests(unittest.TestCase):
         app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
         for command in [
             '"status"', '"devices"', '"start"', '"stop"', '"setup"', '"repair"',
-            '"autostart"', '"shortcut"', '"controls"', '"action"', '"mirror"', '"display"', '"device"',
+            '"autostart"', '"shortcut"', '"controls"', '"action"', '"mirror"', '"display"', '"root"', '"device"',
             '"android"', '"config"', '"screenshot"', '"lock-mode"', '"reset-lock"',
             '"captures"', '"diagnostics"',
         ]:
@@ -892,6 +934,7 @@ class RepositoryContractTests(unittest.TestCase):
         for section_name in [
             "Runtime controls",
             "Display transports",
+            "Privileged Android",
             "PC / mirror settings",
             "Device settings",
             "Advanced Android settings",
@@ -924,6 +967,35 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("DisplayTransportIds.WindowsMiracast", manager)
         self.assertIn("ADB remains the independent control plane", docs)
         self.assertNotIn("black frame detector", manager.lower())
+
+    def test_root_privilege_architecture_is_capability_driven_and_read_only(self):
+        program = self.read("src/Rex.AndroidMirror.Cli/Program.cs")
+        machine = self.read("src/Rex.AndroidMirror.Cli/MachineMode.cs")
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        manager = self.read("src/Rex.AndroidMirror.Cli/RootManager.cs")
+        shell = self.read("src/Rex.AndroidMirror.Cli/AndroidShellRunner.cs")
+        features = self.read("src/Rex.AndroidMirror.Cli/RootFeatureService.cs")
+        xaml = self.read("ControlCenter.xaml")
+        agents = self.read("AGENTS.md")
+
+        self.assertIn('case "root"', program)
+        self.assertIn('case "root"', machine)
+        self.assertIn("Privileged Android", app)
+        self.assertIn('x:Name="PrivilegedTab"', xaml)
+        self.assertIn("ProbePassiveAsync", manager)
+        self.assertIn("RequestAsync", manager)
+        self.assertIn("RootAccessState.GrantedRestricted", manager)
+        self.assertIn("RootExecutionMode.Su", shell)
+        self.assertIn("AndroidShellQuoting", shell)
+        self.assertIn("PrivilegeRisk.ReadOnly", features)
+        self.assertIn("REX.bat agent root status", agents)
+
+        # Root v1 is deliberately an inspection platform, not a raw mutation shell.
+        self.assertNotIn("flash", features.lower())
+        self.assertNotIn("dd if=", features.lower())
+        self.assertNotIn("mount -o rw", features.lower())
+        self.assertNotIn("root exec", machine.lower())
+        self.assertNotIn("raw shell", program.lower())
 
     def test_rex_cli_first_run_wizard_covers_headless_setup_choices(self):
         app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
@@ -1032,6 +1104,13 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/Rex.AndroidMirror.Cli.Tests/DisplayManagerTests.cs",
             "tests/Rex.AndroidMirror.Cli.Tests/WindowsDisplayHostProbeTests.cs",
             "tests/Rex.AndroidMirror.Cli.Tests/DisplayVerificationStoreTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/AndroidShellRunnerTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RootManagerTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RootPolicyTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RootStateStoreTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RootFeatureServiceTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/RootCommandRouterTests.cs",
+            "tests/Rex.AndroidMirror.Cli.Tests/DeviceCapabilityRegistryTests.cs",
         ]
         for path in required:
             with self.subTest(path=path):
@@ -1059,6 +1138,8 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("REX.bat agent capabilities", agents)
         self.assertIn("REX.bat status --json", agents)
         self.assertIn("REX.bat agent display probe", agents)
+        self.assertIn("REX.bat agent root status", agents)
+        self.assertIn("REX.bat agent root capabilities", agents)
         self.assertIn("REX_BOOTSTRAP_QUIET", rex_bat)
         self.assertIn('if /I "%~1"=="agent"', rex_bat)
         self.assertIn("for %%A in (%*)", rex_bat)
