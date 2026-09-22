@@ -454,6 +454,7 @@ class RepositoryContractTests(unittest.TestCase):
     def test_config_defaults_are_safe_and_bounded(self):
         config = json.loads(self.read("config.json"))
         self.assertTrue(config["PreferUsb"])
+        self.assertTrue(config["TurnPhysicalScreenOff"])
         self.assertTrue(config["StayAwakeWhenUsb"])
         self.assertTrue(config["KeepActiveDuringMirror"])
         self.assertTrue(config["DismissKeyguardWhenPossible"])
@@ -1191,7 +1192,7 @@ class RepositoryContractTests(unittest.TestCase):
         for prompt in [
             "Run guided setup now?",
             "Start Android Headless Mirror automatically",
-            "Keep the physical phone display off",
+            "Keep the physical phone screen / touch surface inactive",
             "Keep Android awake while USB power is connected",
             "Precision Touchpad gestures",
             "Open the GUI Control Center automatically",
@@ -1468,6 +1469,27 @@ class RepositoryContractTests(unittest.TestCase):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn('$sessionTitle = "{0} [{1}]"', text)
         self.assertIn('$args.Add("--window-title=$sessionTitle")', text)
+
+    def test_physical_screen_touch_guard_defaults_and_migrates_safely(self):
+        supervisor = self.read("Start-PhoneMirror.ps1")
+        center = self.read("ControlCenter.ps1")
+        xaml = self.read("ControlCenter.xaml")
+        app = self.read("src/Rex.AndroidMirror.Cli/RexApp.cs")
+        config_store = self.read("src/Rex.AndroidMirror.Cli/ConfigStore.cs")
+
+        self.assertIn("Ensure-HeadlessSessionDefaults", supervisor)
+        self.assertIn('TurnPhysicalScreenOff -NotePropertyValue $true', supervisor)
+        self.assertIn('if ($Config.TurnPhysicalScreenOff)', supervisor)
+        self.assertIn('$args.Add("--turn-screen-off")', supervisor)
+
+        self.assertIn("Ensure-SessionBehaviorConfig", center)
+        self.assertIn('TurnPhysicalScreenOff -NotePropertyValue $true', center)
+        self.assertIn('x:Name="PcTurnScreenOffCheck"', xaml)
+        self.assertIn("screen + touch inactive while mirroring", xaml)
+        self.assertIn("OEM wake gestures", xaml)
+
+        self.assertIn('EnsureBooleanDefault("TurnPhysicalScreenOff", true)', app)
+        self.assertIn("EnsureBooleanDefault", config_store)
 
     def test_scrcpy_arguments_cover_expected_controls(self):
         text = self.read("Start-PhoneMirror.ps1")

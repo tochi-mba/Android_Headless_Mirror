@@ -44,6 +44,23 @@ public sealed class ConfigStoreTests
     }
 
     [Fact]
+    public void EnsureBooleanDefault_AddsMissingTopLevelSettingAndPreservesExistingValues()
+    {
+        using var package = new TempPackage();
+        var json = System.Text.Json.Nodes.JsonNode.Parse(
+            File.ReadAllText(package.Paths.Config))!.AsObject();
+        json.Remove("TurnPhysicalScreenOff");
+        File.WriteAllText(package.Paths.Config, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+
+        Assert.True(package.Config.EnsureBooleanDefault("TurnPhysicalScreenOff", true));
+        Assert.Equal("true", package.Config.Get("TurnPhysicalScreenOff").Value);
+
+        package.Config.Set("TurnPhysicalScreenOff", "false");
+        Assert.False(package.Config.EnsureBooleanDefault("TurnPhysicalScreenOff", true));
+        Assert.Equal("false", package.Config.Get("TurnPhysicalScreenOff").Value);
+    }
+
+    [Fact]
     public void Set_Array_AcceptsValidJson()
     {
         using var package = new TempPackage();

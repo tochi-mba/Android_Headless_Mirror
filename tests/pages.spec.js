@@ -278,6 +278,16 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('Precision Touchpad');
   });
 
+  test('FAQ explains the default physical screen touch guard without overclaiming digitizer control', async ({ page }) => {
+    const summary = page.getByText('Does REX keep the phone touchscreen inactive while I control it from the PC?');
+    const details = summary.locator('..');
+    await summary.click();
+    await expect(details.getByText(/By default REX starts scrcpy with the physical phone screen off/)).toBeVisible();
+    await expect(details.getByText(/PC-injected control keeps working/)).toBeVisible();
+    await expect(details.getByText(/rather than a universal digitizer-disable API/)).toBeVisible();
+    await expect(details.getByText(/hardware power button or OEM wake gestures/)).toBeVisible();
+  });
+
   test('controls expose the always-available sleep action', async ({ page }) => {
     const section = page.locator('#controls');
     await expect(section.locator('.toolbar-demo-button', { hasText: 'Sleep phone' })).toBeVisible();

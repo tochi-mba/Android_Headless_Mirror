@@ -54,6 +54,8 @@ public sealed class RexApp
 
     public async Task<int> RunAsync()
     {
+        _config.EnsureBooleanDefault("TurnPhysicalScreenOff", true);
+
         RexStatus status;
         try
         {
@@ -183,8 +185,11 @@ public sealed class RexApp
                 "No authorized Android device is available yet. You can finish setup now; when you connect one, approve USB debugging once and REX will detect it.");
         }
 
+        _console.MarkupLine(
+            $"[{RexBrand.Muted}]Recommended: keep the physical phone panel off while mirroring. On devices that tie touch input to display power, this also prevents accidental touches on the handset while PC-injected control keeps working.[/]");
+
         var turnOff = _console.Confirm(
-            "Keep the physical phone display off while the PC mirror stays active?",
+            "Keep the physical phone screen / touch surface inactive while the PC mirror stays active?",
             true);
         _config.Set("TurnPhysicalScreenOff", turnOff.ToString().ToLowerInvariant());
 

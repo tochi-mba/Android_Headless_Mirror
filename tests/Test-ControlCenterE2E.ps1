@@ -146,6 +146,7 @@ Assert-Contains $script:TestActions "capture:open-folder" "Open screenshot folde
 
 Write-Host "[control-center] Exercising PC settings validation and save/discard flows..."
 Select-Tab "PcSettingsTab"
+Assert-True (C "PcTurnScreenOffCheck").IsChecked "Physical phone screen/touch guard should default on."
 (C "PcMaxFpsText").Text = "999"
 Click-Control "SavePcSettingsButton"
 Assert-True ((C "StatusBarText").Text -match "1-240") "Invalid max FPS should be rejected."
@@ -180,6 +181,7 @@ Assert-True ((C "StatusBarText").Text -match "scroll max delta") "Excessive per-
 Click-Control "SavePcSettingsButton"
 Assert-True ((C "StatusBarText").Text -match "pinch threshold") "Excessive pinch threshold should be rejected."
 
+(C "PcTurnScreenOffCheck").IsChecked = $true
 (C "PcControlCenterWidthText").Text = "1040"
 (C "PcMaxSizeText").Text = "1600"
 (C "PcVideoBitRateText").Text = "10M"
@@ -212,6 +214,7 @@ Assert-Equal "pc-settings:save" $script:TestActions[$script:TestActions.Count - 
 Assert-Equal 90 $Config.MaxFps "Max FPS should update in memory."
 Assert-Equal 1600 $Config.MaxSize "Max size should update in memory."
 Assert-Equal "10M" $Config.VideoBitRate "Bitrate should update in memory."
+Assert-True $Config.TurnPhysicalScreenOff "Physical phone screen/touch guard should persist enabled."
 Assert-Equal "alt" $Config.MirrorChrome.HostZoomModifier "PC-only host zoom must reserve Alt, not Ctrl/Shift."
 Assert-True $Config.MirrorChrome.TouchpadPinchToHostZoom "Alt + touchpad pinch should remain enabled."
 Assert-True $Config.MirrorChrome.WheelToHostZoom "Alt + wheel should remain enabled."

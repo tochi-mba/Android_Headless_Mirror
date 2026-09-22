@@ -571,6 +571,7 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     Assert-Contains -Collection $tcpArgs -Value "--keep-active" -Message "TCP sessions should still receive --keep-active."
 
     Write-Host "[powershell] Testing alternate session settings..."
+    $script:Config.TurnPhysicalScreenOff = $false
     $script:Config.PowerOffOnClose = $true
     $script:Config.KeepActiveDuringMirror = $false
     $script:Config.MaxSize = 0
@@ -585,6 +586,7 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
 
     $minimalArgs = @(Build-ScrcpyArguments "USB123" $false)
     Assert-Contains -Collection $minimalArgs -Value "--power-off-on-close" -Message "Enabled power-off-on-close should be emitted."
+    Assert-False -Condition ($minimalArgs -contains "--turn-screen-off") -Message "Disabling the physical screen/touch guard should suppress --turn-screen-off."
     Assert-Contains -Collection $minimalArgs -Value "--video-codec=h265" -Message "Configured video codec should be emitted."
     Assert-Contains -Collection $minimalArgs -Value "--no-audio" -Message "Disabled audio should emit --no-audio."
     Assert-Contains -Collection $minimalArgs -Value "--fullscreen" -Message "Fullscreen preference should be emitted."
