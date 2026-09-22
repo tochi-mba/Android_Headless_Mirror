@@ -1,7 +1,7 @@
 {
   "name": "Android Headless Mirror",
   "short_name": "Headless Mirror",
-  "description": "A REX Technologies product for USB-first Android mirroring and control from Windows using scrcpy + ADB.",
+  "description": "A REX Technologies product for USB-first Android control from Windows using scrcpy + ADB, with display orchestration, diagnostics, and optional capability-gated read-only tools for already-rooted devices.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#080A09",
