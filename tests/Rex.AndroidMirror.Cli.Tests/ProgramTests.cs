@@ -446,4 +446,35 @@ public sealed class ProgramTests
         Assert.Contains("Root v1 blocks", ex.Message);
     }
 
+    [Fact]
+    public async Task RootStatus_HumanCliUsesPassiveProbe()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "2000\n", "")
+        };
+        var device = new RexDevice(
+            "USB123", "device", false, "Samsung", "SM-G998B", "Galaxy");
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = new RexStatus(
+                true, false, false, false, false,
+                "adb.exe", "scrcpy.exe", new[] { device })
+        };
+        bridge.Devices.Add(device);
+
+        var code = await Program.RunCommandAsync(
+            new[] { "root", "status" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, code);
+        Assert.DoesNotContain(
+            runner.Calls,
+            x => x.Arguments.Contains("su") && x.Arguments.Contains("-c"));
+    }
+
 }
