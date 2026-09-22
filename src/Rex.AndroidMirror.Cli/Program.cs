@@ -267,6 +267,18 @@ public static class Program
             case "display":
                 return await RunDisplayCommandAsync(args, paths, runner, bridge, config);
 
+            case "root":
+            {
+                var response = await RootCommandRouter.RunAsync(
+                    args,
+                    paths,
+                    runner,
+                    bridge,
+                    config);
+                PrintRootResponse(response);
+                return 0;
+            }
+
             case "device":
                 return await RunDeviceCommandAsync(args, bridge);
 
@@ -680,6 +692,86 @@ public static class Program
         return result.ExitCode == 0 ? 1 : result.ExitCode;
     }
 
+    private static void PrintRootResponse(RootCommandResponse response)
+    {
+        if (response.Data is RootStatus status)
+        {
+            PrintRootStatus(status);
+            return;
+        }
+
+        if (response.Data is RootFeatureResult feature)
+        {
+            RexBrand.Header(response.Command.ToUpperInvariant());
+            AnsiConsole.MarkupLine(
+                $"[{RexBrand.Muted}]Device: {Markup.Escape(feature.Serial)} · Risk: {Markup.Escape(feature.Risk.ToString())}[/]");
+
+            foreach (var section in feature.Sections)
+            {
+                var body = string.IsNullOrWhiteSpace(section.Value)
+                    ? "(empty)"
+                    : section.Value;
+                AnsiConsole.Write(
+                    RexBrand.Panel(
+                        section.Key.ToUpperInvariant(),
+                        new Text(body)));
+            }
+            return;
+        }
+
+        Console.WriteLine(JsonSerializer.Serialize(
+            response.Data,
+            new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static void PrintRootStatus(RootStatus status)
+    {
+        RexBrand.Header("PRIVILEGED ANDROID");
+
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(RexBrand.LineColor)
+            .AddColumn("Capability")
+            .AddColumn("State");
+
+        table.AddRow("Device", Markup.Escape(status.Serial));
+        table.AddRow("Root state", Markup.Escape(status.State.ToString()));
+        table.AddRow("Provider", Markup.Escape(status.Provider.ToString()));
+        table.AddRow("Provider version", Markup.Escape(
+            string.IsNullOrWhiteSpace(status.ProviderVersion) ? "unknown" : status.ProviderVersion));
+        table.AddRow("ADB UID", Markup.Escape(status.AdbUid?.ToString() ?? "unknown"));
+        table.AddRow("Effective UID", Markup.Escape(status.EffectiveUid?.ToString() ?? "not verified"));
+        table.AddRow("su visible", status.SuVisible ? "[#D7FF3F]yes[/]" : "[#858D83]no[/]");
+        table.AddRow("SELinux", Markup.Escape(
+            string.IsNullOrWhiteSpace(status.SelinuxMode) ? "unknown" : status.SelinuxMode));
+        table.AddRow("Verification", status.FromCachedVerification ? "this boot (cached)" : "current probe");
+
+        AnsiConsole.Write(table);
+
+        if (status.Capabilities.Count > 0)
+        {
+            var caps = new Table()
+                .Border(TableBorder.Rounded)
+                .BorderColor(RexBrand.LineColor)
+                .AddColumn("Privileged capability")
+                .AddColumn("State")
+                .AddColumn("Risk");
+
+            foreach (var capability in status.Capabilities)
+            {
+                caps.AddRow(
+                    Markup.Escape(capability.Detail),
+                    Markup.Escape(capability.State.ToString()),
+                    Markup.Escape(capability.Risk.ToString()));
+            }
+
+            AnsiConsole.Write(caps);
+        }
+
+        AnsiConsole.MarkupLine(
+            $"[{RexBrand.Muted}]{Markup.Escape(status.Message)}[/]");
+    }
+
     private static void PrintStatus(RexStatus status)
     {
         RexBrand.Header("STATUS");
@@ -796,6 +888,14 @@ public static class Program
             ("rex display start --transport <scrcpy|windows-miracast>", "Start or prepare a display transport"),
             ("rex display receiver open", "Open Windows Projecting to this PC"),
             ("rex display verify <normal|protected> <pass|fail|clear>", "Record manual hardware playback verification"),
+            ("rex root status|probe [--serial S]", "Passively inspect root availability without invoking su"),
+            ("rex root request [--serial S]", "Explicitly request and verify root authorization"),
+            ("rex root diagnostics [--serial S]", "Read privileged Android diagnostics"),
+            ("rex root files <list|stat|read> <path>", "Read privileged filesystem information"),
+            ("rex root processes | process <pid>", "Inspect Android processes with verified root"),
+            ("rex root app <package>", "Inspect private application data and package metadata"),
+            ("rex root hardware|network|properties", "Read privileged hardware, network, or property state"),
+            ("rex root logs kernel", "Read bounded kernel log output"),
             ("rex device set <setting> <value> [--serial S]", "Change a friendly Android setting"),
             ("rex android list <system|secure|global> [--filter X]", "Browse live Android Settings Provider keys"),
             ("rex android get/set/delete ...", "Read or change an Android Settings Provider key"),
