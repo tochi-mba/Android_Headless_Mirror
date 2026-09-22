@@ -156,8 +156,9 @@ public sealed class ScrcpyTests
         Assert.Equal(first.Scrcpy, second.Scrcpy);
         Assert.Equal(first.Adb, second.Adb);
         Assert.Equal("v4.1", second.Version);
-        Assert.Single(Directory.GetDirectories(package.Paths.ScrcpyTools)
-            .Where(path => !Path.GetFileName(path).StartsWith(".install-", StringComparison.OrdinalIgnoreCase)));
+        Assert.Single(
+            Directory.GetDirectories(package.Paths.ScrcpyTools),
+            path => !Path.GetFileName(path).StartsWith(".install-", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
