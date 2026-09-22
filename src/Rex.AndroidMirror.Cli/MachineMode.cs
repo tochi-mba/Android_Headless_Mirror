@@ -226,6 +226,17 @@ public static class MachineMode
                 case "display":
                     return await DisplayAsync(args, paths, runner, bridge, config);
 
+                case "root":
+                {
+                    var response = await RootCommandRouter.RunAsync(
+                        args,
+                        paths,
+                        runner,
+                        bridge,
+                        config);
+                    return Success(response.Command, RootMachineData(response.Data));
+                }
+
                 case "device":
                     return await DeviceAsync(args, bridge);
 
@@ -542,6 +553,54 @@ public static class MachineMode
         }
     }
 
+    private static object RootMachineData(object data) =>
+        data switch
+        {
+            RootStatus status => new
+            {
+                serial = status.Serial,
+                state = status.State,
+                provider = status.Provider,
+                providerVersion = status.ProviderVersion,
+                adbUid = status.AdbUid,
+                effectiveUid = status.EffectiveUid,
+                suVisible = status.SuVisible,
+                suPath = status.SuPath,
+                bootId = status.BootId,
+                selinuxMode = status.SelinuxMode,
+                privilegeProfile = status.PrivilegeProfile is null
+                    ? null
+                    : new
+                    {
+                        effectiveUid = status.PrivilegeProfile.EffectiveUid,
+                        effectiveGid = status.PrivilegeProfile.EffectiveGid,
+                        groups = status.PrivilegeProfile.Groups,
+                        selinuxContext = status.PrivilegeProfile.SelinuxContext,
+                        capabilityEffectiveHex = status.PrivilegeProfile.CapabilityEffectiveHex,
+                        capabilityPermittedHex = status.PrivilegeProfile.CapabilityPermittedHex,
+                        capabilityBoundingHex = status.PrivilegeProfile.CapabilityBoundingHex
+                    },
+                capabilities = status.Capabilities.Select(capability => new
+                {
+                    id = capability.Id,
+                    state = capability.State,
+                    risk = capability.Risk,
+                    detail = capability.Detail
+                }).ToArray(),
+                checkedAt = status.CheckedAt,
+                fromCachedVerification = status.FromCachedVerification,
+                message = status.Message
+            },
+            RootFeatureResult feature => new
+            {
+                operation = feature.Operation,
+                serial = feature.Serial,
+                risk = feature.Risk,
+                sections = feature.Sections
+            },
+            _ => data
+        };
+
     private static MachineCommandResult Config(string[] args, ConfigStore config)
     {
         Require(args, 2, "config <list|get|set|restore> ...");
@@ -609,7 +668,7 @@ public static class MachineMode
         {
             "status", "devices", "start", "stop", "setup", "repair",
             "autostart", "shortcut", "smart", "diagnostics", "controls", "action", "mirror",
-            "display", "device", "android", "config", "screenshot", "lock-mode",
+            "display", "root", "device", "android", "config", "screenshot", "lock-mode",
             "reset-lock"
         },
         runtimeActions = RuntimeActions,
@@ -623,6 +682,30 @@ public static class MachineMode
             "display start --transport <scrcpy|windows-miracast>",
             "display receiver open",
             "display verify <normal|protected> <pass|fail|clear>"
+        },
+        rootCommands = new[]
+        {
+            "root status",
+            "root probe",
+            "root request",
+            "root capabilities",
+            "root clear",
+            "root diagnostics",
+            "root files <list|stat|read> <absolute-path>",
+            "root processes",
+            "root process <pid>",
+            "root app <package>",
+            "root hardware",
+            "root network",
+            "root logs kernel",
+            "root properties"
+        },
+        rootSafety = new
+        {
+            passiveStatusDoesNotInvokeSu = true,
+            rawShell = false,
+            rootV1Writes = false,
+            authorizationCommand = "root request"
         },
         friendlyDeviceSettings = FriendlyDeviceSettings,
         androidNamespaces = new[] { "system", "secure", "global" },
