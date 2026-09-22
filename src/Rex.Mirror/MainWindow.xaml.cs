@@ -256,11 +256,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            DeviceName.Text = needsSetup
-                ? "Setup required"
-                : session.Devices.Any(d => d.IsUnauthorized)
-                    ? "Phone found · approve USB debugging"
-                    : "No phone connected";
+            DeviceName.Text = DeviceStateText.Header(needsSetup, session.Devices);
             DeviceMeta.Text = string.Empty;
         }
 
