@@ -66,11 +66,13 @@ public sealed class OverlayWindow : Window
     private Rect _navigatorScreenRect;
 
     private readonly Window _owner;
-    private readonly FullscreenHud _hud = new();
+    private readonly FullscreenHudWindow _hudWindow;
+    private RECT _screenPixels;
+
     public event Action<string>? HudActionRequested;
-    public bool HudVisible => IsVisible && _hud.IsShown;
-    public string HudDebug => $"handle={Handle} shown={_hud.IsShown} pos={Canvas.GetLeft(_hud)},{Canvas.GetTop(_hud)} size={_hud.ActualWidth},{_hud.ActualHeight} dpi={_dpiScale}";
-    public void RevealHud(string? message = null) => _hud.Reveal(message);
+    public bool HudVisible => IsVisible && _hudWindow.HudVisible;
+    public string HudDebug => _hudWindow.Debug;
+    public void RevealHud(string? message = null) => _hudWindow.Reveal(message);
 
     public void UpdateHud(bool fullscreen, double zoom)
     {
@@ -81,15 +83,15 @@ public sealed class OverlayWindow : Window
             atTop = cursor.Y >= 0 && cursor.Y <= 12 * _dpiScale &&
                 cursor.X >= 0 && cursor.X < Width * _dpiScale;
         }
-        _hud.Update(fullscreen, atTop, zoom);
-        _hud.Measure(new Size(Math.Max(1, Width - 24), double.PositiveInfinity));
-        Canvas.SetLeft(_hud, Math.Max(12, (Width - _hud.DesiredSize.Width) / 2));
-        Canvas.SetTop(_hud, 12);
+
+        _hudWindow.Update(fullscreen && IsVisible, atTop, zoom, _screenPixels, _dpiScale);
     }
 
     public OverlayWindow(Window owner)
     {
         _owner = owner;
+        _hudWindow = new FullscreenHudWindow(this);
+        _hudWindow.ActionRequested += id => HudActionRequested?.Invoke(id);
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = true;
@@ -118,8 +120,6 @@ public sealed class OverlayWindow : Window
         _canvas.MouseMove += OnPanMove;
         _canvas.MouseLeftButtonUp += OnPanUp;
         _canvas.Background = Brushes.Transparent;
-        _canvas.Children.Add(_hud);
-        _hud.ActionRequested += id => HudActionRequested?.Invoke(id);
         Content = _canvas;
 
         SourceInitialized += (_, _) =>
@@ -178,6 +178,8 @@ public sealed class OverlayWindow : Window
 
         if (!visible || screenPixels.Width <= 0 || screenPixels.Height <= 0)
         {
+            _screenPixels = default;
+            _hudWindow.Update(false, false, 1, default, _dpiScale);
             if (IsVisible)
             {
                 Hide();
@@ -198,6 +200,7 @@ public sealed class OverlayWindow : Window
 
         NativeMethods.SetWindowPos(source.Handle, IntPtr.Zero, screenPixels.Left, screenPixels.Top, screenPixels.Width, screenPixels.Height,
             NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOSENDCHANGING);
+        _screenPixels = screenPixels;
         _dpiScale = source.CompositionTarget?.TransformToDevice.M11 ?? _dpiScale;
         Width = screenPixels.Width / _dpiScale;
         Height = screenPixels.Height / _dpiScale;
@@ -416,12 +419,6 @@ public sealed class OverlayWindow : Window
         var point = new POINT { X = x, Y = y };
         NativeMethods.ScreenToClient(Handle, ref point);
 
-        if (_hud.IsShown && new Rect(Canvas.GetLeft(_hud), Canvas.GetTop(_hud),
-                _hud.ActualWidth, _hud.ActualHeight).Contains(point.X / _dpiScale, point.Y / _dpiScale))
-        {
-            return true;
-        }
-
         if (_navigator.Visibility == Visibility.Visible && _navigatorScreenRect.Contains(point.X, point.Y))
         {
             return true;
@@ -432,6 +429,7 @@ public sealed class OverlayWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _hudWindow.Close();
         if (_source is not null)
         {
             if (TouchpadRegistered)
