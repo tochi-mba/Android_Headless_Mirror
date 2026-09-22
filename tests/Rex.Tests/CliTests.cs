@@ -100,7 +100,7 @@ public sealed class CliTests
         using var package = new TestPackage(withFakeTools: true);
         var result = await MachineMode.RunAsync(["action", action], new CliContext(package.Paths));
         Assert.Equal(0, result.ExitCode);
-        Assert.Contains(package.AdbCalls(), call => call.EndsWith("settings put system " + setting, StringComparison.Ordinal));
+        Assert.Contains(package.AdbCalls(), call => call == $"-s FAKE123 shell \"settings put system {setting}\"");
     }
 
     [Fact]
