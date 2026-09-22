@@ -49,7 +49,8 @@ function Get-InteractionGestureKind {
         [double]$CenterDeltaX,
         [double]$CenterDeltaY,
         [double]$PinchThreshold,
-        [double]$PinchDominanceRatio
+        [double]$PinchDominanceRatio,
+        [double]$ScrollThresholdNormalized = 0.015
     )
 
     if ($StartDistance -le 0.0001 -or $CurrentDistance -le 0.0001) {
@@ -72,7 +73,7 @@ function Get-InteractionGestureKind {
         return "pinch"
     }
 
-    if ($normalizedMovement -gt 0.0) {
+    if ($normalizedMovement -ge $ScrollThresholdNormalized) {
         return "scroll"
     }
 
