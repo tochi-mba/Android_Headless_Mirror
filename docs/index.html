@@ -254,7 +254,7 @@
       <div class="controls-head reveal">
         <div>
           <div class="eyebrow signal">Desktop-native controls</div>
-          <h2>Use the touchpad like the phone.<br>Use Ctrl when you only want the PC view.</h2>
+          <h2>Use the touchpad like the phone.<br>Use Alt when you only want the PC view.</h2>
         </div>
         <p>Android gestures and desktop magnification stay intentionally separate, so the same touchpad can control the app or just magnify the mirror without ambiguity.</p>
       </div>
@@ -277,14 +277,14 @@
 
           <article class="gesture-card reveal">
             <div class="gesture-visual zoom-visual" aria-hidden="true">
-              <kbd>Ctrl</kbd>
+              <kbd>Alt</kbd>
               <span>+</span>
               <div class="mini-touchpad"><i></i><i></i></div>
             </div>
             <div class="gesture-copy">
               <span class="gesture-kicker">PC-ONLY VIEW</span>
-              <h3>Hold Ctrl + pinch → magnify the mirror.</h3>
-              <p>The phone receives no pinch. The Windows frame zoom persists after Ctrl is released, and <strong>Reset zoom</strong> appears whenever the view is above 100%.</p>
+              <h3>Hold Alt + pinch → magnify the mirror.</h3>
+              <p>The phone receives no pinch. The Windows frame zoom persists after Alt is released. Alt + two-finger slide pans the zoomed viewport, and <strong>Reset zoom</strong> appears only above 100%.</p>
             </div>
           </article>
         </div>
@@ -299,11 +299,12 @@
           <div class="toolbar-notes">
             <div><span>01</span><p><strong>Sleep phone</strong> re-sends scrcpy’s screen-off command while the PC mirror continues.</p></div>
             <div><span>02</span><p><strong>Reset zoom</strong> only appears when the Windows-side magnifier is not at 100%.</p></div>
-            <div><span>03</span><p><strong>Mouse fallback:</strong> Ctrl + wheel controls host zoom; scrcpy Ctrl + left-drag remains available if native touchpad APIs are unavailable.</p></div>
+            <div><span>03</span><p><strong>Mouse fallback:</strong> Alt + wheel controls host zoom. Ctrl and Shift remain available for scrcpy’s Android pinch/rotate and tilt gestures.</p></div>
           </div>
         </div>
       </div>
 
+      <div class="controls-compat reveal"><strong>Smooth by default:</strong> two-finger scroll sensitivity is intentionally conservative, small motion is dead-zoned, and each sample is capped so one swipe cannot fling through several screens. Android pinch and PC host-zoom sensitivity are independently adjustable in Control Center.</div>
       <p class="controls-compat reveal"><strong>Compatibility:</strong> native two-finger Precision Touchpad bridging uses the Windows 11 touchpad pointer API. Windows 10 and unsupported hardware keep normal mirroring and scrcpy’s compatibility gesture path.</p>
     </section>
 
