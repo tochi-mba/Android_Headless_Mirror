@@ -119,7 +119,7 @@ test.describe('Android Headless Mirror site', () => {
   });
 
   test('states compatibility and privacy without absolute claims', async ({ page }) => {
-    const body = await page.locator('body').innerText();
+    const body = await page.locator('body').textContent();
     expect(body).toContain('No phone-content uploads');
     expect(body).toContain('designed for Android devices supported by ADB and scrcpy');
     expect(body).not.toMatch(/Any Android phone with USB debugging works/i);
