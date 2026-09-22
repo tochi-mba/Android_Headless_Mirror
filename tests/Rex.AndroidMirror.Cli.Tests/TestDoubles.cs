@@ -74,6 +74,19 @@ internal sealed class TempPackage : IDisposable
               "Enabled": true
             }
           },
+          "Root": {
+            "Enabled": true,
+            "ProbeOnConnect": true,
+            "RequestAutomatically": false,
+            "AllowReadOnly": true,
+            "AllowReversible": false,
+            "AllowSystemChanges": false,
+            "AllowDeviceCritical": false,
+            "RawShellEnabled": false,
+            "RequestTimeoutSeconds": 15,
+            "CommandTimeoutSeconds": 10,
+            "MaxOutputCharacters": 262144
+          },
           "ExtraScrcpyArgs": ""
         }
         """);
@@ -198,5 +211,60 @@ internal sealed class FakeBridgeClient : IBridgeClient
             : """{"Ok":true,"Text":"OK"}""";
 
         return Task.FromResult(JsonDocument.Parse(payload));
+    }
+}
+
+
+internal sealed record AndroidShellCall(
+    string AdbPath,
+    string Serial,
+    PrivilegedCommand Command,
+    RootExecutionMode? RootMode);
+
+internal sealed class FakeAndroidShellRunner : IAndroidShellRunner
+{
+    private readonly Dictionary<string, Queue<AndroidCommandResult>> _results =
+        new(StringComparer.Ordinal);
+
+    public List<AndroidShellCall> Calls { get; } = [];
+
+    public AndroidCommandResult DefaultResult { get; set; } =
+        new(1, "", "not configured", false, false);
+
+    public void Enqueue(
+        string commandId,
+        AndroidCommandResult result)
+    {
+        if (!_results.TryGetValue(commandId, out var queue))
+        {
+            queue = new Queue<AndroidCommandResult>();
+            _results[commandId] = queue;
+        }
+
+        queue.Enqueue(result);
+    }
+
+    public void Success(string commandId, string stdout = "") =>
+        Enqueue(commandId, new AndroidCommandResult(0, stdout, "", false, false));
+
+    public void Failure(string commandId, string stderr = "failed", int exitCode = 1) =>
+        Enqueue(commandId, new AndroidCommandResult(exitCode, "", stderr, false, false));
+
+    public void Timeout(string commandId) =>
+        Enqueue(commandId, new AndroidCommandResult(-1, "", "timed out", true, false));
+
+    public Task<AndroidCommandResult> RunAsync(
+        string adbPath,
+        string serial,
+        PrivilegedCommand command,
+        RootExecutionMode? rootMode = null,
+        CancellationToken cancellationToken = default)
+    {
+        Calls.Add(new(adbPath, serial, command, rootMode));
+
+        if (_results.TryGetValue(command.Id, out var queue) && queue.Count > 0)
+            return Task.FromResult(queue.Dequeue());
+
+        return Task.FromResult(DefaultResult);
     }
 }
