@@ -252,7 +252,7 @@ public sealed partial class RootFeatureService
         if (path.Length > 4096 || path.Any(char.IsControl))
             throw new ArgumentException("The Android path is invalid.");
 
-        var normalized = path.Replace("//", "/", StringComparison.Ordinal);
+        var normalized = NormalizeAndroidPath(path);
         if (!allowCritical &&
             CriticalPathPrefixes.Any(prefix =>
                 normalized.Equals(prefix, StringComparison.Ordinal) ||
@@ -263,6 +263,33 @@ public sealed partial class RootFeatureService
         }
 
         return normalized;
+    }
+
+    private static string NormalizeAndroidPath(string path)
+    {
+        var segments = new List<string>();
+
+        foreach (var segment in path.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment == ".")
+                continue;
+
+            if (segment == "..")
+            {
+                if (segments.Count == 0)
+                    throw new ArgumentException(
+                        "The Android path cannot traverse above the filesystem root.");
+
+                segments.RemoveAt(segments.Count - 1);
+                continue;
+            }
+
+            segments.Add(segment);
+        }
+
+        return segments.Count == 0
+            ? "/"
+            : "/" + string.Join('/', segments);
     }
 
     public static string ValidatePackage(string packageName)
