@@ -189,6 +189,7 @@ class RepositoryContractTests(unittest.TestCase):
             "Stop-PhoneMirror.ps1",
             "PatternOverlay.ps1",
             "MirrorChrome.ps1",
+            "MirrorInteraction.ps1",
             "ControlCenter.ps1",
             "ControlCenter.xaml",
             "DeviceControl.ps1",
@@ -233,6 +234,7 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/Test-RexShortcut.ps1",
             "tests/Test-RexBridgeE2E.ps1",
             "tests/Test-PowerShellBehavior.ps1",
+            "tests/Test-MirrorInteractionBehavior.ps1",
             "tests/Test-ControlCenterE2E.ps1",
             "tests/Test-ControlCenterVisual.ps1",
             "tests/visual-thresholds.json",
@@ -365,11 +367,22 @@ class RepositoryContractTests(unittest.TestCase):
                 "MaxZoom",
                 "ToolbarInsetPixels",
                 "PollMilliseconds",
-                "CtrlWheelZoom",
+                "HostZoomModifier",
+                "WheelToHostZoom",
                 "NativeTouchpadGestures",
                 "TouchpadPinchToAndroid",
-                "CtrlTouchpadPinchToHostZoom",
+                "TouchpadPinchToHostZoom",
                 "TouchpadPinchThreshold",
+                "TouchpadPinchDominanceRatio",
+                "TouchpadScrollThreshold",
+                "AndroidPinchSensitivity",
+                "HostZoomPinchSensitivity",
+                "TouchpadScrollSensitivity",
+                "TouchpadScrollDeadzone",
+                "TouchpadScrollMaxDeltaPerSample",
+                "TouchpadSmoothing",
+                "HostPanSensitivity",
+                "ShowZoomMinimap",
                 "TouchpadBaseRadiusRelativeToClient",
             },
         )
@@ -514,19 +527,37 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertTrue(chrome["Enabled"])
         self.assertTrue(chrome["SleepButton"])
         self.assertTrue(chrome["HostZoomEnabled"])
-        self.assertTrue(chrome["CtrlWheelZoom"])
+        self.assertEqual(chrome["HostZoomModifier"], "alt")
+        self.assertTrue(chrome["WheelToHostZoom"])
         self.assertTrue(chrome["NativeTouchpadGestures"])
         self.assertTrue(chrome["TouchpadPinchToAndroid"])
-        self.assertTrue(chrome["CtrlTouchpadPinchToHostZoom"])
+        self.assertTrue(chrome["TouchpadPinchToHostZoom"])
         self.assertGreater(chrome["ZoomStep"], 0)
+        self.assertLessEqual(chrome["ZoomStep"], 0.15)
         self.assertGreaterEqual(chrome["MinZoom"], 1.0)
         self.assertGreater(chrome["MaxZoom"], chrome["MinZoom"])
         self.assertGreaterEqual(chrome["PollMilliseconds"], 12)
         self.assertGreaterEqual(chrome["ToolbarInsetPixels"], 0)
         self.assertGreater(chrome["TouchpadPinchThreshold"], 0)
         self.assertLess(chrome["TouchpadPinchThreshold"], 0.2)
+        self.assertGreater(chrome["TouchpadPinchDominanceRatio"], 1.0)
+        self.assertGreater(chrome["TouchpadScrollThreshold"], 0)
+        self.assertGreaterEqual(chrome["AndroidPinchSensitivity"], 0.1)
+        self.assertLessEqual(chrome["AndroidPinchSensitivity"], 2.0)
+        self.assertGreaterEqual(chrome["HostZoomPinchSensitivity"], 0.1)
+        self.assertLessEqual(chrome["HostZoomPinchSensitivity"], 2.0)
+        self.assertGreater(chrome["TouchpadScrollSensitivity"], 0)
+        self.assertLessEqual(chrome["TouchpadScrollSensitivity"], 0.1)
+        self.assertGreaterEqual(chrome["TouchpadScrollDeadzone"], 0)
+        self.assertLessEqual(chrome["TouchpadScrollMaxDeltaPerSample"], 24)
+        self.assertGreater(chrome["TouchpadSmoothing"], 0)
+        self.assertLessEqual(chrome["TouchpadSmoothing"], 1)
+        self.assertGreater(chrome["HostPanSensitivity"], 0)
+        self.assertTrue(chrome["ShowZoomMinimap"])
         self.assertGreater(chrome["TouchpadBaseRadiusRelativeToClient"], 0.05)
         self.assertLess(chrome["TouchpadBaseRadiusRelativeToClient"], 0.5)
+        self.assertNotIn("CtrlWheelZoom", chrome)
+        self.assertNotIn("CtrlTouchpadPinchToHostZoom", chrome)
 
         center = config["ControlCenter"]
         self.assertTrue(center["Enabled"])
@@ -707,6 +738,48 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn('if ($Serial -eq "ALL")', text)
 
     # ---------- Mirror toolbar / multitouch / host zoom ----------
+
+    def test_host_zoom_uses_alt_not_ctrl_or_shift(self):
+        mirror = self.read("MirrorChrome.ps1")
+        xaml = self.read("ControlCenter.xaml")
+        readme = self.read("README.md")
+        pages = self.read("docs/index.html")
+
+        self.assertIn("VK_MENU", mirror)
+        self.assertIn("TouchpadPinchToHostZoom", mirror)
+        self.assertIn("WheelToHostZoom", mirror)
+        self.assertIn("Alt + touchpad pinch", xaml)
+        self.assertIn("Alt + mouse wheel", xaml)
+        self.assertIn("Alt + pinch", readme)
+        self.assertIn("Alt + wheel", readme)
+        self.assertIn("Hold Alt + pinch", pages)
+        self.assertNotIn("Hold physical Ctrl + pinch", readme)
+        self.assertNotIn("Ctrl + touchpad pinch zooms only the PC mirror", xaml)
+
+    def test_touchpad_tuning_is_not_decorative(self):
+        mirror = self.read("MirrorChrome.ps1")
+        center = self.read("ControlCenter.ps1")
+        interaction = self.read("MirrorInteraction.ps1")
+
+        for name in [
+            "AndroidPinchSensitivity",
+            "HostZoomPinchSensitivity",
+            "TouchpadScrollSensitivity",
+            "TouchpadScrollDeadzone",
+            "TouchpadScrollMaxDeltaPerSample",
+            "TouchpadPinchThreshold",
+            "TouchpadPinchDominanceRatio",
+            "TouchpadScrollThreshold",
+            "HostPanSensitivity",
+        ]:
+            self.assertIn(name, mirror)
+            self.assertIn(name, center)
+
+        self.assertIn("Get-InteractionGestureKind", mirror)
+        self.assertIn("Get-ScaledScrollDelta", mirror)
+        self.assertIn("Get-NormalizedPanAnchor", mirror)
+        self.assertIn("SendWheelToTarget", mirror)
+        self.assertIn("Get-SensitivityAdjustedScale", interaction)
 
     def test_scrcpy_forces_sdk_mouse_mode_for_ctrl_drag_multitouch(self):
         text = self.read("Start-PhoneMirror.ps1")
