@@ -375,7 +375,8 @@
 
             <GroupBox Header="Session behavior">
               <StackPanel>
-              <CheckBox x:Name="PcTurnScreenOffCheck" Content="Turn physical phone screen off on mirror start"/>
+              <CheckBox x:Name="PcTurnScreenOffCheck" Content="Keep physical phone screen + touch inactive while mirroring (recommended)"/>
+              <TextBlock Text="Uses scrcpy's screen-off mode. PC/scrcpy control stays active; on devices that tie touch input to display power, accidental touches on the handset are suppressed. The hardware power button or OEM wake gestures can still wake the panel." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="24,0,0,8"/>
               <CheckBox x:Name="PcStayAwakeCheck" Content="Keep Android awake while USB is connected"/>
               <CheckBox x:Name="PcKeepActiveCheck" Content="Periodically keep Android session active"/>
               <CheckBox x:Name="PcDismissKeyguardCheck" Content="Best-effort keyguard dismissal before mirror"/>
