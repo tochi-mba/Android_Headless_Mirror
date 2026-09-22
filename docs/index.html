@@ -46,6 +46,7 @@
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#display">Display</a>
+        <a href="#privileged">Privileged</a>
         <a href="#controls">Controls</a>
         <a href="#control-center">Control Center</a>
         <a href="#cli">REX CLI</a>
@@ -62,7 +63,7 @@
       <div class="hero-copy reveal">
         <div class="eyebrow signal"><span class="pulse-dot"></span> Windows + Android · USB-first</div>
         <h1>Your Android.<br><span>Right where you work.</span></h1>
-        <p class="hero-lede">A polished Windows wrapper around scrcpy and ADB that makes Android feel native on your desktop — automatic reconnection, persistent start/stop, touchpad gestures, lock-screen guidance, diagnostics, multi-transport display orchestration, and optional wireless fallback.</p>
+        <p class="hero-lede">A polished Windows wrapper around scrcpy and ADB that makes Android feel native on your desktop — automatic reconnection, persistent start/stop, touchpad gestures, lock-screen guidance, diagnostics, multi-transport display orchestration, capability-gated privileged inspection, and optional wireless fallback.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
           <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
@@ -155,6 +156,7 @@
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M9.5 6h5M10 17h4"/></svg></div><h3>Headless active session</h3><p>Keep the physical display dark, re-send screen-off from the always-on mirror toolbar whenever needed, and keep the PC mirror active.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 12a8 8 0 0 1 10 0m-7 3a4 4 0 0 1 4 0"/><circle cx="12" cy="18" r="1"/></svg></div><h3>Wireless, when you want it</h3><p>ADB-over-TCP/IP remains available as an optional fallback, but ships disabled by default.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8M12 18v3"/><path d="M7 10h10"/></svg></div><h3>Choose the right display path.</h3><p>scrcpy remains the default capture path. Windows Wireless Display can be orchestrated separately while USB ADB stays connected for control.</p></article>
+        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v3H5v10h14V11h-2V8a5 5 0 0 0-5-5Zm-3 8V8a3 3 0 0 1 6 0v3H9Z"/><path d="M12 15v2"/></svg></div><h3>Root, when the device already has it.</h3><p>REX can passively detect an existing root route, explicitly request authorization, and unlock bounded read-only diagnostics without changing normal ADB behavior.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol pattern-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></div><h3>Black lock screen? Still usable.</h3><p>Pattern-lock phones can use runtime Android geometry first and keyboard-only calibration only when the OEM hides the real pattern view.</p></article>
       </div>
     </section>
@@ -170,6 +172,19 @@
         <article class="step reveal"><span class="step-number">02</span><h3>Wireless Display when needed</h3><p>REX probes the Windows optional feature and Miracast receive reporting, then opens the system receiver setup instead of reimplementing Wi-Fi Direct or HDCP.</p></article>
         <article class="step reveal"><span class="step-number">03</span><h3>Verify protected playback</h3><p>Protected playback is never inferred from capability strings. The exact phone, PC, drivers and application must be manually tested before REX records the path as verified.</p></article>
       </div>
+    </section>
+    <section class="section container" id="privileged">
+      <div class="section-heading reveal">
+        <div class="eyebrow signal">Privileged Android</div>
+        <h2>Root is a capability. Not a boolean.</h2>
+        <p>REX keeps ordinary ADB as the default control plane. If the device already exposes a usable root provider, REX can verify it explicitly and unlock a separate read-only inspection layer.</p>
+      </div>
+      <div class="steps">
+        <article class="step reveal"><span class="step-number">01</span><h3>Probe without prompting</h3><p><code>rex root status</code> checks the ADB UID, boot ID, SELinux state and whether <code>su</code> is visible. Passive status never invokes <code>su</code>.</p></article>
+        <article class="step reveal"><span class="step-number">02</span><h3>Authorize deliberately</h3><p><code>rex root request</code> is the explicit boundary. REX then fingerprints the resulting privilege profile instead of assuming UID 0 grants everything.</p></article>
+        <article class="step reveal"><span class="step-number">03</span><h3>Unlock verified tools</h3><p>Diagnostics, bounded file reads, process/app inspection, hardware, network, kernel logs and properties appear only through structured read-only operations.</p></article>
+      </div>
+      <div class="controls-compat reveal"><strong>Root v1 safety:</strong> no root installation, flashing, boot-image patching, AVB changes, root hiding, arbitrary root shell, partition writes or DRM bypass. Verification is scoped to the Android serial + boot ID.</div>
     </section>
     <section class="section container controls-section" id="controls">
       <div class="controls-head reveal">
@@ -246,6 +261,7 @@
           <aside class="cc-sidebar" aria-label="Control Center sections">
             <span class="active">Controls</span>
             <span>Display</span>
+            <span>Privileged</span>
             <span>PC / mirror settings</span>
             <span>Samsung Galaxy S21 Ultra settings</span>
             <span>Advanced Android</span>
@@ -335,6 +351,7 @@
 <span class="rt-selected">❯ Start / open mirror</span>
   Runtime controls
   Display transports
+  Privileged Android
   PC / mirror settings
   Device settings
   Advanced Android settings
