@@ -227,6 +227,7 @@ public partial class MainWindow : Window
     {
         var session = _host.Session;
         var mirroring = session.IsMirroring;
+        var needsSetup = session.Phase == SessionPhase.NeedsSetup;
 
         StatusText.Text = session.Message;
         StatusDot.Fill = (Brush)FindResource(mirroring ? "Signal" : session.Devices.Any(d => d.IsReady) ? "Signal" : session.Devices.Count > 0 ? "Live" : "Muted");
@@ -255,11 +256,10 @@ public partial class MainWindow : Window
         }
         else
         {
-            DeviceName.Text = session.Devices.Any(d => d.IsUnauthorized) ? "Phone found · approve USB debugging" : "No phone connected";
+            DeviceName.Text = DeviceStateText.Header(needsSetup, session.Devices);
             DeviceMeta.Text = string.Empty;
         }
 
-        var needsSetup = session.Phase == SessionPhase.NeedsSetup;
         Onboarding.Visibility = needsSetup ? Visibility.Visible : Visibility.Collapsed;
         MirrorArea.Visibility = needsSetup ? Visibility.Collapsed : Visibility.Visible;
         Sidebar.Visibility = needsSetup ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);

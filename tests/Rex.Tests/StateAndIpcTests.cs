@@ -141,6 +141,28 @@ public sealed class StateAndIpcTests
     }
 
     [Fact]
+    public void ToolLocator_IgnoresInProgressInstallFoldersAndReadsVersionMarker()
+    {
+        using var package = new TestPackage();
+
+        var staging = Path.Combine(package.Paths.ScrcpyTools, ".install-deadbeef");
+        Directory.CreateDirectory(staging);
+        File.WriteAllText(Path.Combine(staging, "scrcpy.exe"), "");
+        File.WriteAllText(Path.Combine(staging, "adb.exe"), "");
+
+        var installed = Path.Combine(package.Paths.ScrcpyTools, "v4.1-abcdef123456");
+        Directory.CreateDirectory(installed);
+        File.WriteAllText(Path.Combine(installed, "scrcpy.exe"), "");
+        File.WriteAllText(Path.Combine(installed, "adb.exe"), "");
+        File.WriteAllText(Path.Combine(installed, ".rex-version"), "v4.1");
+
+        var tools = ToolLocator.Find(package.Paths)!;
+
+        Assert.Equal("v4.1", tools.Version);
+        Assert.Equal(Path.Combine(installed, "adb.exe"), tools.Adb);
+    }
+
+    [Fact]
     public void Log_RotatesWhenTooLarge()
     {
         using var package = new TestPackage();

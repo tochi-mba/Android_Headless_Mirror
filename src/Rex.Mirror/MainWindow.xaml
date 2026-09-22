@@ -42,7 +42,7 @@
                 Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="12,6" Margin="16,0">
           <StackPanel Orientation="Horizontal">
             <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBlock x:Name="DeviceName" Text="No phone connected" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock x:Name="DeviceName" Text="Starting…" FontWeight="SemiBold" VerticalAlignment="Center" />
             <TextBlock x:Name="DeviceMeta" Text="" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="8,0,0,0" />
           </StackPanel>
         </Border>

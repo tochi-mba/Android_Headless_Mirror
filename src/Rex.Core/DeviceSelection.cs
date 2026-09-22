@@ -40,6 +40,18 @@ public static class DeviceSelection
 /// <summary>Human wording for what ADB is reporting, so the UI never shows a bare state token.</summary>
 public static class DeviceStateText
 {
+    public static string Header(bool setupRequired, IReadOnlyList<AdbDevice> devices)
+    {
+        if (setupRequired)
+        {
+            return "Setup required";
+        }
+
+        return devices.Any(x => x.IsUnauthorized)
+            ? "Phone found · approve USB debugging"
+            : "No phone connected";
+    }
+
     public static string Describe(IReadOnlyList<AdbDevice> devices)
     {
         if (devices.Count == 0)
