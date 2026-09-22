@@ -172,7 +172,11 @@ public sealed class TouchpadBridge
     {
         if (_kind == GestureKind.Android)
         {
-            _injector.Release(_firstScreen, _secondScreen);
+            if (!_injector.Release(_firstScreen, _secondScreen))
+            {
+                _log($"Touch release failed (error {_injector.LastError}); local contact state was reset.");
+            }
+
             if (_cursorSaved)
             {
                 NativeMethods.SetCursorPos(_savedCursor.X, _savedCursor.Y);
