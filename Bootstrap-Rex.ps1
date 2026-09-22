@@ -7,7 +7,8 @@
 [CmdletBinding()]
 param(
     [switch]$Force,
-    [switch]$Quiet
+    [switch]$Quiet,
+    [switch]$Source
 )
 
 Set-StrictMode -Version Latest
@@ -26,7 +27,7 @@ function Write-Step([string]$Message) {
     if (-not $Quiet) { Write-Host ("[rex] " + $Message) }
 }
 
-if ((Test-Path $AppExe) -and (Test-Path $CliExe) -and -not $Force) {
+if ((Test-Path $AppExe) -and (Test-Path $CliExe) -and -not $Force -and -not $Source) {
     Write-Step "Ready: $ToolsDir"
     exit 0
 }
@@ -70,10 +71,15 @@ function Install-FromRelease {
 function Install-FromSource {
     $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
     if (-not $dotnet) {
-        throw "No release is available and the .NET SDK is not installed. Install the .NET 10 SDK (https://dot.net) and run REX.bat again."
+        throw "The .NET SDK is required to build the current source. Install the .NET 10 SDK (https://dot.net) and try again."
     }
 
-    Write-Step "Building from source (first time only; this takes a minute)..."
+    if (Test-Path $ToolsDir) {
+        Remove-Item -Recurse -Force $ToolsDir
+    }
+    New-Item -ItemType Directory -Force -Path $ToolsDir | Out-Null
+
+    Write-Step "Building the current checkout from source..."
     $projects = @(
         (Join-Path $Root "src\Rex.Mirror\Rex.Mirror.csproj"),
         (Join-Path $Root "src\Rex.Cli\Rex.Cli.csproj")
@@ -91,20 +97,26 @@ function Install-FromSource {
 }
 
 try {
-    $installed = $false
-    try {
-        Install-FromRelease
-        $installed = $true
-    }
-    catch {
-        Write-Step ("Release download unavailable: " + $_.Exception.Message)
-    }
-
-    if (-not $installed) {
+    if ($Source) {
         Install-FromSource
+        Write-Step "REX is ready from the current source checkout."
     }
+    else {
+        $installed = $false
+        try {
+            Install-FromRelease
+            $installed = $true
+        }
+        catch {
+            Write-Step ("Release download unavailable: " + $_.Exception.Message)
+        }
 
-    Write-Step "REX is ready."
+        if (-not $installed) {
+            Install-FromSource
+        }
+
+        Write-Step "REX is ready."
+    }
 }
 finally {
     if (Test-Path $TempDir) {
