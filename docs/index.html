@@ -57,7 +57,7 @@
         <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
         <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
       </div>
-      <div class="hero-meta" aria-label="Project highlights"><span>Open source</span><span>No account</span><span>Nothing leaves your PC</span></div>
+      <div class="hero-meta" aria-label="Project highlights"><span>Open source</span><span>No account</span><span>No phone-content uploads</span></div>
     </div>
 
     <div class="hero-stage reveal" aria-label="Preview of the Android Headless Mirror window">
@@ -196,10 +196,10 @@ rex agent capabilities            the machine-readable contract</code></pre>
       <h2>FAQ</h2>
     </div>
     <div class="faq reveal">
-      <details><summary>Does it work with phones other than the Galaxy S21 Ultra?</summary><p>Yes. Any Android phone with USB debugging works with scrcpy and ADB. The S21 Ultra is the phone the project is developed and tested on, so its quirks are the ones handled best.</p></details>
+      <details><summary>Does it work with phones other than the Galaxy S21 Ultra?</summary><p>REX is designed for Android devices supported by ADB and scrcpy. Current hardware testing is primarily on the Galaxy S21 Ultra, so other phones and OEM builds may expose different encoder, settings or lock-screen behaviour.</p></details>
       <details><summary>Why is the lock screen black on the mirror?</summary><p>Some manufacturers mark the secure lock screen as protected content, which Android will not stream. After a reboot you may need to unlock on the phone once. For pattern locks the app draws a guide so you can unlock blind afterwards. The pattern itself is never stored or replayed.</p></details>
       <details><summary>Can I still touch the phone while it is mirrored?</summary><p>Yes. The screen is off, not locked. Tap the power button or press Wake in the app to turn it back on.</p></details>
-      <details><summary>Is anything sent anywhere?</summary><p>No. There is no account, no telemetry and no server. The only download is scrcpy from its official GitHub release, verified by checksum.</p></details>
+      <details><summary>Is anything sent anywhere?</summary><p>REX has no account or telemetry and does not upload your mirrored screen, control data, lock information or phone content. Setup and updates may connect to GitHub to download REX and the official scrcpy distribution.</p></details>
       <details><summary>What does “Stop mirror” do?</summary><p>It closes the mirror and stays in the tray. The app will not reopen until the phone reconnects or you press Start. Quit in the tray menu exits completely.</p></details>
       <details><summary>Does it need administrator rights or root?</summary><p>No. Everything runs as your user with standard ADB permissions. The app never roots, flashes or modifies the phone.</p></details>
     </div>
