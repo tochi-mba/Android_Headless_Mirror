@@ -23,6 +23,54 @@ if ($null -eq $Config.PSObject.Properties["MirrorChrome"] -or -not $Config.Mirro
 }
 
 $ChromeConfig = $Config.MirrorChrome
+
+function Ensure-MirrorChromeRuntimeConfig {
+    param($Value)
+
+    $defaults = [ordered]@{
+        HostZoomModifier = "alt"
+        WheelToHostZoom = $true
+        TouchpadPinchToHostZoom = $true
+        TouchpadPinchDominanceRatio = 1.35
+        TouchpadScrollThreshold = 0.025
+        AndroidPinchSensitivity = 0.55
+        HostZoomPinchSensitivity = 0.55
+        TouchpadScrollSensitivity = 0.04
+        TouchpadScrollDeadzone = 2.0
+        TouchpadScrollMaxDeltaPerSample = 18.0
+        TouchpadSmoothing = 0.25
+        HostPanSensitivity = 0.90
+        ShowZoomMinimap = $true
+    }
+
+    if ($null -eq $Value.PSObject.Properties["WheelToHostZoom"]) {
+        $legacy = $Value.PSObject.Properties["CtrlWheelZoom"]
+        $Value | Add-Member -NotePropertyName WheelToHostZoom -NotePropertyValue $(
+            if ($null -ne $legacy) { [bool]$legacy.Value } else { $true }
+        )
+    }
+
+    if ($null -eq $Value.PSObject.Properties["TouchpadPinchToHostZoom"]) {
+        $legacy = $Value.PSObject.Properties["CtrlTouchpadPinchToHostZoom"]
+        $Value | Add-Member -NotePropertyName TouchpadPinchToHostZoom -NotePropertyValue $(
+            if ($null -ne $legacy) { [bool]$legacy.Value } else { $true }
+        )
+    }
+
+    foreach ($entry in $defaults.GetEnumerator()) {
+        if ($null -eq $Value.PSObject.Properties[$entry.Key]) {
+            $Value | Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value
+        }
+    }
+
+    # Ctrl and Shift both have scrcpy gesture semantics. REX reserves Alt
+    # exclusively for Windows-side host magnification.
+    $Value.HostZoomModifier = "alt"
+}
+
+Ensure-MirrorChromeRuntimeConfig $ChromeConfig
+. (Join-Path $Root "MirrorInteraction.ps1")
+
 $WindowTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
 
 $nativeSource = @'
@@ -164,6 +212,7 @@ public static class AHMMirrorChromeNative
     public const int HTTRANSPARENT = -1;
 
     public const int VK_CONTROL = 0x11;
+    public const int VK_MENU = 0x12;
 
     public const uint POINTER_FLAG_INCONTACT = 0x00000004;
     public const uint POINTER_FLAG_DOWN = 0x00010000;
@@ -676,6 +725,25 @@ public static class AHMMirrorChromeNative
         return wheelDeltas.TryDequeue(out delta);
     }
 
+    public static bool SendWheelToTarget(IntPtr target, int delta, bool horizontal)
+    {
+        if (target == IntPtr.Zero || delta == 0)
+        {
+            return false;
+        }
+
+        SetForegroundWindow(target);
+
+        INPUT input = new INPUT();
+        input.type = INPUT_MOUSE;
+        input.U.mi.mouseData = unchecked((uint)delta);
+        input.U.mi.dwFlags = horizontal ? MOUSEEVENTF_HWHEEL : MOUSEEVENTF_WHEEL;
+
+        INPUT[] inputs = new INPUT[1];
+        inputs[0] = input;
+        return SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT))) == 1;
+    }
+
     private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (
@@ -683,7 +751,7 @@ public static class AHMMirrorChromeNative
             wParam.ToInt32() == WM_MOUSEWHEEL &&
             wheelTarget != IntPtr.Zero &&
             GetForegroundWindow() == wheelTarget &&
-            (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0
+            (GetAsyncKeyState(VK_MENU) & 0x8000) != 0
         )
         {
             MSLLHOOKSTRUCT data = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
@@ -894,9 +962,12 @@ $script:lastRectKey = ""
 $script:touchpadContacts = @{}
 $script:touchpadGestureKind = "none"
 $script:touchpadStartMetrics = $null
+$script:touchpadLastMetrics = $null
 $script:touchpadStartHostZoom = 1.0
 $script:touchpadBaseRadius = 0.0
 $script:touchpadGestureHandled = $false
+$script:touchpadSmoothedScrollX = 0.0
+$script:touchpadSmoothedScrollY = 0.0
 $script:gestureHook = $null
 $script:controlCenterProcess = $null
 $script:lastCommandPoll = [DateTime]::MinValue
@@ -1055,6 +1126,12 @@ function Apply-ZoomDelta([int]$Delta) {
     Update-Magnifier
 }
 
+function Test-HostZoomModifierDown {
+    return (
+        ([AHMMirrorChromeNative]::GetAsyncKeyState([AHMMirrorChromeNative]::VK_MENU) -band 0x8000) -ne 0
+    )
+}
+
 function Reset-TouchpadGesture {
     if ($script:touchpadGestureKind -eq "device") {
         [AHMMirrorChromeNative]::EndScrcpyPinch()
@@ -1062,9 +1139,12 @@ function Reset-TouchpadGesture {
 
     $script:touchpadGestureKind = "none"
     $script:touchpadStartMetrics = $null
+    $script:touchpadLastMetrics = $null
     $script:touchpadStartHostZoom = $script:zoom
     $script:touchpadBaseRadius = 0.0
     $script:touchpadGestureHandled = $false
+    $script:touchpadSmoothedScrollX = 0.0
+    $script:touchpadSmoothedScrollY = 0.0
 }
 
 function Update-TouchpadGesture {
@@ -1078,6 +1158,7 @@ function Update-TouchpadGesture {
 
     if ($null -eq $script:touchpadStartMetrics) {
         $script:touchpadStartMetrics = $metrics
+        $script:touchpadLastMetrics = $metrics
         $script:touchpadStartHostZoom = $script:zoom
 
         $rect = Get-TargetClientRect
@@ -1099,63 +1180,109 @@ function Update-TouchpadGesture {
 
     $scale = $metrics.Distance / $script:touchpadStartMetrics.Distance
     $angleDelta = Normalize-Angle ($metrics.Angle - $script:touchpadStartMetrics.Angle)
-    $pinchMagnitude = [Math]::Abs([Math]::Log([Math]::Max(0.0001, $scale)))
+    $centerDeltaX = [double]$metrics.CenterX - [double]$script:touchpadStartMetrics.CenterX
+    $centerDeltaY = [double]$metrics.CenterY - [double]$script:touchpadStartMetrics.CenterY
+    $hostModifierDown = Test-HostZoomModifierDown
 
     if ($script:touchpadGestureKind -eq "none") {
-        if ($pinchMagnitude -lt [double]$ChromeConfig.TouchpadPinchThreshold) {
-            return $false
-        }
+        $intent = Get-InteractionGestureKind             ([double]$script:touchpadStartMetrics.Distance)             ([double]$metrics.Distance)             $centerDeltaX             $centerDeltaY             ([double]$ChromeConfig.TouchpadPinchThreshold)             ([double]$ChromeConfig.TouchpadPinchDominanceRatio)             ([double]$ChromeConfig.TouchpadScrollThreshold)
 
-        $ctrlPhysicallyDown = (
-            ([AHMMirrorChromeNative]::GetAsyncKeyState([AHMMirrorChromeNative]::VK_CONTROL) -band 0x8000) -ne 0
-        )
+        if ($intent -eq "pinch") {
+            if (
+                $hostModifierDown -and
+                $ChromeConfig.TouchpadPinchToHostZoom -and
+                $ChromeConfig.HostZoomEnabled
+            ) {
+                $script:touchpadGestureKind = "host"
+                $script:touchpadGestureHandled = $true
 
-        if (
-            $ctrlPhysicallyDown -and
-            $ChromeConfig.CtrlTouchpadPinchToHostZoom -and
-            $ChromeConfig.HostZoomEnabled
-        ) {
-            $script:touchpadGestureKind = "host"
-            $script:touchpadGestureHandled = $true
-
-            $rect = Get-TargetClientRect
-            $cursor = New-Object AHMMirrorChromeNative+POINT
-            if ($null -ne $rect -and [AHMMirrorChromeNative]::GetCursorPos([ref]$cursor)) {
-                $width = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
-                $height = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
-                $script:zoomAnchorX = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.X - $rect.Left) / $width)))
-                $script:zoomAnchorY = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.Y - $rect.Top) / $height)))
-            }
-        }
-        elseif ($ChromeConfig.TouchpadPinchToAndroid) {
-            $rect = Get-TargetClientRect
-            if ($null -ne $rect -and $script:touchpadBaseRadius -gt 0) {
-                $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius 1.0 0.0
-                if ([AHMMirrorChromeNative]::BeginScrcpyPinch($script:targetHwnd, $point.X, $point.Y)) {
-                    $script:touchpadGestureKind = "device"
-                    $script:touchpadGestureHandled = $true
+                $rect = Get-TargetClientRect
+                $cursor = New-Object AHMMirrorChromeNative+POINT
+                if ($null -ne $rect -and [AHMMirrorChromeNative]::GetCursorPos([ref]$cursor)) {
+                    $width = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
+                    $height = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
+                    $script:zoomAnchorX = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.X - $rect.Left) / $width)))
+                    $script:zoomAnchorY = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.Y - $rect.Top) / $height)))
                 }
             }
+            elseif ($ChromeConfig.TouchpadPinchToAndroid) {
+                $rect = Get-TargetClientRect
+                if ($null -ne $rect -and $script:touchpadBaseRadius -gt 0) {
+                    $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius 1.0 0.0
+                    if ([AHMMirrorChromeNative]::BeginScrcpyPinch($script:targetHwnd, $point.X, $point.Y)) {
+                        $script:touchpadGestureKind = "device"
+                        $script:touchpadGestureHandled = $true
+                    }
+                }
+            }
+        }
+        elseif ($intent -eq "scroll") {
+            $script:touchpadGestureKind = if (
+                $hostModifierDown -and
+                (Test-HostZoomActive $script:zoom)
+            ) { "host-pan" } else { "scroll" }
+            $script:touchpadGestureHandled = $true
         }
     }
 
     if ($script:touchpadGestureKind -eq "host") {
-        $script:zoom = Get-ClampedHostZoom $script:touchpadStartHostZoom $scale $ChromeConfig
+        $script:zoom = Get-HostZoomFromGesture             $script:touchpadStartHostZoom             $scale             ([double]$ChromeConfig.HostZoomPinchSensitivity)             ([double]$ChromeConfig.MinZoom)             ([double]$ChromeConfig.MaxZoom)
         if ($script:zoom -lt 1.001) { $script:zoom = 1.0 }
         Update-ZoomUi
         Update-Magnifier
+        $script:touchpadLastMetrics = $metrics
         return $true
     }
 
     if ($script:touchpadGestureKind -eq "device") {
         $rect = Get-TargetClientRect
         if ($null -ne $rect) {
-            $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius $scale $angleDelta
+            $deviceScale = Get-AndroidPinchScale                 $scale                 ([double]$ChromeConfig.AndroidPinchSensitivity)
+            $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius $deviceScale $angleDelta
             [AHMMirrorChromeNative]::UpdateScrcpyPinch($point.X, $point.Y) | Out-Null
         }
+        $script:touchpadLastMetrics = $metrics
         return $true
     }
 
+    if ($script:touchpadGestureKind -in @("scroll", "host-pan")) {
+        if ($null -eq $script:touchpadLastMetrics) {
+            $script:touchpadLastMetrics = $metrics
+            return $true
+        }
+
+        $rawX = [double]$metrics.CenterX - [double]$script:touchpadLastMetrics.CenterX
+        $rawY = [double]$metrics.CenterY - [double]$script:touchpadLastMetrics.CenterY
+        $script:touchpadLastMetrics = $metrics
+
+        $script:touchpadSmoothedScrollX = Get-SmoothedInteractionValue             $script:touchpadSmoothedScrollX             $rawX             ([double]$ChromeConfig.TouchpadSmoothing)
+        $script:touchpadSmoothedScrollY = Get-SmoothedInteractionValue             $script:touchpadSmoothedScrollY             $rawY             ([double]$ChromeConfig.TouchpadSmoothing)
+
+        if ($script:touchpadGestureKind -eq "host-pan") {
+            $rect = Get-TargetClientRect
+            if ($null -ne $rect) {
+                $pan = Get-NormalizedPanAnchor                     $script:zoomAnchorX                     $script:zoomAnchorY                     $script:touchpadSmoothedScrollX                     $script:touchpadSmoothedScrollY                     ([double]($rect.Right - $rect.Left))                     ([double]($rect.Bottom - $rect.Top))                     $script:zoom                     ([double]$ChromeConfig.HostPanSensitivity)
+                $script:zoomAnchorX = $pan.X
+                $script:zoomAnchorY = $pan.Y
+                Update-Magnifier
+            }
+            return $true
+        }
+
+        $vertical = Get-ScaledScrollDelta             (-$script:touchpadSmoothedScrollY)             ([double]$ChromeConfig.TouchpadScrollSensitivity)             ([double]$ChromeConfig.TouchpadScrollDeadzone)             ([double]$ChromeConfig.TouchpadScrollMaxDeltaPerSample)
+
+        if ([Math]::Abs($vertical) -ge 1.0) {
+            [AHMMirrorChromeNative]::SendWheelToTarget(
+                $script:targetHwnd,
+                [int][Math]::Round($vertical),
+                $false
+            ) | Out-Null
+        }
+
+        return $true
+    }
+
+    $script:touchpadLastMetrics = $metrics
     return $false
 }
 
@@ -1312,7 +1439,7 @@ $timer.Add_Tick({
                 Open-ControlCenter
             }
 
-            if ($ChromeConfig.CtrlWheelZoom -and -not $script:wheelHookStarted) {
+            if ($ChromeConfig.WheelToHostZoom -and -not $script:wheelHookStarted) {
                 $script:wheelHookStarted = [AHMMirrorChromeNative]::StartWheelHook($script:targetHwnd)
             }
             elseif ($script:wheelHookStarted) {
@@ -1377,6 +1504,9 @@ $timer.Add_Tick({
             $rectKey = "$($rect.Left),$($rect.Top),$width,$height"
             if ($rectKey -ne $script:lastRectKey) {
                 $script:lastRectKey = $rectKey
+            }
+
+            if (Test-HostZoomActive $script:zoom) {
                 Update-Magnifier
             }
         }
