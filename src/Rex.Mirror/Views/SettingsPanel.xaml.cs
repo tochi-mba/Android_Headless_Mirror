@@ -239,7 +239,7 @@ public partial class SettingsPanel : UserControl
                 return;
             }
 
-            _host.SaveConfig(ConfigFile.Load(_host.Paths.Config));
+            _host.ReloadConfigFromDisk();
             _launchSettingsDirty = true;
             Refresh();
             Status.Text = "Previous configuration restored.";
