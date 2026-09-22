@@ -42,6 +42,11 @@ public static class AHMScrcpyControlNative
     public const uint INPUT_KEYBOARD = 1;
     public const uint KEYEVENTF_KEYUP = 0x0002;
 
+    public const uint WM_KEYDOWN = 0x0100;
+    public const uint WM_KEYUP = 0x0101;
+    public const uint WM_SYSKEYDOWN = 0x0104;
+    public const uint WM_SYSKEYUP = 0x0105;
+
     public const ushort VK_LMENU = 0xA4;
     public const ushort VK_LSHIFT = 0xA0;
     public const ushort VK_LEFT = 0x25;
@@ -61,6 +66,30 @@ public static class AHMScrcpyControlNative
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool BringWindowToTop(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr SetActiveWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr SetFocus(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+
+    [DllImport("kernel32.dll")]
+    public static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
@@ -115,30 +144,148 @@ public static class AHMScrcpyControlNative
         return input;
     }
 
-    public static bool SendShortcut(IntPtr target, bool alt, bool shift, ushort key, int repeat)
+    private static bool TryFocusTarget(IntPtr target)
+    {
+        if (target == IntPtr.Zero) return false;
+        if (GetForegroundWindow() == target) return true;
+
+        uint currentThread = GetCurrentThreadId();
+        uint targetThread = GetWindowThreadProcessId(target, IntPtr.Zero);
+        IntPtr foreground = GetForegroundWindow();
+        uint foregroundThread = foreground == IntPtr.Zero
+            ? 0
+            : GetWindowThreadProcessId(foreground, IntPtr.Zero);
+
+        bool attachedTarget = false;
+        bool attachedForeground = false;
+
+        try
+        {
+            if (targetThread != 0 && targetThread != currentThread)
+            {
+                attachedTarget = AttachThreadInput(currentThread, targetThread, true);
+            }
+
+            if (
+                foregroundThread != 0 &&
+                foregroundThread != currentThread &&
+                foregroundThread != targetThread
+            )
+            {
+                attachedForeground = AttachThreadInput(currentThread, foregroundThread, true);
+            }
+
+            BringWindowToTop(target);
+            SetActiveWindow(target);
+            SetFocus(target);
+            SetForegroundWindow(target);
+            return GetForegroundWindow() == target;
+        }
+        finally
+        {
+            if (attachedForeground)
+            {
+                AttachThreadInput(currentThread, foregroundThread, false);
+            }
+            if (attachedTarget)
+            {
+                AttachThreadInput(currentThread, targetThread, false);
+            }
+        }
+    }
+
+    private static INPUT[] BuildShortcutInputs(
+        bool alt,
+        bool shift,
+        ushort key,
+        int repeat)
+    {
+        if (repeat < 1) repeat = 1;
+
+        int count = (alt ? 2 : 0) + (shift ? 2 : 0) + (repeat * 2);
+        INPUT[] inputs = new INPUT[count];
+        int index = 0;
+
+        // Keep MOD held across repeated key presses. scrcpy requires this for
+        // shortcuts such as MOD+n+n (expand Quick Settings).
+        if (alt) inputs[index++] = Key(VK_LMENU, false);
+        if (shift) inputs[index++] = Key(VK_LSHIFT, false);
+
+        for (int i = 0; i < repeat; i++)
+        {
+            inputs[index++] = Key(key, false);
+            inputs[index++] = Key(key, true);
+        }
+
+        if (shift) inputs[index++] = Key(VK_LSHIFT, true);
+        if (alt) inputs[index++] = Key(VK_LMENU, true);
+
+        return inputs;
+    }
+
+    private static bool PostShortcut(
+        IntPtr target,
+        bool alt,
+        bool shift,
+        ushort key,
+        int repeat)
     {
         if (target == IntPtr.Zero) return false;
         if (repeat < 1) repeat = 1;
 
-        SetForegroundWindow(target);
+        bool ok = true;
+
+        if (alt)
+        {
+            ok &= PostMessage(target, WM_SYSKEYDOWN, new IntPtr(VK_LMENU), IntPtr.Zero);
+        }
+        if (shift)
+        {
+            ok &= PostMessage(target, WM_KEYDOWN, new IntPtr(VK_LSHIFT), IntPtr.Zero);
+        }
 
         for (int i = 0; i < repeat; i++)
         {
-            INPUT[] inputs = new INPUT[(alt ? 2 : 0) + (shift ? 2 : 0) + 2];
-            int index = 0;
-
-            if (alt) inputs[index++] = Key(VK_LMENU, false);
-            if (shift) inputs[index++] = Key(VK_LSHIFT, false);
-            inputs[index++] = Key(key, false);
-            inputs[index++] = Key(key, true);
-            if (shift) inputs[index++] = Key(VK_LSHIFT, true);
-            if (alt) inputs[index++] = Key(VK_LMENU, true);
-
-            uint sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
-            if (sent != inputs.Length) return false;
+            uint downMessage = alt ? WM_SYSKEYDOWN : WM_KEYDOWN;
+            uint upMessage = alt ? WM_SYSKEYUP : WM_KEYUP;
+            ok &= PostMessage(target, downMessage, new IntPtr(key), IntPtr.Zero);
+            ok &= PostMessage(target, upMessage, new IntPtr(key), IntPtr.Zero);
         }
 
-        return true;
+        if (shift)
+        {
+            ok &= PostMessage(target, WM_KEYUP, new IntPtr(VK_LSHIFT), IntPtr.Zero);
+        }
+        if (alt)
+        {
+            ok &= PostMessage(target, WM_SYSKEYUP, new IntPtr(VK_LMENU), IntPtr.Zero);
+        }
+
+        return ok;
+    }
+
+    public static bool SendShortcut(IntPtr target, bool alt, bool shift, ushort key, int repeat)
+    {
+        if (target == IntPtr.Zero) return false;
+
+        TryFocusTarget(target);
+
+        INPUT[] inputs = BuildShortcutInputs(alt, shift, key, repeat);
+        uint sent = SendInput(
+            (uint)inputs.Length,
+            inputs,
+            Marshal.SizeOf(typeof(INPUT))
+        );
+
+        if (sent == inputs.Length)
+        {
+            return true;
+        }
+
+        // SendInput can be rejected by Windows focus/UIPI rules. A targeted
+        // message fallback is preferable to reporting a false failure when the
+        // scrcpy window is known.
+        return PostShortcut(target, alt, shift, key, repeat);
     }
 }
 '@
@@ -259,6 +406,11 @@ function Invoke-ScrcpyNamedShortcut {
 
     return [pscustomobject]@{
         Ok = $ok
-        Text = if ($ok) { $Name } else { "Could not send '$Name' to scrcpy." }
+        Text = if ($ok) {
+            $Name
+        }
+        else {
+            "Could not deliver '$Name' to the scrcpy window. REX tried focused SendInput and a targeted window-message fallback."
+        }
     }
 }
