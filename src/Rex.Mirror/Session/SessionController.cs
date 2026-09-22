@@ -231,7 +231,20 @@ public sealed class SessionController : IDisposable
 
         var launchRect = await OnUi(() => LaunchRect?.Invoke()).ConfigureAwait(false);
         var title = $"Android Headless Mirror [{device.Serial}]";
-        var args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, launchRect, recordPath);
+
+        IReadOnlyList<string> args;
+        try
+        {
+            args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, launchRect, recordPath);
+        }
+        catch (FormatException ex)
+        {
+            _host.Log.Error("Invalid scrcpy launch arguments", ex);
+            await OnUi(() => SetState(SessionPhase.Waiting, "Invalid scrcpy arguments: " + ex.Message)).ConfigureAwait(false);
+            _retryAfter = DateTime.UtcNow.AddSeconds(config.Session.RetrySeconds);
+            return;
+        }
+
         _host.Log.Info($"Launching scrcpy for {device.Serial} ({device.Transport}): {string.Join(' ', args)}");
 
         ScrcpyProcess scrcpy;

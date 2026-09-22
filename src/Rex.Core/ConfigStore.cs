@@ -67,6 +67,13 @@ public sealed class ConfigStore
             throw new InvalidOperationException("Version is managed by the app and cannot be changed.");
         }
 
+        if (segments.Length == 2 &&
+            segments[0].Equals(nameof(RexConfig.Mirror), StringComparison.OrdinalIgnoreCase) &&
+            key.Equals(nameof(MirrorSettings.ExtraArgs), StringComparison.OrdinalIgnoreCase))
+        {
+            _ = ScrcpyArguments.SplitExtraArgs(rawValue);
+        }
+
         parent[key] = ParseLike(existing, rawValue);
 
         var config = root.Deserialize(RexJsonContext.Default.RexConfig)

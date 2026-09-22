@@ -4,6 +4,17 @@ cd /d "%~dp0"
 
 rem REX.bat            opens Android Headless Mirror
 rem REX.bat <command>  runs the command line (rex help)
+rem REX.bat --source   builds this checkout and opens it
+
+if /I "%~1"=="--source" (
+  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-Rex.ps1" -Source -Force
+  if errorlevel 1 (
+    echo REX could not be built from source. See the messages above.
+    exit /b 1
+  )
+  start "" "%~dp0tools\rex\RexMirror.exe"
+  exit /b 0
+)
 
 set "REX_QUIET="
 if /I "%~1"=="agent" set "REX_QUIET=-Quiet"

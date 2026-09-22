@@ -53,11 +53,11 @@ public sealed class TouchInjector
         return ok;
     }
 
-    public void Release((int X, int Y) first, (int X, int Y) second)
+    public bool Release((int X, int Y) first, (int X, int Y) second)
     {
         if (!AnyDown)
         {
-            return;
+            return true;
         }
 
         var contacts = new[]
@@ -65,8 +65,12 @@ public sealed class TouchInjector
             Contact(0, first.X, first.Y, NativeMethods.POINTER_FLAG_UP),
             Contact(1, second.X, second.Y, NativeMethods.POINTER_FLAG_UP),
         };
-        NativeMethods.InjectTouchInput((uint)contacts.Length, contacts);
+        var ok = NativeMethods.InjectTouchInput((uint)contacts.Length, contacts);
+
+        // Even if Windows rejects the UP packet, do not leave REX's logical state stuck down.
+        // The error is returned to the bridge so it can be surfaced in diagnostics.
         _down[0] = _down[1] = false;
+        return ok;
     }
 
     public int LastError => Marshal.GetLastWin32Error();

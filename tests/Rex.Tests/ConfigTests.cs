@@ -148,6 +148,47 @@ public sealed class ConfigTests
         Assert.Equal(RexConfig.CurrentVersion, json["Version"]!.GetValue<int>());
     }
 
+    [Fact]
+    public void Normalize_DropsMalformedOrManagedExtraArgs()
+    {
+        var malformed = new RexConfig();
+        malformed.Mirror.ExtraArgs = "\"unterminated";
+        malformed.Normalize();
+        Assert.Equal(string.Empty, malformed.Mirror.ExtraArgs);
+
+        var managed = new RexConfig();
+        managed.Mirror.ExtraArgs = "--serial=OTHER";
+        managed.Normalize();
+        Assert.Equal(string.Empty, managed.Mirror.ExtraArgs);
+    }
+
+    [Theory]
+    [InlineData("\"unterminated")]
+    [InlineData("'unterminated")]
+    [InlineData("--serial=OTHER")]
+    [InlineData("--fullscreen")]
+    public void ConfigStore_RejectsInvalidExtraArgsWithoutChangingConfig(string value)
+    {
+        using var package = new TestPackage();
+        var store = new ConfigStore(package.Paths.Config);
+        var before = store.Get("Mirror.ExtraArgs").Value;
+
+        Assert.Throws<FormatException>(() => store.Set("Mirror.ExtraArgs", value));
+
+        Assert.Equal(before, store.Get("Mirror.ExtraArgs").Value);
+    }
+
+    [Fact]
+    public void ConfigStore_AcceptsQuotedExtraArgs()
+    {
+        using var package = new TestPackage();
+        var store = new ConfigStore(package.Paths.Config);
+
+        var leaf = store.Set("Mirror.ExtraArgs", "--render-fit=letterbox \"--background-color=#123456\"");
+
+        Assert.Equal("--render-fit=letterbox \"--background-color=#123456\"", leaf.Value);
+    }
+
     [Theory]
     [InlineData("captures/shots", true)]
     [InlineData("shots", true)]

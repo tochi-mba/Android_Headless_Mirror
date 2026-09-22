@@ -9,8 +9,9 @@ burn battery or react to stray touches while you use it from the PC. Everything 
 window: the mirror, the controls, the phone settings and the app settings. No floating toolbars,
 no separate settings windows.
 
-It works with any Android phone that supports USB debugging. The hardware this project is
-developed and tested on is a Samsung Galaxy S21 Ultra (SM-G998B) on Windows 11.
+REX is designed for Android devices supported by ADB and scrcpy. Current hardware testing is
+primarily on a Samsung Galaxy S21 Ultra (SM-G998B) on Windows 11, so other phones and OEM builds
+may expose different encoder, settings or lock-screen behaviour.
 
 ## What you get
 
@@ -110,9 +111,14 @@ phone serials, lock-screen answers and window placement lives in `state.json`, w
 - Wireless ADB is off by default. USB remains the recovery path.
 - The app never stores or injects a PIN, password or pattern. After a reboot some phones require the
   first unlock on the device itself; that is an Android boundary, not something the app bypasses.
-- Nothing needs administrator rights and nothing leaves the PC.
+- Nothing needs administrator rights. REX does not upload the mirrored screen, control data,
+  lock information or phone content. Setup and updates may connect to GitHub to download REX and
+  the official scrcpy distribution.
 
 ## Development
+
+Run `REX.bat --source` to rebuild `tools/rex` from the current checkout and open that build instead
+of substituting the latest GitHub release.
 
 ```powershell
 dotnet build Rex.sln

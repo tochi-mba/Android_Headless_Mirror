@@ -118,6 +118,14 @@ test.describe('Android Headless Mirror site', () => {
     await expect(section).toContainText('rex config restore');
   });
 
+  test('states compatibility and privacy without absolute claims', async ({ page }) => {
+    const body = await page.locator('body').textContent();
+    expect(body).toContain('No phone-content uploads');
+    expect(body).toContain('designed for Android devices supported by ADB and scrcpy');
+    expect(body).not.toMatch(/Any Android phone with USB debugging works/i);
+    expect(body).not.toMatch(/Nothing leaves your PC/i);
+  });
+
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
     const items = page.locator('#faq details');
     await expect(items).toHaveCount(6);

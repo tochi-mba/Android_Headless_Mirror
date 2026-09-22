@@ -47,8 +47,8 @@ Rules:
 ## Architecture
 
 ```
-REX.bat                 opens the app (no args) or runs rex.exe <args>; bootstraps tools/rex
-Bootstrap-Rex.ps1       installs tools/rex from the latest release (SHA-256 verified) or builds it
+REX.bat                 opens the app or runs rex.exe <args>; --source builds this checkout
+Bootstrap-Rex.ps1       installs the latest verified release, or -Source builds the current checkout
 src/Rex.Core            UI-free library shared by the app and the CLI
   AppPaths              package root discovery and paths
   RexConfig/ConfigFile  typed config.json (schema 2) with migration from the schema-1 keys
@@ -89,6 +89,8 @@ docs/                   GitHub Pages site
 - The app never calls `adb kill-server`, never stores or injects unlock credentials, never needs admin.
 - Wireless ADB stays opt-in.
 - No file over 1,000 lines. No dead code. Warnings are errors.
+- Do not grow MainWindow or SessionController with unrelated domains. Extract a cohesive subsystem
+  when substantial new behaviour naturally belongs together; do not perform broad rewrites just to reduce file size.
 
 ## Testing
 
