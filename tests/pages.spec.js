@@ -329,10 +329,11 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(page.getByText(/No modifier is required/)).toBeVisible();
 
     const hostZoom = page.getByText('How do I zoom only the PC mirror without zooming the Android app?');
+    const hostZoomDetails = hostZoom.locator('..');
     await hostZoom.click();
-    await expect(page.getByText(/Hold Alt/)).toBeVisible();
-    await expect(page.getByText(/Alt \+ mouse wheel/)).toBeVisible();
-    await expect(page.getByText(/Alt \+ two-finger slide pans/)).toBeVisible();
+    await expect(hostZoomDetails.getByText(/Hold Alt/)).toBeVisible();
+    await expect(hostZoomDetails.getByText(/Alt \+ mouse wheel/)).toBeVisible();
+    await expect(hostZoomDetails.getByText(/Alt \+ two-finger slide pans/)).toBeVisible();
   });
 
   test('FAQ explains forced rotation versus scrcpy display rotation', async ({ page }) => {
