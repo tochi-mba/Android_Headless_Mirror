@@ -33,12 +33,40 @@ public static class ToolLocator
         }
 
         var candidates = Directory.GetDirectories(paths.ScrcpyTools)
-            .Select(dir => new ToolPaths(Path.Combine(dir, "scrcpy.exe"), Path.Combine(dir, "adb.exe"), Path.GetFileName(dir)))
+            .Where(dir => !Path.GetFileName(dir).StartsWith(".install-", StringComparison.OrdinalIgnoreCase))
+            .Select(FromDirectory)
             .Where(x => x.IsComplete)
             .OrderByDescending(x => VersionKey(x.Version))
             .ToArray();
 
         return candidates.FirstOrDefault();
+    }
+
+    private static ToolPaths FromDirectory(string directory)
+    {
+        var version = Path.GetFileName(directory);
+        var marker = Path.Combine(directory, ".rex-version");
+        try
+        {
+            if (File.Exists(marker))
+            {
+                var marked = File.ReadAllText(marker).Trim();
+                if (!string.IsNullOrWhiteSpace(marked))
+                {
+                    version = marked;
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // A version marker is display metadata only; tool discovery must still work without it.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Same as above.
+        }
+
+        return new ToolPaths(Path.Combine(directory, "scrcpy.exe"), Path.Combine(directory, "adb.exe"), version);
     }
 
     private static Version VersionKey(string folder)
@@ -54,8 +82,8 @@ public sealed record InstallProgress(string Stage, double Fraction);
 
 /// <summary>
 /// Downloads the official Windows x64 scrcpy release from GitHub, verifies its SHA-256 against
-/// the release's SHA256SUMS.txt, and extracts it to tools/scrcpy/&lt;tag&gt;/. Nothing is written to
-/// the final folder until the checksum matches.
+/// the release's SHA256SUMS.txt, and installs it into an immutable content-addressed folder under
+/// tools/scrcpy/. A verified copy is staged first and only becomes discoverable after the move completes.
 /// </summary>
 public sealed class ScrcpyInstaller
 {
@@ -112,17 +140,10 @@ public sealed class ScrcpyInstaller
                 throw new InvalidOperationException("The archive did not contain adb.exe next to scrcpy.exe.");
             }
 
-            var target = Path.Combine(paths.ScrcpyTools, release.Tag);
-            if (Directory.Exists(target))
-            {
-                Directory.Delete(target, recursive: true);
-            }
-
-            Directory.CreateDirectory(paths.ScrcpyTools);
-            CopyDirectory(source, target);
+            var tools = InstallVerifiedDirectory(paths, source, release.Tag, actual);
 
             progress?.Report(new InstallProgress("Installed scrcpy " + release.Tag, 1.0));
-            return new ToolPaths(Path.Combine(target, "scrcpy.exe"), Path.Combine(target, "adb.exe"), release.Tag);
+            return tools;
         }
         finally
         {
@@ -196,6 +217,83 @@ public sealed class ScrcpyInstaller
         }
 
         return null;
+    }
+
+    internal static ToolPaths InstallVerifiedDirectory(AppPaths paths, string source, string tag, string sha256)
+    {
+        var sourceScrcpy = Path.Combine(source, "scrcpy.exe");
+        var sourceAdb = Path.Combine(source, "adb.exe");
+        if (!File.Exists(sourceScrcpy) || !File.Exists(sourceAdb))
+        {
+            throw new InvalidOperationException("The verified scrcpy folder must contain scrcpy.exe and adb.exe.");
+        }
+
+        if (!Regex.IsMatch(sha256, "^[0-9a-fA-F]{64}$"))
+        {
+            throw new ArgumentException("A full SHA-256 digest is required.", nameof(sha256));
+        }
+
+        Directory.CreateDirectory(paths.ScrcpyTools);
+        var safeTag = Regex.Replace(tag, @"[^A-Za-z0-9._-]", "_").Trim('.', ' ');
+        if (safeTag.Length == 0)
+        {
+            safeTag = "scrcpy";
+        }
+
+        var canonicalName = $"{safeTag}-{sha256[..12].ToLowerInvariant()}";
+        var canonical = Path.Combine(paths.ScrcpyTools, canonicalName);
+        var existing = new ToolPaths(Path.Combine(canonical, "scrcpy.exe"), Path.Combine(canonical, "adb.exe"), tag);
+        if (existing.IsComplete)
+        {
+            return existing;
+        }
+
+        // Never delete an existing install here. adb.exe may still be running and Windows will
+        // deny deletion of its directory. A partial canonical folder gets a unique sibling instead.
+        var target = Directory.Exists(canonical)
+            ? canonical + "-" + Guid.NewGuid().ToString("N")[..8]
+            : canonical;
+        var staging = Path.Combine(paths.ScrcpyTools, ".install-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            CopyDirectory(source, staging);
+            File.WriteAllText(Path.Combine(staging, ".rex-version"), tag);
+
+            var staged = new ToolPaths(Path.Combine(staging, "scrcpy.exe"), Path.Combine(staging, "adb.exe"), tag);
+            if (!staged.IsComplete)
+            {
+                throw new InvalidOperationException("The staged scrcpy installation is incomplete.");
+            }
+
+            Directory.Move(staging, target);
+            return new ToolPaths(Path.Combine(target, "scrcpy.exe"), Path.Combine(target, "adb.exe"), tag);
+        }
+        finally
+        {
+            TryDeleteDirectory(staging);
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.Delete(path, recursive: true);
+        }
+        catch (IOException)
+        {
+            // Best effort. A later run ignores .install-* folders.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Same as above.
+        }
     }
 
     private async Task DownloadAsync(string url, string path, IProgress<InstallProgress>? progress, double from, double to, CancellationToken cancellationToken)
