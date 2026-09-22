@@ -21,6 +21,7 @@ public sealed class RexApp
         "Stop Android Headless Mirror",
         "Refresh",
         "Display transports",
+        "Privileged Android",
         "Exit",
     };
 
@@ -94,6 +95,9 @@ public sealed class RexApp
                         break;
                     case "Display transports":
                         await DisplayTransportsAsync();
+                        break;
+                    case "Privileged Android":
+                        await PrivilegedAndroidAsync();
                         break;
                     case "PC / mirror settings":
                         await PcSettingsAsync();
@@ -253,6 +257,159 @@ public sealed class RexApp
         await _runner.OpenAsync(_paths.StartBatch, _paths.Root);
         RexBrand.Success(_console, "Supervisor start requested. Connect any authorized Android device and the mirror will open automatically.");
         Pause();
+    }
+
+    private async Task PrivilegedAndroidAsync()
+    {
+        var device = await ChooseAuthorizedDeviceAsync();
+        if (device is null)
+            return;
+
+        var manager = new RootManager(_paths, _runner, _bridge, _config);
+        var features = new RootFeatureService(manager, _config);
+
+        while (true)
+        {
+            RexBrand.Header(_console, $"PRIVILEGED · {device.DisplayName}");
+
+            var status = await manager.ProbePassiveAsync(device.Serial);
+            RenderRootStatus(status);
+
+            var choice = _console.Prompt(RexBrand.Menu(
+                "Privileged Android",
+                new[]
+                {
+                    "Refresh passive status",
+                    "Request / verify root access",
+                    "Privileged diagnostics",
+                    "Processes",
+                    "Hardware",
+                    "Network",
+                    "Kernel logs",
+                    "System properties",
+                    "Clear cached verification",
+                    "Back",
+                }));
+
+            switch (choice)
+            {
+                case "Refresh passive status":
+                    continue;
+
+                case "Request / verify root access":
+                {
+                    if (!_console.Confirm(
+                        "Request root authorization? Your root manager may show a prompt on the phone.",
+                        false))
+                        break;
+
+                    var verified = await manager.RequestAsync(device.Serial);
+                    RenderRootStatus(verified);
+                    Pause();
+                    break;
+                }
+
+                case "Privileged diagnostics":
+                    RenderRootFeature(
+                        await features.DiagnosticsAsync(device.Serial));
+                    Pause();
+                    break;
+
+                case "Processes":
+                    RenderRootFeature(
+                        await features.ProcessesAsync(device.Serial));
+                    Pause();
+                    break;
+
+                case "Hardware":
+                    RenderRootFeature(
+                        await features.HardwareAsync(device.Serial));
+                    Pause();
+                    break;
+
+                case "Network":
+                    RenderRootFeature(
+                        await features.NetworkAsync(device.Serial));
+                    Pause();
+                    break;
+
+                case "Kernel logs":
+                    RenderRootFeature(
+                        await features.KernelLogsAsync(device.Serial));
+                    Pause();
+                    break;
+
+                case "System properties":
+                    RenderRootFeature(
+                        await features.PropertiesAsync(device.Serial));
+                    Pause();
+                    break;
+
+                case "Clear cached verification":
+                    manager.ClearCachedSession(device.Serial);
+                    RexBrand.Success(
+                        _console,
+                        "Cached root verification cleared. No root-provider setting was changed.");
+                    Pause();
+                    break;
+
+                case "Back":
+                    return;
+            }
+        }
+    }
+
+    private void RenderRootStatus(RootStatus status)
+    {
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(RexBrand.LineColor)
+            .AddColumn("Root")
+            .AddColumn("State");
+
+        table.AddRow("State", Markup.Escape(status.State.ToString()));
+        table.AddRow("Provider", Markup.Escape(status.Provider.ToString()));
+        table.AddRow("ADB UID", Markup.Escape(status.AdbUid?.ToString() ?? "unknown"));
+        table.AddRow("Effective UID", Markup.Escape(status.EffectiveUid?.ToString() ?? "not verified"));
+        table.AddRow("su visible", status.SuVisible ? "[#D7FF3F]yes[/]" : "[#858D83]no[/]");
+        table.AddRow("SELinux", Markup.Escape(
+            string.IsNullOrWhiteSpace(status.SelinuxMode) ? "unknown" : status.SelinuxMode));
+
+        _console.Write(table);
+        _console.MarkupLine(
+            $"[{RexBrand.Muted}]{Markup.Escape(status.Message)}[/]");
+
+        if (status.Capabilities.Count == 0)
+            return;
+
+        var capabilities = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(RexBrand.LineColor)
+            .AddColumn("Capability")
+            .AddColumn("State");
+
+        foreach (var capability in status.Capabilities)
+        {
+            capabilities.AddRow(
+                Markup.Escape(capability.Detail),
+                Markup.Escape(capability.State.ToString()));
+        }
+
+        _console.Write(capabilities);
+    }
+
+    private void RenderRootFeature(RootFeatureResult feature)
+    {
+        RexBrand.Header(_console, feature.Operation.ToUpperInvariant());
+        foreach (var section in feature.Sections)
+        {
+            _console.Write(
+                RexBrand.Panel(
+                    section.Key.ToUpperInvariant(),
+                    new Text(string.IsNullOrWhiteSpace(section.Value)
+                        ? "(empty)"
+                        : section.Value)));
+        }
     }
 
     private async Task DisplayTransportsAsync()
