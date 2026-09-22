@@ -24,6 +24,7 @@ public sealed class AppEndToEndTests
 
         Assert.Equal("FAKE123", status["device"]!["serial"]!.GetValue<string>());
         Assert.Equal("Galaxy S21 Ultra", status["device"]!["name"]!.GetValue<string>());
+        Assert.True(app.IsPerMonitorV2(), "The main window must run with PerMonitorV2 DPI awareness.");
         Assert.Contains(package.ScrcpyLog(), line => line.Contains("--window-borderless", StringComparison.Ordinal) && line.Contains("--shortcut-mod=rctrl+ralt", StringComparison.Ordinal));
         Assert.Contains(package.AdbCalls(), line => line.EndsWith("shell wm dismiss-keyguard", StringComparison.Ordinal));
 
@@ -37,7 +38,10 @@ public sealed class AppEndToEndTests
 
         var sleep = await app.SendAsync(new IpcRequest("action", new Dictionary<string, string> { ["name"] = "sleep" }));
         Assert.True(sleep.Ok, sleep.Error);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await app.WaitUntilAsync(
+            () => package.ScrcpyLog().Any(l => l.StartsWith("key ", StringComparison.Ordinal) && l.Contains("vk=79", StringComparison.Ordinal)),
+            TimeSpan.FromSeconds(5),
+            "scrcpy shortcut key log");
         var keys = package.ScrcpyLog().Where(l => l.StartsWith("key ", StringComparison.Ordinal)).ToArray();
         Assert.Contains(keys, k => k.Contains("vk=163", StringComparison.Ordinal)); // Right Ctrl
         Assert.Contains(keys, k => k.Contains("vk=165", StringComparison.Ordinal)); // Right Alt
@@ -100,8 +104,48 @@ public sealed class AppEndToEndTests
         Assert.All(replies, reply => Assert.True(reply.Ok, reply.Error));
         var malformed = await app.SendRawAsync("{\"command\":42}");
         Assert.False(malformed.Ok);
+
+        var unsupported = await app.SendRawAsync("""{"v":1,"command":"ping","args":{}}""");
+        Assert.False(unsupported.Ok);
+        Assert.Contains("Unsupported protocol version", unsupported.Error);
+
+        var oversized = await app.SendRawAsync(new string('x', Rex.Mirror.Services.PipeServer.MaxRequestBytes + 1));
+        Assert.False(oversized.Ok);
+        Assert.Contains("byte limit", oversized.Error);
+
+        var stalled = await app.SendPartialAsync("{\"v\":2,\"command\":\"ping\"");
+        Assert.False(stalled.Ok);
+        Assert.Contains("timed out", stalled.Error, StringComparison.OrdinalIgnoreCase);
+
         Assert.True((await app.SendAsync(new IpcRequest("ping"))).Ok);
         await app.QuitAsync();
+    }
+
+    [Fact]
+    public async Task ForceKillingRex_CleansOwnedScrcpyProcessTree()
+    {
+        using var package = new TestPackage(withFakeTools: true, configure: config =>
+            config.Mirror.ExtraArgs = "--rex-spawn-child");
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.WaitUntilAsync(
+            () => package.ScrcpyLog().Any(line => line.StartsWith("child-pid ", StringComparison.Ordinal)),
+            TimeSpan.FromSeconds(5),
+            "fake scrcpy child process");
+
+        var processIds = package.ScrcpyLog()
+            .Where(line => line.StartsWith("pid ", StringComparison.Ordinal) || line.StartsWith("child-pid ", StringComparison.Ordinal))
+            .Select(line => int.Parse(line[(line.LastIndexOf(' ') + 1)..]))
+            .Distinct()
+            .ToArray();
+        Assert.True(processIds.Length >= 2, "Expected fake scrcpy and its child process.");
+
+        await app.KillAppOnlyAsync();
+
+        foreach (var processId in processIds)
+        {
+            await AppProcess.WaitForProcessExitAsync(processId, TimeSpan.FromSeconds(10));
+        }
     }
 
     [Theory]
@@ -142,8 +186,10 @@ public sealed class AppEndToEndTests
         var windowed = app.WindowBounds();
         await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
         await app.PressKeyAsync(0x7A, repeat: true); // F11: holding it must only toggle once.
-        await Task.Delay(400, TestContext.Current.CancellationToken);
-        var status = (await app.SendAsync(new IpcRequest("status"))).Data!;
+        var status = await app.WaitForStatusAsync(
+            data => data["fullscreen"]!.GetValue<bool>() && data["hudVisible"]!.GetValue<bool>(),
+            TimeSpan.FromSeconds(5),
+            "fullscreen HUD");
         Assert.True(status["fullscreen"]!.GetValue<bool>());
         Assert.Equal(1, status["zoom"]!.GetValue<double>());
         Assert.True(status["hudVisible"]!.GetValue<bool>());
@@ -151,19 +197,24 @@ public sealed class AppEndToEndTests
         await app.SaveScreenshotAsync("fullscreen-hud.png");
 
         app.MovePointerToCenter();
-        await Task.Delay(3600, TestContext.Current.CancellationToken);
-        Assert.False((await app.SendAsync(new IpcRequest("status"))).Data!["hudVisible"]!.GetValue<bool>());
+        await app.WaitForStatusAsync(
+            data => !data["hudVisible"]!.GetValue<bool>(),
+            TimeSpan.FromSeconds(5),
+            "HUD auto-hide");
         await app.SaveScreenshotAsync("fullscreen-clean.png");
         app.MovePointerToTop();
-        await Task.Delay(200, TestContext.Current.CancellationToken);
-        Assert.True((await app.SendAsync(new IpcRequest("status"))).Data!["hudVisible"]!.GetValue<bool>());
+        await app.WaitForStatusAsync(
+            data => data["hudVisible"]!.GetValue<bool>(),
+            TimeSpan.FromSeconds(3),
+            "HUD reveal");
 
         await app.ClickHudAsync(18, 38); // Rotation button in the centered HUD.
-        await Task.Delay(250, TestContext.Current.CancellationToken);
         await app.SaveScreenshotAsync("fullscreen-rotation.png");
         await app.ClickHudAsync(8, 78); // Landscape in the expanded rotation row.
-        await Task.Delay(800, TestContext.Current.CancellationToken);
-        Assert.Contains(package.AdbCalls(), line => line.Contains("settings put system user_rotation 1", StringComparison.Ordinal));
+        await app.WaitUntilAsync(
+            () => package.AdbCalls().Any(line => line.Contains("settings put system user_rotation 1", StringComparison.Ordinal)),
+            TimeSpan.FromSeconds(5),
+            "landscape rotation command");
 
         await app.ActionAsync("rotation-landscape");
         await app.ActionAsync("rotation-portrait");
@@ -311,6 +362,103 @@ public sealed class AppEndToEndTests
             return Ipc.ParseResponse((await reader.ReadLineAsync(timeout.Token))!);
         }
 
+        public async Task<IpcResponse> SendPartialAsync(string partial)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            await using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", _pipe,
+                System.IO.Pipes.PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous);
+            await pipe.ConnectAsync(timeout.Token);
+            using var writer = new StreamWriter(pipe, new System.Text.UTF8Encoding(false), leaveOpen: true);
+            await writer.WriteAsync(partial.AsMemory(), timeout.Token);
+            await writer.FlushAsync(timeout.Token);
+            using var reader = new StreamReader(pipe, leaveOpen: true);
+            return Ipc.ParseResponse((await reader.ReadLineAsync(timeout.Token))!);
+        }
+
+        public bool IsPerMonitorV2()
+        {
+            var context = GetWindowDpiAwarenessContext(FindMainWindow());
+            return AreDpiAwarenessContextsEqual(context, new IntPtr(-4));
+        }
+
+        public async Task<JsonObject> WaitForStatusAsync(
+            Func<JsonObject, bool> predicate,
+            TimeSpan timeout,
+            string description)
+        {
+            var deadline = DateTime.UtcNow + timeout;
+            JsonObject? last = null;
+            while (DateTime.UtcNow < deadline)
+            {
+                var response = await SendAsync(new IpcRequest("status"));
+                if (response is { Ok: true, Data: JsonObject data })
+                {
+                    last = data;
+                    if (predicate(data))
+                    {
+                        return data;
+                    }
+                }
+
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+            }
+
+            throw new TimeoutException($"Timed out waiting for {description}. Last status: {last?.ToJsonString()}");
+        }
+
+        public async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout, string description)
+        {
+            var deadline = DateTime.UtcNow + timeout;
+            while (DateTime.UtcNow < deadline)
+            {
+                if (predicate())
+                {
+                    return;
+                }
+
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+            }
+
+            throw new TimeoutException($"Timed out waiting for {description}.");
+        }
+
+        public async Task KillAppOnlyAsync()
+        {
+            if (!_process.HasExited)
+            {
+                _process.Kill(entireProcessTree: false);
+            }
+
+            Assert.True(
+                await Task.Run(() => _process.WaitForExit(10000), TestContext.Current.CancellationToken),
+                "RexMirror.exe did not exit after forced termination.");
+        }
+
+        public static async Task WaitForProcessExitAsync(int processId, TimeSpan timeout)
+        {
+            var deadline = DateTime.UtcNow + timeout;
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    using var process = Process.GetProcessById(processId);
+                    if (process.HasExited)
+                    {
+                        return;
+                    }
+                }
+                catch (ArgumentException)
+                {
+                    return;
+                }
+
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+            }
+
+            Assert.Fail($"Process {processId} was still alive after {timeout}.");
+        }
+
         public async Task<JsonObject> WaitForPhaseAsync(string phase, TimeSpan timeout)
         {
             var deadline = DateTime.UtcNow + timeout;
@@ -340,7 +488,8 @@ public sealed class AppEndToEndTests
 
         public async Task SaveScreenshotAsync(string name)
         {
-            await Task.Delay(800, TestContext.Current.CancellationToken);
+            await Task.Yield();
+            _ = DwmFlush();
             // GetWindowRect and CopyFromScreen must both use physical pixels on scaled displays.
             var previousDpiContext = SetThreadDpiAwarenessContext(new IntPtr(-4));
             try
@@ -433,6 +582,16 @@ public sealed class AppEndToEndTests
 
         [DllImport("user32.dll")]
         private static extern uint GetDpiForWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetWindowDpiAwarenessContext(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool AreDpiAwarenessContextsEqual(IntPtr first, IntPtr second);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmFlush();
 
         [DllImport("user32.dll")]
         private static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);

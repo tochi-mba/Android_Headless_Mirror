@@ -121,6 +121,16 @@ public sealed class PatternGuide : IDisposable
         Render();
     }
 
+    /// <summary>
+    /// Cheap classification used by the low-level keyboard hook. Actual calibration work
+    /// is dispatched to the UI thread after the hook has returned.
+    /// </summary>
+    public bool CanHandleCalibrationKey(int virtualKey) =>
+        _draft is not null &&
+        _lastLayout is not null &&
+        virtualKey is NativeMethods.VK_LEFT or NativeMethods.VK_RIGHT or NativeMethods.VK_UP or
+            NativeMethods.VK_DOWN or NativeMethods.VK_RETURN or NativeMethods.VK_ESCAPE or 'R';
+
     /// <summary>Handles a calibration key. Returns true when consumed.</summary>
     public bool HandleCalibrationKey(int virtualKey, bool ctrl, bool shift)
     {

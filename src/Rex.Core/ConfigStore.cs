@@ -22,7 +22,11 @@ public sealed class ConfigStore
 
     public RexConfig Load() => ConfigFile.Load(_path);
 
-    public void Save(RexConfig config) => ConfigFile.Save(_path, config);
+    public void Save(RexConfig config)
+    {
+        using var transaction = CrossProcessFileLock.Acquire(_path);
+        ConfigFile.Save(_path, config);
+    }
 
     public IReadOnlyList<ConfigLeaf> Flatten()
     {
@@ -40,7 +44,11 @@ public sealed class ConfigStore
 
     public ConfigLeaf Set(string path, string rawValue)
     {
-        var root = ToJson(Load());
+        using var transaction = CrossProcessFileLock.Acquire(_path);
+
+        // The load belongs inside the same cross-process transaction as the save.
+        // Otherwise a stale GUI/CLI snapshot can overwrite an unrelated newer edit.
+        var root = ToJson(ConfigFile.Load(_path));
         var segments = Split(path);
         if (segments.Length == 0)
         {
@@ -78,9 +86,11 @@ public sealed class ConfigStore
 
         var config = root.Deserialize(RexJsonContext.Default.RexConfig)
             ?? throw new InvalidOperationException("The updated configuration could not be read back.");
-        Save(config);
+        ConfigFile.Save(_path, config);
 
-        return Get(path);
+        var saved = Resolve(ToJson(config), path)
+            ?? throw new InvalidOperationException($"The saved setting '{path}' could not be read back.");
+        return ToLeaf(NormalizePath(path), saved);
     }
 
     public bool RestoreBackup() => ConfigFile.RestoreBackup(_path);

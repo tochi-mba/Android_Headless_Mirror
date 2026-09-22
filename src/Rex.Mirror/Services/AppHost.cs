@@ -53,28 +53,46 @@ public sealed class AppHost : IDisposable
         Session.Start();
     }
 
-    /// <summary>Applies an edited copy of the configuration, persists it and notifies listeners.</summary>
-    public void SaveConfig(RexConfig updated)
+    /// <summary>
+    /// Applies one mutation to the latest on-disk configuration inside a cross-process
+    /// transaction so GUI and CLI edits cannot overwrite unrelated newer settings.
+    /// </summary>
+    public void UpdateConfig(Action<RexConfig> mutate)
     {
-        updated.Normalize();
-        Config = updated;
+        RexConfig latest;
         try
         {
-            ConfigFile.Save(Paths.Config, updated);
+            using var transaction = CrossProcessFileLock.Acquire(Paths.Config);
+            latest = ConfigFile.Load(Paths.Config);
+            mutate(latest);
+            latest.Normalize();
+            ConfigFile.Save(Paths.Config, latest);
         }
         catch (IOException ex)
         {
             Log.Error("Could not save config.json", ex);
+            return;
         }
 
+        Config = latest;
         ConfigChanged?.Invoke();
     }
 
-    public void UpdateConfig(Action<RexConfig> mutate)
+    /// <summary>Reloads a configuration that was changed transactionally outside AppHost.</summary>
+    public void ReloadConfigFromDisk()
     {
-        var copy = Config.Copy();
-        mutate(copy);
-        SaveConfig(copy);
+        try
+        {
+            using var transaction = CrossProcessFileLock.Acquire(Paths.Config);
+            Config = ConfigFile.Load(Paths.Config);
+        }
+        catch (IOException ex)
+        {
+            Log.Error("Could not reload config.json", ex);
+            return;
+        }
+
+        ConfigChanged?.Invoke();
     }
 
     public string ExecutablePath => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "RexMirror.exe");

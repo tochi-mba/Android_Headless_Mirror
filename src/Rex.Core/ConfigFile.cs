@@ -51,6 +51,8 @@ public static class ConfigFile
 
     public static bool RestoreBackup(string path)
     {
+        using var transaction = CrossProcessFileLock.Acquire(path);
+
         var backup = BackupPath(path);
         if (!File.Exists(backup))
         {
@@ -199,20 +201,37 @@ public static class AtomicFile
             Directory.CreateDirectory(directory);
         }
 
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, content);
+        var fileName = Path.GetFileName(path);
+        var temp = Path.Combine(
+            directory ?? string.Empty,
+            $".{fileName}.{Environment.ProcessId}.{Guid.NewGuid():N}.tmp");
 
-        if (validate is not null && !validate(File.ReadAllText(temp)))
+        try
         {
-            File.Delete(temp);
-            throw new InvalidOperationException($"Refusing to save an invalid file to {Path.GetFileName(path)}.");
-        }
+            File.WriteAllText(temp, content);
 
-        if (keepBackupAt is not null && File.Exists(path))
+            if (validate is not null && !validate(File.ReadAllText(temp)))
+            {
+                throw new InvalidOperationException($"Refusing to save an invalid file to {Path.GetFileName(path)}.");
+            }
+
+            if (keepBackupAt is not null && File.Exists(path))
+            {
+                File.Copy(path, keepBackupAt, overwrite: true);
+            }
+
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
         {
-            File.Copy(path, keepBackupAt, overwrite: true);
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup only. The destination write has already completed or failed.
+            }
         }
-
-        File.Move(temp, path, overwrite: true);
     }
 }

@@ -10,7 +10,6 @@
     <AssemblyTitle>Android Headless Mirror</AssemblyTitle>
     <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />

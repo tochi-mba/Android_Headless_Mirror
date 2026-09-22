@@ -31,6 +31,21 @@ public sealed class StateAndIpcTests
     }
 
     [Fact]
+    public void StateStore_StaleInstancesMergeUpdatesInsteadOfOverwriting()
+    {
+        using var package = new TestPackage();
+        var first = new StateStore(package.Paths.State);
+        var stale = new StateStore(package.Paths.State);
+
+        first.SetLockScreenMode("PHONE-A", LockScreenModes.Pattern);
+        stale.SetLockScreenMode("PHONE-B", LockScreenModes.Other);
+
+        var reloaded = new StateStore(package.Paths.State);
+        Assert.Equal(LockScreenModes.Pattern, reloaded.GetDevice("PHONE-A")!.LockScreenMode);
+        Assert.Equal(LockScreenModes.Other, reloaded.GetDevice("PHONE-B")!.LockScreenMode);
+    }
+
+    [Fact]
     public void StateStore_MigratesLegacyProfilesAndCalibrationFiles()
     {
         using var package = new TestPackage();
@@ -74,6 +89,12 @@ public sealed class StateAndIpcTests
         Assert.Equal("sleep", parsed.Arg("name"));
         Assert.Equal(string.Empty, parsed.Arg("missing"));
         Assert.Null(Ipc.ParseRequest("not json"));
+
+        Assert.False(Ipc.TryParseRequest(
+            """{"v":1,"command":"ping","args":{}}""",
+            out _,
+            out var versionError));
+        Assert.Contains("Unsupported protocol version", versionError);
 
         var response = Ipc.ParseResponse(Ipc.Serialize(IpcResponse.Success(new JsonObject { ["zoom"] = 1.5 })));
         Assert.True(response.Ok);

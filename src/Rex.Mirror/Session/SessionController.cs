@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows.Threading;
 using Rex.Core;
 using Rex.Mirror.Mirror;
+using Rex.Mirror.Native;
 using Rex.Mirror.Services;
 
 namespace Rex.Mirror.Session;
@@ -35,6 +36,7 @@ public sealed class SessionController : IDisposable
     private const int MaxConsecutiveRestarts = 4;
 
     private readonly AppHost _host;
+    private readonly OwnedProcessJob _ownedProcesses = new();
     private readonly CancellationTokenSource _shutdown = new();
     private Dispatcher? _dispatcher;
     private Task? _loop;
@@ -250,7 +252,7 @@ public sealed class SessionController : IDisposable
         ScrcpyProcess scrcpy;
         try
         {
-            scrcpy = ScrcpyProcess.Launch(Tools!.Scrcpy, args, device.Serial, title);
+            scrcpy = ScrcpyProcess.Launch(Tools!.Scrcpy, args, device.Serial, title, _ownedProcesses);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -597,6 +599,7 @@ public sealed class SessionController : IDisposable
         _pending?.Dispose();
         Scrcpy?.Dispose();
         Scrcpy = null;
+        _ownedProcesses.Dispose();
         _shutdown.Dispose();
     }
 }
