@@ -111,7 +111,7 @@ public sealed class RexAppTests
         console.Input.PushTextWithEnter("y"); // run setup
         console.Input.PushTextWithEnter("y"); // autostart
         console.Input.PushKey(ConsoleKey.Enter); // Pattern
-        console.Input.PushTextWithEnter("y"); // physical display off
+        console.Input.PushTextWithEnter("y"); // physical screen/touch guard
         console.Input.PushTextWithEnter("y"); // stay awake
         console.Input.PushTextWithEnter("y"); // Precision Touchpad
         console.Input.PushTextWithEnter("n"); // auto-open Control Center
@@ -143,6 +143,7 @@ public sealed class RexAppTests
         Assert.Equal("USB123", lockCall.Serial);
         Assert.Equal("pattern", lockCall.Value);
 
+        Assert.Contains("physical phone screen / touch surface inactive", console.Output);
         Assert.Equal("true", package.Config.Get("TurnPhysicalScreenOff").Value);
         Assert.Equal("true", package.Config.Get("StayAwakeWhenUsb").Value);
         Assert.Equal("true", package.Config.Get("MirrorChrome.NativeTouchpadGestures").Value);
