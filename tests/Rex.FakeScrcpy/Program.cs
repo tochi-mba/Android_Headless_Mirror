@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.Text;
@@ -23,7 +24,26 @@ internal static class Program
             return 0;
         }
 
+        if (args.Contains("--rex-test-child"))
+        {
+            Log("child-pid " + Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+            Thread.Sleep(Timeout.Infinite);
+            return 0;
+        }
+
+        Log("pid " + Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
         Log("args " + string.Join(' ', args));
+
+        if (args.Contains("--rex-spawn-child"))
+        {
+            var childStart = new ProcessStartInfo(Environment.ProcessPath!)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            childStart.ArgumentList.Add("--rex-test-child");
+            _ = Process.Start(childStart) ?? throw new InvalidOperationException("Could not start fake scrcpy child.");
+        }
 
         var exitAfter = Environment.GetEnvironmentVariable("REX_FAKE_SCRCPY_EXIT_MS");
         if (!string.IsNullOrWhiteSpace(exitAfter))
