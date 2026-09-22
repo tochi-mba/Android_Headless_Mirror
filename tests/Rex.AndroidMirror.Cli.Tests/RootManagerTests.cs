@@ -11,7 +11,7 @@ public sealed class RootManagerTests
         var shell = new FakeAndroidShellRunner();
         SeedPassive(shell, suPath: "/system/bin/su");
 
-        var result = await Manager(package, shell).ProbePassiveAsync("USB123");
+        var result = await Manager(package, shell).ProbePassiveAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.SuDetected, result.State);
         Assert.True(result.SuVisible);
@@ -30,7 +30,7 @@ public sealed class RootManagerTests
         var shell = new FakeAndroidShellRunner();
         SeedPassive(shell, suPath: "");
 
-        var result = await Manager(package, shell).ProbePassiveAsync("USB123");
+        var result = await Manager(package, shell).ProbePassiveAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.Unavailable, result.State);
         Assert.False(result.SuVisible);
@@ -43,7 +43,7 @@ public sealed class RootManagerTests
         var shell = new FakeAndroidShellRunner();
         SeedPassive(shell, suPath: "", adbUid: 0);
 
-        var result = await Manager(package, shell).ProbePassiveAsync("USB123");
+        var result = await Manager(package, shell).ProbePassiveAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.AdbdRoot, result.State);
         Assert.Equal(0, result.EffectiveUid);
@@ -58,7 +58,7 @@ public sealed class RootManagerTests
         var store = new RootStateStore(package.Paths.RootState);
         store.Set(Cache("USB123", "boot-1", RootProvider.KernelSU));
 
-        var result = await Manager(package, shell, store).ProbePassiveAsync("USB123");
+        var result = await Manager(package, shell, store).ProbePassiveAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.Granted, result.State);
         Assert.Equal(RootProvider.KernelSU, result.Provider);
@@ -74,7 +74,7 @@ public sealed class RootManagerTests
         var store = new RootStateStore(package.Paths.RootState);
         store.Set(Cache("USB123", "boot-1", RootProvider.Magisk));
 
-        var result = await Manager(package, shell, store).ProbePassiveAsync("USB123");
+        var result = await Manager(package, shell, store).ProbePassiveAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.SuDetected, result.State);
         Assert.False(result.FromCachedVerification);
@@ -87,7 +87,7 @@ public sealed class RootManagerTests
         var shell = new FakeAndroidShellRunner();
         SeedPassive(shell, suPath: "");
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.Unavailable, result.State);
         Assert.DoesNotContain(shell.Calls, x => x.Command.Id == "root.request");
@@ -101,7 +101,7 @@ public sealed class RootManagerTests
         SeedPassive(shell, suPath: "/system/bin/su");
         shell.Timeout("root.request");
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.AuthorizationPending, result.State);
         Assert.Contains("superuser prompt", result.Message);
@@ -115,7 +115,7 @@ public sealed class RootManagerTests
         SeedPassive(shell, suPath: "/system/bin/su");
         shell.Failure("root.request", "permission denied");
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.Denied, result.State);
         Assert.Contains("permission denied", result.Message);
@@ -134,7 +134,7 @@ public sealed class RootManagerTests
         SeedPassive(shell, suPath: "/system/bin/su");
         SeedGranted(shell, version);
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.Granted, result.State);
         Assert.Equal(provider, result.Provider);
@@ -159,7 +159,7 @@ public sealed class RootManagerTests
         shell.Failure("root.provider.test");
         shell.Failure("root.provider.command");
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.Granted, result.State);
         Assert.Equal(RootProvider.Other, result.Provider);
@@ -173,7 +173,7 @@ public sealed class RootManagerTests
         SeedPassive(shell, suPath: "/system/bin/su");
         SeedGranted(shell, "KernelSU", effectiveUid: 2000);
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.GrantedRestricted, result.State);
         Assert.Equal(2000, result.EffectiveUid);
@@ -187,7 +187,7 @@ public sealed class RootManagerTests
         SeedPassive(shell, suPath: "/system/bin/su");
         SeedGranted(shell, "KernelSU", privateData: false);
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.GrantedRestricted, result.State);
         Assert.Contains(
@@ -206,7 +206,7 @@ public sealed class RootManagerTests
         var store = new RootStateStore(package.Paths.RootState);
         var manager = Manager(package, shell, store);
 
-        await manager.RequestAsync("USB123");
+        await manager.RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         var cached = store.Get("USB123", "boot-1");
         Assert.NotNull(cached);
@@ -221,7 +221,7 @@ public sealed class RootManagerTests
         SeedPassive(shell, suPath: "", adbUid: 0);
         SeedProfileAndCapabilities(shell);
 
-        var result = await Manager(package, shell).RequestAsync("USB123");
+        var result = await Manager(package, shell).RequestAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.AdbdRoot, result.State);
         Assert.DoesNotContain(
@@ -246,7 +246,8 @@ public sealed class RootManagerTests
                 new PrivilegedCommand(
                     "root.test",
                     "id",
-                    Array.Empty<string>())));
+                    Array.Empty<string>()),
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("root request", ex.Message);
     }
@@ -266,7 +267,8 @@ public sealed class RootManagerTests
             new PrivilegedCommand(
                 "root.test",
                 "echo",
-                new[] { "hello" }));
+                new[] { "hello" }),
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Ok);
         Assert.Contains(
@@ -291,7 +293,8 @@ public sealed class RootManagerTests
                 new PrivilegedCommand(
                     "root.test",
                     "id",
-                    Array.Empty<string>())));
+                    Array.Empty<string>()),
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("authorization may have changed", ex.Message);
         Assert.Null(store.Get("USB123", "boot-1"));
@@ -304,7 +307,7 @@ public sealed class RootManagerTests
         package.Config.Set("Root.Enabled", "false");
         var shell = new FakeAndroidShellRunner();
 
-        var result = await Manager(package, shell).ProbePassiveAsync("USB123");
+        var result = await Manager(package, shell).ProbePassiveAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(RootAccessState.Unavailable, result.State);
         Assert.Empty(shell.Calls);
