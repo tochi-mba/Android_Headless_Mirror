@@ -898,14 +898,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("$chromeProcess = Start-MirrorChrome", text)
         self.assertIn("Stop-MirrorChrome $chromeProcess", text)
 
-    def test_mirror_toolbar_sleep_button_uses_scrcpy_screen_off_shortcut(self):
-        text = self.read("MirrorChrome.ps1")
-        self.assertIn("Sleep phone", text)
-        self.assertIn("$ChromeConfig.SleepButton", text)
-        self.assertIn("SendScrcpyScreenOffShortcut", text)
-        self.assertIn("VK_LMENU", text)
-        self.assertIn("VK_O", text)
-        self.assertIn("turns the Android physical display off while", text)
+    def test_mirror_toolbar_sleep_button_uses_shared_scrcpy_control_path(self):
+        mirror = self.read("MirrorChrome.ps1")
+        control = self.read("ScrcpyControl.ps1")
+        supervisor = self.read("Start-PhoneMirror.ps1")
+
+        self.assertIn("Sleep phone", mirror)
+        self.assertIn("$ChromeConfig.SleepButton", mirror)
+        self.assertIn('Invoke-ScrcpyNamedShortcut', mirror)
+        self.assertIn('-Name "sleep"', mirror)
+        self.assertIn('sleep            = @{', control)
+        self.assertIn('Convert-ToVirtualKey "o"', control)
+        self.assertIn('Alt=$true', control)
+        self.assertIn('$args.Add("--shortcut-mod=lalt")', supervisor)
 
     def test_host_zoom_is_local_alt_wheel_and_has_reset_control(self):
         text = self.read("MirrorChrome.ps1")
