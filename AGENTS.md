@@ -232,6 +232,12 @@ Root support must remain capability-driven.
 Never auto-request superuser authorization merely because `su` is visible. Passive probes and explicit authorization are separate operations.
 
 Root v1 is an inspection release. Keep reversible/system/device-critical writes disabled by policy and do not add flashing, boot-image patching, AVB manipulation, root hiding, raw root shell or DRM-circumvention behavior.
+### Physical screen / touch guard
+
+`TurnPhysicalScreenOff` is a default-on headless safety setting. Missing legacy values must migrate to `true`, while an explicit user value of `false` must be preserved.
+
+The implementation is scrcpy's screen-off path (`--turn-screen-off`), not a claim that REX can universally disable Android's digitizer. PC/scrcpy-injected control must continue working. Do not add vendor-specific `/sys`, `/dev/input`, or hidden-binder hacks as a portable touchscreen lock.
+
 ### Mirror interaction
 
 Keep Android gestures and Windows-only magnification separate:
