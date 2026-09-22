@@ -88,6 +88,18 @@ docs/                   GitHub Pages site
 - Any authorised phone can be used. A preferred serial is a preference, never a lock.
 - The app never calls `adb kill-server`, never stores or injects unlock credentials, never needs admin.
 - Wireless ADB stays opt-in.
+- Persistence is transactional across processes: every config/state read-modify-write mutation must hold
+  `CrossProcessFileLock`. `AtomicFile` provides crash-safe replacement, not concurrency control.
+- Only REX-owned mirror/session processes belong to the kill-on-close Job Object. Never assign the shared
+  ADB server to it.
+- Low-level keyboard/mouse hooks may classify input and enqueue work only. Do not perform file I/O, ADB,
+  process work, native resizing, or substantial layout/render work synchronously inside a hook callback.
+- `app.manifest` is the source of truth for PerMonitorV2 DPI awareness. Code crossing WPF/Win32 geometry
+  boundaries must be explicit about DIPs versus physical pixels.
+- IPC requests stay current-user-only, size-bounded and deadline-controlled. Fire-and-forget server handlers
+  must observe and log their own unexpected exceptions.
+- Tests should wait for observable state rather than fixed sleeps. Keep time-based waits only when elapsed
+  time itself is the behavior under test or when Windows input/compositor APIs expose no better signal.
 - No file over 1,000 lines. No dead code. Warnings are errors.
 - Do not grow MainWindow or SessionController with unrelated domains. Extract a cohesive subsystem
   when substantial new behaviour naturally belongs together; do not perform broad rewrites just to reduce file size.
