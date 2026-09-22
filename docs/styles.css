@@ -170,8 +170,8 @@ strong{font-weight:700;color:var(--text)}
 .site-footer a{text-decoration:underline;text-underline-offset:3px}
 
 /* Reveal */
-.motion-ready .reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
-.motion-ready .reveal.visible{opacity:1;transform:none}
+.motion-ready .reveal{transform:translateY(14px);transition:transform .5s ease}
+.motion-ready .reveal.visible{transform:none}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1!important;transform:none!important;transition:none!important}}
 
 /* Responsive */
