@@ -76,6 +76,7 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) =>
         {
             _source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)!;
+            _host.Log.Info("DPI awareness: " + DpiAwareness.Describe(_source.Handle));
             NativeMethods.ApplyDarkTitleBar(_source.Handle);
             _source.AddHook(WindowHook);
             NativeMethods.TryRegisterTouchpadWindow(_source.Handle, true);
