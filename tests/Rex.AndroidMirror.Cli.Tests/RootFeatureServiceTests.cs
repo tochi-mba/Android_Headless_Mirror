@@ -29,6 +29,39 @@ public sealed class RootFeatureServiceTests
     }
 
     [Theory]
+    [InlineData("/data/../dev/block/by-name/userdata")]
+    [InlineData("/dev//block/by-name/userdata")]
+    [InlineData("/dev///block/by-name/userdata")]
+    [InlineData("/proc/../dev/mem")]
+    public void ValidatePath_CanonicalizationCannotBypassCriticalBlocklist(string path)
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => RootFeatureService.ValidatePath(path, false));
+
+        Assert.Contains("Root v1 blocks", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("/../../dev/block/by-name/userdata")]
+    [InlineData("/../data/user/0")]
+    public void ValidatePath_RejectsTraversalAboveRoot(string path)
+    {
+        Assert.Throws<ArgumentException>(
+            () => RootFeatureService.ValidatePath(path, false));
+    }
+
+    [Theory]
+    [InlineData("/data//user/0/com.example", "/data/user/0/com.example")]
+    [InlineData("/data/./user/0/com.example", "/data/user/0/com.example")]
+    [InlineData("/data/local/../user/0/com.example", "/data/user/0/com.example")]
+    public void ValidatePath_ReturnsCanonicalSafePath(string input, string expected)
+    {
+        Assert.Equal(
+            expected,
+            RootFeatureService.ValidatePath(input, false));
+    }
+
+    [Theory]
     [InlineData("/data/user/0/com.example")]
     [InlineData("/proc/123/status")]
     [InlineData("/sys/class/thermal")]
