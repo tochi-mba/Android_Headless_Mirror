@@ -56,6 +56,48 @@ function Ensure-DisplayConfig {
 
 Ensure-DisplayConfig
 
+
+function Ensure-RootConfig {
+    if ($null -eq $Config.PSObject.Properties["Root"]) {
+        $Config | Add-Member -NotePropertyName Root -NotePropertyValue ([pscustomobject]@{
+            Enabled = $true
+            ProbeOnConnect = $true
+            RequestAutomatically = $false
+            AllowReadOnly = $true
+            AllowReversible = $false
+            AllowSystemChanges = $false
+            AllowDeviceCritical = $false
+            RawShellEnabled = $false
+            RequestTimeoutSeconds = 15
+            CommandTimeoutSeconds = 10
+            MaxOutputCharacters = 262144
+        })
+        return
+    }
+
+    $defaults = @{
+        Enabled = $true
+        ProbeOnConnect = $true
+        RequestAutomatically = $false
+        AllowReadOnly = $true
+        AllowReversible = $false
+        AllowSystemChanges = $false
+        AllowDeviceCritical = $false
+        RawShellEnabled = $false
+        RequestTimeoutSeconds = 15
+        CommandTimeoutSeconds = 10
+        MaxOutputCharacters = 262144
+    }
+
+    foreach ($entry in $defaults.GetEnumerator()) {
+        if ($null -eq $Config.Root.PSObject.Properties[$entry.Key]) {
+            $Config.Root | Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value
+        }
+    }
+}
+
+Ensure-RootConfig
+
 if ([string]::IsNullOrWhiteSpace($AdbPath)) {
     $AdbPath = Get-ChildItem (Join-Path $Root "tools") -Filter "adb.exe" -Recurse -File -ErrorAction SilentlyContinue |
         Select-Object -First 1 -ExpandProperty FullName
@@ -373,6 +415,207 @@ function Save-DisplaySettings {
 (C "ReloadDisplaySettingsButton").Add_Click({
     Load-DisplaySettings
     (C "DisplaySettingsStatusText").Text = "Discarded unsaved changes."
+})
+
+function Invoke-RexMachineCommand([string[]]$Arguments) {
+    if ($TestMode) {
+        return [pscustomobject]@{
+            ok = $true
+            command = "test"
+            data = [pscustomobject]@{
+                serial = $Serial
+                state = "suDetected"
+                provider = "unknown"
+                adbUid = 2000
+                effectiveUid = $null
+                suVisible = $true
+                selinuxMode = "Enforcing"
+                fromCachedVerification = $false
+                message = "Test-mode root probe."
+                capabilities = @()
+            }
+        }
+    }
+
+    $exe = Join-Path $Root "tools\rex\rex.exe"
+    $raw = ""
+
+    if (Test-Path $exe) {
+        $raw = (& $exe agent @Arguments 2>&1 | Out-String).Trim()
+    }
+    else {
+        $batch = Join-Path $Root "REX.bat"
+        $raw = (& $batch agent @Arguments 2>&1 | Out-String).Trim()
+    }
+
+    $lines = @($raw -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($lines.Count -eq 0) {
+        throw "REX did not return machine JSON."
+    }
+
+    $payload = $lines[$lines.Count - 1] | ConvertFrom-Json
+    if (-not [bool]$payload.ok) {
+        $message = if ($null -ne $payload.error) { [string]$payload.error.message } else { "Root command failed." }
+        throw $message
+    }
+
+    return $payload
+}
+
+function Format-RootMachineData($Payload) {
+    if ($null -eq $Payload -or $null -eq $Payload.data) { return "" }
+    return ($Payload.data | ConvertTo-Json -Depth 12)
+}
+
+function Refresh-RootStatus {
+    Ensure-RootConfig
+
+    if (-not [bool]$Config.Root.Enabled) {
+        (C "RootStatusText").Text = "Root support is disabled in REX settings."
+        (C "RootCapabilityText").Text = ""
+        return
+    }
+
+    Add-TestAction "root:status"
+
+    try {
+        $payload = Invoke-RexMachineCommand @("root", "status", "--serial", $Serial)
+        $data = $payload.data
+
+        if ($TestMode) {
+            (C "RootStatusText").Text = "State: suDetected | Provider: unknown | ADB UID: 2000 | Effective UID: not verified"
+            (C "RootCapabilityText").Text = "Passive probe only. Root authorization has not been requested."
+            return
+        }
+
+        $effective = if ($null -eq $data.effectiveUid) { "not verified" } else { [string]$data.effectiveUid }
+        $provider = if ([string]::IsNullOrWhiteSpace([string]$data.provider)) { "unknown" } else { [string]$data.provider }
+
+        (C "RootStatusText").Text =
+            "State: $($data.state) | Provider: $provider | ADB UID: $($data.adbUid) | Effective UID: $effective | SELinux: $($data.selinuxMode)"
+
+        $verified = @($data.capabilities | Where-Object { [string]$_.state -eq "verified" }).Count
+        $total = @($data.capabilities).Count
+        (C "RootCapabilityText").Text =
+            "$verified / $total privileged capability probes verified. $($data.message)"
+    }
+    catch {
+        (C "RootStatusText").Text = "Root probe failed: $($_.Exception.Message)"
+        (C "RootCapabilityText").Text = ""
+    }
+}
+
+function Load-RootSettings {
+    Ensure-RootConfig
+    (C "RootEnabledCheck").IsChecked = [bool]$Config.Root.Enabled
+    (C "RootProbeOnConnectCheck").IsChecked = [bool]$Config.Root.ProbeOnConnect
+    (C "RootReadOnlyCheck").IsChecked = [bool]$Config.Root.AllowReadOnly
+
+    if ([bool]$Config.Root.ProbeOnConnect) {
+        Refresh-RootStatus
+    }
+    else {
+        (C "RootStatusText").Text = "Passive root probing is disabled. Use Passive probe when you want to check."
+        (C "RootCapabilityText").Text = ""
+    }
+}
+
+function Save-RootSettings {
+    Ensure-RootConfig
+
+    $Config.Root.Enabled = [bool](C "RootEnabledCheck").IsChecked
+    $Config.Root.ProbeOnConnect = [bool](C "RootProbeOnConnectCheck").IsChecked
+    $Config.Root.AllowReadOnly = [bool](C "RootReadOnlyCheck").IsChecked
+
+    # Root v1 intentionally keeps escalation and write policies conservative.
+    $Config.Root.RequestAutomatically = $false
+    $Config.Root.AllowReversible = $false
+    $Config.Root.AllowSystemChanges = $false
+    $Config.Root.AllowDeviceCritical = $false
+    $Config.Root.RawShellEnabled = $false
+
+    Add-TestAction "root-settings:save"
+
+    if (-not $TestMode) {
+        $Config | ConvertTo-Json -Depth 12 | Set-Content -Path $ConfigPath -Encoding UTF8
+    }
+
+    (C "RootSettingsStatusText").Text = "Saved."
+    Set-Status "Privileged Android settings saved."
+    Refresh-RootStatus
+}
+
+function Invoke-RootUiCommand([string]$Action, [string[]]$Arguments) {
+    Add-TestAction ("root:" + $Action)
+
+    if ($TestMode) {
+        (C "RootOutputTextBox").Text = "TEST: " + $Action
+        Set-Status ("Root test action: " + $Action)
+        return
+    }
+
+    try {
+        $payload = Invoke-RexMachineCommand $Arguments
+        (C "RootOutputTextBox").Text = Format-RootMachineData $payload
+        Set-Status ("Root command completed: " + $Action)
+        Refresh-RootStatus
+    }
+    catch {
+        (C "RootOutputTextBox").Text = $_.Exception.Message
+        Set-Status $_.Exception.Message $true
+    }
+}
+
+(C "RootRefreshButton").Add_Click({ Refresh-RootStatus })
+
+(C "RootRequestButton").Add_Click({
+    Invoke-RootUiCommand "request" @("root", "request", "--serial", $Serial)
+})
+
+(C "RootClearButton").Add_Click({
+    Invoke-RootUiCommand "clear" @("root", "clear", "--serial", $Serial)
+})
+
+(C "RootDiagnosticsButton").Add_Click({
+    Invoke-RootUiCommand "diagnostics" @("root", "diagnostics", "--serial", $Serial)
+})
+(C "RootProcessesButton").Add_Click({
+    Invoke-RootUiCommand "processes" @("root", "processes", "--serial", $Serial)
+})
+(C "RootHardwareButton").Add_Click({
+    Invoke-RootUiCommand "hardware" @("root", "hardware", "--serial", $Serial)
+})
+(C "RootNetworkButton").Add_Click({
+    Invoke-RootUiCommand "network" @("root", "network", "--serial", $Serial)
+})
+(C "RootLogsButton").Add_Click({
+    Invoke-RootUiCommand "logs-kernel" @("root", "logs", "kernel", "--serial", $Serial)
+})
+(C "RootPropertiesButton").Add_Click({
+    Invoke-RootUiCommand "properties" @("root", "properties", "--serial", $Serial)
+})
+
+(C "RootFilesListButton").Add_Click({
+    $path = (C "RootPathTextBox").Text.Trim()
+    Invoke-RootUiCommand "files-list" @("root", "files", "list", $path, "--serial", $Serial)
+})
+(C "RootFilesStatButton").Add_Click({
+    $path = (C "RootPathTextBox").Text.Trim()
+    Invoke-RootUiCommand "files-stat" @("root", "files", "stat", $path, "--serial", $Serial)
+})
+(C "RootFilesReadButton").Add_Click({
+    $path = (C "RootPathTextBox").Text.Trim()
+    Invoke-RootUiCommand "files-read" @("root", "files", "read", $path, "--serial", $Serial)
+})
+(C "RootAppInspectButton").Add_Click({
+    $package = (C "RootPackageTextBox").Text.Trim()
+    Invoke-RootUiCommand "app" @("root", "app", $package, "--serial", $Serial)
+})
+
+(C "SaveRootSettingsButton").Add_Click({ Save-RootSettings })
+(C "ReloadRootSettingsButton").Add_Click({
+    Load-RootSettings
+    (C "RootSettingsStatusText").Text = "Discarded unsaved changes."
 })
 
 function Load-PcSettings {
@@ -967,6 +1210,7 @@ function Render-ControlCenterSnapshot([string]$Path) {
 
 Load-PcSettings
 Load-DisplaySettings
+Load-RootSettings
 Refresh-All
 Restore-ControlCenterTab
 Apply-ControlCenterWindowPlacement

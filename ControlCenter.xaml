@@ -281,6 +281,87 @@
         </ScrollViewer>
       </TabItem>
 
+      <TabItem x:Name="PrivilegedTab" Header="Privileged">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="24">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+              <Border Background="{StaticResource Signal}" CornerRadius="3" Padding="9,4" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="ROOT" Foreground="{StaticResource Ink}" FontFamily="Consolas" FontSize="9" FontWeight="Bold"/>
+              </Border>
+              <TextBlock Text="Privileged Android" FontSize="26" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="REX detects an existing root environment and exposes capability-gated, read-only privileged tools. Root installation, flashing, raw root shell and DRM bypass are not part of Root v1." Foreground="{StaticResource Muted}" Margin="0,5,0,22" TextWrapping="Wrap"/>
+
+            <GroupBox Header="Root access">
+              <StackPanel>
+                <TextBlock x:Name="RootStatusText" Text="Root status has not been probed." TextWrapping="Wrap"/>
+                <TextBlock x:Name="RootCapabilityText" Foreground="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                <WrapPanel Margin="0,12,0,0">
+                  <Button x:Name="RootRefreshButton" Content="Passive probe"/>
+                  <Button x:Name="RootRequestButton" Content="Request / verify root" Style="{StaticResource PrimaryButton}"/>
+                  <Button x:Name="RootClearButton" Content="Clear cached verification"/>
+                </WrapPanel>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Root policy">
+              <StackPanel>
+                <CheckBox x:Name="RootEnabledCheck" Content="Enable privileged Android support"/>
+                <CheckBox x:Name="RootProbeOnConnectCheck" Content="Allow passive root detection"/>
+                <CheckBox x:Name="RootReadOnlyCheck" Content="Allow read-only privileged operations"/>
+                <TextBlock Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Text="Root authorization is never requested automatically. Reversible, system-changing and device-critical writes remain disabled by default and Root v1 exposes no arbitrary root shell."/>
+                <WrapPanel Margin="0,12,0,0">
+                  <Button x:Name="SaveRootSettingsButton" Content="Save root settings" Style="{StaticResource PrimaryButton}"/>
+                  <Button x:Name="ReloadRootSettingsButton" Content="Discard changes"/>
+                </WrapPanel>
+                <TextBlock x:Name="RootSettingsStatusText" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Read-only privileged toolkit">
+              <StackPanel>
+                <WrapPanel>
+                  <Button x:Name="RootDiagnosticsButton" Content="Diagnostics"/>
+                  <Button x:Name="RootProcessesButton" Content="Processes"/>
+                  <Button x:Name="RootHardwareButton" Content="Hardware"/>
+                  <Button x:Name="RootNetworkButton" Content="Network"/>
+                  <Button x:Name="RootLogsButton" Content="Kernel logs"/>
+                  <Button x:Name="RootPropertiesButton" Content="System properties"/>
+                </WrapPanel>
+                <TextBlock Foreground="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"
+                           Text="These commands require root to have already been verified for the current Android boot."/>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Privileged filesystem (read-only)">
+              <StackPanel>
+                <TextBox x:Name="RootPathTextBox" Text="/data/user/0" Margin="0,0,0,8"/>
+                <WrapPanel>
+                  <Button x:Name="RootFilesListButton" Content="List"/>
+                  <Button x:Name="RootFilesStatButton" Content="Stat"/>
+                  <Button x:Name="RootFilesReadButton" Content="Read bounded text"/>
+                </WrapPanel>
+                <TextBlock Foreground="{StaticResource Muted}" Margin="0,8,0,0" TextWrapping="Wrap"
+                           Text="Raw reads from device-critical block/memory paths are blocked. File output is bounded."/>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Application inspection">
+              <StackPanel>
+                <TextBox x:Name="RootPackageTextBox" Text="" ToolTip="Android package name, for example com.example.app" Margin="0,0,0,8"/>
+                <Button x:Name="RootAppInspectButton" Content="Inspect package + private data" HorizontalAlignment="Left"/>
+              </StackPanel>
+            </GroupBox>
+
+            <GroupBox Header="Output">
+              <TextBox x:Name="RootOutputTextBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                       VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas"
+                       MinHeight="260" MaxHeight="520"/>
+            </GroupBox>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
       <TabItem x:Name="PcSettingsTab" Header="PC / mirror settings">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="24">

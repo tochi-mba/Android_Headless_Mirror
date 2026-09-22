@@ -31,6 +31,8 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Can start automatically when Windows signs in.
 - Includes diagnostics and rotating logs.
 - Supports optional ADB-over-TCP/IP fallback, disabled by default.
+- Detects and uses an **existing** Android root environment through a capability-gated Privileged Android layer, with passive discovery, explicit authorization, per-boot verification and read-only Root v1 tooling.
+- Detects an existing Android root environment and can unlock a separate, capability-gated **Privileged Android** inspection layer without changing normal ADB behavior.
 
 ## Quick start
 
@@ -210,6 +212,7 @@ After setup, the same CLI becomes the day-to-day workspace:
 
 - **Runtime controls** — scrcpy controls plus PC-only host zoom in/out/reset.
 - **Display transports** — scrcpy plus Windows Wireless Display orchestration, DeX guidance, and explicit protected-playback verification.
+- **Privileged Android** — passive root detection, explicit authorization, provider metadata and read-only diagnostics/files/process/app/hardware/network/log inspection when root is already available on the device.
 - **PC / mirror settings** — categorized common settings plus an **All settings browser** over every leaf in `config.json`.
 - **Device settings** — friendly Android settings using the same ADB backend as the GUI.
 - **Advanced Android** — live `system`, `secure` and `global` Settings Provider browsing/search/write/delete with protected-key guardrails.
@@ -228,6 +231,10 @@ REX.bat agent status
 REX.bat agent devices
 REX.bat agent smart
 REX.bat agent display probe
+REX.bat agent root status
+REX.bat agent root capabilities
+REX.bat agent root status
+REX.bat agent root capabilities
 ```
 
 The following are equivalent:
@@ -257,6 +264,14 @@ rex display start --transport scrcpy
 rex display receiver open
 rex display start --transport windows-miracast
 rex display verify protected pass
+rex root status
+rex root request
+rex root capabilities
+rex root diagnostics
+rex root processes
+rex root hardware
+rex root network
+rex root logs kernel
 rex device set brightness 180 --serial USB123
 rex device set animation-scale 0.5 --serial USB123
 rex android list global --filter animation --serial USB123
@@ -305,6 +320,67 @@ REX separates the **ADB control plane** from the display transport. Normal mirro
 REX does **not** implement Miracast, Wi-Fi Direct or HDCP, and it does not claim protected playback works merely because Windows reports Wireless Display support. Use `rex display verify protected pass|fail|clear` only after manually testing the exact phone/PC/driver/application chain.
 
 Local verification is stored in `display-verification.json` and is ignored by Git. See `docs/DISPLAY_TRANSPORTS.md` and `docs/DISPLAY_COMPATIBILITY.md`.
+
+### Privileged Android / root support
+
+REX can detect and use an **existing** Android root environment without changing the normal ADB control plane.
+
+`rex root status` and `rex root probe` are passive: they inspect the current ADB shell, boot ID, SELinux mode and whether `su` is visible, but they do **not** invoke `su` or trigger a root-manager prompt.
+
+`rex root request` is the explicit authorization boundary. If a root provider grants access, REX fingerprints the resulting privilege profile and probes individual capabilities instead of assuming that UID 0 means unrestricted access. This matters for restricted profiles such as KernelSU configurations.
+
+Root verification is cached locally only for the same device serial and Android boot ID in `root-state.json`. A reboot invalidates the previous boot's verification automatically.
+
+Root v1 is deliberately read-only and includes:
+
+- privileged diagnostics;
+- private filesystem list/stat/bounded text reads;
+- process inspection;
+- package/private-app-data inspection;
+- hardware and thermal metadata;
+- network diagnostics;
+- kernel logs;
+- system properties.
+
+REX recognizes best-effort signals for Magisk, KernelSU, APatch and generic/unknown `su` providers. Provider detection is metadata; actual capability probes decide what REX can use.
+
+Root v1 does **not** install root, unlock bootloaders, patch/flash boot images, modify AVB, hide root, expose an arbitrary root shell, write partitions, or bypass DRM/secure video.
+
+See `docs/ROOT_ARCHITECTURE.md`, `docs/ROOT_SECURITY.md` and `docs/ROOT_COMPATIBILITY.md`.
+
+### Privileged Android / Root v1
+
+REX can detect and use an **existing** Android root environment without changing normal ADB/scrcpy behavior for unrooted devices.
+
+The privilege model is capability-driven rather than a single `rooted=true` flag:
+
+- `rex root status`, `probe`, and `capabilities` are passive and **never invoke `su`**;
+- `rex root request` is the explicit operation that may trigger a Magisk/KernelSU/APatch/other superuser prompt;
+- successful verification is scoped to the Android serial plus current Android boot ID;
+- provider identity is metadata only — actual private-data/process/kernel/network/etc. capability probes determine what REX can use;
+- UID 0 is not treated as proof that every privileged capability works;
+- Root v1 public feature commands are read-only.
+
+Read-only Root v1 tools include privileged diagnostics, bounded filesystem list/stat/read, process inspection, private application/package inspection, hardware/kernel telemetry, network diagnostics, bounded kernel logs, and system-property inspection.
+
+REX Root v1 deliberately does **not** install root, unlock bootloaders, patch/flash boot images, modify AVB, write partitions, hide root, bypass integrity checks, expose arbitrary root shell/exec, or bypass DRM/protected video paths.
+
+Root configuration defaults to:
+
+- passive probing enabled;
+- automatic authorization requests disabled;
+- read-only operations enabled;
+- reversible/system/device-critical writes disabled;
+- raw root shell disabled.
+
+The Control Center exposes the same compiled machine API as the CLI; the WPF layer does not maintain a second `su` implementation.
+
+See:
+
+- `docs/ROOT_ARCHITECTURE.md`
+- `docs/ROOT_CAPABILITIES.md`
+- `docs/ROOT_SECURITY.md`
+- `docs/ROOT_COMPATIBILITY.md`
 
 ### Screenshots and recording
 

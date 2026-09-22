@@ -227,6 +227,43 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('scrcpy by default');
     await expect(section).toContainText('Verify protected playback');
   });
+
+  test('privileged section presents capability state, explicit authorization, toolkit, and safety boundary', async ({ page }) => {
+    const section = page.locator('#privileged');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('Root is a capability. Not a boolean.');
+    await expect(section).toContainText('rex root status');
+    await expect(section).toContainText('never invokes');
+    await expect(section).toContainText('rex root request');
+    await expect(section).toContainText('VERIFIED THIS BOOT');
+    await expect(section).toContainText('granted');
+    await expect(section).toContainText('Magisk');
+    await expect(section).toContainText('kernel logs');
+    await expect(section).toContainText('RESTRICTED');
+    await expect(section).toContainText('READ-ONLY TOOLKIT');
+    await expect(section).toContainText('no root installation');
+    await expect(section).toContainText('arbitrary root shell');
+    await expect(section).toContainText('DRM bypass');
+    await expect(section.getByRole('link', { name: /Architecture/ })).toHaveAttribute('href', /ROOT_ARCHITECTURE\.md/);
+    await expect(section.getByRole('link', { name: /Security model/ })).toHaveAttribute('href', /ROOT_SECURITY\.md/);
+    await expect(section.getByRole('link', { name: /Compatibility ledger/ })).toHaveAttribute('href', /ROOT_COMPATIBILITY\.md/);
+  });
+
+  test('root FAQ explains existing-root-only, explicit authorization, and protected-video boundaries', async ({ page }) => {
+    const install = page.getByText('Does REX root my phone?');
+    await install.click();
+    await expect(page.getByText(/Root v1 only uses an existing root environment/)).toBeVisible();
+    await expect(page.getByText(/does not unlock the bootloader/)).toBeVisible();
+
+    const auth = page.getByText('Will REX ask for root access automatically?');
+    await auth.click();
+    await expect(page.getByText(/only happens when you explicitly run/)).toBeVisible();
+
+    const drm = page.getByText('Does root let REX capture Netflix or other protected video?');
+    await drm.click();
+    await expect(page.getByText(/does not bypass DRM/)).toBeVisible();
+    await expect(page.getByText(/protected display support are separate/)).toBeVisible();
+  });
   test('controls separate native Android pinch from PC-only host zoom', async ({ page }) => {
     const section = page.locator('#controls');
     await expect(section).toBeVisible();
@@ -249,6 +286,7 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
   test('Control Center documents the PC/device/advanced separation', async ({ page }) => {
     const section = page.locator('#control-center');
     await expect(section).toBeVisible();
+    await expect(section).toContainText('Privileged');
     await expect(section).toContainText('PC / mirror settings');
     await expect(section).toContainText('Samsung Galaxy S21 Ultra settings');
     await expect(section).toContainText('Advanced Android');
@@ -275,6 +313,7 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('REX.lnk');
     await expect(section).toContainText('rex action sleep');
     await expect(section).toContainText('rex mirror zoom-in');
+    await expect(section).toContainText('rex root status');
     await expect(section).toContainText('rex android list global');
     await expect(section).toContainText('rex config restore');
     await expect(section).toContainText('SHA-256');
@@ -416,6 +455,14 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await assertVisualThreshold(page, 'pages-desktop-hero');
   });
 
+  test('desktop privileged section screenshot passes visual thresholds', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.reload();
+    const section = page.locator('#privileged');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-desktop-privileged');
+  });
+
   test('desktop controls section screenshot passes visual thresholds', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.reload();
@@ -489,6 +536,13 @@ test.describe('mobile behavior', () => {
     await page.goto('/');
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
+  });
+
+  test('mobile privileged section screenshot passes visual thresholds', async ({ page }) => {
+    await page.goto('/');
+    const section = page.locator('#privileged');
+    await section.scrollIntoViewIfNeeded();
+    await assertVisualThreshold(section, 'pages-mobile-privileged');
   });
 
   test('mobile controls screenshot passes visual thresholds', async ({ page }) => {

@@ -103,5 +103,18 @@
     "SamsungDex": {
       "Enabled": true
     }
+  },
+  "Root": {
+    "Enabled": true,
+    "ProbeOnConnect": true,
+    "RequestAutomatically": false,
+    "AllowReadOnly": true,
+    "AllowReversible": false,
+    "AllowSystemChanges": false,
+    "AllowDeviceCritical": false,
+    "RawShellEnabled": false,
+    "RequestTimeoutSeconds": 15,
+    "CommandTimeoutSeconds": 10,
+    "MaxOutputCharacters": 262144
   }
 }

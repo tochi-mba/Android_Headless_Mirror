@@ -82,7 +82,7 @@ Assert-True ((C "DeviceMetaText").Text -match "SM-G998B") "Device metadata shoul
 Assert-Equal "Connected" (C "ConnectionText").Text "Test-mode device should be connected."
 
 Write-Host "[control-center] Exercising all top-level tabs..."
-foreach ($tab in @("ControlsTab","DisplayTab","PcSettingsTab","DeviceSettingsTab","AdvancedTab","DiagnosticsTab")) {
+foreach ($tab in @("ControlsTab","DisplayTab","PrivilegedTab","PcSettingsTab","DeviceSettingsTab","AdvancedTab","DiagnosticsTab")) {
     Select-Tab $tab
     Assert-True ((C $tab).IsSelected) "$tab should be selectable."
 }
@@ -218,6 +218,61 @@ Select-ComboTag (C "DisplayDefaultTransportCombo") "scrcpy"
 Click-Control "ReloadDisplaySettingsButton"
 Assert-Equal "windows-miracast" (Get-ComboTag (C "DisplayDefaultTransportCombo")) "Discard should restore saved display transport."
 
+Write-Host "[control-center] Exercising privileged Android UI and safety policy..."
+Select-Tab "PrivilegedTab"
+Assert-True ((C "RootStatusText").Text -match "suDetected") "Test-mode passive root probe should populate root state."
+Assert-True ((C "RootCapabilityText").Text -match "Passive probe") "Passive probe should not imply authorization."
+
+Click-Control "RootRefreshButton"
+Assert-Contains $script:TestActions "root:status" "Passive root refresh should be recorded."
+
+$rootActions = @{
+    RootRequestButton="root:request"
+    RootClearButton="root:clear"
+    RootDiagnosticsButton="root:diagnostics"
+    RootProcessesButton="root:processes"
+    RootHardwareButton="root:hardware"
+    RootNetworkButton="root:network"
+    RootLogsButton="root:logs-kernel"
+    RootPropertiesButton="root:properties"
+}
+
+foreach ($buttonName in $rootActions.Keys) {
+    Click-Control $buttonName
+    Assert-Contains $script:TestActions $rootActions[$buttonName] "$buttonName should route through the root machine API."
+    Assert-True ((C "RootOutputTextBox").Text -match "^TEST:") "$buttonName should write deterministic test output."
+}
+
+(C "RootPathTextBox").Text = "/data/user/0/com.example"
+Click-Control "RootFilesListButton"
+Assert-Contains $script:TestActions "root:files-list" "Root file list should route through machine mode."
+Click-Control "RootFilesStatButton"
+Assert-Contains $script:TestActions "root:files-stat" "Root file stat should route through machine mode."
+Click-Control "RootFilesReadButton"
+Assert-Contains $script:TestActions "root:files-read" "Root bounded file read should route through machine mode."
+
+(C "RootPackageTextBox").Text = "com.example.app"
+Click-Control "RootAppInspectButton"
+Assert-Contains $script:TestActions "root:app" "Root app inspection should route through machine mode."
+
+(C "RootEnabledCheck").IsChecked = $true
+(C "RootProbeOnConnectCheck").IsChecked = $false
+(C "RootReadOnlyCheck").IsChecked = $true
+Click-Control "SaveRootSettingsButton"
+Assert-Contains $script:TestActions "root-settings:save" "Root policy save should be recorded."
+Assert-True $Config.Root.Enabled "Root support should remain enabled."
+Assert-False $Config.Root.ProbeOnConnect "Passive probe preference should update."
+Assert-True $Config.Root.AllowReadOnly "Read-only privileged operations should remain enabled."
+Assert-False $Config.Root.RequestAutomatically "Root authorization must remain non-automatic."
+Assert-False $Config.Root.AllowReversible "Root v1 should keep reversible writes disabled."
+Assert-False $Config.Root.AllowSystemChanges "Root v1 should keep system writes disabled."
+Assert-False $Config.Root.AllowDeviceCritical "Root v1 should keep device-critical writes disabled."
+Assert-False $Config.Root.RawShellEnabled "Root v1 should keep raw root shell disabled."
+
+(C "RootEnabledCheck").IsChecked = $false
+Click-Control "ReloadRootSettingsButton"
+Assert-True (C "RootEnabledCheck").IsChecked "Discard should restore saved root enabled state."
+
 Write-Host "[control-center] Exercising friendly Android device controls..."
 Select-Tab "DeviceSettingsTab"
 
@@ -337,6 +392,11 @@ $exercised = @(
         "SavePcSettingsButton","ReloadPcSettingsButton","DeviceAutoRotateCheck",
         "DisplayRefreshButton","DisplayStartScrcpyButton","DisplayOpenWirelessButton",
         "SaveDisplaySettingsButton","ReloadDisplaySettingsButton",
+        "RootRefreshButton","RootRequestButton","RootClearButton",
+        "RootDiagnosticsButton","RootProcessesButton","RootHardwareButton",
+        "RootNetworkButton","RootLogsButton","RootPropertiesButton",
+        "RootFilesListButton","RootFilesStatButton","RootFilesReadButton",
+        "RootAppInspectButton","SaveRootSettingsButton","ReloadRootSettingsButton",
         "WifiOnButton","WifiOffButton","MobileDataOnButton","MobileDataOffButton",
         "AirplaneOnButton","AirplaneOffButton","ApplyWmSizeButton","ResetWmSizeButton",
         "ApplyWmDensityButton","ResetWmDensityButton","DeviceWakeButton","DeviceSleepButton",

@@ -198,6 +198,12 @@ jobs:
           $agent = Assert-MachineJson artifacts\rex-cli-smoke\agent-capabilities.json "rex agent capabilities"
           if (-not $agent.ok -or $agent.protocolVersion -ne 1) { throw "Agent machine protocol contract failed." }
           if ($agent.data.mode -ne "non-interactive-json") { throw "Unexpected agent machine mode identifier." }
+          if (-not ($agent.data.commands -contains "root")) { throw "Agent capabilities did not advertise the root namespace." }
+          if (-not ($agent.data.rootCommands -contains "root status")) { throw "Agent capabilities did not advertise passive root status." }
+          if (-not ($agent.data.rootCommands -contains "root request")) { throw "Agent capabilities did not advertise explicit root authorization." }
+          if (-not $agent.data.rootSafety.passiveStatusDoesNotInvokeSu) { throw "Root passive-probe safety contract is missing." }
+          if ($agent.data.rootSafety.rawShell) { throw "Root v1 must not expose raw shell." }
+          if ($agent.data.rootSafety.rootV1Writes) { throw "Root v1 must remain read-only." }
 
           & .\artifacts\rex-cli\rex.exe --plain capabilities | Tee-Object artifacts\rex-cli-smoke\plain-capabilities.json
           if ($LASTEXITCODE -ne 0) { throw "rex --plain capabilities failed." }
@@ -223,7 +229,8 @@ jobs:
             "rex android list",
             "rex config restore",
             "rex mirror",
-            "rex display probe"
+            "rex display probe",
+            "rex root status"
           )) {
             if ($help -notmatch [regex]::Escape($required)) {
               throw "REX CLI help output is missing required content: $required"

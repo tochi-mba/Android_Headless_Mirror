@@ -80,6 +80,31 @@ Display invariants:
 - Do not infer protected playback from Miracast or HDCP reporting. Keep it unknown until the exact hardware/application path is manually verified.
 - Do not infer DRM from black frames.
 - A Samsung manufacturer match means only "DeX candidate"; runtime verification is still required.
+Inspect privileged Android capability before assuming root support:
+
+```bat
+REX.bat agent root status
+REX.bat agent root probe
+REX.bat agent root capabilities
+```
+
+Only request authorization when the user/task explicitly needs privileged access:
+
+```bat
+REX.bat agent root request
+```
+
+Root invariants:
+
+- `root status` / `root probe` must remain passive and must not invoke `su`.
+- A visible `su` command is only a reported route, not proof that access is granted.
+- UID 0 does not imply every capability is usable; check the returned capability states.
+- Root verification is scoped to device serial + Android boot ID.
+- Root v1 feature commands are read-only.
+- Prefer structured `root diagnostics`, `root files`, `root processes`, `root app`, `root hardware`, `root network`, `root logs` and `root properties` operations.
+- Do not add or use an arbitrary agent-facing root shell when a structured operation can exist.
+- Do not infer DRM capture capability from root access.
+- Do not use root-provider detection as a substitute for real capability probes.
 Inspect or change PC / mirror configuration:
 
 ```bat
@@ -166,6 +191,9 @@ Keep these layers separate:
 - `ScrcpyControl.ps1` — scrcpy runtime shortcut adapter.
 - `Start-PhoneMirror.ps1` — supervisor, device selection, scrcpy launch arguments and session lifecycle.
 - `DisplayManager.cs` / `WindowsDisplayHostProbe.cs` — display transport capability model, Windows receiver orchestration and verification state.
+- `RootManager.cs` / `AndroidShellRunner.cs` — passive/explicit root discovery, boot-scoped verification, provider metadata and the single privileged command boundary.
+- `RootFeatureService.cs` — structured read-only privileged diagnostics/files/process/apps/hardware/network/log/property operations.
+- `RootPolicy.cs` — core risk-policy enforcement; UI visibility is not a security boundary.
 - `MirrorChrome.ps1` — always-on mirror toolbar, host zoom and touchpad bridge.
 - `PatternOverlay.ps1` — pattern-lock geometry discovery/calibration/overlay.
 - `ControlCenter.ps1` + `ControlCenter.xaml` — WPF GUI.
@@ -197,6 +225,13 @@ Do **not** call global `adb kill-server` as part of normal stop/cleanup. The ADB
 
 Do not claim to bypass Android's secure first unlock after a reboot. A full reboot may still require the user's PIN/password once.
 
+### Privileged Android
+
+Root support must remain capability-driven.
+
+Never auto-request superuser authorization merely because `su` is visible. Passive probes and explicit authorization are separate operations.
+
+Root v1 is an inspection release. Keep reversible/system/device-critical writes disabled by policy and do not add flashing, boot-image patching, AVB manipulation, root hiding, raw root shell or DRM-circumvention behavior.
 ### Wireless ADB
 
 Wireless ADB is opt-in and disabled by default. USB remains the recovery path.
@@ -320,6 +355,7 @@ Do not commit runtime state or local tools:
 - `runtime/`
 - `captures/`
 - `display-verification.json`
+- `root-state.json`
 - `state.json`
 - `stop.flag`
 - `pattern-calibration/`
