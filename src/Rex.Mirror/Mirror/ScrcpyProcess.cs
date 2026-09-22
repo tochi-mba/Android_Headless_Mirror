@@ -55,7 +55,12 @@ public sealed class ScrcpyProcess : IDisposable
         get { lock (_stderr) { return _stderr.ToArray(); } }
     }
 
-    public static ScrcpyProcess Launch(string scrcpyPath, IReadOnlyList<string> arguments, string serial, string windowTitle)
+    public static ScrcpyProcess Launch(
+        string scrcpyPath,
+        IReadOnlyList<string> arguments,
+        string serial,
+        string windowTitle,
+        OwnedProcessJob ownedProcesses)
     {
         var start = new ProcessStartInfo
         {
@@ -72,7 +77,19 @@ public sealed class ScrcpyProcess : IDisposable
         }
 
         var process = Process.Start(start) ?? throw new InvalidOperationException("Windows refused to start scrcpy.");
-        return new ScrcpyProcess(process, serial, windowTitle);
+        try
+        {
+            // Assign immediately after creation. The Job Object is intentionally scoped
+            // to scrcpy-owned session processes; the shared ADB server is never added.
+            ownedProcesses.Assign(process);
+            return new ScrcpyProcess(process, serial, windowTitle);
+        }
+        catch
+        {
+            ProcessRunner.Kill(process);
+            process.Dispose();
+            throw;
+        }
     }
 
     /// <summary>Waits for scrcpy's window to appear (it only exists once the video stream is up).</summary>
