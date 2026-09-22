@@ -19,7 +19,8 @@ public sealed class RootCommandRouterTests
             package.Paths,
             runner,
             bridge,
-            package.Config);
+            package.Config,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("root.status", response.Command);
         var status = Assert.IsType<RootStatus>(response.Data);
@@ -51,7 +52,8 @@ public sealed class RootCommandRouterTests
             package.Paths,
             new FakeProcessRunner(),
             Bridge(),
-            package.Config);
+            package.Config,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("root.clear", response.Command);
         Assert.Null(store.Get("USB123", "boot"));
@@ -68,7 +70,8 @@ public sealed class RootCommandRouterTests
                 package.Paths,
                 new FakeProcessRunner(),
                 Bridge(),
-                package.Config));
+                package.Config,
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("root files", ex.Message);
     }
@@ -87,7 +90,8 @@ public sealed class RootCommandRouterTests
                 package.Paths,
                 new FakeProcessRunner(),
                 bridge,
-                package.Config));
+                package.Config,
+                TestContext.Current.CancellationToken));
 
         Assert.Contains("--serial", ex.Message);
     }
@@ -115,7 +119,8 @@ public sealed class RootCommandRouterTests
             package.Paths,
             runner,
             bridge,
-            package.Config);
+            package.Config,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("USB456", Assert.IsType<RootStatus>(response.Data).Serial);
     }
