@@ -17,6 +17,59 @@ public sealed class RexAppTests
     }
 
     [Fact]
+    public void MainMenu_ExposesPrivilegedAndroidAndKeepsExitLast()
+    {
+        Assert.Contains("Privileged Android", RexApp.MainMenuChoices);
+        Assert.Equal("Exit", RexApp.MainMenuChoices[^1]);
+        Assert.Equal(
+            RexApp.MainMenuChoices.Count,
+            RexApp.MainMenuChoices.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public async Task PrivilegedMenu_PassiveStatusDoesNotInvokeSu()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "2000\n", "")
+        };
+        var device = new RexDevice(
+            "USB123", "device", false, "Samsung", "SM-G998B", "Galaxy");
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = Status(setup: true, devices: new[] { device })
+        };
+        bridge.Devices.Add(device);
+
+        var console = ConsoleWithInput();
+        var privilegedIndex = RexApp.MainMenuChoices
+            .ToList()
+            .IndexOf("Privileged Android");
+        PushDown(console, privilegedIndex);
+        console.Input.PushKey(ConsoleKey.Enter);
+        PushDown(console, 9); // Privileged menu -> Back
+        console.Input.PushKey(ConsoleKey.Enter);
+        PushDown(console, RexApp.MainMenuChoices.Count - 1); // main -> Exit
+        console.Input.PushKey(ConsoleKey.Enter);
+
+        var app = new RexApp(
+            package.Paths,
+            runner,
+            bridge,
+            package.Config,
+            console,
+            pauseEnabled: false,
+            precisionTouchpadEligible: false);
+
+        Assert.Equal(0, await app.RunAsync());
+        Assert.Contains("PRIVILEGED", console.Output);
+        Assert.DoesNotContain(
+            runner.Calls,
+            x => x.Arguments.Contains("su") && x.Arguments.Contains("-c"));
+    }
+
+    [Fact]
     public async Task FirstRun_CanBeDeclinedCleanly()
     {
         using var package = new TempPackage();
