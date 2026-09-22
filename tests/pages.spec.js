@@ -227,6 +227,18 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('scrcpy by default');
     await expect(section).toContainText('Verify protected playback');
   });
+  test('privileged section explains passive probing and Root v1 safety', async ({ page }) => {
+    const section = page.locator('#privileged');
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('Root is a capability. Not a boolean.');
+    await expect(section).toContainText('rex root status');
+    await expect(section).toContainText('Passive status never invokes');
+    await expect(section).toContainText('rex root request');
+    await expect(section).toContainText('read-only');
+    await expect(section).toContainText('no root installation');
+    await expect(section).toContainText('no');
+    await expect(section).toContainText('DRM bypass');
+  });
   test('controls separate native Android pinch from PC-only host zoom', async ({ page }) => {
     const section = page.locator('#controls');
     await expect(section).toBeVisible();
@@ -275,6 +287,7 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('REX.lnk');
     await expect(section).toContainText('rex action sleep');
     await expect(section).toContainText('rex mirror zoom-in');
+    await expect(section).toContainText('rex root status');
     await expect(section).toContainText('rex android list global');
     await expect(section).toContainText('rex config restore');
     await expect(section).toContainText('SHA-256');
