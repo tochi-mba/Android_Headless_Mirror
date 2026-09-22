@@ -98,6 +98,17 @@ public sealed record MirrorSettings
         {
             ExtraArgs = string.Empty;
         }
+        else
+        {
+            try
+            {
+                _ = ScrcpyArguments.SplitExtraArgs(ExtraArgs);
+            }
+            catch (FormatException)
+            {
+                ExtraArgs = string.Empty;
+            }
+        }
     }
 }
 
