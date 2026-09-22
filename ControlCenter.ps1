@@ -953,6 +953,15 @@ function Refresh-DeviceState {
     Select-ComboTag (C "DeviceBrightnessModeCombo") ([string]$state.BrightnessMode)
     Select-ComboTag (C "DeviceTimeoutCombo") ([string]$state.ScreenTimeoutMs)
     (C "DeviceAutoRotateCheck").IsChecked = ([string]$state.AutoRotate -eq "1")
+    if ([string]$state.AutoRotate -eq "1") {
+        Select-ComboTag (C "DeviceRotationOverrideCombo") "auto"
+    }
+    elseif ([string]$state.UserRotation -in @("0","1","2","3")) {
+        Select-ComboTag (C "DeviceRotationOverrideCombo") ([string]$state.UserRotation)
+    }
+    else {
+        Select-ComboTag (C "DeviceRotationOverrideCombo") "auto"
+    }
     Select-ComboTag (C "DeviceFontScaleCombo") ([string]$state.FontScale)
     (C "DeviceShowTouchesCheck").IsChecked = ([string]$state.ShowTouches -eq "1")
     (C "DeviceStayAwakeCheck").IsChecked = ([string]$state.StayAwake -ne "0")
@@ -997,6 +1006,26 @@ function Invoke-Friendly([string]$Id, $Value) {
 })
 (C "DeviceBrightnessSlider").Add_PreviewMouseUp({ Invoke-Friendly "brightness" ([int](C "DeviceBrightnessSlider").Value) })
 (C "DeviceAutoRotateCheck").Add_Click({ Invoke-Friendly "auto-rotate" ($(if ((C "DeviceAutoRotateCheck").IsChecked) { "1" } else { "0" })) })
+
+(C "ApplyRotationOverrideButton").Add_Click({
+    $mode = Get-ComboTag (C "DeviceRotationOverrideCombo")
+    Add-TestAction ("device:rotation-override=" + $mode)
+
+    if ($TestMode) {
+        (C "DeviceSettingsStatusText").Text = "Test rotation override: $mode"
+        (C "DeviceAutoRotateCheck").IsChecked = ($mode -eq "auto")
+        Set-Status "Test Android rotation override applied."
+        return
+    }
+
+    $result = Set-AndroidRotationOverride $AdbPath $Serial $mode
+    (C "DeviceSettingsStatusText").Text = $result.Text
+    Set-Status ($(if ($result.Ok) { $result.Text } else { $result.Text })) (-not $result.Ok)
+
+    if ($result.Ok) {
+        Refresh-DeviceState
+    }
+})
 (C "DeviceShowTouchesCheck").Add_Click({ Invoke-Friendly "show-touches" ($(if ((C "DeviceShowTouchesCheck").IsChecked) { "1" } else { "0" })) })
 (C "DeviceStayAwakeCheck").Add_Click({ Invoke-Friendly "stay-awake" ($(if ((C "DeviceStayAwakeCheck").IsChecked) { "7" } else { "0" })) })
 
