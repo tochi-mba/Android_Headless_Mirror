@@ -929,6 +929,56 @@ $toolbar.Show()
 $toolbarHwnd = (New-Object System.Windows.Interop.WindowInteropHelper($toolbar)).Handle
 $toolbar.Hide()
 
+$navigatorWindow = New-Object System.Windows.Window
+$navigatorWindow.WindowStyle = [System.Windows.WindowStyle]::None
+$navigatorWindow.ResizeMode = [System.Windows.ResizeMode]::NoResize
+$navigatorWindow.AllowsTransparency = $true
+$navigatorWindow.Background = [System.Windows.Media.Brushes]::Transparent
+$navigatorWindow.ShowInTaskbar = $false
+$navigatorWindow.Topmost = $true
+$navigatorWindow.ShowActivated = $false
+$navigatorWindow.Focusable = $false
+$navigatorWindow.Width = 176
+$navigatorWindow.Height = 126
+
+$navigatorBorder = New-Object System.Windows.Controls.Border
+$navigatorBorder.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#EE080A09")
+$navigatorBorder.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF4A544B")
+$navigatorBorder.BorderThickness = New-Object System.Windows.Thickness(1)
+$navigatorBorder.CornerRadius = New-Object System.Windows.CornerRadius(8)
+$navigatorBorder.Padding = New-Object System.Windows.Thickness(8)
+$navigatorWindow.Content = $navigatorBorder
+
+$navigatorStack = New-Object System.Windows.Controls.StackPanel
+$navigatorBorder.Child = $navigatorStack
+
+$navigatorLabel = New-Object System.Windows.Controls.TextBlock
+$navigatorLabel.Text = "ZOOM NAVIGATOR"
+$navigatorLabel.FontFamily = New-Object System.Windows.Media.FontFamily("Consolas")
+$navigatorLabel.FontSize = 9
+$navigatorLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FFD7FF3F")
+$navigatorLabel.Margin = New-Object System.Windows.Thickness(1, 0, 0, 6)
+$navigatorStack.Children.Add($navigatorLabel) | Out-Null
+
+$navigatorCanvas = New-Object System.Windows.Controls.Canvas
+$navigatorCanvas.Width = 158
+$navigatorCanvas.Height = 88
+$navigatorCanvas.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF101511")
+$navigatorCanvas.Cursor = [System.Windows.Input.Cursors]::Cross
+$navigatorStack.Children.Add($navigatorCanvas) | Out-Null
+
+$navigatorViewport = New-Object System.Windows.Shapes.Rectangle
+$navigatorViewport.Stroke = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FFD7FF3F")
+$navigatorViewport.StrokeThickness = 2
+$navigatorViewport.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#22D7FF3F")
+$navigatorViewport.IsHitTestVisible = $false
+$navigatorCanvas.Children.Add($navigatorViewport) | Out-Null
+
+$navigatorWindow.Show()
+$navigatorHwnd = (New-Object System.Windows.Interop.WindowInteropHelper($navigatorWindow)).Handle
+$navigatorWindow.Hide()
+$script:navigatorDragging = $false
+
 $gestureWindow = New-Object System.Windows.Window
 $gestureWindow.WindowStyle = [System.Windows.WindowStyle]::None
 $gestureWindow.ResizeMode = [System.Windows.ResizeMode]::NoResize
@@ -984,6 +1034,110 @@ function Get-TargetClientRect {
     return $rect
 }
 
+function Hide-ZoomNavigator {
+    if ($navigatorWindow.IsVisible) {
+        $navigatorWindow.Hide()
+    }
+}
+
+function Set-ZoomAnchorFromNavigatorPoint($Point) {
+    $width = [Math]::Max(1.0, [double]$navigatorCanvas.ActualWidth)
+    $height = [Math]::Max(1.0, [double]$navigatorCanvas.ActualHeight)
+    $script:zoomAnchorX = [Math]::Max(0.0, [Math]::Min(1.0, ([double]$Point.X / $width)))
+    $script:zoomAnchorY = [Math]::Max(0.0, [Math]::Min(1.0, ([double]$Point.Y / $height)))
+    Update-Magnifier
+    Update-ZoomNavigator
+}
+
+function Update-ZoomNavigator {
+    if (
+        -not [bool]$ChromeConfig.ShowZoomMinimap -or
+        -not (Test-HostZoomActive $script:zoom)
+    ) {
+        Hide-ZoomNavigator
+        return
+    }
+
+    $rect = Get-TargetClientRect
+    if ($null -eq $rect) {
+        Hide-ZoomNavigator
+        return
+    }
+
+    $sourceWidth = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
+    $sourceHeight = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
+    $geometry = Get-HostZoomSourceGeometry         0.0         0.0         $sourceWidth         $sourceHeight         $script:zoom         $script:zoomAnchorX         $script:zoomAnchorY
+
+    if (-not $navigatorWindow.IsVisible) {
+        $navigatorWindow.Show()
+    }
+
+    $navigatorWindow.UpdateLayout()
+    $canvasWidth = [Math]::Max(1.0, [double]$navigatorCanvas.ActualWidth)
+    $canvasHeight = [Math]::Max(1.0, [double]$navigatorCanvas.ActualHeight)
+
+    [System.Windows.Controls.Canvas]::SetLeft(
+        $navigatorViewport,
+        [double]$geometry.NormalizedLeft * $canvasWidth
+    )
+    [System.Windows.Controls.Canvas]::SetTop(
+        $navigatorViewport,
+        [double]$geometry.NormalizedTop * $canvasHeight
+    )
+    $navigatorViewport.Width = [Math]::Max(
+        4.0,
+        [double]$geometry.NormalizedWidth * $canvasWidth
+    )
+    $navigatorViewport.Height = [Math]::Max(
+        4.0,
+        [double]$geometry.NormalizedHeight * $canvasHeight
+    )
+
+    $dpi = [System.Windows.Media.VisualTreeHelper]::GetDpi($navigatorWindow)
+    $pixelWidth = [Math]::Max(1, [int][Math]::Ceiling($navigatorWindow.ActualWidth * $dpi.DpiScaleX))
+    $pixelHeight = [Math]::Max(1, [int][Math]::Ceiling($navigatorWindow.ActualHeight * $dpi.DpiScaleY))
+    $inset = [int][Math]::Round([double]$ChromeConfig.ToolbarInsetPixels)
+
+    [AHMMirrorChromeNative]::SetWindowPos(
+        $navigatorHwnd,
+        [AHMMirrorChromeNative]::HWND_TOPMOST,
+        $rect.Right - $pixelWidth - $inset,
+        $rect.Bottom - $pixelHeight - $inset,
+        $pixelWidth,
+        $pixelHeight,
+        [AHMMirrorChromeNative]::SWP_NOACTIVATE -bor
+        [AHMMirrorChromeNative]::SWP_NOSENDCHANGING -bor
+        [AHMMirrorChromeNative]::SWP_SHOWWINDOW
+    ) | Out-Null
+}
+
+$navigatorCanvas.Add_PreviewMouseLeftButtonDown({
+    param($sender, $eventArgs)
+    if (-not (Test-HostZoomActive $script:zoom)) { return }
+
+    $script:navigatorDragging = $true
+    [System.Windows.Input.Mouse]::Capture($navigatorCanvas) | Out-Null
+    Set-ZoomAnchorFromNavigatorPoint ($eventArgs.GetPosition($navigatorCanvas))
+    $eventArgs.Handled = $true
+})
+
+$navigatorCanvas.Add_PreviewMouseMove({
+    param($sender, $eventArgs)
+    if (-not $script:navigatorDragging) { return }
+    Set-ZoomAnchorFromNavigatorPoint ($eventArgs.GetPosition($navigatorCanvas))
+    $eventArgs.Handled = $true
+})
+
+$navigatorCanvas.Add_PreviewMouseLeftButtonUp({
+    param($sender, $eventArgs)
+    if ($script:navigatorDragging) {
+        $script:navigatorDragging = $false
+        [System.Windows.Input.Mouse]::Capture($null) | Out-Null
+        Set-ZoomAnchorFromNavigatorPoint ($eventArgs.GetPosition($navigatorCanvas))
+        $eventArgs.Handled = $true
+    }
+})
+
 function Ensure-Magnifier {
     if (-not $ChromeConfig.HostZoomEnabled) { return $false }
 
@@ -1001,7 +1155,7 @@ function Ensure-Magnifier {
 
     [AHMMirrorChromeNative]::ExcludeWindowsFromMagnifier(
         $script:magnifierChild,
-        @($script:magnifierHost, $toolbarHwnd, $gestureHwnd)
+        @($script:magnifierHost, $toolbarHwnd, $gestureHwnd, $navigatorHwnd)
     )
 
     return $true
@@ -1016,12 +1170,15 @@ function Hide-Magnifier {
 function Update-ZoomUi {
     $zoomLabel.Text = ("{0:0}%" -f ($script:zoom * 100.0))
 
-    if ($script:zoom -gt 1.001) {
+    if (Test-HostZoomActive $script:zoom) {
         $resetZoomButton.Visibility = [System.Windows.Visibility]::Visible
     }
     else {
         $resetZoomButton.Visibility = [System.Windows.Visibility]::Collapsed
     }
+
+    Update-ZoomNavigator
+    Write-MirrorChromeState
 }
 
 function Reset-HostZoom {
@@ -1352,6 +1509,34 @@ function Get-RuntimeDirectory {
     return Join-Path (Join-Path $Root "runtime") $safeSerial
 }
 
+function Write-MirrorChromeState {
+    try {
+        $directory = Get-RuntimeDirectory
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+        $path = Join-Path $directory "mirror-chrome-state.json"
+        $temp = $path + ".tmp"
+
+        [pscustomobject]@{
+            Version = 1
+            Zoom = [Math]::Round([double]$script:zoom, 4)
+            ZoomActive = [bool](Test-HostZoomActive $script:zoom)
+            AnchorX = [Math]::Round([double]$script:zoomAnchorX, 4)
+            AnchorY = [Math]::Round([double]$script:zoomAnchorY, 4)
+            NavigatorVisible = [bool](
+                [bool]$ChromeConfig.ShowZoomMinimap -and
+                (Test-HostZoomActive $script:zoom)
+            )
+            UpdatedAt = [DateTime]::UtcNow.ToString("o")
+        } | ConvertTo-Json -Compress | Set-Content -Path $temp -Encoding UTF8
+
+        Move-Item -Force -Path $temp -Destination $path
+    }
+    catch {
+        # Zoom state is advisory UI metadata; mirroring must continue if the
+        # local runtime state cannot be written.
+    }
+}
+
 function Open-ControlCenter {
     $controlCenterScript = Join-Path $Root "ControlCenter.ps1"
     if (-not (Test-Path $controlCenterScript)) { return }
@@ -1508,6 +1693,7 @@ $timer.Add_Tick({
 
             if (Test-HostZoomActive $script:zoom) {
                 Update-Magnifier
+                Update-ZoomNavigator
             }
         }
 
@@ -1545,6 +1731,13 @@ $toolbar.Add_Closed({
 
     if ($gestureWindow.IsVisible) {
         $gestureWindow.Close()
+    }
+
+    if ($navigatorWindow.IsVisible) {
+        $navigatorWindow.Close()
+    }
+    else {
+        try { $navigatorWindow.Close() } catch {}
     }
 
     if ($script:wheelHookStarted) {
