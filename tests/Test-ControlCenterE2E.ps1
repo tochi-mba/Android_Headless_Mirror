@@ -127,9 +127,15 @@ foreach ($buttonName in $runtimeButtons.Keys) {
     Assert-Equal $runtimeButtons[$buttonName] $script:TestActions[$script:TestActions.Count - 1] "$buttonName should dispatch the correct scrcpy action."
 }
 
-Write-Host "[control-center] Exercising host-only zoom reset..."
+Write-Host "[control-center] Exercising host-only zoom reset state..."
+Assert-False (C "ResetHostZoomButton").IsEnabled "Host zoom reset must be disabled at 100%."
+Set-TestHostZoomState 1.75
+Assert-True (C "ResetHostZoomButton").IsEnabled "Host zoom reset must enable above 100%."
+Assert-True ((C "ResetHostZoomButton").Content -match "175%") "Host zoom reset should surface the current zoom."
 Click-Control "ResetHostZoomButton"
 Assert-Contains $script:TestActions "chrome:reset-zoom" "Reset host zoom should dispatch to MirrorChrome."
+Assert-False (C "ResetHostZoomButton").IsEnabled "Resetting host zoom should return the control to disabled in test mode."
+Assert-Equal "Reset host zoom" (C "ResetHostZoomButton").Content "Reset label should return to its neutral form at 100%."
 
 Write-Host "[control-center] Exercising screenshot and folder flows..."
 Click-Control "ScreenshotButton"
