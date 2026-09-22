@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Android Headless Mirror turns a Windows PC into a reliable control surface for an Android device using scrcpy and ADB. USB-first, persistent start/stop, diagnostics, and optional wireless fallback.">
+  <meta name="description" content="Android Headless Mirror turns a Windows PC into a reliable Android control surface using scrcpy and ADB, with USB-first recovery, multi-transport display support, diagnostics, and capability-gated read-only tools for already-rooted devices.">
   <meta name="robots" content="index,follow">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#080A09">
   <meta property="og:title" content="Android Headless Mirror — REX Technologies">
-  <meta property="og:description" content="A REX Technologies product for operating Android from Windows with a USB-first scrcpy + ADB workflow.">
+  <meta property="og:description" content="A REX Technologies product for operating Android from Windows with USB-first scrcpy + ADB, display orchestration, diagnostics, and optional read-only privileged inspection on already-rooted devices.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/">
   <meta name="twitter:card" content="summary">
@@ -156,7 +156,6 @@
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M9.5 6h5M10 17h4"/></svg></div><h3>Headless active session</h3><p>Keep the physical display dark, re-send screen-off from the always-on mirror toolbar whenever needed, and keep the PC mirror active.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 9a12 12 0 0 1 16 0M7 12a8 8 0 0 1 10 0m-7 3a4 4 0 0 1 4 0"/><circle cx="12" cy="18" r="1"/></svg></div><h3>Wireless, when you want it</h3><p>ADB-over-TCP/IP remains available as an optional fallback, but ships disabled by default.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8M12 18v3"/><path d="M7 10h10"/></svg></div><h3>Choose the right display path.</h3><p>scrcpy remains the default capture path. Windows Wireless Display can be orchestrated separately while USB ADB stays connected for control.</p></article>
-        <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v3H5v10h14V11h-2V8a5 5 0 0 0-5-5Zm-3 8V8a3 3 0 0 1 6 0v3H9Z"/><path d="M12 15v2"/></svg></div><h3>Root, when the device already has it.</h3><p>REX can passively detect an existing root route, explicitly request authorization, and unlock bounded read-only diagnostics without changing normal ADB behavior.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.6 2.9 8.1 7 10 4.1-1.9 7-5.4 7-10V6l-7-3Z"/><path d="M9 12h6M12 9v6"/></svg></div><h3>Privilege is a capability, not a checkbox.</h3><p>On an already-rooted device, REX can passively detect a usable route, explicitly request authorization, then expose only read-only features whose capability probes actually succeed.</p></article>
         <article class="feature-card reveal"><div class="feature-symbol pattern-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/></svg></div><h3>Black lock screen? Still usable.</h3><p>Pattern-lock phones can use runtime Android geometry first and keyboard-only calibration only when the OEM hides the real pattern view.</p></article>
       </div>
@@ -174,16 +173,81 @@
         <article class="step reveal"><span class="step-number">03</span><h3>Verify protected playback</h3><p>Protected playback is never inferred from capability strings. The exact phone, PC, drivers and application must be manually tested before REX records the path as verified.</p></article>
       </div>
     </section>
-    <section class="section container" id="privileged">
-      <div class="section-heading reveal">
-        <div class="eyebrow signal">Privileged Android · Root v1</div>
-        <h2>Root is a capability. Not a boolean.</h2>
-        <p>REX can use an existing Magisk, KernelSU, APatch, generic <code>su</code>, or root-<code>adbd</code> environment. Provider names are metadata; operation-level capability probes decide what REX can actually use.</p>
+    <section class="section container privileged-section" id="privileged">
+      <div class="privileged-grid">
+        <div class="section-heading reveal">
+          <div class="eyebrow signal">Privileged Android · Root v1</div>
+          <h2>Root is a capability. Not a boolean.</h2>
+          <p>Normal ADB stays the default control plane. When a device is already rooted, REX can discover that environment without prompting, request authorization only when you ask, then expose only the read-only capabilities that actually verify.</p>
+
+          <div class="root-principles" aria-label="Root v1 design principles">
+            <div><span>01</span><p><strong>Passive first.</strong> <code>rex root status</code> checks ADB UID, boot ID, SELinux state and whether <code>su</code> is visible. It never invokes <code>su</code>.</p></div>
+            <div><span>02</span><p><strong>Authorization is explicit.</strong> <code>rex root request</code> is the only Root v1 action that intentionally asks the device's superuser provider for access.</p></div>
+            <div><span>03</span><p><strong>Verification expires with the boot.</strong> Cached trust is scoped to the Android serial + boot ID, so a reboot cannot silently inherit the previous session.</p></div>
+          </div>
+        </div>
+
+        <div class="root-console reveal" aria-label="Preview of REX privileged Android capability status">
+          <div class="root-console-bar">
+            <span>REX · PRIVILEGED ANDROID</span>
+            <span class="root-console-state">● VERIFIED THIS BOOT</span>
+          </div>
+          <div class="root-console-body">
+            <div class="root-identity">
+              <div>
+                <span class="root-label">STATE</span>
+                <strong>granted</strong>
+              </div>
+              <div>
+                <span class="root-label">PROVIDER</span>
+                <strong>Magisk</strong>
+              </div>
+              <div>
+                <span class="root-label">EFFECTIVE UID</span>
+                <strong>0</strong>
+              </div>
+              <div>
+                <span class="root-label">SELINUX</span>
+                <strong>Enforcing</strong>
+              </div>
+            </div>
+            <div class="root-command"><span>PS&gt;</span><code>rex root capabilities</code></div>
+            <div class="root-capabilities" aria-hidden="true">
+              <div><span>private app data</span><em>VERIFIED</em></div>
+              <div><span>process inspection</span><em>VERIFIED</em></div>
+              <div><span>hardware telemetry</span><em>VERIFIED</em></div>
+              <div><span>network diagnostics</span><em>VERIFIED</em></div>
+              <div><span>kernel logs</span><em class="restricted">RESTRICTED</em></div>
+            </div>
+            <div class="root-boundary">Provider identity is metadata. Individual capability probes decide what REX can actually use.</div>
+          </div>
+        </div>
       </div>
-      <div class="steps">
-        <article class="step reveal"><span class="step-number">01</span><h3>Passive first</h3><p><code>rex root status</code> checks the ordinary ADB shell, boot ID, SELinux state and visible <code>su</code> route. It never invokes <code>su</code> and cannot create a superuser prompt.</p></article>
-        <article class="step reveal"><span class="step-number">02</span><h3>Authorization is explicit</h3><p><code>rex root request</code> is the intentional escalation step. Verification is scoped to that Android serial and boot, so a reboot invalidates the previous trusted state.</p></article>
-        <article class="step reveal"><span class="step-number">03</span><h3>Read-only by design</h3><p>Root v1 exposes bounded diagnostics, filesystem inspection, processes, private app data, hardware, network state, kernel logs and properties. It has no root installation, arbitrary root shell, flashing, integrity bypass or DRM bypass.</p></article>
+
+      <div class="root-toolkit reveal">
+        <div>
+          <span class="advanced-label">READ-ONLY TOOLKIT</span>
+          <strong>Inspection without turning REX into a raw root shell.</strong>
+          <p>Diagnostics, bounded filesystem reads, process and package inspection, private app data, hardware, network state, kernel logs and system properties are exposed as structured operations.</p>
+        </div>
+        <div class="root-tool-list">
+          <code>root diagnostics</code>
+          <code>root files list|stat|read</code>
+          <code>root processes / process &lt;pid&gt;</code>
+          <code>root app &lt;package&gt;</code>
+          <code>root hardware / network</code>
+          <code>root logs kernel / properties</code>
+        </div>
+      </div>
+
+      <div class="root-safety-note reveal">
+        <strong>Root v1 safety boundary</strong>
+        <p>REX does not install root, unlock bootloaders, patch or flash boot images, alter AVB, hide root, expose an arbitrary root shell, write partitions, or provide DRM bypass. Root access also does not make Android secure/protected video capturable.</p>
+        <div class="root-doc-links">
+          <a href="https://github.com/tochi-mba/Android_Headless_Mirror/blob/main/docs/ROOT_ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Architecture ↗</a>
+          <a href="https://github.com/tochi-mba/Android_Headless_Mirror/blob/main/docs/ROOT_SECURITY.md" target="_blank" rel="noopener noreferrer">Security model ↗</a>
+          <a href="https://github.com/tochi-mba/Android_Headless_Mirror/blob/main/docs/ROOT_COMPATIBILITY.md" target="_blank" rel="noopener noreferrer">Compatibility ledger ↗</a>
+        </div>
       </div>
     </section>
     <section class="section container controls-section" id="controls">
@@ -249,7 +313,7 @@
           <div class="eyebrow signal">Windows Control Center</div>
           <h2>Everything in one place.<br>PC settings stay PC-side. Device settings stay device-side.</h2>
         </div>
-        <p>The mirror toolbar keeps the essentials visible. <strong>Controls</strong> opens the full per-device workspace with runtime actions, mirror preferences, Android settings, live Settings Provider keys and diagnostics.</p>
+        <p>The mirror toolbar keeps the essentials visible. <strong>Controls</strong> opens the full per-device workspace with runtime actions, display transport state, capability-gated privileged inspection, mirror preferences, Android settings, live Settings Provider keys and diagnostics.</p>
       </div>
 
       <div class="control-center-preview reveal" aria-label="Preview of the Windows Control Center">
@@ -504,6 +568,11 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
         <p>Android Headless Mirror is designed around standard ADB and scrcpy, not Samsung-only APIs. Core mirroring targets Windows 10/11; native Precision Touchpad pinch bridging is an enhanced Windows 11 path. Broad Android hardware compatibility is not claimed as tested.</p>
       </div>
 
+      <div class="compat-note reveal">
+        <strong>Root compatibility is runtime-verified separately.</strong>
+        <span>The S21 Ultra is the project's normal ADB/scrcpy hardware baseline. REX does not claim a Magisk, KernelSU, APatch or other root-provider configuration on that phone as tested until a real rooted-device result is recorded.</span>
+      </div>
+
       <div class="tested-devices-grid" aria-label="Hardware tested by this project">
         <article class="tested-device reveal">
           <div class="device-badge">TESTED</div>
@@ -556,6 +625,9 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
       <div class="section-heading reveal"><div class="eyebrow signal">FAQ</div><h2>The important questions.</h2></div>
       <div class="faq-list">
         <details class="reveal"><summary>Is this only for Samsung phones?</summary><p>No. The project uses standard Android ADB and scrcpy. The Samsung Galaxy S21 Ultra (SM-G998B) is simply the hardware currently tested by this project.</p></details>
+        <details class="reveal"><summary>Does REX root my phone?</summary><p>No. Root v1 only uses an existing root environment. It does not unlock the bootloader, install Magisk/KernelSU/APatch, patch or flash boot images, or change verified boot. On an unrooted phone, normal ADB and scrcpy behavior stays unchanged.</p></details>
+        <details class="reveal"><summary>Will REX ask for root access automatically?</summary><p>No. <code>rex root status</code> and the passive probe can report that <code>su</code> is visible without invoking it. A superuser authorization request only happens when you explicitly run <code>rex root request</code> or press the corresponding Privileged action.</p></details>
+        <details class="reveal"><summary>Does root let REX capture Netflix or other protected video?</summary><p>No. Root support and protected display support are separate. REX Root v1 does not bypass DRM, Widevine, secure Android surfaces or HDCP. Protected playback still depends on a supported external-display path and the phone, receiver, drivers and application permitting it.</p></details>
         <details class="reveal"><summary>Can it control the phone while the physical screen is off?</summary><p>Yes, scrcpy supports turning the physical display off while keeping the mirrored display active. The exact behavior can vary by Android version and manufacturer.</p></details>
         <details class="reveal"><summary>Can it unlock the phone for me?</summary><p>It wakes the device and asks Android to dismiss the keyguard when authentication is not required. If a secure PIN/password is required, it does not bypass it. When ADB remains available, scrcpy can show the lock screen so you can authenticate from the PC. After a full reboot, some Android/OEM configurations require the first unlock on the physical device before ADB becomes available.</p></details>
         <details class="reveal"><summary>Does STOP really keep it stopped?</summary><p>Yes. STOP creates a persistent state file and shuts down the package's mirror and supervisor. Windows autostart respects that state until you explicitly run START again.</p></details>
