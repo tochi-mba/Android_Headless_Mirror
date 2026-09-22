@@ -118,7 +118,9 @@ phone serials, lock-screen answers and window placement lives in `state.json`, w
 ## Development
 
 Run `REX.bat --source` to rebuild `tools/rex` from the current checkout and open that build instead
-of substituting the latest GitHub release.
+of substituting the latest GitHub release. Close the running app first. The replacement is built
+in a staging folder; a failed build leaves the installed app intact. Successful replacements keep
+the previous build in `tools/rex-previous-*` for recovery.
 
 ```powershell
 dotnet build Rex.sln

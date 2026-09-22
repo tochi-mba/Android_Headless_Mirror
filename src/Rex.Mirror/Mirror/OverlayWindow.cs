@@ -71,7 +71,6 @@ public sealed class OverlayWindow : Window
 
     public event Action<string>? HudActionRequested;
     public bool HudVisible => IsVisible && _hudWindow.HudVisible;
-    public string HudDebug => _hudWindow.Debug;
     public void RevealHud(string? message = null) => _hudWindow.Reveal(message);
 
     public void UpdateHud(bool fullscreen, double zoom)

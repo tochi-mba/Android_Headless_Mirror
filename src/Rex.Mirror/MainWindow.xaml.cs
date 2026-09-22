@@ -33,7 +33,6 @@ public partial class MainWindow : Window
     private Rect _windowedBounds;
     public bool IsFullscreen => _fullscreen;
     public bool HudVisible => _overlay.HudVisible;
-    public string HudDebug => _overlay.HudDebug;
 
     public MainWindow(AppHost host)
     {
@@ -112,6 +111,7 @@ public partial class MainWindow : Window
 
     public void HideToTray()
     {
+        _touchpad.Cancel();
         Hide();
         _overlay.Track(default, visible: false);
         if (!_trayHintShown)
@@ -132,6 +132,7 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        _touchpad.Cancel();
         if (_quitting)
         {
             _overlay.Close();
@@ -328,6 +329,7 @@ public partial class MainWindow : Window
 
     private void OnMirrorEnded()
     {
+        _touchpad.Cancel();
         _guide?.Dispose();
         _guide = null;
         Host.Detach();
@@ -359,6 +361,7 @@ public partial class MainWindow : Window
 
     private void OnConfigChanged()
     {
+        _touchpad.Cancel();
         Host.MaxZoom = _host.Config.Zoom.MaxZoom;
         if (!_host.Config.PatternGuide.Enabled && _guide is not null)
         {
@@ -632,7 +635,7 @@ public partial class MainWindow : Window
             Sidebar.Visibility = Visibility.Collapsed;
             SidebarColumn.Width = new GridLength(0);
             Host.ResetZoom();
-            _overlay.RevealHud("Fullscreen · move to the top edge for controls · Esc to leave");
+            _overlay.RevealHud("Top edge shows controls · Esc exits fullscreen");
         }
         else
         {

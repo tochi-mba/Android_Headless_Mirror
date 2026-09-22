@@ -47,6 +47,7 @@ public sealed class TouchpadBridge
         var config = _config();
         if (!config.Touchpad.Enabled || !_host.HasChild)
         {
+            Cancel();
             return false;
         }
 
@@ -132,12 +133,10 @@ public sealed class TouchpadBridge
 
         // Android: place two phone fingers around the gesture origin and move them with the real ones.
         var scaleFactor = PixelsPerHimetric(config.Touchpad.Sensitivity);
-        var offsets = pair.Select(p => ((p.X - _startCentroid.X) * scaleFactor, (p.Y - _startCentroid.Y) * scaleFactor)).ToArray();
-        var drift = ((centroid.Item1 - _startCentroid.X) * scaleFactor, (centroid.Item2 - _startCentroid.Y) * scaleFactor);
-        var surface = _host.SurfaceScreenRect;
+        var surface = VisibleSurface(_host.SurfaceScreenRect, _host.ViewportScreenRect);
 
-        var firstScreen = Clamp(surface, _touchCenter.X + drift.Item1 + offsets[0].Item1, _touchCenter.Y + drift.Item2 + offsets[0].Item2);
-        var secondScreen = Clamp(surface, _touchCenter.X + drift.Item1 + offsets[1].Item1, _touchCenter.Y + drift.Item2 + offsets[1].Item2);
+        var firstScreen = MapContact(surface, _touchCenter, _startCentroid, pair[0], scaleFactor);
+        var secondScreen = MapContact(surface, _touchCenter, _startCentroid, pair[1], scaleFactor);
         if (!_injector.Move(firstScreen, secondScreen))
         {
             _log($"Touch injection failed (error {_injector.LastError}); releasing synthetic contacts and falling back to plain mouse.");
@@ -152,7 +151,7 @@ public sealed class TouchpadBridge
 
     private void BeginAndroid()
     {
-        var surface = _host.SurfaceScreenRect;
+        var surface = VisibleSurface(_host.SurfaceScreenRect, _host.ViewportScreenRect);
         _cursorSaved = NativeMethods.GetCursorPos(out _savedCursor);
 
         // Start the phone fingers where the mouse is (inside the mirror), else at the mirror centre.
@@ -166,6 +165,12 @@ public sealed class TouchpadBridge
 
         _touchCenter = (centerX, centerY);
         _host.FocusChild();
+    }
+
+    public void Cancel()
+    {
+        EndGesture();
+        _contacts.Clear();
     }
 
     private void EndGesture()
@@ -190,6 +195,21 @@ public sealed class TouchpadBridge
     private static (int X, int Y) Clamp(RECT rect, double x, double y) =>
         ((int)Math.Clamp(x, rect.Left + 1, Math.Max(rect.Left + 1, rect.Right - 2)),
          (int)Math.Clamp(y, rect.Top + 1, Math.Max(rect.Top + 1, rect.Bottom - 2)));
+
+    internal static (int X, int Y) MapContact(RECT surface, (int X, int Y) center,
+        (double X, double Y) origin, (double X, double Y) contact, double scale) =>
+        Clamp(surface, center.X + (contact.X - origin.X) * scale,
+            center.Y + (contact.Y - origin.Y) * scale);
+
+    // The scaled child can extend beyond the app. Injecting into that hidden area
+    // would send touch to unrelated windows instead of to the phone.
+    internal static RECT VisibleSurface(RECT surface, RECT viewport) => new()
+    {
+        Left = Math.Max(surface.Left, viewport.Left),
+        Top = Math.Max(surface.Top, viewport.Top),
+        Right = Math.Min(surface.Right, viewport.Right),
+        Bottom = Math.Min(surface.Bottom, viewport.Bottom),
+    };
 
     private double PixelsPerHimetric(double sensitivity) =>
         PixelsPerMillimetre * sensitivity * DpiScale() / 100.0;

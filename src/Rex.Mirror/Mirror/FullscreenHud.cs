@@ -11,7 +11,11 @@ namespace Rex.Mirror.Mirror;
 public sealed class FullscreenHud : Border
 {
     private readonly StackPanel _rotation = new() { Visibility = Visibility.Collapsed };
-    private readonly TextBlock _message = new() { FontSize = 11, TextAlignment = TextAlignment.Center, MaxWidth = 380 };
+    private readonly TextBlock _message = new()
+    {
+        FontSize = 11, TextAlignment = TextAlignment.Center, MaxWidth = 260,
+        TextWrapping = TextWrapping.Wrap,
+    };
     private readonly Button _fit;
     private DateTime _visibleUntil;
     private bool _shown;

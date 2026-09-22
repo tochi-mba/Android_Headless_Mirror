@@ -55,9 +55,6 @@ public sealed class FullscreenHudWindow : Window
 
     public bool HudVisible => IsVisible && _hud.IsShown;
 
-    public string Debug =>
-        $"handle={Handle} shown={_hud.IsShown} windowVisible={IsVisible} pos={Left},{Top} size={ActualWidth},{ActualHeight}";
-
     private IntPtr Handle => _source?.Handle ?? IntPtr.Zero;
 
     public void Reveal(string? message = null) => _hud.Reveal(message);

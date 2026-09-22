@@ -13,6 +13,18 @@ public sealed class TouchInjector
     private const int MaxContacts = 2;
     private readonly bool[] _down = new bool[MaxContacts];
     private bool _initialized;
+    private readonly Func<bool> _initialize;
+    private readonly Func<POINTER_TOUCH_INFO[], bool> _inject;
+
+    public TouchInjector() : this(
+        () => NativeMethods.InitializeTouchInjection(MaxContacts, NativeMethods.TOUCH_FEEDBACK_NONE),
+        contacts => NativeMethods.InjectTouchInput((uint)contacts.Length, contacts)) { }
+
+    internal TouchInjector(Func<bool> initialize, Func<POINTER_TOUCH_INFO[], bool> inject)
+    {
+        _initialize = initialize;
+        _inject = inject;
+    }
 
     public bool IsAvailable
     {
@@ -23,7 +35,8 @@ public sealed class TouchInjector
                 return true;
             }
 
-            _initialized = NativeMethods.InitializeTouchInjection(10, NativeMethods.TOUCH_FEEDBACK_NONE);
+            _initialized = _initialize();
+            LastError = _initialized ? 0 : Marshal.GetLastWin32Error();
             return _initialized;
         }
     }
@@ -44,7 +57,8 @@ public sealed class TouchInjector
             Contact(1, second.X, second.Y, _down[1] ? NativeMethods.POINTER_FLAG_UPDATE : NativeMethods.POINTER_FLAG_DOWN),
         };
 
-        var ok = NativeMethods.InjectTouchInput((uint)contacts.Length, contacts);
+        var ok = _inject(contacts);
+        LastError = ok ? 0 : Marshal.GetLastWin32Error();
         if (ok)
         {
             _down[0] = _down[1] = true;
@@ -65,7 +79,8 @@ public sealed class TouchInjector
             Contact(0, first.X, first.Y, NativeMethods.POINTER_FLAG_UP),
             Contact(1, second.X, second.Y, NativeMethods.POINTER_FLAG_UP),
         };
-        var ok = NativeMethods.InjectTouchInput((uint)contacts.Length, contacts);
+        var ok = _inject(contacts);
+        LastError = ok ? 0 : Marshal.GetLastWin32Error();
 
         // Even if Windows rejects the UP packet, do not leave REX's logical state stuck down.
         // The error is returned to the bridge so it can be surfaced in diagnostics.
@@ -73,7 +88,7 @@ public sealed class TouchInjector
         return ok;
     }
 
-    public int LastError => Marshal.GetLastWin32Error();
+    public int LastError { get; private set; }
 
     private static POINTER_TOUCH_INFO Contact(uint id, int x, int y, uint stateFlags)
     {
@@ -96,7 +111,7 @@ public sealed class TouchInjector
             touchMask = NativeMethods.TOUCH_MASK_CONTACTAREA | NativeMethods.TOUCH_MASK_ORIENTATION | NativeMethods.TOUCH_MASK_PRESSURE,
             rcContact = new RECT { Left = x - 2, Top = y - 2, Right = x + 2, Bottom = y + 2 },
             orientation = 90,
-            pressure = 32000,
+            pressure = 512,
         };
     }
 }

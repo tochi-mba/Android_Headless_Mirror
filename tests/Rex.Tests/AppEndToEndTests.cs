@@ -159,7 +159,6 @@ public sealed class AppEndToEndTests
         Assert.True((await app.SendAsync(new IpcRequest("status"))).Data!["hudVisible"]!.GetValue<bool>());
 
         await app.ClickHudAsync(18, 38); // Rotation button in the centered HUD.
-        Console.WriteLine((await app.SendAsync(new IpcRequest("status"))).Data!.ToJsonString());
         await Task.Delay(250, TestContext.Current.CancellationToken);
         await app.SaveScreenshotAsync("fullscreen-rotation.png");
         await app.ClickHudAsync(8, 78); // Landscape in the expanded rotation row.
@@ -254,26 +253,13 @@ public sealed class AppEndToEndTests
         {
             var bounds = WindowBounds();
             var scale = GetDpiForWindow(FindMainWindow()) / 96.0;
-            SetPhysicalCursorPos(bounds.Left + bounds.Width / 2 + (int)(offsetFromCenter * scale), bounds.Top + (int)(top * scale));
-            Console.WriteLine($"HUD click scale={scale}, bounds={bounds}, offset={offsetFromCenter},{top}$");
-            await Task.Delay(200, TestContext.Current.CancellationToken);
-            GetPhysicalCursorPos(out var position);
-            var target = WindowFromPhysicalPoint(position);
-            GetWindowThreadProcessId(target, out var targetPid);
-            var title = new System.Text.StringBuilder(256);
-            GetWindowText(target, title, 256);
-            Console.WriteLine($"Pointer={position.X},{position.Y}; target={target}; pid={targetPid}; app={_process.Id}");
-            Console.WriteLine($"Target title={title}; main={FindMainWindow()}");
-            EnumWindows((window, _) =>
+            var context = SetThreadDpiAwarenessContext(new IntPtr(-4));
+            try
             {
-                GetWindowThreadProcessId(window, out var pid);
-                if (pid == _process.Id)
-                {
-                    GetWindowRect(window, out var r);
-                    Console.WriteLine($"hwnd={window} rect={r.Left},{r.Top},{r.Right},{r.Bottom} exstyle={GetWindowLongPtrW(window,-20):X} enabled={IsWindowEnabled(window)} hit={SendMessageW(window,0x84,IntPtr.Zero,new IntPtr((position.Y << 16) | position.X))}");
-                }
-                return true;
-            }, IntPtr.Zero);
+                SetCursorPos(bounds.Left + bounds.Width / 2 + (int)(offsetFromCenter * scale), bounds.Top + (int)(top * scale));
+            }
+            finally { SetThreadDpiAwarenessContext(context); }
+            await Task.Delay(200, TestContext.Current.CancellationToken);
             mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
             await Task.Delay(80, TestContext.Current.CancellationToken);
             mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
@@ -281,8 +267,13 @@ public sealed class AppEndToEndTests
 
         public async Task PressKeyAsync(byte key, bool repeat = false)
         {
+            // A background test runner cannot always activate another process until it
+            // has received input. Send a harmless Alt press before requesting focus.
+            keybd_event(0x12, 0, 0, UIntPtr.Zero);
+            keybd_event(0x12, 0, 2, UIntPtr.Zero);
             SetForegroundWindow(FindMainWindow());
             await Task.Delay(100, TestContext.Current.CancellationToken);
+            Assert.Equal(FindMainWindow(), GetAncestor(GetForegroundWindow(), 2));
             keybd_event(key, 0, 0, UIntPtr.Zero);
             if (repeat)
             {
@@ -427,21 +418,12 @@ public sealed class AppEndToEndTests
         }
 
         [DllImport("user32.dll")]
-        private static extern IntPtr GetWindowLongPtrW(IntPtr hwnd, int index);
-        [DllImport("user32.dll")]
-        private static extern bool IsWindowEnabled(IntPtr hwnd);
-        [DllImport("user32.dll")]
-        private static extern IntPtr SendMessageW(IntPtr hwnd, uint message, IntPtr wp, IntPtr lp);
-
-        [DllImport("user32.dll")]
-        private static extern bool GetPhysicalCursorPos(out POINT point);
-        [DllImport("user32.dll")]
-        private static extern IntPtr WindowFromPhysicalPoint(POINT point);
-        [StructLayout(LayoutKind.Sequential)]
-        private struct POINT { public int X, Y; }
-
-        [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
 
         [DllImport("user32.dll")]
         private static extern uint GetDpiForWindow(IntPtr hwnd);
@@ -454,6 +436,9 @@ public sealed class AppEndToEndTests
 
         [DllImport("user32.dll")]
         private static extern bool SetPhysicalCursorPos(int x, int y);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetCursorPos(int x, int y);
 
         [DllImport("user32.dll")]
         private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);

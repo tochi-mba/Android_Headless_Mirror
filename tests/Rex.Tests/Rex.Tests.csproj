@@ -20,8 +20,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Rex.Core\Rex.Core.csproj" />
     <ProjectReference Include="..\..\src\Rex.Cli\Rex.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Rex.Mirror\Rex.Mirror.csproj" />
     <!-- Built (not referenced) so the end-to-end tests can launch them. -->
-    <ProjectReference Include="..\..\src\Rex.Mirror\Rex.Mirror.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Rex.FakeAdb\Rex.FakeAdb.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Rex.FakeScrcpy\Rex.FakeScrcpy.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>

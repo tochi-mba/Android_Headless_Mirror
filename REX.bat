@@ -23,14 +23,18 @@ for %%A in (%*) do (
   if /I "%%~A"=="--plain" set "REX_QUIET=-Quiet"
 )
 
-if not exist "%~dp0tools\rex\rex.exe" (
-  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-Rex.ps1" %REX_QUIET%
-  if errorlevel 1 (
-    if not defined REX_QUIET echo REX could not be prepared. See the messages above.
-    exit /b 1
-  )
+if not exist "%~dp0tools\rex\rex.exe" goto prepare
+if not exist "%~dp0tools\rex\RexMirror.exe" goto prepare
+goto ready
+
+:prepare
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-Rex.ps1" %REX_QUIET%
+if errorlevel 1 (
+  if not defined REX_QUIET echo REX could not be prepared. See the messages above.
+  exit /b 1
 )
 
+:ready
 if "%~1"=="" (
   start "" "%~dp0tools\rex\RexMirror.exe"
   exit /b 0
