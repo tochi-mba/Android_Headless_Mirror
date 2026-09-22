@@ -235,6 +235,7 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/Test-RexBridgeE2E.ps1",
             "tests/Test-PowerShellBehavior.ps1",
             "tests/Test-MirrorInteractionBehavior.ps1",
+            "tests/Test-ScrcpyControlBehavior.ps1",
             "tests/Test-ControlCenterE2E.ps1",
             "tests/Test-ControlCenterVisual.ps1",
             "tests/visual-thresholds.json",
@@ -739,6 +740,50 @@ class RepositoryContractTests(unittest.TestCase):
 
     # ---------- Mirror toolbar / multitouch / host zoom ----------
 
+    def test_scrcpy_shortcut_modifier_is_pinned_and_unoverrideable(self):
+        supervisor = self.read("Start-PhoneMirror.ps1")
+        control = self.read("ScrcpyControl.ps1")
+
+        self.assertIn('$args.Add("--shortcut-mod=lalt")', supervisor)
+        self.assertIn("shortcut-mod", supervisor)
+        self.assertIn("TryFocusTarget", control)
+        self.assertIn("PostShortcut", control)
+        self.assertIn("BuildShortcutInputs", control)
+        self.assertIn("Keep MOD held across repeated key presses", control)
+
+    def test_host_zoom_refresh_navigator_and_reset_state_are_live(self):
+        mirror = self.read("MirrorChrome.ps1")
+        center = self.read("ControlCenter.ps1")
+        xaml = self.read("ControlCenter.xaml")
+
+        self.assertIn("Update-Magnifier", mirror)
+        self.assertIn("Update-ZoomNavigator", mirror)
+        self.assertIn("ZOOM NAVIGATOR", mirror)
+        self.assertIn("mirror-chrome-state.json", mirror)
+        self.assertIn("Write-MirrorChromeState", mirror)
+        self.assertIn("NavigatorVisible", mirror)
+        self.assertIn("Refresh-HostZoomState", center)
+        self.assertIn('ResetHostZoomButton").IsEnabled', center)
+        self.assertIn("Set-TestHostZoomState", center)
+        self.assertIn('x:Name="PcZoomMinimapCheck"', xaml)
+
+    def test_forced_rotation_has_reversible_device_and_ui_paths(self):
+        device = self.read("DeviceControl.ps1")
+        center = self.read("ControlCenter.ps1")
+        xaml = self.read("ControlCenter.xaml")
+        readme = self.read("README.md")
+        pages = self.read("docs/index.html")
+
+        self.assertIn("function Set-AndroidRotationOverride", device)
+        self.assertIn("user_rotation", device)
+        self.assertIn("accelerometer_rotation", device)
+        self.assertIn('"auto"', device)
+        self.assertIn('x:Name="DeviceRotationOverrideCombo"', xaml)
+        self.assertIn('x:Name="ApplyRotationOverrideButton"', xaml)
+        self.assertIn("Set-AndroidRotationOverride", center)
+        self.assertIn("Forced Android rotation", readme)
+        self.assertIn("forced orientation", pages)
+
     def test_host_zoom_uses_alt_not_ctrl_or_shift(self):
         mirror = self.read("MirrorChrome.ps1")
         xaml = self.read("ControlCenter.xaml")
@@ -755,6 +800,13 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("Hold Alt + pinch", pages)
         self.assertNotIn("Hold physical Ctrl + pinch", readme)
         self.assertNotIn("Ctrl + touchpad pinch zooms only the PC mirror", xaml)
+
+    def test_user_facing_docs_do_not_call_ctrl_the_host_zoom_modifier(self):
+        for path in ["README.md", "docs/index.html", "ControlCenter.xaml"]:
+            text = self.read(path)
+            self.assertNotIn("Ctrl + touchpad pinch zooms only the PC mirror", text)
+            self.assertNotIn("Ctrl + mouse wheel zooms only the PC mirror", text)
+            self.assertNotIn("Hold Ctrl + pinch → magnify the mirror", text)
 
     def test_touchpad_tuning_is_not_decorative(self):
         mirror = self.read("MirrorChrome.ps1")
