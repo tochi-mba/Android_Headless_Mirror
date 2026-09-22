@@ -246,7 +246,7 @@ public sealed partial class RootFeatureService
 
     public static string ValidatePath(string path, bool allowCritical)
     {
-        if (string.IsNullOrWhiteSpace(path) || !path.StartsWith('/', StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("/", StringComparison.Ordinal))
             throw new ArgumentException("Privileged file paths must be absolute Android paths.");
 
         if (path.Length > 4096 || path.Any(char.IsControl))
@@ -289,7 +289,7 @@ public sealed partial class RootFeatureService
 
         return segments.Count == 0
             ? "/"
-            : "/" + string.Join('/', segments);
+            : "/" + string.Join("/", segments);
     }
 
     public static string ValidatePackage(string packageName)
