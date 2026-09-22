@@ -9,6 +9,8 @@ public sealed partial class RootManager
     private readonly IAndroidShellRunner _shell;
     private readonly RootPolicy _policy;
     private readonly RootStateStore _state;
+    private readonly Dictionary<string, (string AdbPath, RootExecutionMode Mode)> _executionContexts =
+        new(StringComparer.Ordinal);
 
     public RootManager(
         AppPaths paths,
@@ -254,6 +256,7 @@ public sealed partial class RootManager
             result.PrivilegeProfile,
             result.Capabilities,
             result.CheckedAt));
+        _executionContexts[serial] = (adbPath, mode);
 
         return result;
     }
@@ -265,26 +268,33 @@ public sealed partial class RootManager
     {
         _policy.EnsureAllowed(command.Risk);
 
-        var passive = await ProbePassiveAsync(serial, cancellationToken);
-        var mode = passive.State switch
+        if (!_executionContexts.TryGetValue(serial, out var context))
         {
-            RootAccessState.AdbdRoot => RootExecutionMode.AdbdRoot,
-            RootAccessState.Granted or RootAccessState.GrantedRestricted => RootExecutionMode.Su,
-            _ => throw new InvalidOperationException(
-                "Root access is not verified for this Android boot. Run 'rex root request' first.")
-        };
+            var passive = await ProbePassiveAsync(serial, cancellationToken);
+            var mode = passive.State switch
+            {
+                RootAccessState.AdbdRoot => RootExecutionMode.AdbdRoot,
+                RootAccessState.Granted or RootAccessState.GrantedRestricted => RootExecutionMode.Su,
+                _ => throw new InvalidOperationException(
+                    "Root access is not verified for this Android boot. Run 'rex root request' first.")
+            };
 
-        var (adbPath, _) = await GetAdbContextAsync(serial, cancellationToken);
+            var (adbPath, _) = await GetAdbContextAsync(serial, cancellationToken);
+            context = (adbPath, mode);
+            _executionContexts[serial] = context;
+        }
+
         var result = await _shell.RunAsync(
-            adbPath,
+            context.AdbPath,
             serial,
             command,
-            mode,
+            context.Mode,
             cancellationToken);
 
-        if (result.TimedOut && mode == RootExecutionMode.Su)
+        if (result.TimedOut && context.Mode == RootExecutionMode.Su)
         {
             _state.Remove(serial);
+            _executionContexts.Remove(serial);
             throw new InvalidOperationException(
                 "The privileged command timed out. Root authorization may have changed; run 'rex root request' again.");
         }
@@ -292,7 +302,11 @@ public sealed partial class RootManager
         return result;
     }
 
-    public void ClearCachedSession(string serial) => _state.Remove(serial);
+    public void ClearCachedSession(string serial)
+    {
+        _state.Remove(serial);
+        _executionContexts.Remove(serial);
+    }
 
     private async Task<RootPrivilegeProfile> ProbePrivilegeProfileAsync(
         string adbPath,
