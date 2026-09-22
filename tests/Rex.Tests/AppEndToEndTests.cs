@@ -113,7 +113,7 @@ public sealed class AppEndToEndTests
         Assert.False(oversized.Ok);
         Assert.Contains("byte limit", oversized.Error);
 
-        var stalled = await app.SendPartialAsync("""{"v":2,"command":"ping"""");
+        var stalled = await app.SendPartialAsync("{\"v\":2,\"command\":\"ping\"");
         Assert.False(stalled.Ok);
         Assert.Contains("timed out", stalled.Error, StringComparison.OrdinalIgnoreCase);
 
