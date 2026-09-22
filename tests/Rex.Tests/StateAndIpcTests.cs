@@ -162,25 +162,48 @@ public sealed class StateAndIpcTests
     }
 
     [Fact]
-    public void ToolLocator_IgnoresInProgressInstallFoldersAndReadsVersionMarker()
+    public void ToolLocator_SearchesEveryFolderSkipsStagingAndReadsVersionsFromNames()
     {
         using var package = new TestPackage();
+        var bundled = Path.Combine(package.Root, "bundled");
+        foreach (var (folder, name) in new[] { (package.Paths.ScrcpyTools, ".install-deadbeef"), (package.Paths.ScrcpyTools, "v4.0-1a2b3c4d"), (bundled, "scrcpy-win64-v4.1") })
+        {
+            var dir = Path.Combine(folder, name);
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "scrcpy.exe"), "");
+            File.WriteAllText(Path.Combine(dir, "adb.exe"), "");
+        }
 
-        var staging = Path.Combine(package.Paths.ScrcpyTools, ".install-deadbeef");
-        Directory.CreateDirectory(staging);
-        File.WriteAllText(Path.Combine(staging, "scrcpy.exe"), "");
-        File.WriteAllText(Path.Combine(staging, "adb.exe"), "");
-
-        var installed = Path.Combine(package.Paths.ScrcpyTools, "v4.1-abcdef123456");
-        Directory.CreateDirectory(installed);
-        File.WriteAllText(Path.Combine(installed, "scrcpy.exe"), "");
-        File.WriteAllText(Path.Combine(installed, "adb.exe"), "");
-        File.WriteAllText(Path.Combine(installed, ".rex-version"), "v4.1");
-
-        var tools = ToolLocator.Find(package.Paths)!;
+        var tools = ToolLocator.Find([package.Paths.ScrcpyTools, bundled, Path.Combine(package.Root, "missing")])!;
 
         Assert.Equal("v4.1", tools.Version);
-        Assert.Equal(Path.Combine(installed, "adb.exe"), tools.Adb);
+        Assert.Equal(Path.Combine(bundled, "scrcpy-win64-v4.1", "adb.exe"), tools.Adb);
+        Assert.Equal("v4.0", ToolLocator.VersionOf("v4.0-1a2b3c4d"));
+        Assert.Equal("weird", ToolLocator.VersionOf("weird"));
+    }
+
+    [Fact]
+    public void AppPaths_CreatesTheInstalledDataRootWithDefaults()
+    {
+        var local = Path.Combine(Path.GetTempPath(), "rex-tests-local-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var root = AppPaths.DefaultDataRoot(local);
+            Assert.Equal(Path.Combine(local, "REX", AppPaths.ProductFolderName), root);
+
+            var paths = AppPaths.CreateDataRoot(root);
+            Assert.True(File.Exists(paths.Config));
+            Assert.False(File.Exists(ConfigFile.BackupPath(paths.Config)));
+            Assert.Equal(60, ConfigFile.Load(paths.Config).Mirror.MaxFps);
+
+            File.WriteAllText(paths.Config, File.ReadAllText(paths.Config).Replace("\"MaxFps\": 60", "\"MaxFps\": 30"));
+            Assert.Equal(30, ConfigFile.Load(AppPaths.CreateDataRoot(root).Config).Mirror.MaxFps);
+            Assert.Throws<InvalidOperationException>(() => AppPaths.DefaultDataRoot(""));
+        }
+        finally
+        {
+            Directory.Delete(local, recursive: true);
+        }
     }
 
     [Fact]

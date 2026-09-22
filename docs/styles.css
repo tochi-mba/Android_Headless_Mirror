@@ -83,6 +83,7 @@ strong{font-weight:700;color:var(--text)}
 .button-primary:hover{filter:brightness(1.05)}
 .button-secondary{background:var(--raised);color:var(--text);border-color:var(--line)}
 .button-secondary:hover{border-color:var(--muted)}
+.download-meta{margin-top:-8px;color:var(--muted);font-size:13px;font-family:var(--mono)}
 .hero-meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:13px;font-weight:600}
 .hero-meta span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--signal);margin-right:8px;vertical-align:middle}
 
@@ -145,11 +146,17 @@ strong{font-weight:700;color:var(--text)}
 .install-steps li{counter-increment:step;position:relative;padding-left:48px;color:var(--muted)}
 .install-steps li::before{content:counter(step,decimal-leading-zero);position:absolute;left:0;top:2px;font-family:var(--mono);font-weight:700;color:var(--signal)}
 .install-steps code{color:var(--text);background:var(--raised);padding:1px 6px;border-radius:5px;font-size:14px}
+.install-steps a{text-decoration:underline;text-underline-offset:3px}
 .command-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px}
 .command-row code{padding:10px 14px;border-radius:var(--radius-s);border:1px solid var(--line);background:var(--panel);font-size:13px;overflow:auto;max-width:100%}
 .copy-button{min-height:40px;padding:0 14px;border-radius:var(--radius-s);border:1px solid var(--line);background:var(--raised);color:var(--text);font-weight:700;cursor:pointer}
 .copy-button:hover{border-color:var(--muted)}
 .install-note{margin-top:22px;color:var(--muted);max-width:80ch}
+.install-note code,.source-note code{color:var(--text);background:var(--raised);padding:1px 6px;border-radius:5px;font-size:14px}
+.source-note{margin-top:18px;max-width:80ch;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-m);padding:0 20px}
+.source-note summary{cursor:pointer;padding:14px 0;font-weight:700;color:var(--muted)}
+.source-note p{color:var(--muted);padding-bottom:12px}
+.source-note .command-row{padding-bottom:18px}
 
 /* CLI */
 .console{margin:0;padding:22px;border-radius:var(--radius-l);background:var(--panel);border:1px solid var(--line);overflow:auto;font-size:13.5px;line-height:1.7;color:var(--text)}

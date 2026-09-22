@@ -136,4 +136,13 @@ public sealed class FakeProcessRunner : IProcessRunner
         Calls.Add((fileName, arguments.ToArray()));
         return Task.FromResult(new ProcessBytesResult(0, Bytes, string.Empty));
     }
+
+    /// <summary>Detached runs (adb start-server) are recorded apart from captured commands.</summary>
+    public List<string[]> Detached { get; } = [];
+
+    public Task<int> RunDetachedAsync(string fileName, IReadOnlyList<string> arguments, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
+    {
+        Detached.Add(arguments.ToArray());
+        return Task.FromResult(0);
+    }
 }

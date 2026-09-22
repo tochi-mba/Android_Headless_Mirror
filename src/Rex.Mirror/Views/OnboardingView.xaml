@@ -2,24 +2,53 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource Ink}">
+  <UserControl.Resources>
+    <Style x:Key="StepBadge" TargetType="Border">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Background" Value="{StaticResource Raised}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style x:Key="StepBadgeText" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="StepTitle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="StepBody" TargetType="TextBlock" BasedOn="{StaticResource MutedText}">
+      <Setter Property="Margin" Value="0,3,0,0" />
+    </Style>
+  </UserControl.Resources>
+
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel MaxWidth="560" Margin="32,40" HorizontalAlignment="Center">
+    <StackPanel MaxWidth="580" Margin="32,40" HorizontalAlignment="Center">
       <TextBlock Text="REX · FIRST RUN" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource Signal}" />
       <TextBlock Text="Your phone, on this screen." FontSize="30" FontWeight="SemiBold" Margin="0,8,0,6" />
       <TextBlock Style="{StaticResource MutedText}" FontSize="14"
-                 Text="One download and one tap on the phone. After that, plugging the phone in opens it here automatically." />
+                 Text="Three steps, once. After that, plugging the phone in opens it here automatically." />
 
       <Border Margin="0,28,0,0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="20">
         <StackPanel>
-          <StackPanel Orientation="Horizontal">
-            <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource Signal}" VerticalAlignment="Top">
-              <TextBlock Text="1" Foreground="{StaticResource Ink}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <!-- 1 · mirroring engine -->
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="Badge1" Style="{StaticResource StepBadge}">
+              <TextBlock x:Name="Badge1Text" Text="1" Style="{StaticResource StepBadgeText}" />
             </Border>
-            <StackPanel Margin="14,0,0,0" Width="440">
-              <TextBlock Text="Install scrcpy" FontSize="16" FontWeight="SemiBold" />
-              <TextBlock Style="{StaticResource MutedText}" Margin="0,3,0,0"
-                         Text="The official open-source mirroring engine from Genymobile. It is downloaded from GitHub and its SHA-256 checksum is verified before anything is installed." />
-              <Grid Margin="0,12,0,0">
+            <StackPanel Grid.Column="1" Margin="14,0,0,0">
+              <TextBlock Text="Mirroring engine" Style="{StaticResource StepTitle}" />
+              <TextBlock x:Name="ToolsText" Style="{StaticResource StepBody}"
+                         Text="scrcpy, the open-source engine from Genymobile, is downloaded from GitHub and its SHA-256 checksum is verified before anything is installed." />
+              <Grid x:Name="InstallRow" Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="Auto" />
                   <ColumnDefinition Width="*" />
@@ -31,41 +60,63 @@
                 </StackPanel>
               </Grid>
             </StackPanel>
-          </StackPanel>
+          </Grid>
 
           <Rectangle Height="1" Fill="{StaticResource Line}" Margin="0,18" />
 
-          <StackPanel Orientation="Horizontal">
-            <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" VerticalAlignment="Top">
-              <TextBlock Text="2" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <!-- 2 · USB debugging -->
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="Badge2" Style="{StaticResource StepBadge}">
+              <TextBlock x:Name="Badge2Text" Text="2" Style="{StaticResource StepBadgeText}" />
             </Border>
-            <StackPanel Margin="14,0,0,0" Width="440">
-              <TextBlock Text="Turn on USB debugging" FontSize="16" FontWeight="SemiBold" />
-              <TextBlock Style="{StaticResource MutedText}" Margin="0,3,0,0"
-                         Text="On the phone: Settings → About phone → tap Build number seven times. Then Settings → Developer options → USB debugging." />
+            <StackPanel Grid.Column="1" Margin="14,0,0,0">
+              <TextBlock Text="Turn on USB debugging on the phone" Style="{StaticResource StepTitle}" />
+              <TextBlock Style="{StaticResource StepBody}"
+                         Text="Settings → About phone → Software information → tap Build number seven times. Then Settings → Developer options → switch on USB debugging." />
+              <TextBlock Style="{StaticResource StepBody}" FontSize="11"
+                         Text="On phones without a Software information page, Build number is directly under About phone." />
             </StackPanel>
-          </StackPanel>
+          </Grid>
 
           <Rectangle Height="1" Fill="{StaticResource Line}" Margin="0,18" />
 
-          <StackPanel Orientation="Horizontal">
-            <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" VerticalAlignment="Top">
-              <TextBlock Text="3" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <!-- 3 · plug in -->
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="Badge3" Style="{StaticResource StepBadge}">
+              <TextBlock x:Name="Badge3Text" Text="3" Style="{StaticResource StepBadgeText}" />
             </Border>
-            <StackPanel Margin="14,0,0,0" Width="440">
-              <TextBlock Text="Plug in and tap Allow" FontSize="16" FontWeight="SemiBold" />
-              <TextBlock Style="{StaticResource MutedText}" Margin="0,3,0,0"
-                         Text="Connect with USB. The phone asks “Allow USB debugging?” once: tick “Always allow from this computer” and tap Allow. The mirror opens here by itself." />
+            <StackPanel Grid.Column="1" Margin="14,0,0,0">
+              <TextBlock Text="Plug the phone in and tap Allow" Style="{StaticResource StepTitle}" />
+              <TextBlock Style="{StaticResource StepBody}"
+                         Text="Use a USB cable. The phone asks “Allow USB debugging?” once: tick “Always allow from this computer” and tap Allow." />
+              <Border Margin="0,12,0,0" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                <StackPanel Orientation="Horizontal">
+                  <Ellipse x:Name="PhoneDot" Width="8" Height="8" Fill="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                  <TextBlock x:Name="PhoneStatus" Text="Waiting for a phone…" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
             </StackPanel>
-          </StackPanel>
+          </Grid>
         </StackPanel>
       </Border>
 
       <HeaderedContentControl Style="{StaticResource SettingRow}" Margin="0,18,0,0" Header="Start with Windows and wait for the phone in the tray">
         <CheckBox x:Name="StartWithWindows" Click="OnStartWithWindows" />
       </HeaderedContentControl>
-      <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0"
-                 Text="Nothing needs administrator rights. Everything stays on this PC." />
+
+      <Grid Margin="0,14,0,0">
+        <TextBlock Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center"
+                   Text="No administrator rights. The mirror never leaves this PC." />
+        <Button x:Name="SkipButton" Content="Skip for now" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Click="OnSkip" />
+      </Grid>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

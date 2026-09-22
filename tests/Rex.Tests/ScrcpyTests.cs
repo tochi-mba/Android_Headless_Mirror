@@ -109,7 +109,7 @@ public sealed class ScrcpyTests
     }
 
     [Fact]
-    public void Installer_FinalizesBesideLegacyPartialInstallWithoutDeletingIt()
+    public void Installer_InstallsBesideAPartialFolderItCannotDelete()
     {
         using var package = new TestPackage();
         var source = Path.Combine(package.Root, "verified-source");
@@ -117,48 +117,41 @@ public sealed class ScrcpyTests
         File.WriteAllText(Path.Combine(source, "scrcpy.exe"), "new scrcpy");
         File.WriteAllText(Path.Combine(source, "adb.exe"), "new adb");
 
-        var legacy = Path.Combine(package.Paths.ScrcpyTools, "v4.1");
-        Directory.CreateDirectory(legacy);
-        var legacyAdb = Path.Combine(legacy, "adb.exe");
-        File.WriteAllText(legacyAdb, "locked legacy adb");
+        var partial = Path.Combine(package.Paths.ScrcpyTools, "v4.1");
+        Directory.CreateDirectory(partial);
+        var partialAdb = Path.Combine(partial, "adb.exe");
+        File.WriteAllText(partialAdb, "running adb");
+        // A running adb.exe keeps its folder undeletable; a read-only share reproduces that.
+        using var running = new FileStream(partialAdb, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        // On Windows this reproduces the important property of a running adb.exe:
-        // the old file cannot be deleted while the handle does not share delete access.
-        using var lockHandle = new FileStream(legacyAdb, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-        var tools = ScrcpyInstaller.InstallVerifiedDirectory(
-            package.Paths,
-            source,
-            "v4.1",
-            new string('a', 64));
+        var tools = ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, source, "v4.1");
 
         Assert.True(tools.IsComplete);
         Assert.Equal("v4.1", tools.Version);
-        var installedDirectory = Path.GetDirectoryName(tools.Adb)!;
-        Assert.NotEqual(legacy, installedDirectory);
-        Assert.EndsWith($"v4.1-{new string('a', 12)}", installedDirectory, StringComparison.OrdinalIgnoreCase);
-        Assert.True(File.Exists(legacyAdb));
+        var installed = Path.GetDirectoryName(tools.Adb)!;
+        Assert.NotEqual(partial, installed);
+        Assert.StartsWith(partial + "-", installed, StringComparison.Ordinal);
+        Assert.True(File.Exists(partialAdb));
+        Assert.Equal(tools.Adb, ToolLocator.Find([package.Paths.ScrcpyTools])!.Adb);
+        Assert.Empty(Directory.GetDirectories(package.Paths.ScrcpyTools, ToolLocator.StagingPrefix + "*"));
     }
 
     [Fact]
-    public void Installer_ReusesCompleteContentAddressedInstall()
+    public void Installer_ReusesACompleteInstallOfTheSameTag()
     {
         using var package = new TestPackage();
         var source = Path.Combine(package.Root, "verified-source");
         Directory.CreateDirectory(source);
         File.WriteAllText(Path.Combine(source, "scrcpy.exe"), "scrcpy");
         File.WriteAllText(Path.Combine(source, "adb.exe"), "adb");
-        var digest = new string('b', 64);
 
-        var first = ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, source, "v4.1", digest);
-        var second = ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, source, "v4.1", digest);
+        var first = ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, source, "v4.1");
+        var second = ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, source, "v4.1");
 
-        Assert.Equal(first.Scrcpy, second.Scrcpy);
-        Assert.Equal(first.Adb, second.Adb);
-        Assert.Equal("v4.1", second.Version);
-        Assert.Single(
-            Directory.GetDirectories(package.Paths.ScrcpyTools),
-            path => !Path.GetFileName(path).StartsWith(".install-", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(first, second);
+        Assert.Equal(Path.Combine(package.Paths.ScrcpyTools, "v4.1", "scrcpy.exe"), first.Scrcpy);
+        Assert.Single(Directory.GetDirectories(package.Paths.ScrcpyTools));
+        Assert.Throws<InvalidOperationException>(() => ScrcpyInstaller.InstallVerifiedDirectory(package.Paths, package.Root, "v9"));
     }
 
     [Fact]

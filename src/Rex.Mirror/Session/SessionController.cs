@@ -102,15 +102,6 @@ public sealed class SessionController : IDisposable
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            await Adb!.StartServerAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException)
-        {
-            _host.Log.Warn("adb start-server failed: " + ex.Message);
-        }
-
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -234,19 +225,7 @@ public sealed class SessionController : IDisposable
         var launchRect = await OnUi(() => LaunchRect?.Invoke()).ConfigureAwait(false);
         var title = $"Android Headless Mirror [{device.Serial}]";
 
-        IReadOnlyList<string> args;
-        try
-        {
-            args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, launchRect, recordPath);
-        }
-        catch (FormatException ex)
-        {
-            _host.Log.Error("Invalid scrcpy launch arguments", ex);
-            await OnUi(() => SetState(SessionPhase.Waiting, "Invalid scrcpy arguments: " + ex.Message)).ConfigureAwait(false);
-            _retryAfter = DateTime.UtcNow.AddSeconds(config.Session.RetrySeconds);
-            return;
-        }
-
+        var args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, launchRect, recordPath);
         _host.Log.Info($"Launching scrcpy for {device.Serial} ({device.Transport}): {string.Join(' ', args)}");
 
         ScrcpyProcess scrcpy;

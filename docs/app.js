@@ -25,6 +25,17 @@ document.querySelectorAll('.copy-button').forEach(button => button.addEventListe
   setTimeout(() => { button.textContent = label; }, 1400);
 }));
 
+const meta = document.getElementById('download-meta');
+if (meta && 'fetch' in window) {
+  fetch('https://api.github.com/repos/tochi-mba/Android_Headless_Mirror/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+    .then(response => (response.ok ? response.json() : null))
+    .then(release => {
+      const asset = release?.assets?.find(a => a.name === 'AndroidHeadlessMirror-Setup.exe');
+      if (asset) meta.textContent = `${release.tag_name} · ${Math.round(asset.size / 1048576)} MB · Windows 10 or 11 · 64-bit`;
+    })
+    .catch(() => {});
+}
+
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (!reduced && 'IntersectionObserver' in window) {
   document.documentElement.classList.add('motion-ready');

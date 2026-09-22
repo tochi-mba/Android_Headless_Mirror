@@ -11,6 +11,7 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        ProcessRunner.PreventStandardHandleInheritance();
         var machineArgs = MachineMode.ExtractArguments(args);
         AppPaths paths;
         try
@@ -43,7 +44,8 @@ public static class Program
         {
             return await Commands.RunAsync(args, context).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or KeyNotFoundException or FormatException)
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or KeyNotFoundException or FormatException
+                                   or System.Net.Http.HttpRequestException or TaskCanceledException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine("error: " + ex.Message);
             return 1;
@@ -76,7 +78,7 @@ public sealed class CliContext
     }
 
     public AdbClient RequireAdb() =>
-        Adb() ?? throw new InvalidOperationException("scrcpy/adb are not installed. Open the app (REX.bat) to install them.");
+        Adb() ?? throw new InvalidOperationException("scrcpy/adb are not installed. Run 'rex setup' or open the app.");
 
     /// <summary>The serial to act on: explicit, else the single ready phone. Never guesses between several.</summary>
     public async Task<string> ResolveSerialAsync(string? requested, CancellationToken cancellationToken = default)

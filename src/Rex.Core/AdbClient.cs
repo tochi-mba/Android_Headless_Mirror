@@ -63,6 +63,8 @@ public sealed class AdbClient
     private static readonly TimeSpan ShellTimeout = TimeSpan.FromSeconds(15);
 
     private readonly IProcessRunner _runner;
+    private readonly object _serverGate = new();
+    private Task? _serverStarted;
 
     public AdbClient(string adbPath, IProcessRunner runner)
     {
@@ -72,12 +74,28 @@ public sealed class AdbClient
 
     public string AdbPath { get; }
 
-    public Task<ProcessResult> StartServerAsync(CancellationToken cancellationToken = default) =>
-        _runner.RunAsync(AdbPath, ["start-server"], TimeSpan.FromSeconds(30), cancellationToken);
+    /// <summary>
+    /// Starts the ADB server (a no-op when it already runs) without capturing output. The
+    /// server is a daemon that inherits the pipes of the adb call that spawned it, so a captured
+    /// call could never see end-of-file; every other command goes through here first.
+    /// </summary>
+    public Task StartServerAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_serverGate)
+        {
+            return _serverStarted ??= _runner.RunDetachedAsync(AdbPath, ["start-server"], TimeSpan.FromSeconds(30), cancellationToken);
+        }
+    }
+
+    private async Task<ProcessResult> RunAsync(IReadOnlyList<string> arguments, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        await StartServerAsync(cancellationToken).ConfigureAwait(false);
+        return await _runner.RunAsync(AdbPath, arguments, timeout, cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task<IReadOnlyList<AdbDevice>> ListDevicesAsync(CancellationToken cancellationToken = default)
     {
-        var result = await _runner.RunAsync(AdbPath, ["devices", "-l"], QuickTimeout, cancellationToken).ConfigureAwait(false);
+        var result = await RunAsync(["devices", "-l"], QuickTimeout, cancellationToken).ConfigureAwait(false);
         return AdbParsing.ParseDevices(result.StdOut);
     }
 
@@ -85,7 +103,7 @@ public sealed class AdbClient
     {
         var args = new List<string> { "-s", serial, "shell" };
         args.AddRange(arguments);
-        return _runner.RunAsync(AdbPath, args, timeout ?? ShellTimeout, cancellationToken);
+        return RunAsync(args, timeout ?? ShellTimeout, cancellationToken);
     }
 
     /// <summary>Runs one remote shell command line (already quoted for the device shell).</summary>
@@ -159,6 +177,7 @@ public sealed class AdbClient
 
     public async Task<byte[]?> ScreencapAsync(string serial, CancellationToken cancellationToken = default)
     {
+        await StartServerAsync(cancellationToken).ConfigureAwait(false);
         var result = await _runner.RunBytesAsync(AdbPath, ["-s", serial, "exec-out", "screencap", "-p"], TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
         return result.Ok && result.StdOut.Length > 8 ? result.StdOut : null;
     }
@@ -334,10 +353,10 @@ public sealed class AdbClient
     }
 
     public Task<ProcessResult> TcpipAsync(string serial, int port, CancellationToken cancellationToken = default) =>
-        _runner.RunAsync(AdbPath, ["-s", serial, "tcpip", port.ToString(CultureInfo.InvariantCulture)], QuickTimeout, cancellationToken);
+        RunAsync(["-s", serial, "tcpip", port.ToString(CultureInfo.InvariantCulture)], QuickTimeout, cancellationToken);
 
     public Task<ProcessResult> ConnectAsync(string endpoint, CancellationToken cancellationToken = default) =>
-        _runner.RunAsync(AdbPath, ["connect", endpoint], QuickTimeout, cancellationToken);
+        RunAsync(["connect", endpoint], QuickTimeout, cancellationToken);
 
     private static string Prop(IReadOnlyDictionary<string, string> props, string key) =>
         props.TryGetValue(key, out var value) ? value : string.Empty;

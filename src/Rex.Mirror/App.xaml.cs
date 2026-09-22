@@ -25,7 +25,7 @@ public partial class App : Application
         Options = LaunchOptions.Parse(e.Args);
 
         _instanceMutex = new Mutex(initiallyOwned: true, "Local\\RexMirror-" + Ipc.PipeName(), out var createdNew);
-        if (!createdNew && !Options.ScreenshotPath.HasValue())
+        if (!createdNew)
         {
             // Another copy is already running: bring it forward instead of racing for the phone.
             _ = new IpcClient().SendAsync(new IpcRequest("show")).GetAwaiter().GetResult();
@@ -49,12 +49,6 @@ public partial class App : Application
         _window = new MainWindow(_host);
         _host.Start(_window);
 
-        if (Options.ScreenshotPath.HasValue())
-        {
-            _window.RenderScreenshotAndExit(Options.ScreenshotPath!);
-            return;
-        }
-
         if (!Options.StartInBackground)
         {
             _window.ShowFromTray();
@@ -71,13 +65,6 @@ public partial class App : Application
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         _host?.Log.Error("Unhandled UI exception: " + e.Exception);
-        if (Options.ScreenshotPath.HasValue())
-        {
-            e.Handled = true;
-            Shutdown(3);
-            return;
-        }
-
         MessageBox.Show(
             "Something went wrong: " + e.Exception.Message + "\n\nDetails were written to logs\\mirror.log.",
             "Android Headless Mirror",
@@ -92,9 +79,6 @@ public sealed record LaunchOptions
     /// <summary>--background: start hidden in the tray (used by Start with Windows).</summary>
     public bool StartInBackground { get; init; }
 
-    /// <summary>--screenshot PATH: render the window once to a PNG and exit (used by tests).</summary>
-    public string? ScreenshotPath { get; init; }
-
     /// <summary>--root PATH: package folder override (otherwise discovered).</summary>
     public string? Root { get; init; }
 
@@ -107,9 +91,6 @@ public sealed record LaunchOptions
             {
                 case "--background":
                     options = options with { StartInBackground = true };
-                    break;
-                case "--screenshot" when i + 1 < args.Length:
-                    options = options with { ScreenshotPath = args[++i] };
                     break;
                 case "--root" when i + 1 < args.Length:
                     options = options with { Root = args[++i] };

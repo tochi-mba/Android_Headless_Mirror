@@ -9,12 +9,31 @@ using System.Text.Json.Nodes;
 
 // Defaults live next to the executable so every test root is isolated; env vars override.
 var log = Environment.GetEnvironmentVariable("REX_FAKE_ADB_LOG") ?? Path.Combine(AppContext.BaseDirectory, "fake-adb.log");
-File.AppendAllText(log, string.Join(' ', args.Select(Quote)) + Environment.NewLine);
+AppendLine(log, string.Join(' ', args.Select(Quote)));
 
 var scenario = Scenario.Load(Environment.GetEnvironmentVariable("REX_FAKE_ADB_SCENARIO") ?? Path.Combine(AppContext.BaseDirectory, "fake-adb.json"));
 var stdout = Console.OpenStandardOutput();
 
 static string Quote(string arg) => arg.Contains(' ', StringComparison.Ordinal) ? $"\"{arg}\"" : arg;
+
+// The app runs several adb calls at once (device poll, battery poll, actions), so appenders
+// must share the file; a brief retry covers the window where one holds it exclusively.
+static void AppendLine(string path, string line)
+{
+    for (var attempt = 0; ; attempt++)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            stream.Write(Encoding.UTF8.GetBytes(line + Environment.NewLine));
+            return;
+        }
+        catch (IOException) when (attempt < 20)
+        {
+            Thread.Sleep(10);
+        }
+    }
+}
 
 int Write(string text, int code = 0)
 {

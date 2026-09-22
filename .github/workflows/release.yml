@@ -9,9 +9,10 @@ permissions:
   contents: read
 
 jobs:
-  windows:
-    name: Verify and package (Windows)
+  installer:
+    name: Verify and build the installer
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -19,61 +20,31 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore
-        run: dotnet restore Rex.sln
-
       - name: Build (warnings are errors)
-        run: dotnet build Rex.sln -c Release --no-restore
+        run: dotnet build Rex.sln -c Release
 
       - name: Test
         run: dotnet test --project tests/Rex.Tests/Rex.Tests.csproj -c Release --no-build
 
-      - name: Publish the app and the CLI
+      - name: Build AndroidHeadlessMirror-Setup.exe
         shell: pwsh
-        run: |
-          dotnet publish src/Rex.Mirror/Rex.Mirror.csproj -c Release -r win-x64 --self-contained true -o dist/rex
-          dotnet publish src/Rex.Cli/Rex.Cli.csproj -c Release -r win-x64 --self-contained true -o dist/rex
-          foreach ($exe in "RexMirror.exe", "rex.exe") {
-            if (-not (Test-Path "dist/rex/$exe")) { throw "$exe was not produced." }
-          }
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./installer/build.ps1 -Version "${{ github.ref_name }}".TrimStart("v")
 
-      - name: Smoke test the published CLI
-        shell: pwsh
-        run: |
-          $env:REX_ROOT = (Get-Location).Path
-          & dist/rex/rex.exe help
-          if ($LASTEXITCODE -ne 0) { throw "rex help failed." }
-
-          $json = & dist/rex/rex.exe agent capabilities
-          if ($LASTEXITCODE -ne 0) { throw "rex agent capabilities failed." }
-          $lines = @($json | Where-Object { $_ -ne "" })
-          if ($lines.Count -ne 1) { throw "Machine mode must emit exactly one line." }
-          $doc = $lines[0] | ConvertFrom-Json
-          if (-not $doc.ok -or $doc.protocolVersion -ne 2) { throw "Machine protocol contract failed." }
-
-          $status = (& dist/rex/rex.exe --json status) | ConvertFrom-Json
-          if ($status.ok -ne $true) { throw "rex --json status failed." }
-
-      - name: Package and checksum
-        shell: pwsh
-        run: |
-          Compress-Archive -Path dist/rex/* -DestinationPath dist/rex-win-x64.zip -Force
-          $hash = (Get-FileHash dist/rex-win-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  rex-win-x64.zip" | Set-Content dist/rex-win-x64.zip.sha256 -Encoding ASCII
-
-      - name: Upload release assets
-        uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7
         with:
-          name: release-assets
+          name: installer
           path: |
-            dist/rex-win-x64.zip
-            dist/rex-win-x64.zip.sha256
+            dist/AndroidHeadlessMirror-Setup.exe
+            dist/AndroidHeadlessMirror-Setup.exe.sha256
           if-no-files-found: error
           retention-days: 7
 
   pages:
-    name: Verify Pages site
+    name: Verify the website
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -81,35 +52,26 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Validate JavaScript
-        run: |
-          node --check docs/app.js
-          node --check playwright.config.js
-          node --check tests/pages.spec.js
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:pages
 
-      - name: Install test dependencies
-        run: npm ci
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run Playwright and axe checks
-        run: npm run test:pages
-
-  release:
-    name: Publish GitHub release
-    needs: [windows, pages]
+  publish:
+    name: Publish the GitHub release
+    needs: [installer, pages]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v7
         with:
-          name: release-assets
+          name: installer
           path: dist
 
-      - name: Create the GitHub release
+      - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" dist/rex-win-x64.zip dist/rex-win-x64.zip.sha256 --repo "${{ github.repository }}" --title "${{ github.ref_name }}" --generate-notes
+          gh release create "${{ github.ref_name }}" dist/AndroidHeadlessMirror-Setup.exe dist/AndroidHeadlessMirror-Setup.exe.sha256 \
+            --repo "${{ github.repository }}" --title "${{ github.ref_name }}" --generate-notes
