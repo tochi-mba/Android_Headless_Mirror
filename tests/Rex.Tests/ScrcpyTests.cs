@@ -134,8 +134,9 @@ public sealed class ScrcpyTests
 
         Assert.True(tools.IsComplete);
         Assert.Equal("v4.1", tools.Version);
-        Assert.NotEqual(legacy, Path.GetDirectoryName(tools.Adb));
-        Assert.EndsWith($"v4.1-{new string('a', 12)}", Path.GetDirectoryName(tools.Adb), StringComparison.OrdinalIgnoreCase);
+        var installedDirectory = Path.GetDirectoryName(tools.Adb)!;
+        Assert.NotEqual(legacy, installedDirectory);
+        Assert.EndsWith($"v4.1-{new string('a', 12)}", installedDirectory, StringComparison.OrdinalIgnoreCase);
         Assert.True(File.Exists(legacyAdb));
     }
 
