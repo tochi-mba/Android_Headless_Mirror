@@ -378,4 +378,72 @@ public sealed class ProgramTests
         Assert.Contains("scrcpy or windows-miracast", ex.Message);
     }
 
+    [Fact]
+    public async Task RootStatus_HumanCliIsPassive()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "2000", "")
+        };
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = new RexStatus(
+                true,
+                false,
+                false,
+                false,
+                false,
+                "adb.exe",
+                "scrcpy.exe",
+                new[]
+                {
+                    new RexDevice(
+                        "USB123",
+                        "device",
+                        false,
+                        "Samsung",
+                        "SM-G998B",
+                        "Samsung Galaxy S21 Ultra")
+                })
+        };
+        bridge.Devices.Add(bridge.DefaultStatus.Devices[0]);
+
+        var code = await Program.RunCommandAsync(
+            new[] { "root", "status", "--serial", "USB123" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, code);
+        Assert.DoesNotContain(
+            runner.Calls,
+            x => x.Arguments.Contains("su"));
+    }
+
+    [Fact]
+    public async Task RootFiles_InvalidCriticalPathFailsBeforeAdbExecution()
+    {
+        using var package = new TempPackage();
+        var bridge = new FakeBridgeClient();
+        bridge.Devices.Add(new RexDevice(
+            "USB123",
+            "device",
+            false,
+            "Samsung",
+            "SM-G998B",
+            "Galaxy"));
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Program.RunCommandAsync(
+                new[] { "root", "files", "read", "/dev/block/mmcblk0", "--serial", "USB123" },
+                package.Paths,
+                new FakeProcessRunner(),
+                bridge,
+                package.Config));
+
+        Assert.Contains("Root v1 blocks", ex.Message);
+    }
+
 }
