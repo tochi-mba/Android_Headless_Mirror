@@ -136,6 +136,28 @@ public sealed class ConfigTests
     }
 
     [Fact]
+    public async Task ConfigStore_ConcurrentIndependentUpdatesDoNotGetLost()
+    {
+        using var package = new TestPackage();
+        var first = new ConfigStore(package.Paths.Config);
+        var second = new ConfigStore(package.Paths.Config);
+
+        for (var iteration = 0; iteration < 20; iteration++)
+        {
+            await Task.WhenAll(
+                Task.Run(() => first.Set("Mirror.MaxFps", "90")),
+                Task.Run(() => second.Set("Session.TurnScreenOff", "false")));
+        }
+
+        var reloaded = new ConfigStore(package.Paths.Config);
+        Assert.Equal("90", reloaded.Get("Mirror.MaxFps").Value);
+        Assert.Equal("false", reloaded.Get("Session.TurnScreenOff").Value);
+        Assert.Empty(Directory.EnumerateFiles(
+            Path.GetDirectoryName(package.Paths.Config)!,
+            "." + Path.GetFileName(package.Paths.Config) + ".*.tmp"));
+    }
+
+    [Fact]
     public void ConfigStore_SetNormalizesThroughTypedModel()
     {
         using var package = new TestPackage();
