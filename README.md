@@ -32,7 +32,6 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Includes diagnostics and rotating logs.
 - Supports optional ADB-over-TCP/IP fallback, disabled by default.
 - Detects and uses an **existing** Android root environment through a capability-gated Privileged Android layer, with passive discovery, explicit authorization, per-boot verification and read-only Root v1 tooling.
-- Detects an existing Android root environment and can unlock a separate, capability-gated **Privileged Android** inspection layer without changing normal ADB behavior.
 
 ## Quick start
 
@@ -169,6 +168,10 @@ On Windows versions/hardware where the Precision Touchpad API is unavailable, no
 
 The toolbar's **Sleep phone** button sends scrcpy's own “turn device screen off while keeping mirroring active” shortcut. It can be pressed again whenever the physical phone display has been woken; the PC mirror continues operating normally.
 
+### Forced Android rotation
+
+The Device settings page separates Android orientation from scrcpy's PC-side display rotation. **Rotation override** offers Automatic, 0°, 90°, 180° and 270°. Forced modes write Android's `user_rotation` first, then disable sensor-driven rotation; Automatic re-enables the sensor. This is best effort because individual apps and OEM policies may still request their own orientation.
+
 ### Mouse-only host zoom
 
 For mouse users, **Alt + mouse wheel** controls the PC-only frame zoom. This is deliberately different from scrcpy's Ctrl/Shift Android gesture modifiers.
@@ -179,7 +182,7 @@ The toolbar's **Controls** button opens the Windows Control Center for the curre
 
 - **Controls** — runtime scrcpy actions: fullscreen, fit, pixel-perfect, display rotation/flip, pause/resume, capture reset, FPS counter, Home/Back/Recent Apps/Menu, power, sleep/wake, Android orientation request, notification/Quick Settings panels, volume, clipboard actions, keyboard settings, host-zoom reset and screenshots.
 - **PC / mirror settings** — wrapper/session behavior, video quality, codec, audio, recording-on-start, touchpad behavior, host zoom, pattern-guide behavior, wireless ADB and advanced raw scrcpy arguments.
-- **<device> settings** — friendly ADB-backed controls for brightness, timeout, auto-rotate, font scale, show touches, stay-awake, animation scales, dark mode, Wi-Fi/mobile-data/airplane commands and display size/density overrides.
+- **<device> settings** — friendly ADB-backed controls for brightness, timeout, auto-rotate, best-effort forced orientation (Auto / 0° / 90° / 180° / 270°), font scale, show touches, stay-awake, animation scales, dark mode, Wi-Fi/mobile-data/airplane commands and display size/density overrides.
 - **Advanced Android** — live enumeration of the connected phone's system, secure and global Settings Provider namespaces with search, read/write/delete and risk labels.
 - **Diagnostics** — device identity, Android/API version, ADB state, capability probes and recent command status.
 
