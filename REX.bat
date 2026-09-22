@@ -2,42 +2,37 @@
 setlocal
 cd /d "%~dp0"
 
-rem REX.bat            opens Android Headless Mirror
-rem REX.bat <command>  runs the command line (rex help)
-rem REX.bat --source   builds this checkout and opens it
+rem Developer launcher for this checkout. Everyone else installs the app from the website.
+rem   REX.bat            builds tools\rex on first use, then opens Android Headless Mirror
+rem   REX.bat <command>  runs the command line (REX.bat help)
+rem   REX.bat --build    rebuilds tools\rex from the current source, then opens the app
 
-if /I "%~1"=="--source" (
-  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-Rex.ps1" -Source -Force
-  if errorlevel 1 (
-    echo REX could not be built from source. See the messages above.
-    exit /b 1
-  )
-  start "" "%~dp0tools\rex\RexMirror.exe"
-  exit /b 0
-)
+set "OUT=%~dp0tools\rex"
 
-set "REX_QUIET="
-if /I "%~1"=="agent" set "REX_QUIET=-Quiet"
-for %%A in (%*) do (
-  if /I "%%~A"=="--json" set "REX_QUIET=-Quiet"
-  if /I "%%~A"=="--plain" set "REX_QUIET=-Quiet"
-)
+if /I "%~1"=="--build" goto build
+if not exist "%OUT%\RexMirror.exe" goto build
+if not exist "%OUT%\rex.exe" goto build
+goto run
 
-if not exist "%~dp0tools\rex\rex.exe" goto prepare
-if not exist "%~dp0tools\rex\RexMirror.exe" goto prepare
-goto ready
-
-:prepare
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0Bootstrap-Rex.ps1" %REX_QUIET%
+:build
+where dotnet >nul 2>nul
 if errorlevel 1 (
-  if not defined REX_QUIET echo REX could not be prepared. See the messages above.
+  echo Building from source needs the .NET 10 SDK: https://dot.net 1>&2
   exit /b 1
 )
-
-:ready
-if "%~1"=="" (
-  start "" "%~dp0tools\rex\RexMirror.exe"
+echo Building Android Headless Mirror from source... 1>&2
+dotnet publish "%~dp0src\Rex.Mirror\Rex.Mirror.csproj" -c Release -r win-x64 --self-contained true -o "%OUT%" -nologo -v quiet 1>&2
+if errorlevel 1 exit /b 1
+dotnet publish "%~dp0src\Rex.Cli\Rex.Cli.csproj" -c Release -r win-x64 --self-contained true -o "%OUT%" -nologo -v quiet 1>&2
+if errorlevel 1 exit /b 1
+if /I "%~1"=="--build" (
+  start "" "%OUT%\RexMirror.exe"
   exit /b 0
 )
 
-"%~dp0tools\rex\rex.exe" %*
+:run
+if "%~1"=="" (
+  start "" "%OUT%\RexMirror.exe"
+  exit /b 0
+)
+"%OUT%\rex.exe" %*

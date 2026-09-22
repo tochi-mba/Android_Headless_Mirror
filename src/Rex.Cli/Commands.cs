@@ -49,7 +49,16 @@ public static class Commands
 
             case "setup":
             {
-                var tools = await new ScrcpyInstaller().InstallLatestAsync(context.Paths, new Progress<InstallProgress>(p => Console.WriteLine("  " + p.Stage)), CancellationToken.None).ConfigureAwait(false);
+                var lastStage = string.Empty;
+                var progress = new Progress<InstallProgress>(p =>
+                {
+                    if (p.Stage != lastStage)
+                    {
+                        lastStage = p.Stage;
+                        Console.WriteLine("  " + p.Stage);
+                    }
+                });
+                var tools = await new ScrcpyInstaller().InstallLatestAsync(context.Paths, progress, CancellationToken.None).ConfigureAwait(false);
                 Console.WriteLine($"Installed scrcpy {tools.Version}.");
                 return 0;
             }
@@ -83,10 +92,6 @@ public static class Commands
             case "autostart":
                 Arguments.Require(positional, 2, "rex autostart <on|off>");
                 return Autostart(context, positional[1]);
-
-            case "shortcut":
-                Arguments.Require(positional, 2, "rex shortcut <install|remove>");
-                return Shortcut(context, positional[1]);
 
             case "lock-mode":
             {
@@ -339,21 +344,6 @@ public static class Commands
         }
     }
 
-    private static int Shortcut(CliContext context, string verb)
-    {
-        switch (verb.ToLowerInvariant())
-        {
-            case "install":
-                Console.WriteLine("Created " + DesktopShortcut.Create(context.AppExecutable, context.Paths.Root));
-                return 0;
-            case "remove":
-                Console.WriteLine(DesktopShortcut.Remove() ? "Shortcut removed." : "There was no shortcut.");
-                return 0;
-            default:
-                throw new ArgumentException("shortcut expects install or remove.");
-        }
-    }
-
     private static async Task<int> SendAsync(CliContext context, IpcRequest request, string notRunning)
     {
         var response = await context.Ipc.SendAsync(request).ConfigureAwait(false);
@@ -412,7 +402,6 @@ public static class Commands
               rex android list|get|set|delete   Raw Android settings provider keys
               rex config list|get|set|restore   App settings (config.json)
               rex autostart on|off              Start with Windows
-              rex shortcut install|remove       Desktop shortcut
               rex lock-mode <serial> <mode>     pattern | other | none
               rex reset-lock [serial|ALL]       Forget lock-screen answers
               rex setup                         Install scrcpy without the app

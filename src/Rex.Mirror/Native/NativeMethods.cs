@@ -334,9 +334,8 @@ internal static partial class NativeMethods
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
-    // Precision Touchpad raw contact API (Windows 11; availability is probed at runtime).
-    // Microsoft documents the ordinal exports at:
-    // https://learn.microsoft.com/windows/win32/input-precisiontouchpad/getpointertouchpadinfo
+    // Precision Touchpad raw contact API: undocumented user32 exports (ordinals 2689/2691) that
+    // Windows itself uses for touchpad gestures. Resolved at runtime; absent means no raw contacts.
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     public delegate bool RegisterTouchpadCapableWindowDelegate(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool enable);
 

@@ -11,6 +11,7 @@ using Rex.Mirror.Mirror;
 using Rex.Mirror.Native;
 using Rex.Mirror.Services;
 using Rex.Mirror.Session;
+using Rex.Mirror.Views;
 
 namespace Rex.Mirror;
 
@@ -33,6 +34,7 @@ public partial class MainWindow : Window
     private Rect _windowedBounds;
     public bool IsFullscreen => _fullscreen;
     public bool HudVisible => _overlay.HudVisible;
+    public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
 
     public MainWindow(AppHost host)
     {
@@ -155,35 +157,6 @@ public partial class MainWindow : Window
         QuitApplication();
     }
 
-    /// <summary>Test hook: waits for the session to settle, captures the window from the screen and exits.</summary>
-    public void RenderScreenshotAndExit(string path)
-    {
-        Show();
-        Dispatcher.InvokeAsync(async () =>
-        {
-            var deadline = DateTime.UtcNow.AddSeconds(12);
-            while (DateTime.UtcNow < deadline && _host.Session.Phase != SessionPhase.Mirroring && _host.Session.Phase != SessionPhase.NeedsSetup)
-            {
-                await Task.Delay(200);
-            }
-
-            await Task.Delay(1500);
-            Activate();
-            await Task.Delay(300);
-
-            NativeMethods.GetWindowRect(_source!.Handle, out var rect);
-            using var bitmap = new System.Drawing.Bitmap(Math.Max(1, rect.Width), Math.Max(1, rect.Height));
-            using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
-            {
-                graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, bitmap.Size);
-            }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-            bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
-            QuitApplication();
-        }, DispatcherPriority.Background);
-    }
-
     private void ApplyPlacement()
     {
         var placement = _host.State.Ui;
@@ -214,7 +187,7 @@ public partial class MainWindow : Window
         }
 
         var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
-        _host.State.SetUi(new UiState
+        _host.State.SetUi(_host.State.Ui with
         {
             Left = bounds.Left,
             Top = bounds.Top,
@@ -233,6 +206,7 @@ public partial class MainWindow : Window
         var session = _host.Session;
         var mirroring = session.IsMirroring;
         var needsSetup = session.Phase == SessionPhase.NeedsSetup;
+        var onboarding = OnboardingView.IsNeeded(_host);
 
         StatusText.Text = session.Message;
         StatusDot.Fill = (Brush)FindResource(mirroring ? "Signal" : session.Devices.Any(d => d.IsReady) ? "Signal" : session.Devices.Count > 0 ? "Live" : "Muted");
@@ -265,10 +239,15 @@ public partial class MainWindow : Window
             DeviceMeta.Text = string.Empty;
         }
 
-        Onboarding.Visibility = needsSetup ? Visibility.Visible : Visibility.Collapsed;
-        MirrorArea.Visibility = needsSetup ? Visibility.Collapsed : Visibility.Visible;
-        Sidebar.Visibility = needsSetup ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);
-        Host.SetShown(mirroring && !needsSetup);
+        Onboarding.Visibility = onboarding ? Visibility.Visible : Visibility.Collapsed;
+        MirrorArea.Visibility = onboarding ? Visibility.Collapsed : Visibility.Visible;
+        Sidebar.Visibility = onboarding ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);
+        Host.SetShown(mirroring && !onboarding);
+        if (onboarding)
+        {
+            Onboarding.Refresh();
+        }
+
         EmptyState.Visibility = mirroring ? Visibility.Collapsed : Visibility.Visible;
 
         if (!mirroring)

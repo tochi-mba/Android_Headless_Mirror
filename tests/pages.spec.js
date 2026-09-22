@@ -98,13 +98,24 @@ test.describe('Android Headless Mirror site', () => {
     await expect(section.locator('.shortcut-table kbd', { hasText: 'F11' })).toBeVisible();
   });
 
+  test('the download button fetches the installer from the latest release', async ({ page }) => {
+    const button = page.locator('#download');
+    await expect(button).toBeVisible();
+    await expect(button).toHaveAttribute('href', 'https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest/download/AndroidHeadlessMirror-Setup.exe');
+    await expect(button).toHaveAttribute('download', '');
+    await expect(page.locator('#download-meta')).toContainText(/Windows 10 or 11/);
+    await expect(page.locator('#install a[href$="AndroidHeadlessMirror-Setup.exe"]')).toHaveCount(1);
+  });
+
   test('install steps are ordered and the clone command copies', async ({ page, context, browserName }) => {
     test.skip(browserName !== 'chromium', 'clipboard permissions are only granted on Chromium');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const steps = page.locator('.install-steps li');
-    await expect(steps).toHaveCount(5);
-    await expect(steps.nth(1)).toContainText('REX.bat');
+    await expect(steps).toHaveCount(4);
+    await expect(steps.nth(0)).toContainText('SmartScreen');
+    await expect(steps.nth(3)).toContainText('Allow');
 
+    await page.locator('.source-note summary').click();
     await page.locator('.copy-button').click();
     await expect(page.locator('.copy-button')).toHaveText('Copied');
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
@@ -120,7 +131,7 @@ test.describe('Android Headless Mirror site', () => {
 
   test('states compatibility and privacy without absolute claims', async ({ page }) => {
     const body = await page.locator('body').textContent();
-    expect(body).toContain('No phone-content uploads');
+    expect(body).toContain('No telemetry');
     expect(body).toContain('designed for Android devices supported by ADB and scrcpy');
     expect(body).not.toMatch(/Any Android phone with USB debugging works/i);
     expect(body).not.toMatch(/Nothing leaves your PC/i);

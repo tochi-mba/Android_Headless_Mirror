@@ -7,7 +7,10 @@ namespace Rex.Tests;
 public sealed class RepositoryTests
 {
     private static readonly string[] SourceGlobs = ["*.cs", "*.xaml", "*.ps1", "*.bat", "*.yml", "*.js", "*.css", "*.html", "*.md", "*.json"];
-    private static readonly string[] Skip = [$"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}tools{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}artifacts{Path.DirectorySeparatorChar}", $"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}"];
+    /// <summary>Generated or third-party folders (all git-ignored) that are not part of the source tree.</summary>
+    private static readonly string[] Skip = new[] { "bin", "obj", "node_modules", "tools", "artifacts", "dist", "test-results", "playwright-report", ".git" }
+        .Select(name => Path.DirectorySeparatorChar + name + Path.DirectorySeparatorChar)
+        .ToArray();
 
     private static IEnumerable<string> SourceFiles() =>
         SourceGlobs.SelectMany(glob => Directory.EnumerateFiles(RepoPaths.Root, glob, SearchOption.AllDirectories))
@@ -39,7 +42,7 @@ public sealed class RepositoryTests
     }
 
     [Fact]
-    public void OnlyTheLauncherAndBootstrapAreScripts()
+    public void OnlyTheLauncherIconAndInstallerScriptsExist()
     {
         var scripts = Directory.EnumerateFiles(RepoPaths.Root, "*.*", SearchOption.AllDirectories)
             .Where(path => !Skip.Any(s => path.Contains(s, StringComparison.OrdinalIgnoreCase)))
@@ -48,7 +51,7 @@ public sealed class RepositoryTests
             .OrderBy(x => x, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["Bootstrap-Rex.ps1", "REX.bat", "assets/make-icon.ps1"], scripts);
+        Assert.Equal(["REX.bat", "assets/make-icon.ps1", "installer/build.ps1"], scripts);
     }
 
     [Fact]

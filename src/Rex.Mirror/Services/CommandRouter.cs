@@ -97,6 +97,7 @@ public static class CommandRouter
             ["windowVisible"] = host.Window?.IsVisible ?? false,
             ["fullscreen"] = host.Window?.IsFullscreen ?? false,
             ["hudVisible"] = host.Window?.HudVisible ?? false,
+            ["onboarding"] = host.Window?.OnboardingVisible ?? false,
             ["zoom"] = host.Window is { } w ? Math.Round(w.Host.Zoom, 3) : 1.0,
             ["device"] = session.ActiveDevice is null ? null : new JsonObject
             {

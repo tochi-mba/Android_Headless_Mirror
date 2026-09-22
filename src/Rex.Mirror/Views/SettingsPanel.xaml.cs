@@ -168,24 +168,6 @@ public partial class SettingsPanel : UserControl
         Status.Text = count == 0 ? "No saved answers." : $"Forgot {count} phone(s). You'll be asked again on the next connection.";
     }
 
-    private void OnDesktopShortcut(object sender, RoutedEventArgs e)
-    {
-        if (_host is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var path = DesktopShortcut.Create(_host.ExecutablePath, _host.Paths.Root);
-            Status.Text = "Shortcut created: " + path;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException)
-        {
-            Status.Text = "Could not create the shortcut: " + ex.Message;
-        }
-    }
-
     private void OnExtraArgs(object sender, RoutedEventArgs e) => CommitExtraArgs();
 
     private void OnExtraArgsKey(object sender, KeyEventArgs e)

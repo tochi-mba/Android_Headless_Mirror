@@ -73,8 +73,36 @@ public sealed class AppEndToEndTests
         var status = await app.WaitForPhaseAsync("needssetup", StartupTimeout);
 
         Assert.False(status["mirroring"]!.GetValue<bool>());
-        await app.SaveScreenshotAsync("first-run.png");
+        Assert.True(status["onboarding"]!.GetValue<bool>());
+        await app.SaveScreenshotAsync("first-run-no-scrcpy.png");
         await app.QuitAsync();
+    }
+
+    [Fact]
+    public async Task FirstRun_GuidesUntilTheFirstPhoneIsMirrored()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        package.WriteScenario(new { Devices = Array.Empty<object>() });
+        using var app = new AppProcess(package);
+        var waiting = await app.WaitForPhaseAsync("waiting", StartupTimeout);
+        Assert.True(waiting["onboarding"]!.GetValue<bool>());
+        await app.SaveScreenshotAsync("first-run.png");
+
+        package.WriteScenario(new { Devices = new[] { new { Serial = "FAKE123", State = "unauthorized", Model = "Fake Phone" } } });
+        await app.WaitForStatusAsync(data => data["onboarding"]!.GetValue<bool>() && data["phase"]!.GetValue<string>() == "waiting"
+            && data["message"]!.GetValue<string>().Contains("Allow", StringComparison.Ordinal), StartupTimeout, "the tap-Allow hint");
+        await app.SaveScreenshotAsync("first-run-allow.png");
+
+        File.Delete(package.FakeAdbScenario);
+        var mirroring = await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        Assert.False(mirroring["onboarding"]!.GetValue<bool>());
+        await app.QuitAsync();
+
+        // Once a phone has been mirrored the guide stays away, even with nothing connected.
+        package.WriteScenario(new { Devices = Array.Empty<object>() });
+        using var second = new AppProcess(package);
+        Assert.False((await second.WaitForPhaseAsync("waiting", StartupTimeout))["onboarding"]!.GetValue<bool>());
+        await second.QuitAsync();
     }
 
     [Fact]
@@ -502,9 +530,20 @@ public sealed class AppEndToEndTests
 
                 Directory.CreateDirectory(RepoPaths.Screens);
                 using var bitmap = new System.Drawing.Bitmap(rect.Right - rect.Left, rect.Bottom - rect.Top);
-                using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+                for (var attempt = 0; ; attempt++)
                 {
-                    graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, bitmap.Size);
+                    using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+                    {
+                        graphics.CopyFromScreen(rect.Left, rect.Top, 0, 0, bitmap.Size);
+                    }
+
+                    // A freshly shown WPF window is white until its first frame; the app is always dark.
+                    if (!IsUnpainted(bitmap) || attempt >= 20)
+                    {
+                        break;
+                    }
+
+                    await Task.Delay(150, TestContext.Current.CancellationToken);
                 }
 
                 bitmap.Save(Path.Combine(RepoPaths.Screens, name), System.Drawing.Imaging.ImageFormat.Png);
@@ -513,6 +552,22 @@ public sealed class AppEndToEndTests
             {
                 SetThreadDpiAwarenessContext(previousDpiContext);
             }
+        }
+
+        private static bool IsUnpainted(System.Drawing.Bitmap bitmap)
+        {
+            for (var y = bitmap.Height / 4; y < bitmap.Height; y += bitmap.Height / 4)
+            {
+                for (var x = bitmap.Width / 4; x < bitmap.Width; x += bitmap.Width / 4)
+                {
+                    if (bitmap.GetPixel(x, y).GetBrightness() < 0.9f)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         public async Task QuitAsync()

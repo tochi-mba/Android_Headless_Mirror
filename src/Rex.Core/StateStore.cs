@@ -42,6 +42,9 @@ public sealed record UiState
     public bool Maximized { get; set; }
     public bool SidebarVisible { get; set; } = true;
     public string SidebarTab { get; set; } = "controls";
+
+    /// <summary>The user left the first-run guide before a phone was ever mirrored.</summary>
+    public bool SetupDismissed { get; set; }
 }
 
 public sealed record StateDocument

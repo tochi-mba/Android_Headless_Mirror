@@ -54,10 +54,11 @@
       <h1>Your phone.<br><span>One window.</span></h1>
       <p class="hero-lede">Plug your Android phone in and it appears on your PC with its own screen off. The mirror, the phone controls and every setting live in a single window. No floating toolbars, no second app.</p>
       <div class="hero-actions">
-        <a class="button button-primary" href="#install">Get started <span aria-hidden="true">→</span></a>
-        <a class="button button-secondary" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">View source <span aria-hidden="true">↗</span></a>
+        <a class="button button-primary" id="download" href="https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest/download/AndroidHeadlessMirror-Setup.exe" download>Download for Windows <span aria-hidden="true">↓</span></a>
+        <a class="button button-secondary" href="#install">How it installs</a>
       </div>
-      <div class="hero-meta" aria-label="Project highlights"><span>Open source</span><span>No account</span><span>No phone-content uploads</span></div>
+      <p class="download-meta" id="download-meta">Windows 10 or 11 · 64‑bit · free and open source</p>
+      <div class="hero-meta" aria-label="Project highlights"><span>No account</span><span>No telemetry</span><span>No administrator rights</span></div>
     </div>
 
     <div class="hero-stage reveal" aria-label="Preview of the Android Headless Mirror window">
@@ -162,23 +163,27 @@
     <div class="section-heading reveal">
       <div class="eyebrow signal">Five minutes</div>
       <h2>Install</h2>
+      <p>One installer, no accounts, no administrator prompt. The app walks you through the phone side on its first run.</p>
     </div>
     <ol class="install-steps reveal">
-      <li><strong>Clone or download the repository.</strong>
-        <div class="command-row"><code id="clone-command">git clone https://github.com/tochi-mba/Android_Headless_Mirror.git</code><button class="copy-button" type="button" data-copy="git clone https://github.com/tochi-mba/Android_Headless_Mirror.git">Copy</button></div></li>
-      <li><strong>Run <code>REX.bat</code>.</strong> The first run prepares the app from a release, or builds it locally if the .NET 10 SDK is installed, then opens it.</li>
-      <li><strong>Press Install scrcpy.</strong> The official Genymobile release is downloaded and its SHA‑256 checksum is verified before anything is installed.</li>
-      <li><strong>Enable USB debugging on the phone.</strong> Settings → About phone → tap Build number seven times, then Developer options → USB debugging.</li>
-      <li><strong>Plug the phone in and tap Allow.</strong> Tick “Always allow from this computer”. The mirror opens by itself.</li>
+      <li><strong>Download and run the installer.</strong> <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest/download/AndroidHeadlessMirror-Setup.exe" download>AndroidHeadlessMirror‑Setup.exe</a> installs for your user only. It is not code‑signed yet, so Windows may show a blue SmartScreen screen: click <em>More info</em>, then <em>Run anyway</em>.</li>
+      <li><strong>Pick your options.</strong> Start with Windows (recommended, the app waits in the tray for your phone) and a desktop shortcut. The mirroring engine, scrcpy, is included.</li>
+      <li><strong>Turn on USB debugging on the phone.</strong> The app shows the exact taps: Settings → About phone → tap Build number seven times, then Developer options → USB debugging.</li>
+      <li><strong>Plug the phone in and tap Allow.</strong> Tick “Always allow from this computer”. The mirror opens by itself, and from then on every time you plug in.</li>
     </ol>
-    <p class="install-note reveal">Tick <strong>Start with Windows</strong> in Settings and the app waits in the tray after every sign‑in. Closing the window keeps it running; Quit is in the tray menu.</p>
+    <p class="install-note reveal">Closing the window keeps the app in the tray; Quit is in the tray menu. Uninstall from Windows Settings → Apps like any other program; your settings stay in <code>%LocalAppData%\REX</code> until you delete them.</p>
+    <details class="source-note reveal">
+      <summary>Building from source instead</summary>
+      <p>With the .NET 10 SDK installed, clone the repository and run <code>REX.bat</code>. It builds the app into <code>tools\rex</code> on first use and opens it; <code>REX.bat --build</code> rebuilds after a change.</p>
+      <div class="command-row"><code id="clone-command">git clone https://github.com/tochi-mba/Android_Headless_Mirror.git</code><button class="copy-button" type="button" data-copy="git clone https://github.com/tochi-mba/Android_Headless_Mirror.git">Copy</button></div>
+    </details>
   </section>
 
   <section class="section container" id="cli">
     <div class="section-heading reveal">
       <div class="eyebrow signal">Scripts and agents</div>
       <h2>Everything the window does, from the command line.</h2>
-      <p><code>REX.bat &lt;command&gt;</code> runs <code>rex.exe</code>. Add <code>--json</code> or start with <code>agent</code> and you get exactly one JSON document and no prompts.</p>
+      <p>The installer puts <code>rex.exe</code> on your PATH. Add <code>--json</code> or start with <code>agent</code> and you get exactly one JSON document and no prompts.</p>
     </div>
     <pre class="console reveal" tabindex="0" aria-label="Example CLI commands"><code>rex status                        app, mirror and phone state
 rex action sleep                  turn the phone screen off

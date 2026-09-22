@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   windows:
-    name: Build, test and publish (Windows)
+    name: Build, test and package (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -20,54 +20,49 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore
-        run: dotnet restore Rex.sln
-
       - name: Build (warnings are errors)
-        run: dotnet build Rex.sln -c Release --no-restore
+        run: dotnet build Rex.sln -c Release
 
       - name: Test
         run: dotnet test --project tests/Rex.Tests/Rex.Tests.csproj -c Release --no-build
 
-      - name: Publish the app and the CLI into one folder
+      - name: Build the installer
         shell: pwsh
-        run: |
-          dotnet publish src/Rex.Mirror/Rex.Mirror.csproj -c Release -r win-x64 --self-contained true -o artifacts/rex
-          dotnet publish src/Rex.Cli/Rex.Cli.csproj -c Release -r win-x64 --self-contained true -o artifacts/rex
-          foreach ($exe in "RexMirror.exe", "rex.exe") {
-            if (-not (Test-Path "artifacts/rex/$exe")) { throw "$exe was not produced." }
-          }
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./installer/build.ps1 -Version 0.0.${{ github.run_number }}
 
       - name: Smoke test the published CLI
         shell: pwsh
         run: |
           $env:REX_ROOT = (Get-Location).Path
-          & artifacts/rex/rex.exe help | Tee-Object artifacts/help.txt
+          & dist/rex/rex.exe help
           if ($LASTEXITCODE -ne 0) { throw "rex help failed." }
 
-          $json = & artifacts/rex/rex.exe agent capabilities
+          $json = & dist/rex/rex.exe agent capabilities
           if ($LASTEXITCODE -ne 0) { throw "rex agent capabilities failed." }
           $lines = @($json | Where-Object { $_ -ne "" })
           if ($lines.Count -ne 1) { throw "Machine mode must emit exactly one line." }
           $doc = $lines[0] | ConvertFrom-Json
           if (-not $doc.ok -or $doc.protocolVersion -ne 2) { throw "Machine protocol contract failed." }
 
-          $status = (& artifacts/rex/rex.exe --json status) | ConvertFrom-Json
-          if ($status.ok -ne $true) { throw "rex --json status failed." }
+          $status = (& dist/rex/rex.exe --json status) | ConvertFrom-Json
+          if ($status.ok -ne $true -or $status.data.setupComplete -ne $true) { throw "rex --json status failed." }
 
-      - name: Upload artifacts
+      - name: Upload the installer and screenshots
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rex-win-x64
+          name: installer-and-screens
           path: |
-            artifacts/rex/
+            dist/AndroidHeadlessMirror-Setup.exe
+            dist/AndroidHeadlessMirror-Setup.exe.sha256
             artifacts/screens/
           if-no-files-found: ignore
           retention-days: 14
 
   pages:
-    name: Pages site
+    name: Website
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -76,22 +71,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Validate JavaScript
-        run: |
-          node --check docs/app.js
-          node --check playwright.config.js
-          node --check tests/pages.spec.js
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:pages
 
-      - name: Install test dependencies
-        run: npm ci
-
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run Playwright and axe checks
-        run: npm run test:pages
-
-      - name: Upload Playwright report
+      - name: Upload the Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:

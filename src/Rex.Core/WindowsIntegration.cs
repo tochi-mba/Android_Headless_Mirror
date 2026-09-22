@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
 using Microsoft.Win32;
 
 namespace Rex.Core;
@@ -61,79 +59,5 @@ public static class StartupRegistration
                 File.Delete(path);
             }
         }
-    }
-}
-
-/// <summary>Creates and removes the "REX" desktop shortcut without WScript.</summary>
-public static class DesktopShortcut
-{
-    public const string FileName = "REX.lnk";
-
-    public static string DefaultPath()
-    {
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        if (string.IsNullOrWhiteSpace(desktop))
-        {
-            throw new InvalidOperationException("Could not resolve the Desktop folder.");
-        }
-
-        return Path.Combine(desktop, FileName);
-    }
-
-    public static bool Exists(string? shortcutPath = null) => File.Exists(shortcutPath ?? DefaultPath());
-
-    public static string Create(string targetExecutable, string workingDirectory, string? shortcutPath = null)
-    {
-        var path = shortcutPath ?? DefaultPath();
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-
-        var link = (IShellLinkW)new ShellLink();
-        link.SetPath(targetExecutable);
-        link.SetWorkingDirectory(workingDirectory);
-        link.SetDescription("Android Headless Mirror by REX Technologies");
-        link.SetIconLocation(targetExecutable, 0);
-        ((IPersistFile)link).Save(path, true);
-        return path;
-    }
-
-    public static bool Remove(string? shortcutPath = null)
-    {
-        var path = shortcutPath ?? DefaultPath();
-        if (!File.Exists(path))
-        {
-            return false;
-        }
-
-        File.Delete(path);
-        return true;
-    }
-
-    [ComImport]
-    [Guid("00021401-0000-0000-C000-000000000046")]
-    private class ShellLink;
-
-    [ComImport]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    [Guid("000214F9-0000-0000-C000-000000000046")]
-    private interface IShellLinkW
-    {
-        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszFile, int cchMaxPath, IntPtr pfd, int fFlags);
-        void GetIDList(out IntPtr ppidl);
-        void SetIDList(IntPtr pidl);
-        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszName, int cchMaxName);
-        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
-        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszDir, int cchMaxPath);
-        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
-        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszArgs, int cchMaxPath);
-        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
-        void GetHotkey(out short pwHotkey);
-        void SetHotkey(short wHotkey);
-        void GetShowCmd(out int piShowCmd);
-        void SetShowCmd(int iShowCmd);
-        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszIconPath, int cchIconPath, out int piIcon);
-        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
-        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, int dwReserved);
-        void Resolve(IntPtr hwnd, int fFlags);
-        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
     }
 }

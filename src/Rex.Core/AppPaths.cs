@@ -1,13 +1,19 @@
 namespace Rex.Core;
 
 /// <summary>
-/// Locates the package root (the folder that holds config.json and REX.bat) and
-/// derives every runtime path from it. The executables may live in tools/rex or
-/// in a build output folder several levels deep, so discovery walks upwards.
+/// Where the app keeps its files. There are two layouts:
+/// <list type="bullet">
+/// <item><b>Checkout</b>: the repository folder (config.json next to REX.bat) is the root, and the
+/// executables live in tools/rex or a build output folder below it. Discovery walks upwards.</item>
+/// <item><b>Installed</b>: the installer puts the executables under Program Files and the data
+/// root is <c>%LocalAppData%\REX\Android Headless Mirror</c>, created on first run.</item>
+/// </list>
+/// <c>REX_ROOT</c> overrides both.
 /// </summary>
 public sealed class AppPaths
 {
     public const string RootEnvironmentVariable = "REX_ROOT";
+    public const string ProductFolderName = "Android Headless Mirror";
 
     public string Root { get; }
 
@@ -17,9 +23,12 @@ public sealed class AppPaths
     public string LogFile => Path.Combine(Logs, "mirror.log");
     public string Captures => Path.Combine(Root, "captures");
     public string Tools => Path.Combine(Root, "tools");
+
+    /// <summary>scrcpy versions installed or updated by the app itself.</summary>
     public string ScrcpyTools => Path.Combine(Tools, "scrcpy");
-    public string RexTools => Path.Combine(Tools, "rex");
-    public string Launcher => Path.Combine(Root, "REX.bat");
+
+    /// <summary>The scrcpy the installer ships next to the executables.</summary>
+    public static string BundledScrcpyTools => Path.Combine(AppContext.BaseDirectory, "scrcpy");
 
     private AppPaths(string root) => Root = root;
 
@@ -31,12 +40,9 @@ public sealed class AppPaths
             return FromRoot(overrideRoot);
         }
 
-        var candidates = new[]
-        {
-            AppContext.BaseDirectory,
-            Path.GetDirectoryName(Environment.ProcessPath),
-            Directory.GetCurrentDirectory(),
-        };
+        // Where the executable lives decides the layout; the working directory never does, so an
+        // installed rex.exe run from inside a checkout still uses the installed data root.
+        var candidates = new[] { AppContext.BaseDirectory, Path.GetDirectoryName(Environment.ProcessPath) };
 
         foreach (var start in candidates)
         {
@@ -48,30 +54,54 @@ public sealed class AppPaths
             var current = new DirectoryInfo(Path.GetFullPath(start));
             for (var depth = 0; depth < 8 && current is not null; depth++, current = current.Parent)
             {
-                if (LooksLikeRoot(current.FullName))
+                if (LooksLikeCheckout(current.FullName))
                 {
                     return new AppPaths(current.FullName);
                 }
             }
         }
 
-        throw new InvalidOperationException(
-            "Could not find the Android Headless Mirror folder (the one containing config.json and REX.bat). " +
-            $"Run from inside that folder or set {RootEnvironmentVariable}.");
+        return CreateDataRoot(DefaultDataRoot(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)));
     }
 
+    /// <summary>An existing root that already holds config.json (a checkout or a prepared folder).</summary>
     public static AppPaths FromRoot(string root)
     {
         var full = Path.GetFullPath(root);
-        if (!LooksLikeRoot(full))
+        if (!File.Exists(Path.Combine(full, "config.json")))
         {
-            throw new InvalidOperationException($"'{full}' is not an Android Headless Mirror folder.");
+            throw new InvalidOperationException($"'{full}' is not an Android Headless Mirror folder (no config.json).");
         }
 
         return new AppPaths(full);
     }
 
-    /// <summary>Resolves a relative path inside the package and rejects escapes.</summary>
+    /// <summary>Creates the folder and a default config.json when they do not exist yet.</summary>
+    public static AppPaths CreateDataRoot(string directory)
+    {
+        var full = Path.GetFullPath(directory);
+        Directory.CreateDirectory(full);
+        var config = Path.Combine(full, "config.json");
+        if (!File.Exists(config))
+        {
+            ConfigFile.Save(config, new RexConfig());
+            File.Delete(ConfigFile.BackupPath(config));
+        }
+
+        return new AppPaths(full);
+    }
+
+    public static string DefaultDataRoot(string localAppData)
+    {
+        if (string.IsNullOrWhiteSpace(localAppData))
+        {
+            throw new InvalidOperationException("Windows did not report a Local AppData folder.");
+        }
+
+        return Path.Combine(localAppData, "REX", ProductFolderName);
+    }
+
+    /// <summary>Resolves a relative path inside the root and rejects escapes.</summary>
     public string Inside(string relative)
     {
         if (string.IsNullOrWhiteSpace(relative))
@@ -89,7 +119,7 @@ public sealed class AppPaths
         return combined;
     }
 
-    private static bool LooksLikeRoot(string path) =>
+    private static bool LooksLikeCheckout(string path) =>
         File.Exists(Path.Combine(path, "config.json")) &&
         File.Exists(Path.Combine(path, "REX.bat"));
 }
