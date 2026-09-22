@@ -70,6 +70,7 @@ function Ensure-MirrorChromeRuntimeConfig {
 
 Ensure-MirrorChromeRuntimeConfig $ChromeConfig
 . (Join-Path $Root "MirrorInteraction.ps1")
+. (Join-Path $Root "ScrcpyControl.ps1")
 
 $WindowTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
 
@@ -252,8 +253,6 @@ public static class AHMMirrorChromeNative
     public const uint SWP_NOSENDCHANGING = 0x0400;
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
 
-    public const ushort VK_LMENU = 0xA4;
-    public const ushort VK_O = 0x4F;
 
     public const int MW_FILTERMODE_EXCLUDE = 0;
 
@@ -795,33 +794,7 @@ public static class AHMMirrorChromeNative
         return CallNextHookEx(hook, nCode, wParam, lParam);
     }
 
-    public static bool SendScrcpyScreenOffShortcut(IntPtr target)
-    {
-        if (target == IntPtr.Zero)
-        {
-            return false;
-        }
 
-        SetForegroundWindow(target);
-
-        INPUT[] inputs = new INPUT[4];
-
-        inputs[0].type = INPUT_KEYBOARD;
-        inputs[0].U.ki.wVk = VK_LMENU;
-
-        inputs[1].type = INPUT_KEYBOARD;
-        inputs[1].U.ki.wVk = VK_O;
-
-        inputs[2].type = INPUT_KEYBOARD;
-        inputs[2].U.ki.wVk = VK_O;
-        inputs[2].U.ki.dwFlags = KEYEVENTF_KEYUP;
-
-        inputs[3].type = INPUT_KEYBOARD;
-        inputs[3].U.ki.wVk = VK_LMENU;
-        inputs[3].U.ki.dwFlags = KEYEVENTF_KEYUP;
-
-        return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) == inputs.Length;
-    }
 }
 '@
 
@@ -1625,9 +1598,9 @@ $controlsButton.Add_Click({
 $sleepButton.Add_Click({
     if ($script:targetHwnd -eq [IntPtr]::Zero) { return }
 
-    # scrcpy's own MOD+O action turns the Android physical display off while
-    # keeping video mirroring active. Default MOD includes Left Alt.
-    [AHMMirrorChromeNative]::SendScrcpyScreenOffShortcut($script:targetHwnd) | Out-Null
+    # Use the same hardened delivery path as the Control Center. The scrcpy
+    # launch contract pins MOD to left Alt.
+    Invoke-ScrcpyNamedShortcut         -WindowTitle $WindowTitle         -Name "sleep" | Out-Null
 })
 
 $resetZoomButton.Add_Click({
