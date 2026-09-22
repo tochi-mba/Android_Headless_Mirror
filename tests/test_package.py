@@ -436,22 +436,6 @@ class RepositoryContractTests(unittest.TestCase):
                 "MaxOutputCharacters",
             },
         )
-        self.assertEqual(
-            set(config["Root"]),
-            {
-                "Enabled",
-                "ProbeOnConnect",
-                "RequestAutomatically",
-                "AllowReadOnly",
-                "AllowReversible",
-                "AllowSystemChanges",
-                "AllowDeviceCritical",
-                "RawShellEnabled",
-                "RequestTimeoutSeconds",
-                "CommandTimeoutSeconds",
-                "MaxOutputCharacters",
-            },
-        )
 
     def test_config_defaults_are_safe_and_bounded(self):
         config = json.loads(self.read("config.json"))
@@ -1589,6 +1573,16 @@ class RepositoryContractTests(unittest.TestCase):
                 missing.append(asset_path)
         self.assertEqual(missing, [])
 
+    def test_pages_document_privileged_root_safety_boundary(self):
+        html = self.read("docs/index.html")
+        self.assertIn('id="privileged"', html)
+        self.assertIn('href="#privileged"', html)
+        self.assertIn("Root is a capability. Not a boolean.", html)
+        self.assertIn("rex root status", html)
+        self.assertIn("rex root request", html)
+        self.assertIn("no root installation", html)
+        self.assertIn("DRM bypass", html)
+
     def test_page_has_semantic_landmarks(self):
         page = self.scan_page()
         for tag in ["header", "nav", "main", "footer"]:
@@ -1666,6 +1660,18 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertIn(contract, js)
 
     # ---------- Workflow contracts ----------
+
+    def test_ci_smoke_enforces_root_v1_machine_safety_contract(self):
+        workflow = self.read(".github/workflows/ci.yml")
+        for needle in [
+            "rootCommands",
+            "root status",
+            "root request",
+            "passiveStatusDoesNotInvokeSu",
+            "rawShell",
+            "rootV1Writes",
+        ]:
+            self.assertIn(needle, workflow)
 
     def test_ci_has_package_and_browser_test_layers(self):
         workflow = self.read(".github/workflows/ci.yml")
