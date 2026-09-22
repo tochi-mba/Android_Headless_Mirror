@@ -232,6 +232,26 @@ Root support must remain capability-driven.
 Never auto-request superuser authorization merely because `su` is visible. Passive probes and explicit authorization are separate operations.
 
 Root v1 is an inspection release. Keep reversible/system/device-critical writes disabled by policy and do not add flashing, boot-image patching, AVB manipulation, root hiding, raw root shell or DRM-circumvention behavior.
+### Mirror interaction
+
+Keep Android gestures and Windows-only magnification separate:
+
+- natural two-finger pinch/spread -> Android pinch/zoom;
+- natural two-finger slide -> Android scroll through the bounded REX touchpad bridge;
+- Alt + pinch -> PC-only host magnification;
+- Alt + two-finger slide while host zoom is active -> pan the host magnified viewport;
+- Alt + wheel -> PC-only host zoom fallback.
+
+Do not assign Ctrl or Shift to REX host zoom. scrcpy uses Ctrl for Android pinch/rotate simulation, Shift for vertical two-finger tilt, and Ctrl+Shift for horizontal tilt.
+
+The scrcpy launch contract pins `--shortcut-mod=lalt`; do not allow `ExtraScrcpyArgs` to override it because Control Center runtime actions depend on one deterministic MOD.
+
+Touchpad sensitivity/deadzone/fling-cap settings must affect runtime behavior, not only the UI. Keep gesture math in `MirrorInteraction.ps1` so it remains deterministic and unit-testable.
+
+Host zoom state is published under the per-device runtime directory. Reset host zoom must be disabled at 100%, and the zoom navigator/minimap must only appear while host zoom is active.
+
+Android forced rotation is a best-effort, reversible device setting. Keep it separate from scrcpy's display-rotation shortcut and always expose an Automatic restore path.
+
 ### Wireless ADB
 
 Wireless ADB is opt-in and disabled by default. USB remains the recovery path.
