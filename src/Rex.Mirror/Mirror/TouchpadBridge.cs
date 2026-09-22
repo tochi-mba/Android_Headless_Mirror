@@ -136,15 +136,17 @@ public sealed class TouchpadBridge
         var drift = ((centroid.Item1 - _startCentroid.X) * scaleFactor, (centroid.Item2 - _startCentroid.Y) * scaleFactor);
         var surface = _host.SurfaceScreenRect;
 
-        _firstScreen = Clamp(surface, _touchCenter.X + drift.Item1 + offsets[0].Item1, _touchCenter.Y + drift.Item2 + offsets[0].Item2);
-        _secondScreen = Clamp(surface, _touchCenter.X + drift.Item1 + offsets[1].Item1, _touchCenter.Y + drift.Item2 + offsets[1].Item2);
-        if (!_injector.Move(_firstScreen, _secondScreen))
+        var firstScreen = Clamp(surface, _touchCenter.X + drift.Item1 + offsets[0].Item1, _touchCenter.Y + drift.Item2 + offsets[0].Item2);
+        var secondScreen = Clamp(surface, _touchCenter.X + drift.Item1 + offsets[1].Item1, _touchCenter.Y + drift.Item2 + offsets[1].Item2);
+        if (!_injector.Move(firstScreen, secondScreen))
         {
-            _log($"Touch injection failed (error {_injector.LastError}); falling back to plain mouse.");
-            _kind = GestureKind.None;
+            _log($"Touch injection failed (error {_injector.LastError}); releasing synthetic contacts and falling back to plain mouse.");
+            EndGesture();
             return false;
         }
 
+        _firstScreen = firstScreen;
+        _secondScreen = secondScreen;
         return true;
     }
 
