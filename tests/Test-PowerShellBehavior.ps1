@@ -540,7 +540,7 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
             RecordOnStart = $false
             RecordDirectory = "captures/recordings"
         }
-        ExtraScrcpyArgs = '--render-fit=letterbox --shortcut-mod="rctrl"'
+        ExtraScrcpyArgs = '--render-fit=letterbox'
     }
 
     $usbArgs = @(Build-ScrcpyArguments "USB123" $false)
@@ -558,8 +558,8 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         "--audio-codec=opus",
         "--audio-buffer=50",
         "--disable-screensaver",
-        "--render-fit=letterbox",
-        "--shortcut-mod=rctrl"
+        "--shortcut-mod=lalt",
+        "--render-fit=letterbox"
     )) {
         Assert-Contains -Collection $usbArgs -Value $expected -Message "USB scrcpy args should include $expected."
     }
@@ -589,6 +589,7 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
     Assert-Contains -Collection $minimalArgs -Value "--no-audio" -Message "Disabled audio should emit --no-audio."
     Assert-Contains -Collection $minimalArgs -Value "--fullscreen" -Message "Fullscreen preference should be emitted."
     Assert-Contains -Collection $minimalArgs -Value "--always-on-top" -Message "Always-on-top preference should be emitted."
+    Assert-Contains -Collection $minimalArgs -Value "--shortcut-mod=lalt" -Message "Minimal sessions must retain the fixed REX shortcut modifier."
     Assert-False -Condition ($minimalArgs -contains "--audio-dup") -Message "Audio duplication should not emit when audio is disabled."
     Assert-False -Condition ($minimalArgs -contains "--keep-active") -Message "Disabled KeepActiveDuringMirror should suppress --keep-active."
     Assert-False -Condition (@($minimalArgs | Where-Object { $_ -like "--max-size=*" }).Count -gt 0) -Message "MaxSize=0 should suppress --max-size."
@@ -617,6 +618,8 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         "--serial=OTHER",
         "--window-title=Hijacked",
         "--mouse=uhid",
+        "--shortcut-mod=rctrl",
+        "--shortcut-mod=lctrl,lsuper",
         "--no-control",
         "--no-window",
         "--no-video"
@@ -631,8 +634,8 @@ echo 14: rndis0    inet 192.168.42.129/24 brd 192.168.42.255 scope global rndis0
         Assert-True -Condition $threw -Message "Advanced raw argument '$forbidden' must be rejected."
     }
 
-    $splitArgs = @(Split-ExtraScrcpyArguments '--render-fit=letterbox --shortcut-mod="rctrl" "--background-color=#123456"')
-    Assert-Equal -Expected @("--render-fit=letterbox","--shortcut-mod=rctrl","--background-color=#123456") -Actual $splitArgs -Message "Quoted extra scrcpy arguments should retain exact argument boundaries."
+    $splitArgs = @(Split-ExtraScrcpyArguments '--render-fit=letterbox "--background-color=#123456"')
+    Assert-Equal -Expected @("--render-fit=letterbox","--background-color=#123456") -Actual $splitArgs -Message "Quoted extra scrcpy arguments should retain exact argument boundaries."
 
     Write-Host "[powershell] Testing native scrcpy argument boundaries..."
     $scrcpyArgLog = Join-Path $temp "scrcpy-args.log"

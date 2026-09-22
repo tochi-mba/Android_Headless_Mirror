@@ -127,9 +127,15 @@ foreach ($buttonName in $runtimeButtons.Keys) {
     Assert-Equal $runtimeButtons[$buttonName] $script:TestActions[$script:TestActions.Count - 1] "$buttonName should dispatch the correct scrcpy action."
 }
 
-Write-Host "[control-center] Exercising host-only zoom reset..."
+Write-Host "[control-center] Exercising host-only zoom reset state..."
+Assert-False (C "ResetHostZoomButton").IsEnabled "Host zoom reset must be disabled at 100%."
+Set-TestHostZoomState 1.75
+Assert-True (C "ResetHostZoomButton").IsEnabled "Host zoom reset must enable above 100%."
+Assert-True ((C "ResetHostZoomButton").Content -match "175%") "Host zoom reset should surface the current zoom."
 Click-Control "ResetHostZoomButton"
 Assert-Contains $script:TestActions "chrome:reset-zoom" "Reset host zoom should dispatch to MirrorChrome."
+Assert-False (C "ResetHostZoomButton").IsEnabled "Resetting host zoom should return the control to disabled in test mode."
+Assert-Equal "Reset host zoom" (C "ResetHostZoomButton").Content "Reset label should return to its neutral form at 100%."
 
 Write-Host "[control-center] Exercising screenshot and folder flows..."
 Click-Control "ScreenshotButton"
@@ -150,9 +156,42 @@ Click-Control "SavePcSettingsButton"
 Assert-True ((C "StatusBarText").Text -match "900-2400") "Invalid Control Center width should be rejected."
 
 (C "PcControlCenterWidthText").Text = "1040"
+(C "PcAndroidPinchSensitivityText").Text = "0.01"
+Click-Control "SavePcSettingsButton"
+Assert-True ((C "StatusBarText").Text -match "Android pinch sensitivity") "Too-low Android pinch sensitivity should be rejected."
+
+(C "PcAndroidPinchSensitivityText").Text = "0.55"
+(C "PcHostZoomSensitivityText").Text = "9"
+Click-Control "SavePcSettingsButton"
+Assert-True ((C "StatusBarText").Text -match "Host zoom sensitivity") "Too-high host zoom sensitivity should be rejected."
+
+(C "PcHostZoomSensitivityText").Text = "0.55"
+(C "PcTouchpadScrollSensitivityText").Text = "2"
+Click-Control "SavePcSettingsButton"
+Assert-True ((C "StatusBarText").Text -match "scroll sensitivity") "Too-high scroll sensitivity should be rejected."
+
+(C "PcTouchpadScrollSensitivityText").Text = "0.04"
+(C "PcTouchpadScrollMaxText").Text = "999"
+Click-Control "SavePcSettingsButton"
+Assert-True ((C "StatusBarText").Text -match "scroll max delta") "Excessive per-sample scroll cap should be rejected."
+
+(C "PcTouchpadScrollMaxText").Text = "18"
+(C "PcTouchpadPinchThresholdText").Text = "0.5"
+Click-Control "SavePcSettingsButton"
+Assert-True ((C "StatusBarText").Text -match "pinch threshold") "Excessive pinch threshold should be rejected."
+
+(C "PcControlCenterWidthText").Text = "1040"
 (C "PcMaxSizeText").Text = "1600"
 (C "PcVideoBitRateText").Text = "10M"
 (C "PcHostZoomMaxText").Text = "3.5"
+(C "PcAndroidPinchSensitivityText").Text = "0.45"
+(C "PcHostZoomSensitivityText").Text = "0.60"
+(C "PcTouchpadScrollSensitivityText").Text = "0.03"
+(C "PcTouchpadScrollMaxText").Text = "14"
+(C "PcTouchpadPinchThresholdText").Text = "0.04"
+(C "PcHostZoomTouchpadCheck").IsChecked = $true
+(C "PcHostZoomWheelCheck").IsChecked = $true
+(C "PcZoomMinimapCheck").IsChecked = $true
 (C "PcAudioBufferText").Text = "80"
 (C "PcRecordDirectoryText").Text = "captures/recordings"
 (C "PcRecordOnStartCheck").IsChecked = $true
@@ -173,6 +212,17 @@ Assert-Equal "pc-settings:save" $script:TestActions[$script:TestActions.Count - 
 Assert-Equal 90 $Config.MaxFps "Max FPS should update in memory."
 Assert-Equal 1600 $Config.MaxSize "Max size should update in memory."
 Assert-Equal "10M" $Config.VideoBitRate "Bitrate should update in memory."
+Assert-Equal "alt" $Config.MirrorChrome.HostZoomModifier "PC-only host zoom must reserve Alt, not Ctrl/Shift."
+Assert-True $Config.MirrorChrome.TouchpadPinchToHostZoom "Alt + touchpad pinch should remain enabled."
+Assert-True $Config.MirrorChrome.WheelToHostZoom "Alt + wheel should remain enabled."
+Assert-Equal 0.45 $Config.MirrorChrome.AndroidPinchSensitivity "Android pinch sensitivity should update independently."
+Assert-Equal 0.60 $Config.MirrorChrome.HostZoomPinchSensitivity "Host zoom sensitivity should update independently."
+Assert-Equal 0.03 $Config.MirrorChrome.TouchpadScrollSensitivity "Touchpad scroll sensitivity should update."
+Assert-Equal 14 $Config.MirrorChrome.TouchpadScrollMaxDeltaPerSample "Touchpad fling cap should update."
+Assert-Equal 0.04 $Config.MirrorChrome.TouchpadPinchThreshold "Pinch intent threshold should update."
+Assert-True $Config.MirrorChrome.ShowZoomMinimap "Zoom navigator preference should update."
+Assert-True ($null -eq $Config.MirrorChrome.PSObject.Properties["CtrlTouchpadPinchToHostZoom"]) "Saving should remove legacy Ctrl touchpad host-zoom key."
+Assert-True ($null -eq $Config.MirrorChrome.PSObject.Properties["CtrlWheelZoom"]) "Saving should remove legacy Ctrl wheel host-zoom key."
 Assert-Equal "h265" $Config.ScrcpySession.VideoCodec "Video codec should update in memory."
 Assert-Equal "aac" $Config.ScrcpySession.AudioCodec "Audio codec should update in memory."
 Assert-True $Config.ScrcpySession.RecordOnStart "Recording preference should update in memory."
@@ -187,6 +237,11 @@ Assert-True $Window.Topmost "Saving always-on-top should update the current Cont
 (C "PcMaxFpsText").Text = "33"
 Click-Control "ReloadPcSettingsButton"
 Assert-Equal "90" (C "PcMaxFpsText").Text "Discard changes should reload saved in-memory config."
+Assert-Equal "0.45" (C "PcAndroidPinchSensitivityText").Text "Discard should restore Android pinch sensitivity."
+Assert-Equal "0.6" (C "PcHostZoomSensitivityText").Text "Discard should restore host zoom sensitivity."
+Assert-Equal "0.03" (C "PcTouchpadScrollSensitivityText").Text "Discard should restore touchpad scroll sensitivity."
+Assert-True (C "PcHostZoomTouchpadCheck").IsChecked "Discard should restore Alt+pinch host zoom preference."
+Assert-True (C "PcHostZoomWheelCheck").IsChecked "Discard should restore Alt+wheel host zoom preference."
 
 Write-Host "[control-center] Exercising display transport settings and orchestration..."
 Select-Tab "DisplayTab"
@@ -272,6 +327,18 @@ Assert-False $Config.Root.RawShellEnabled "Root v1 should keep raw root shell di
 (C "RootEnabledCheck").IsChecked = $false
 Click-Control "ReloadRootSettingsButton"
 Assert-True (C "RootEnabledCheck").IsChecked "Discard should restore saved root enabled state."
+
+Write-Host "[control-center] Exercising forced Android rotation override..."
+Select-Tab "DeviceSettingsTab"
+Assert-Equal "auto" (Get-ComboTag (C "DeviceRotationOverrideCombo")) "Connected device starts in automatic rotation in test mode."
+Select-ComboTag (C "DeviceRotationOverrideCombo") "1"
+Click-Control "ApplyRotationOverrideButton"
+Assert-Contains $script:TestActions "device:rotation-override=1" "90-degree forced rotation should dispatch through the dedicated rotation override path."
+Assert-False (C "DeviceAutoRotateCheck").IsChecked "Forced rotation should present auto-rotate as disabled."
+Select-ComboTag (C "DeviceRotationOverrideCombo") "auto"
+Click-Control "ApplyRotationOverrideButton"
+Assert-Contains $script:TestActions "device:rotation-override=auto" "Automatic rotation restore should dispatch."
+Assert-True (C "DeviceAutoRotateCheck").IsChecked "Restoring automatic rotation should update the UI state."
 
 Write-Host "[control-center] Exercising friendly Android device controls..."
 Select-Tab "DeviceSettingsTab"
@@ -389,7 +456,7 @@ $exercised = @(
     $runtimeButtons.Keys +
     @(
         "RefreshAllButton","ResetHostZoomButton","ScreenshotButton","OpenScreenshotFolderButton",
-        "SavePcSettingsButton","ReloadPcSettingsButton","DeviceAutoRotateCheck",
+        "SavePcSettingsButton","ReloadPcSettingsButton","DeviceAutoRotateCheck","ApplyRotationOverrideButton",
         "DisplayRefreshButton","DisplayStartScrcpyButton","DisplayOpenWirelessButton",
         "SaveDisplaySettingsButton","ReloadDisplaySettingsButton",
         "RootRefreshButton","RootRequestButton","RootClearButton",
@@ -462,12 +529,24 @@ exit /b 0
     $wifi = Set-FriendlyAndroidSetting $fakeAdb "USB123" "wifi" "enable"
     Assert-True $wifi.Ok "Friendly Wi-Fi command should reach fake ADB."
 
+    $forcedRotation = Set-AndroidRotationOverride $fakeAdb "USB123" "1"
+    Assert-True $forcedRotation.Ok "90-degree rotation override should reach fake ADB."
+    Assert-True ($forcedRotation.Text -match "90") "Rotation override response should report the requested angle."
+
+    $autoRotation = Set-AndroidRotationOverride $fakeAdb "USB123" "auto"
+    Assert-True $autoRotation.Ok "Automatic rotation restore should reach fake ADB."
+    Assert-True ($autoRotation.Text -match "Automatic rotation restored") "Automatic rotation response should be explicit."
+
     $services = @(Get-AndroidCommandServices $fakeAdb "USB123")
     Assert-Equal @("connectivity","package","uimode") $services "cmd -l services should parse and sort."
 
     $logLines = @(Get-Content $log)
     Assert-True (@($logLines | Where-Object { $_ -match "settings put system font_scale" }).Count -eq 1) "Fake ADB log should contain font_scale write."
     Assert-True (@($logLines | Where-Object { $_ -match "svc wifi enable" }).Count -eq 1) "Fake ADB log should contain Wi-Fi enable."
+    $rotationLines = @($logLines | Where-Object { $_ -match "settings put system (user_rotation|accelerometer_rotation)" })
+    Assert-True (@($rotationLines | Where-Object { $_ -match "user_rotation '1'" }).Count -eq 1) "Forced rotation should set the requested quarter turn."
+    Assert-True (@($rotationLines | Where-Object { $_ -match "accelerometer_rotation '0'" }).Count -eq 1) "Forced rotation should disable sensor rotation after setting the target."
+    Assert-True (@($rotationLines | Where-Object { $_ -match "accelerometer_rotation '1'" }).Count -eq 1) "Automatic rotation restore should re-enable sensor rotation."
 
     $failedAdb = Join-Path $temp "adb-fail.cmd"
     @'

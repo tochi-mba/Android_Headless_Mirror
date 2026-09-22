@@ -23,6 +23,55 @@ if ($null -eq $Config.PSObject.Properties["MirrorChrome"] -or -not $Config.Mirro
 }
 
 $ChromeConfig = $Config.MirrorChrome
+
+function Ensure-MirrorChromeRuntimeConfig {
+    param($Value)
+
+    $defaults = [ordered]@{
+        HostZoomModifier = "alt"
+        WheelToHostZoom = $true
+        TouchpadPinchToHostZoom = $true
+        TouchpadPinchDominanceRatio = 1.35
+        TouchpadScrollThreshold = 0.025
+        AndroidPinchSensitivity = 0.55
+        HostZoomPinchSensitivity = 0.55
+        TouchpadScrollSensitivity = 0.04
+        TouchpadScrollDeadzone = 2.0
+        TouchpadScrollMaxDeltaPerSample = 18.0
+        TouchpadSmoothing = 0.25
+        HostPanSensitivity = 0.90
+        ShowZoomMinimap = $true
+    }
+
+    if ($null -eq $Value.PSObject.Properties["WheelToHostZoom"]) {
+        $legacy = $Value.PSObject.Properties["CtrlWheelZoom"]
+        $Value | Add-Member -NotePropertyName WheelToHostZoom -NotePropertyValue $(
+            if ($null -ne $legacy) { [bool]$legacy.Value } else { $true }
+        )
+    }
+
+    if ($null -eq $Value.PSObject.Properties["TouchpadPinchToHostZoom"]) {
+        $legacy = $Value.PSObject.Properties["CtrlTouchpadPinchToHostZoom"]
+        $Value | Add-Member -NotePropertyName TouchpadPinchToHostZoom -NotePropertyValue $(
+            if ($null -ne $legacy) { [bool]$legacy.Value } else { $true }
+        )
+    }
+
+    foreach ($entry in $defaults.GetEnumerator()) {
+        if ($null -eq $Value.PSObject.Properties[$entry.Key]) {
+            $Value | Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value
+        }
+    }
+
+    # Ctrl and Shift both have scrcpy gesture semantics. REX reserves Alt
+    # exclusively for Windows-side host magnification.
+    $Value.HostZoomModifier = "alt"
+}
+
+Ensure-MirrorChromeRuntimeConfig $ChromeConfig
+. (Join-Path $Root "MirrorInteraction.ps1")
+. (Join-Path $Root "ScrcpyControl.ps1")
+
 $WindowTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Serial
 
 $nativeSource = @'
@@ -164,6 +213,7 @@ public static class AHMMirrorChromeNative
     public const int HTTRANSPARENT = -1;
 
     public const int VK_CONTROL = 0x11;
+    public const int VK_MENU = 0x12;
 
     public const uint POINTER_FLAG_INCONTACT = 0x00000004;
     public const uint POINTER_FLAG_DOWN = 0x00010000;
@@ -203,8 +253,6 @@ public static class AHMMirrorChromeNative
     public const uint SWP_NOSENDCHANGING = 0x0400;
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
 
-    public const ushort VK_LMENU = 0xA4;
-    public const ushort VK_O = 0x4F;
 
     public const int MW_FILTERMODE_EXCLUDE = 0;
 
@@ -261,6 +309,38 @@ public static class AHMMirrorChromeNative
 
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern IntPtr GetProcAddress(IntPtr hModule, IntPtr lpProcName);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong", SetLastError = true)]
+    private static extern int GetWindowLong32(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+    private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+    private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    public static void SetNoActivateToolWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        long style = IntPtr.Size == 8
+            ? GetWindowLongPtr64(hwnd, GWL_EXSTYLE).ToInt64()
+            : GetWindowLong32(hwnd, GWL_EXSTYLE);
+
+        style |= WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+
+        if (IntPtr.Size == 8)
+        {
+            SetWindowLongPtr64(hwnd, GWL_EXSTYLE, new IntPtr(style));
+        }
+        else
+        {
+            SetWindowLong32(hwnd, GWL_EXSTYLE, unchecked((int)style));
+        }
+    }
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool SetWindowPos(
@@ -676,6 +756,25 @@ public static class AHMMirrorChromeNative
         return wheelDeltas.TryDequeue(out delta);
     }
 
+    public static bool SendWheelToTarget(IntPtr target, int delta, bool horizontal)
+    {
+        if (target == IntPtr.Zero || delta == 0)
+        {
+            return false;
+        }
+
+        SetForegroundWindow(target);
+
+        INPUT input = new INPUT();
+        input.type = INPUT_MOUSE;
+        input.U.mi.mouseData = unchecked((uint)delta);
+        input.U.mi.dwFlags = horizontal ? MOUSEEVENTF_HWHEEL : MOUSEEVENTF_WHEEL;
+
+        INPUT[] inputs = new INPUT[1];
+        inputs[0] = input;
+        return SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT))) == 1;
+    }
+
     private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (
@@ -683,7 +782,7 @@ public static class AHMMirrorChromeNative
             wParam.ToInt32() == WM_MOUSEWHEEL &&
             wheelTarget != IntPtr.Zero &&
             GetForegroundWindow() == wheelTarget &&
-            (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0
+            (GetAsyncKeyState(VK_MENU) & 0x8000) != 0
         )
         {
             MSLLHOOKSTRUCT data = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
@@ -695,33 +794,7 @@ public static class AHMMirrorChromeNative
         return CallNextHookEx(hook, nCode, wParam, lParam);
     }
 
-    public static bool SendScrcpyScreenOffShortcut(IntPtr target)
-    {
-        if (target == IntPtr.Zero)
-        {
-            return false;
-        }
 
-        SetForegroundWindow(target);
-
-        INPUT[] inputs = new INPUT[4];
-
-        inputs[0].type = INPUT_KEYBOARD;
-        inputs[0].U.ki.wVk = VK_LMENU;
-
-        inputs[1].type = INPUT_KEYBOARD;
-        inputs[1].U.ki.wVk = VK_O;
-
-        inputs[2].type = INPUT_KEYBOARD;
-        inputs[2].U.ki.wVk = VK_O;
-        inputs[2].U.ki.dwFlags = KEYEVENTF_KEYUP;
-
-        inputs[3].type = INPUT_KEYBOARD;
-        inputs[3].U.ki.wVk = VK_LMENU;
-        inputs[3].U.ki.dwFlags = KEYEVENTF_KEYUP;
-
-        return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) == inputs.Length;
-    }
 }
 '@
 
@@ -861,6 +934,57 @@ $toolbar.Show()
 $toolbarHwnd = (New-Object System.Windows.Interop.WindowInteropHelper($toolbar)).Handle
 $toolbar.Hide()
 
+$navigatorWindow = New-Object System.Windows.Window
+$navigatorWindow.WindowStyle = [System.Windows.WindowStyle]::None
+$navigatorWindow.ResizeMode = [System.Windows.ResizeMode]::NoResize
+$navigatorWindow.AllowsTransparency = $true
+$navigatorWindow.Background = [System.Windows.Media.Brushes]::Transparent
+$navigatorWindow.ShowInTaskbar = $false
+$navigatorWindow.Topmost = $true
+$navigatorWindow.ShowActivated = $false
+$navigatorWindow.Focusable = $false
+$navigatorWindow.Width = 176
+$navigatorWindow.Height = 126
+
+$navigatorBorder = New-Object System.Windows.Controls.Border
+$navigatorBorder.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#EE080A09")
+$navigatorBorder.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF4A544B")
+$navigatorBorder.BorderThickness = New-Object System.Windows.Thickness(1)
+$navigatorBorder.CornerRadius = New-Object System.Windows.CornerRadius(8)
+$navigatorBorder.Padding = New-Object System.Windows.Thickness(8)
+$navigatorWindow.Content = $navigatorBorder
+
+$navigatorStack = New-Object System.Windows.Controls.StackPanel
+$navigatorBorder.Child = $navigatorStack
+
+$navigatorLabel = New-Object System.Windows.Controls.TextBlock
+$navigatorLabel.Text = "ZOOM NAVIGATOR"
+$navigatorLabel.FontFamily = New-Object System.Windows.Media.FontFamily("Consolas")
+$navigatorLabel.FontSize = 9
+$navigatorLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FFD7FF3F")
+$navigatorLabel.Margin = New-Object System.Windows.Thickness(1, 0, 0, 6)
+$navigatorStack.Children.Add($navigatorLabel) | Out-Null
+
+$navigatorCanvas = New-Object System.Windows.Controls.Canvas
+$navigatorCanvas.Width = 158
+$navigatorCanvas.Height = 88
+$navigatorCanvas.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FF101511")
+$navigatorCanvas.Cursor = [System.Windows.Input.Cursors]::Cross
+$navigatorStack.Children.Add($navigatorCanvas) | Out-Null
+
+$navigatorViewport = New-Object System.Windows.Shapes.Rectangle
+$navigatorViewport.Stroke = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#FFD7FF3F")
+$navigatorViewport.StrokeThickness = 2
+$navigatorViewport.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#22D7FF3F")
+$navigatorViewport.IsHitTestVisible = $false
+$navigatorCanvas.Children.Add($navigatorViewport) | Out-Null
+
+$navigatorWindow.Show()
+$navigatorHwnd = (New-Object System.Windows.Interop.WindowInteropHelper($navigatorWindow)).Handle
+[AHMMirrorChromeNative]::SetNoActivateToolWindow($navigatorHwnd)
+$navigatorWindow.Hide()
+$script:navigatorDragging = $false
+
 $gestureWindow = New-Object System.Windows.Window
 $gestureWindow.WindowStyle = [System.Windows.WindowStyle]::None
 $gestureWindow.ResizeMode = [System.Windows.ResizeMode]::NoResize
@@ -894,9 +1018,12 @@ $script:lastRectKey = ""
 $script:touchpadContacts = @{}
 $script:touchpadGestureKind = "none"
 $script:touchpadStartMetrics = $null
+$script:touchpadLastMetrics = $null
 $script:touchpadStartHostZoom = 1.0
 $script:touchpadBaseRadius = 0.0
 $script:touchpadGestureHandled = $false
+$script:touchpadSmoothedScrollX = 0.0
+$script:touchpadSmoothedScrollY = 0.0
 $script:gestureHook = $null
 $script:controlCenterProcess = $null
 $script:lastCommandPoll = [DateTime]::MinValue
@@ -912,6 +1039,110 @@ function Get-TargetClientRect {
 
     return $rect
 }
+
+function Hide-ZoomNavigator {
+    if ($navigatorWindow.IsVisible) {
+        $navigatorWindow.Hide()
+    }
+}
+
+function Set-ZoomAnchorFromNavigatorPoint($Point) {
+    $width = [Math]::Max(1.0, [double]$navigatorCanvas.ActualWidth)
+    $height = [Math]::Max(1.0, [double]$navigatorCanvas.ActualHeight)
+    $script:zoomAnchorX = [Math]::Max(0.0, [Math]::Min(1.0, ([double]$Point.X / $width)))
+    $script:zoomAnchorY = [Math]::Max(0.0, [Math]::Min(1.0, ([double]$Point.Y / $height)))
+    Update-Magnifier
+    Update-ZoomNavigator
+}
+
+function Update-ZoomNavigator {
+    if (
+        -not [bool]$ChromeConfig.ShowZoomMinimap -or
+        -not (Test-HostZoomActive $script:zoom)
+    ) {
+        Hide-ZoomNavigator
+        return
+    }
+
+    $rect = Get-TargetClientRect
+    if ($null -eq $rect) {
+        Hide-ZoomNavigator
+        return
+    }
+
+    $sourceWidth = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
+    $sourceHeight = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
+    $geometry = Get-HostZoomSourceGeometry         0.0         0.0         $sourceWidth         $sourceHeight         $script:zoom         $script:zoomAnchorX         $script:zoomAnchorY
+
+    if (-not $navigatorWindow.IsVisible) {
+        $navigatorWindow.Show()
+    }
+
+    $navigatorWindow.UpdateLayout()
+    $canvasWidth = [Math]::Max(1.0, [double]$navigatorCanvas.ActualWidth)
+    $canvasHeight = [Math]::Max(1.0, [double]$navigatorCanvas.ActualHeight)
+
+    [System.Windows.Controls.Canvas]::SetLeft(
+        $navigatorViewport,
+        [double]$geometry.NormalizedLeft * $canvasWidth
+    )
+    [System.Windows.Controls.Canvas]::SetTop(
+        $navigatorViewport,
+        [double]$geometry.NormalizedTop * $canvasHeight
+    )
+    $navigatorViewport.Width = [Math]::Max(
+        4.0,
+        [double]$geometry.NormalizedWidth * $canvasWidth
+    )
+    $navigatorViewport.Height = [Math]::Max(
+        4.0,
+        [double]$geometry.NormalizedHeight * $canvasHeight
+    )
+
+    $dpi = [System.Windows.Media.VisualTreeHelper]::GetDpi($navigatorWindow)
+    $pixelWidth = [Math]::Max(1, [int][Math]::Ceiling($navigatorWindow.ActualWidth * $dpi.DpiScaleX))
+    $pixelHeight = [Math]::Max(1, [int][Math]::Ceiling($navigatorWindow.ActualHeight * $dpi.DpiScaleY))
+    $inset = [int][Math]::Round([double]$ChromeConfig.ToolbarInsetPixels)
+
+    [AHMMirrorChromeNative]::SetWindowPos(
+        $navigatorHwnd,
+        [AHMMirrorChromeNative]::HWND_TOPMOST,
+        $rect.Right - $pixelWidth - $inset,
+        $rect.Bottom - $pixelHeight - $inset,
+        $pixelWidth,
+        $pixelHeight,
+        [AHMMirrorChromeNative]::SWP_NOACTIVATE -bor
+        [AHMMirrorChromeNative]::SWP_NOSENDCHANGING -bor
+        [AHMMirrorChromeNative]::SWP_SHOWWINDOW
+    ) | Out-Null
+}
+
+$navigatorCanvas.Add_PreviewMouseLeftButtonDown({
+    param($sender, $eventArgs)
+    if (-not (Test-HostZoomActive $script:zoom)) { return }
+
+    $script:navigatorDragging = $true
+    [System.Windows.Input.Mouse]::Capture($navigatorCanvas) | Out-Null
+    Set-ZoomAnchorFromNavigatorPoint ($eventArgs.GetPosition($navigatorCanvas))
+    $eventArgs.Handled = $true
+})
+
+$navigatorCanvas.Add_PreviewMouseMove({
+    param($sender, $eventArgs)
+    if (-not $script:navigatorDragging) { return }
+    Set-ZoomAnchorFromNavigatorPoint ($eventArgs.GetPosition($navigatorCanvas))
+    $eventArgs.Handled = $true
+})
+
+$navigatorCanvas.Add_PreviewMouseLeftButtonUp({
+    param($sender, $eventArgs)
+    if ($script:navigatorDragging) {
+        $script:navigatorDragging = $false
+        [System.Windows.Input.Mouse]::Capture($null) | Out-Null
+        Set-ZoomAnchorFromNavigatorPoint ($eventArgs.GetPosition($navigatorCanvas))
+        $eventArgs.Handled = $true
+    }
+})
 
 function Ensure-Magnifier {
     if (-not $ChromeConfig.HostZoomEnabled) { return $false }
@@ -930,7 +1161,7 @@ function Ensure-Magnifier {
 
     [AHMMirrorChromeNative]::ExcludeWindowsFromMagnifier(
         $script:magnifierChild,
-        @($script:magnifierHost, $toolbarHwnd, $gestureHwnd)
+        @($script:magnifierHost, $toolbarHwnd, $gestureHwnd, $navigatorHwnd)
     )
 
     return $true
@@ -945,12 +1176,15 @@ function Hide-Magnifier {
 function Update-ZoomUi {
     $zoomLabel.Text = ("{0:0}%" -f ($script:zoom * 100.0))
 
-    if ($script:zoom -gt 1.001) {
+    if (Test-HostZoomActive $script:zoom) {
         $resetZoomButton.Visibility = [System.Windows.Visibility]::Visible
     }
     else {
         $resetZoomButton.Visibility = [System.Windows.Visibility]::Collapsed
     }
+
+    Update-ZoomNavigator
+    Write-MirrorChromeState
 }
 
 function Reset-HostZoom {
@@ -1055,6 +1289,12 @@ function Apply-ZoomDelta([int]$Delta) {
     Update-Magnifier
 }
 
+function Test-HostZoomModifierDown {
+    return (
+        ([AHMMirrorChromeNative]::GetAsyncKeyState([AHMMirrorChromeNative]::VK_MENU) -band 0x8000) -ne 0
+    )
+}
+
 function Reset-TouchpadGesture {
     if ($script:touchpadGestureKind -eq "device") {
         [AHMMirrorChromeNative]::EndScrcpyPinch()
@@ -1062,9 +1302,12 @@ function Reset-TouchpadGesture {
 
     $script:touchpadGestureKind = "none"
     $script:touchpadStartMetrics = $null
+    $script:touchpadLastMetrics = $null
     $script:touchpadStartHostZoom = $script:zoom
     $script:touchpadBaseRadius = 0.0
     $script:touchpadGestureHandled = $false
+    $script:touchpadSmoothedScrollX = 0.0
+    $script:touchpadSmoothedScrollY = 0.0
 }
 
 function Update-TouchpadGesture {
@@ -1078,6 +1321,7 @@ function Update-TouchpadGesture {
 
     if ($null -eq $script:touchpadStartMetrics) {
         $script:touchpadStartMetrics = $metrics
+        $script:touchpadLastMetrics = $metrics
         $script:touchpadStartHostZoom = $script:zoom
 
         $rect = Get-TargetClientRect
@@ -1099,63 +1343,109 @@ function Update-TouchpadGesture {
 
     $scale = $metrics.Distance / $script:touchpadStartMetrics.Distance
     $angleDelta = Normalize-Angle ($metrics.Angle - $script:touchpadStartMetrics.Angle)
-    $pinchMagnitude = [Math]::Abs([Math]::Log([Math]::Max(0.0001, $scale)))
+    $centerDeltaX = [double]$metrics.CenterX - [double]$script:touchpadStartMetrics.CenterX
+    $centerDeltaY = [double]$metrics.CenterY - [double]$script:touchpadStartMetrics.CenterY
+    $hostModifierDown = Test-HostZoomModifierDown
 
     if ($script:touchpadGestureKind -eq "none") {
-        if ($pinchMagnitude -lt [double]$ChromeConfig.TouchpadPinchThreshold) {
-            return $false
-        }
+        $intent = Get-InteractionGestureKind             ([double]$script:touchpadStartMetrics.Distance)             ([double]$metrics.Distance)             $centerDeltaX             $centerDeltaY             ([double]$ChromeConfig.TouchpadPinchThreshold)             ([double]$ChromeConfig.TouchpadPinchDominanceRatio)             ([double]$ChromeConfig.TouchpadScrollThreshold)
 
-        $ctrlPhysicallyDown = (
-            ([AHMMirrorChromeNative]::GetAsyncKeyState([AHMMirrorChromeNative]::VK_CONTROL) -band 0x8000) -ne 0
-        )
+        if ($intent -eq "pinch") {
+            if (
+                $hostModifierDown -and
+                $ChromeConfig.TouchpadPinchToHostZoom -and
+                $ChromeConfig.HostZoomEnabled
+            ) {
+                $script:touchpadGestureKind = "host"
+                $script:touchpadGestureHandled = $true
 
-        if (
-            $ctrlPhysicallyDown -and
-            $ChromeConfig.CtrlTouchpadPinchToHostZoom -and
-            $ChromeConfig.HostZoomEnabled
-        ) {
-            $script:touchpadGestureKind = "host"
-            $script:touchpadGestureHandled = $true
-
-            $rect = Get-TargetClientRect
-            $cursor = New-Object AHMMirrorChromeNative+POINT
-            if ($null -ne $rect -and [AHMMirrorChromeNative]::GetCursorPos([ref]$cursor)) {
-                $width = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
-                $height = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
-                $script:zoomAnchorX = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.X - $rect.Left) / $width)))
-                $script:zoomAnchorY = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.Y - $rect.Top) / $height)))
-            }
-        }
-        elseif ($ChromeConfig.TouchpadPinchToAndroid) {
-            $rect = Get-TargetClientRect
-            if ($null -ne $rect -and $script:touchpadBaseRadius -gt 0) {
-                $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius 1.0 0.0
-                if ([AHMMirrorChromeNative]::BeginScrcpyPinch($script:targetHwnd, $point.X, $point.Y)) {
-                    $script:touchpadGestureKind = "device"
-                    $script:touchpadGestureHandled = $true
+                $rect = Get-TargetClientRect
+                $cursor = New-Object AHMMirrorChromeNative+POINT
+                if ($null -ne $rect -and [AHMMirrorChromeNative]::GetCursorPos([ref]$cursor)) {
+                    $width = [Math]::Max(1.0, [double]($rect.Right - $rect.Left))
+                    $height = [Math]::Max(1.0, [double]($rect.Bottom - $rect.Top))
+                    $script:zoomAnchorX = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.X - $rect.Left) / $width)))
+                    $script:zoomAnchorY = [Math]::Max(0.0, [Math]::Min(1.0, (($cursor.Y - $rect.Top) / $height)))
                 }
             }
+            elseif ($ChromeConfig.TouchpadPinchToAndroid) {
+                $rect = Get-TargetClientRect
+                if ($null -ne $rect -and $script:touchpadBaseRadius -gt 0) {
+                    $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius 1.0 0.0
+                    if ([AHMMirrorChromeNative]::BeginScrcpyPinch($script:targetHwnd, $point.X, $point.Y)) {
+                        $script:touchpadGestureKind = "device"
+                        $script:touchpadGestureHandled = $true
+                    }
+                }
+            }
+        }
+        elseif ($intent -eq "scroll") {
+            $script:touchpadGestureKind = if (
+                $hostModifierDown -and
+                (Test-HostZoomActive $script:zoom)
+            ) { "host-pan" } else { "scroll" }
+            $script:touchpadGestureHandled = $true
         }
     }
 
     if ($script:touchpadGestureKind -eq "host") {
-        $script:zoom = Get-ClampedHostZoom $script:touchpadStartHostZoom $scale $ChromeConfig
+        $script:zoom = Get-HostZoomFromGesture             $script:touchpadStartHostZoom             $scale             ([double]$ChromeConfig.HostZoomPinchSensitivity)             ([double]$ChromeConfig.MinZoom)             ([double]$ChromeConfig.MaxZoom)
         if ($script:zoom -lt 1.001) { $script:zoom = 1.0 }
         Update-ZoomUi
         Update-Magnifier
+        $script:touchpadLastMetrics = $metrics
         return $true
     }
 
     if ($script:touchpadGestureKind -eq "device") {
         $rect = Get-TargetClientRect
         if ($null -ne $rect) {
-            $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius $scale $angleDelta
+            $deviceScale = Get-AndroidPinchScale                 $scale                 ([double]$ChromeConfig.AndroidPinchSensitivity)
+            $point = Get-SyntheticPinchPoint $rect $script:touchpadBaseRadius $deviceScale $angleDelta
             [AHMMirrorChromeNative]::UpdateScrcpyPinch($point.X, $point.Y) | Out-Null
         }
+        $script:touchpadLastMetrics = $metrics
         return $true
     }
 
+    if ($script:touchpadGestureKind -in @("scroll", "host-pan")) {
+        if ($null -eq $script:touchpadLastMetrics) {
+            $script:touchpadLastMetrics = $metrics
+            return $true
+        }
+
+        $rawX = [double]$metrics.CenterX - [double]$script:touchpadLastMetrics.CenterX
+        $rawY = [double]$metrics.CenterY - [double]$script:touchpadLastMetrics.CenterY
+        $script:touchpadLastMetrics = $metrics
+
+        $script:touchpadSmoothedScrollX = Get-SmoothedInteractionValue             $script:touchpadSmoothedScrollX             $rawX             ([double]$ChromeConfig.TouchpadSmoothing)
+        $script:touchpadSmoothedScrollY = Get-SmoothedInteractionValue             $script:touchpadSmoothedScrollY             $rawY             ([double]$ChromeConfig.TouchpadSmoothing)
+
+        if ($script:touchpadGestureKind -eq "host-pan") {
+            $rect = Get-TargetClientRect
+            if ($null -ne $rect) {
+                $pan = Get-NormalizedPanAnchor                     $script:zoomAnchorX                     $script:zoomAnchorY                     $script:touchpadSmoothedScrollX                     $script:touchpadSmoothedScrollY                     ([double]($rect.Right - $rect.Left))                     ([double]($rect.Bottom - $rect.Top))                     $script:zoom                     ([double]$ChromeConfig.HostPanSensitivity)
+                $script:zoomAnchorX = $pan.X
+                $script:zoomAnchorY = $pan.Y
+                Update-Magnifier
+            }
+            return $true
+        }
+
+        $vertical = Get-ScaledScrollDelta             (-$script:touchpadSmoothedScrollY)             ([double]$ChromeConfig.TouchpadScrollSensitivity)             ([double]$ChromeConfig.TouchpadScrollDeadzone)             ([double]$ChromeConfig.TouchpadScrollMaxDeltaPerSample)
+
+        if ([Math]::Abs($vertical) -ge 1.0) {
+            [AHMMirrorChromeNative]::SendWheelToTarget(
+                $script:targetHwnd,
+                [int][Math]::Round($vertical),
+                $false
+            ) | Out-Null
+        }
+
+        return $true
+    }
+
+    $script:touchpadLastMetrics = $metrics
     return $false
 }
 
@@ -1225,6 +1515,34 @@ function Get-RuntimeDirectory {
     return Join-Path (Join-Path $Root "runtime") $safeSerial
 }
 
+function Write-MirrorChromeState {
+    try {
+        $directory = Get-RuntimeDirectory
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+        $path = Join-Path $directory "mirror-chrome-state.json"
+        $temp = $path + ".tmp"
+
+        [pscustomobject]@{
+            Version = 1
+            Zoom = [Math]::Round([double]$script:zoom, 4)
+            ZoomActive = [bool](Test-HostZoomActive $script:zoom)
+            AnchorX = [Math]::Round([double]$script:zoomAnchorX, 4)
+            AnchorY = [Math]::Round([double]$script:zoomAnchorY, 4)
+            NavigatorVisible = [bool](
+                [bool]$ChromeConfig.ShowZoomMinimap -and
+                (Test-HostZoomActive $script:zoom)
+            )
+            UpdatedAt = [DateTime]::UtcNow.ToString("o")
+        } | ConvertTo-Json -Compress | Set-Content -Path $temp -Encoding UTF8
+
+        Move-Item -Force -Path $temp -Destination $path
+    }
+    catch {
+        # Zoom state is advisory UI metadata; mirroring must continue if the
+        # local runtime state cannot be written.
+    }
+}
+
 function Open-ControlCenter {
     $controlCenterScript = Join-Path $Root "ControlCenter.ps1"
     if (-not (Test-Path $controlCenterScript)) { return }
@@ -1280,9 +1598,9 @@ $controlsButton.Add_Click({
 $sleepButton.Add_Click({
     if ($script:targetHwnd -eq [IntPtr]::Zero) { return }
 
-    # scrcpy's own MOD+O action turns the Android physical display off while
-    # keeping video mirroring active. Default MOD includes Left Alt.
-    [AHMMirrorChromeNative]::SendScrcpyScreenOffShortcut($script:targetHwnd) | Out-Null
+    # Use the same hardened delivery path as the Control Center. The scrcpy
+    # launch contract pins MOD to left Alt.
+    Invoke-ScrcpyNamedShortcut         -WindowTitle $WindowTitle         -Name "sleep" | Out-Null
 })
 
 $resetZoomButton.Add_Click({
@@ -1312,7 +1630,7 @@ $timer.Add_Tick({
                 Open-ControlCenter
             }
 
-            if ($ChromeConfig.CtrlWheelZoom -and -not $script:wheelHookStarted) {
+            if ($ChromeConfig.WheelToHostZoom -and -not $script:wheelHookStarted) {
                 $script:wheelHookStarted = [AHMMirrorChromeNative]::StartWheelHook($script:targetHwnd)
             }
             elseif ($script:wheelHookStarted) {
@@ -1377,7 +1695,11 @@ $timer.Add_Tick({
             $rectKey = "$($rect.Left),$($rect.Top),$width,$height"
             if ($rectKey -ne $script:lastRectKey) {
                 $script:lastRectKey = $rectKey
+            }
+
+            if (Test-HostZoomActive $script:zoom) {
                 Update-Magnifier
+                Update-ZoomNavigator
             }
         }
 
@@ -1415,6 +1737,13 @@ $toolbar.Add_Closed({
 
     if ($gestureWindow.IsVisible) {
         $gestureWindow.Close()
+    }
+
+    if ($navigatorWindow.IsVisible) {
+        $navigatorWindow.Close()
+    }
+    else {
+        try { $navigatorWindow.Close() } catch {}
     }
 
     if ($script:wheelHookStarted) {

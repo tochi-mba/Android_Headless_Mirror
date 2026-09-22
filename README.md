@@ -32,7 +32,6 @@ Other Android devices should work where standard ADB and scrcpy work, but they h
 - Includes diagnostics and rotating logs.
 - Supports optional ADB-over-TCP/IP fallback, disabled by default.
 - Detects and uses an **existing** Android root environment through a capability-gated Privileged Android layer, with passive discovery, explicit authorization, per-boot verification and read-only Root v1 tooling.
-- Detects an existing Android root environment and can unlock a separate, capability-gated **Privileged Android** inspection layer without changing normal ADB behavior.
 
 ## Quick start
 
@@ -152,9 +151,14 @@ Android Headless Mirror adds a small always-on-top toolbar to each active mirror
 On **Windows 11 with a Precision Touchpad**, two-finger touchpad gestures are read through the Windows Precision Touchpad pointer API:
 
 - **Pinch/spread with two fingers** → Android receives a real two-finger pinch/rotate gesture through scrcpy.
-- **Hold physical Ctrl + pinch/spread** → zoom the **PC mirror frame only**. Android receives no pinch.
-- Host zoom persists after Ctrl is released.
-- When host zoom is not 100%, the toolbar shows **Reset zoom**.
+- **Two-finger slide** → Android scrolls, with configurable REX sensitivity, deadzone and per-sample fling limits.
+- **Hold physical Alt + pinch/spread** → zoom the **PC mirror frame only**. Android receives no pinch.
+- **Hold physical Alt + two-finger slide while host zoom is active** → pan the magnified PC viewport.
+- **Alt + mouse wheel** → mouse fallback for PC-only host zoom.
+- Host zoom persists after Alt is released.
+- When host zoom is not 100%, the toolbar shows **Reset zoom** and, when enabled, the zoom navigator/minimap.
+
+REX intentionally leaves **Ctrl** and **Shift** to scrcpy/Android gesture semantics. scrcpy uses Ctrl+click-and-move for Android pinch/rotate simulation, Shift+click-and-move for vertical two-finger tilt, and Ctrl+Shift+click-and-move for horizontal tilt. REX therefore reserves **Alt** for Windows-only magnification.
 
 scrcpy is forced to SDK mouse mode so its virtual-finger multitouch path is always available to the bridge.
 
@@ -164,9 +168,13 @@ On Windows versions/hardware where the Precision Touchpad API is unavailable, no
 
 The toolbar's **Sleep phone** button sends scrcpy's own “turn device screen off while keeping mirroring active” shortcut. It can be pressed again whenever the physical phone display has been woken; the PC mirror continues operating normally.
 
+### Forced Android rotation
+
+The Device settings page separates Android orientation from scrcpy's PC-side display rotation. **Rotation override** offers Automatic, 0°, 90°, 180° and 270°. Forced modes write Android's `user_rotation` first, then disable sensor-driven rotation; Automatic re-enables the sensor. This is best effort because individual apps and OEM policies may still request their own orientation.
+
 ### Mouse-only host zoom
 
-For mouse users, **Ctrl + mouse wheel** also controls the PC-only frame zoom. This is separate from Android pinch-to-zoom.
+For mouse users, **Alt + mouse wheel** controls the PC-only frame zoom. This is deliberately different from scrcpy's Ctrl/Shift Android gesture modifiers.
 
 ### Control Center
 
@@ -174,7 +182,7 @@ The toolbar's **Controls** button opens the Windows Control Center for the curre
 
 - **Controls** — runtime scrcpy actions: fullscreen, fit, pixel-perfect, display rotation/flip, pause/resume, capture reset, FPS counter, Home/Back/Recent Apps/Menu, power, sleep/wake, Android orientation request, notification/Quick Settings panels, volume, clipboard actions, keyboard settings, host-zoom reset and screenshots.
 - **PC / mirror settings** — wrapper/session behavior, video quality, codec, audio, recording-on-start, touchpad behavior, host zoom, pattern-guide behavior, wireless ADB and advanced raw scrcpy arguments.
-- **<device> settings** — friendly ADB-backed controls for brightness, timeout, auto-rotate, font scale, show touches, stay-awake, animation scales, dark mode, Wi-Fi/mobile-data/airplane commands and display size/density overrides.
+- **<device> settings** — friendly ADB-backed controls for brightness, timeout, auto-rotate, best-effort forced orientation (Auto / 0° / 90° / 180° / 270°), font scale, show touches, stay-awake, animation scales, dark mode, Wi-Fi/mobile-data/airplane commands and display size/density overrides.
 - **Advanced Android** — live enumeration of the connected phone's system, secure and global Settings Provider namespaces with search, read/write/delete and risk labels.
 - **Diagnostics** — device identity, Android/API version, ADB state, capability probes and recent command status.
 
@@ -502,7 +510,12 @@ Useful values in `config.json`:
 - `MirrorChrome.SleepButton`: show the persistent **Sleep phone** toolbar action.
 - `MirrorChrome.NativeTouchpadGestures`: enable Windows 11 Precision Touchpad gesture bridging when supported.
 - `MirrorChrome.TouchpadPinchToAndroid`: map a native two-finger pinch/spread to Android multitouch.
-- `MirrorChrome.CtrlTouchpadPinchToHostZoom`: map physical Ctrl + native touchpad pinch to PC-only frame zoom.
+- `MirrorChrome.HostZoomModifier`: reserved modifier for Windows-only magnification; currently `alt`.
+- `MirrorChrome.TouchpadPinchToHostZoom` / `WheelToHostZoom`: enable **Alt + pinch** and **Alt + wheel** PC-only magnification.
+- `MirrorChrome.AndroidPinchSensitivity` / `HostZoomPinchSensitivity`: independently tune Android pinch and Windows magnification response.
+- `MirrorChrome.TouchpadScrollSensitivity` / `TouchpadScrollDeadzone` / `TouchpadScrollMaxDeltaPerSample`: tame two-finger scrolling and cap accidental flings.
+- `MirrorChrome.TouchpadPinchThreshold` / `TouchpadPinchDominanceRatio`: distinguish intentional pinch from ordinary two-finger scrolling.
+- `MirrorChrome.ShowZoomMinimap` / `HostPanSensitivity`: control the zoom navigator and viewport panning.
 - `MirrorChrome.HostZoomEnabled`: enable persistent PC-only frame magnification and **Reset zoom**.
 - `ControlCenter.Enabled`: enable the per-device Windows Control Center.
 - `ControlCenter.ConfirmSensitiveDeviceWrites`: confirm advanced Android writes before execution.
@@ -545,6 +558,7 @@ Tests:
 
 ```powershell
 python tests\test_package.py
+powershell -NoProfile -File tests\Test-MirrorInteractionBehavior.ps1
 ```
 
 The repository includes Windows and browser CI that:

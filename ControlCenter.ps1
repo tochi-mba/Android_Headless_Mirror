@@ -16,6 +16,7 @@ $XamlPath = Join-Path $Root "ControlCenter.xaml"
 
 . (Join-Path $Root "DeviceControl.ps1")
 . (Join-Path $Root "ScrcpyControl.ps1")
+. (Join-Path $Root "MirrorInteraction.ps1")
 
 $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 
@@ -98,6 +99,66 @@ function Ensure-RootConfig {
 
 Ensure-RootConfig
 
+function Ensure-MirrorChromeConfig {
+    if ($null -eq $Config.PSObject.Properties["MirrorChrome"]) {
+        $Config | Add-Member -NotePropertyName MirrorChrome -NotePropertyValue ([pscustomobject]@{})
+    }
+
+    $chrome = $Config.MirrorChrome
+
+    if ($null -eq $chrome.PSObject.Properties["WheelToHostZoom"]) {
+        $legacy = $chrome.PSObject.Properties["CtrlWheelZoom"]
+        $chrome | Add-Member -NotePropertyName WheelToHostZoom -NotePropertyValue $(
+            if ($null -ne $legacy) { [bool]$legacy.Value } else { $true }
+        )
+    }
+
+    if ($null -eq $chrome.PSObject.Properties["TouchpadPinchToHostZoom"]) {
+        $legacy = $chrome.PSObject.Properties["CtrlTouchpadPinchToHostZoom"]
+        $chrome | Add-Member -NotePropertyName TouchpadPinchToHostZoom -NotePropertyValue $(
+            if ($null -ne $legacy) { [bool]$legacy.Value } else { $true }
+        )
+    }
+
+    $defaults = [ordered]@{
+        Enabled = $true
+        SleepButton = $true
+        HostZoomEnabled = $true
+        ZoomStep = 0.10
+        MinZoom = 1.0
+        MaxZoom = 4.0
+        ToolbarInsetPixels = 10
+        PollMilliseconds = 16
+        HostZoomModifier = "alt"
+        NativeTouchpadGestures = $true
+        TouchpadPinchToAndroid = $true
+        TouchpadPinchThreshold = 0.035
+        TouchpadPinchDominanceRatio = 1.35
+        TouchpadScrollThreshold = 0.025
+        AndroidPinchSensitivity = 0.55
+        HostZoomPinchSensitivity = 0.55
+        TouchpadScrollSensitivity = 0.04
+        TouchpadScrollDeadzone = 2.0
+        TouchpadScrollMaxDeltaPerSample = 18.0
+        TouchpadSmoothing = 0.25
+        HostPanSensitivity = 0.90
+        ShowZoomMinimap = $true
+        TouchpadBaseRadiusRelativeToClient = 0.20
+    }
+
+    foreach ($entry in $defaults.GetEnumerator()) {
+        if ($null -eq $chrome.PSObject.Properties[$entry.Key]) {
+            $chrome | Add-Member -NotePropertyName $entry.Key -NotePropertyValue $entry.Value
+        }
+    }
+
+    # Ctrl and Shift belong to scrcpy/Android gesture semantics. REX host-only
+    # magnification uses Alt consistently for pinch and wheel.
+    $chrome.HostZoomModifier = "alt"
+}
+
+Ensure-MirrorChromeConfig
+
 if ([string]::IsNullOrWhiteSpace($AdbPath)) {
     $AdbPath = Get-ChildItem (Join-Path $Root "tools") -Filter "adb.exe" -Recurse -File -ErrorAction SilentlyContinue |
         Select-Object -First 1 -ExpandProperty FullName
@@ -134,6 +195,7 @@ $script:TargetWindowTitle = "{0} [{1}]" -f ([string]$Config.WindowTitle), $Seria
 $script:DeviceIdentity = $null
 $script:AdvancedRows = @()
 $script:TestActions = New-Object System.Collections.Generic.List[string]
+$script:TestHostZoom = 1.0
 
 $Window.Width = [double]$Config.ControlCenter.Width
 $Window.Height = [double]$Config.ControlCenter.Height
@@ -296,7 +358,65 @@ function Send-MirrorChromeCommand([string]$Command) {
     Set-Content -Path (Join-Path $directory "mirror-chrome.command") -Value $Command -Encoding ASCII
 }
 
-(C "ResetHostZoomButton").Add_Click({ Send-MirrorChromeCommand "reset-zoom" })
+function Get-MirrorChromeStatePath {
+    return Join-Path (Get-RuntimeDirectory) "mirror-chrome-state.json"
+}
+
+function Refresh-HostZoomState {
+    $zoom = 1.0
+
+    if ($TestMode) {
+        $zoom = [double]$script:TestHostZoom
+    }
+    else {
+        $path = Get-MirrorChromeStatePath
+        if (Test-Path $path) {
+            try {
+                $state = Get-Content $path -Raw | ConvertFrom-Json
+                if ($null -ne $state.Zoom) {
+                    $zoom = [double]$state.Zoom
+                }
+            }
+            catch {
+                $zoom = 1.0
+            }
+        }
+    }
+
+    $active = (Test-Path function:Test-HostZoomActive) -and (Test-HostZoomActive $zoom)
+    if (-not (Test-Path function:Test-HostZoomActive)) {
+        $active = ($zoom -gt 1.001)
+    }
+
+    (C "ResetHostZoomButton").IsEnabled = [bool]$active
+    (C "ResetHostZoomButton").Content = if ($active) {
+        "Reset host zoom (" + ("{0:0}%" -f ($zoom * 100.0)) + ")"
+    }
+    else {
+        "Reset host zoom"
+    }
+}
+
+function Set-TestHostZoomState([double]$Zoom) {
+    if (-not $TestMode) {
+        throw "Set-TestHostZoomState is available only in Control Center test mode."
+    }
+
+    $script:TestHostZoom = [Math]::Max(1.0, $Zoom)
+    Refresh-HostZoomState
+}
+
+(C "ResetHostZoomButton").Add_Click({
+    Send-MirrorChromeCommand "reset-zoom"
+    if ($TestMode) {
+        $script:TestHostZoom = 1.0
+        Refresh-HostZoomState
+    }
+})
+
+$script:HostZoomStateTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:HostZoomStateTimer.Interval = [TimeSpan]::FromMilliseconds(250)
+$script:HostZoomStateTimer.Add_Tick({ Refresh-HostZoomState })
 
 function Ensure-ExtraScrcpyArgs {
     if ($null -eq $Config.PSObject.Properties["ExtraScrcpyArgs"]) {
@@ -633,9 +753,15 @@ function Load-PcSettings {
 
     (C "PcNativeTouchpadCheck").IsChecked = [bool]$Config.MirrorChrome.NativeTouchpadGestures
     (C "PcTouchpadAndroidPinchCheck").IsChecked = [bool]$Config.MirrorChrome.TouchpadPinchToAndroid
-    (C "PcCtrlTouchpadHostZoomCheck").IsChecked = [bool]$Config.MirrorChrome.CtrlTouchpadPinchToHostZoom
-    (C "PcCtrlWheelHostZoomCheck").IsChecked = [bool]$Config.MirrorChrome.CtrlWheelZoom
+    (C "PcHostZoomTouchpadCheck").IsChecked = [bool]$Config.MirrorChrome.TouchpadPinchToHostZoom
+    (C "PcHostZoomWheelCheck").IsChecked = [bool]$Config.MirrorChrome.WheelToHostZoom
     (C "PcHostZoomMaxText").Text = [string]$Config.MirrorChrome.MaxZoom
+    (C "PcAndroidPinchSensitivityText").Text = [string]$Config.MirrorChrome.AndroidPinchSensitivity
+    (C "PcHostZoomSensitivityText").Text = [string]$Config.MirrorChrome.HostZoomPinchSensitivity
+    (C "PcTouchpadScrollSensitivityText").Text = [string]$Config.MirrorChrome.TouchpadScrollSensitivity
+    (C "PcTouchpadScrollMaxText").Text = [string]$Config.MirrorChrome.TouchpadScrollMaxDeltaPerSample
+    (C "PcTouchpadPinchThresholdText").Text = [string]$Config.MirrorChrome.TouchpadPinchThreshold
+    (C "PcZoomMinimapCheck").IsChecked = [bool]$Config.MirrorChrome.ShowZoomMinimap
 
     (C "PcPatternOverlayCheck").IsChecked = [bool]$Config.PatternOverlay.Enabled
     (C "PcPatternAutoDiscoverCheck").IsChecked = [bool]$Config.PatternOverlay.AutoDiscoverGeometry
@@ -688,6 +814,36 @@ function Save-PcSettings {
         return
     }
 
+    $androidPinchSensitivity = 0.0
+    if (-not [double]::TryParse((C "PcAndroidPinchSensitivityText").Text, [ref]$androidPinchSensitivity) -or $androidPinchSensitivity -lt 0.1 -or $androidPinchSensitivity -gt 2.0) {
+        Set-Status "Android pinch sensitivity must be 0.1-2.0." $true
+        return
+    }
+
+    $hostZoomSensitivity = 0.0
+    if (-not [double]::TryParse((C "PcHostZoomSensitivityText").Text, [ref]$hostZoomSensitivity) -or $hostZoomSensitivity -lt 0.1 -or $hostZoomSensitivity -gt 2.0) {
+        Set-Status "Host zoom sensitivity must be 0.1-2.0." $true
+        return
+    }
+
+    $scrollSensitivity = 0.0
+    if (-not [double]::TryParse((C "PcTouchpadScrollSensitivityText").Text, [ref]$scrollSensitivity) -or $scrollSensitivity -lt 0.005 -or $scrollSensitivity -gt 1.0) {
+        Set-Status "Touchpad scroll sensitivity must be 0.005-1.0." $true
+        return
+    }
+
+    $scrollMax = 0.0
+    if (-not [double]::TryParse((C "PcTouchpadScrollMaxText").Text, [ref]$scrollMax) -or $scrollMax -lt 1.0 -or $scrollMax -gt 120.0) {
+        Set-Status "Touchpad scroll max delta must be 1-120." $true
+        return
+    }
+
+    $pinchThreshold = 0.0
+    if (-not [double]::TryParse((C "PcTouchpadPinchThresholdText").Text, [ref]$pinchThreshold) -or $pinchThreshold -lt 0.005 -or $pinchThreshold -gt 0.2) {
+        Set-Status "Touchpad pinch threshold must be 0.005-0.2." $true
+        return
+    }
+
     $bitrate = (C "PcVideoBitRateText").Text.Trim()
     if ($bitrate -notmatch '^\d+(K|M)?$') {
         Set-Status "Video bitrate must look like 8000K or 12M." $true
@@ -735,9 +891,20 @@ function Save-PcSettings {
 
     $Config.MirrorChrome.NativeTouchpadGestures = [bool](C "PcNativeTouchpadCheck").IsChecked
     $Config.MirrorChrome.TouchpadPinchToAndroid = [bool](C "PcTouchpadAndroidPinchCheck").IsChecked
-    $Config.MirrorChrome.CtrlTouchpadPinchToHostZoom = [bool](C "PcCtrlTouchpadHostZoomCheck").IsChecked
-    $Config.MirrorChrome.CtrlWheelZoom = [bool](C "PcCtrlWheelHostZoomCheck").IsChecked
+    $Config.MirrorChrome.TouchpadPinchToHostZoom = [bool](C "PcHostZoomTouchpadCheck").IsChecked
+    $Config.MirrorChrome.WheelToHostZoom = [bool](C "PcHostZoomWheelCheck").IsChecked
+    $Config.MirrorChrome.HostZoomModifier = "alt"
     $Config.MirrorChrome.MaxZoom = $maxZoom
+    $Config.MirrorChrome.AndroidPinchSensitivity = $androidPinchSensitivity
+    $Config.MirrorChrome.HostZoomPinchSensitivity = $hostZoomSensitivity
+    $Config.MirrorChrome.TouchpadScrollSensitivity = $scrollSensitivity
+    $Config.MirrorChrome.TouchpadScrollMaxDeltaPerSample = $scrollMax
+    $Config.MirrorChrome.TouchpadPinchThreshold = $pinchThreshold
+    $Config.MirrorChrome.ShowZoomMinimap = [bool](C "PcZoomMinimapCheck").IsChecked
+
+    # Persist the new unambiguous schema when an older config is edited.
+    $Config.MirrorChrome.PSObject.Properties.Remove("CtrlTouchpadPinchToHostZoom")
+    $Config.MirrorChrome.PSObject.Properties.Remove("CtrlWheelZoom")
 
     $Config.PatternOverlay.Enabled = [bool](C "PcPatternOverlayCheck").IsChecked
     $Config.PatternOverlay.AutoDiscoverGeometry = [bool](C "PcPatternAutoDiscoverCheck").IsChecked
@@ -846,6 +1013,15 @@ function Refresh-DeviceState {
     Select-ComboTag (C "DeviceBrightnessModeCombo") ([string]$state.BrightnessMode)
     Select-ComboTag (C "DeviceTimeoutCombo") ([string]$state.ScreenTimeoutMs)
     (C "DeviceAutoRotateCheck").IsChecked = ([string]$state.AutoRotate -eq "1")
+    if ([string]$state.AutoRotate -eq "1") {
+        Select-ComboTag (C "DeviceRotationOverrideCombo") "auto"
+    }
+    elseif ([string]$state.UserRotation -in @("0","1","2","3")) {
+        Select-ComboTag (C "DeviceRotationOverrideCombo") ([string]$state.UserRotation)
+    }
+    else {
+        Select-ComboTag (C "DeviceRotationOverrideCombo") "auto"
+    }
     Select-ComboTag (C "DeviceFontScaleCombo") ([string]$state.FontScale)
     (C "DeviceShowTouchesCheck").IsChecked = ([string]$state.ShowTouches -eq "1")
     (C "DeviceStayAwakeCheck").IsChecked = ([string]$state.StayAwake -ne "0")
@@ -890,6 +1066,26 @@ function Invoke-Friendly([string]$Id, $Value) {
 })
 (C "DeviceBrightnessSlider").Add_PreviewMouseUp({ Invoke-Friendly "brightness" ([int](C "DeviceBrightnessSlider").Value) })
 (C "DeviceAutoRotateCheck").Add_Click({ Invoke-Friendly "auto-rotate" ($(if ((C "DeviceAutoRotateCheck").IsChecked) { "1" } else { "0" })) })
+
+(C "ApplyRotationOverrideButton").Add_Click({
+    $mode = Get-ComboTag (C "DeviceRotationOverrideCombo")
+    Add-TestAction ("device:rotation-override=" + $mode)
+
+    if ($TestMode) {
+        (C "DeviceSettingsStatusText").Text = "Test rotation override: $mode"
+        (C "DeviceAutoRotateCheck").IsChecked = ($mode -eq "auto")
+        Set-Status "Test Android rotation override applied."
+        return
+    }
+
+    $result = Set-AndroidRotationOverride $AdbPath $Serial $mode
+    (C "DeviceSettingsStatusText").Text = $result.Text
+    Set-Status ($(if ($result.Ok) { $result.Text } else { $result.Text })) (-not $result.Ok)
+
+    if ($result.Ok) {
+        Refresh-DeviceState
+    }
+})
 (C "DeviceShowTouchesCheck").Add_Click({ Invoke-Friendly "show-touches" ($(if ((C "DeviceShowTouchesCheck").IsChecked) { "1" } else { "0" })) })
 (C "DeviceStayAwakeCheck").Add_Click({ Invoke-Friendly "stay-awake" ($(if ((C "DeviceStayAwakeCheck").IsChecked) { "7" } else { "0" })) })
 
@@ -1151,6 +1347,7 @@ function Refresh-All {
         Refresh-DeviceState
         Refresh-AdvancedRows
         Refresh-DisplayStatus
+        Refresh-HostZoomState
         (C "DiagnosticsText").Text = Get-DiagnosticsText
         Set-Status "Ready."
     }
@@ -1214,6 +1411,16 @@ Load-RootSettings
 Refresh-All
 Restore-ControlCenterTab
 Apply-ControlCenterWindowPlacement
+
+if (-not $TestMode) {
+    $script:HostZoomStateTimer.Start()
+}
+
+$Window.Add_Closed({
+    if ($null -ne $script:HostZoomStateTimer) {
+        $script:HostZoomStateTimer.Stop()
+    }
+})
 
 (C "MainTabs").Add_SelectionChanged({
     Save-ControlCenterTab

@@ -400,17 +400,54 @@
               </Grid>
             </GroupBox>
 
-            <GroupBox Header="Touchpad &amp; host zoom">
+            <GroupBox Header="Touchpad, Android pinch &amp; PC host zoom">
               <StackPanel>
               <CheckBox x:Name="PcNativeTouchpadCheck" Content="Use Windows Precision Touchpad gestures when available"/>
-              <CheckBox x:Name="PcTouchpadAndroidPinchCheck" Content="Two-finger pinch/spread sends Android multitouch"/>
-              <CheckBox x:Name="PcCtrlTouchpadHostZoomCheck" Content="Ctrl + touchpad pinch zooms only the PC mirror"/>
-              <CheckBox x:Name="PcCtrlWheelHostZoomCheck" Content="Ctrl + mouse wheel zooms only the PC mirror"/>
-              <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <TextBlock Text="Host zoom max" Width="170" VerticalAlignment="Center"/>
-                <TextBox x:Name="PcHostZoomMaxText" Width="90"/>
-                <TextBlock Text="×" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="6,0,0,0"/>
-              </StackPanel>
+              <CheckBox x:Name="PcTouchpadAndroidPinchCheck" Content="Natural two-finger pinch/spread sends Android multitouch"/>
+              <CheckBox x:Name="PcHostZoomTouchpadCheck" Content="Alt + touchpad pinch zooms only the PC mirror"/>
+              <CheckBox x:Name="PcHostZoomWheelCheck" Content="Alt + mouse wheel zooms only the PC mirror"/>
+              <CheckBox x:Name="PcZoomMinimapCheck" Content="Show zoom navigator/minimap while PC host zoom is above 100%"/>
+              <TextBlock Text="Ctrl and Shift are intentionally left to scrcpy/Android gesture semantics. REX uses Alt only for Windows-side magnification." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,8"/>
+
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="210"/>
+                  <ColumnDefinition Width="100"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Host zoom max" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcHostZoomMaxText" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="1.0-8.0×" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                <TextBlock Grid.Row="1" Text="Android pinch sensitivity" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcAndroidPinchSensitivityText" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="0.1-2.0 · lower = calmer" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                <TextBlock Grid.Row="2" Text="PC host zoom sensitivity" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcHostZoomSensitivityText" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="0.1-2.0 · lower = smoother" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                <TextBlock Grid.Row="3" Text="Two-finger scroll sensitivity" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcTouchpadScrollSensitivityText" Grid.Row="3" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="3" Grid.Column="2" Text="0.005-1.0 · default is deliberately gentle" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                <TextBlock Grid.Row="4" Text="Scroll max per sample" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcTouchpadScrollMaxText" Grid.Row="4" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="4" Grid.Column="2" Text="1-120 · caps accidental fling distance" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                <TextBlock Grid.Row="5" Text="Pinch intent threshold" VerticalAlignment="Center"/>
+                <TextBox x:Name="PcTouchpadPinchThresholdText" Grid.Row="5" Grid.Column="1" Margin="0,4"/>
+                <TextBlock Grid.Row="5" Grid.Column="2" Text="0.005-0.2 · higher resists accidental pinch" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+              </Grid>
               </StackPanel>
             </GroupBox>
 
@@ -528,7 +565,7 @@
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Text="Brightness" VerticalAlignment="Center"/>
                 <Slider x:Name="DeviceBrightnessSlider" Grid.Row="0" Grid.Column="1" Minimum="1" Maximum="255" TickFrequency="1"/>
@@ -541,12 +578,21 @@
                 </ComboBox>
                 <TextBlock Grid.Row="3" Text="Auto rotate" VerticalAlignment="Center"/>
                 <CheckBox x:Name="DeviceAutoRotateCheck" Grid.Row="3" Grid.Column="1"/>
-                <TextBlock Grid.Row="4" Text="Font scale" VerticalAlignment="Center"/>
-                <ComboBox x:Name="DeviceFontScaleCombo" Grid.Row="4" Grid.Column="1" Margin="0,4">
+                <TextBlock Grid.Row="4" Text="Rotation override" VerticalAlignment="Center"/>
+                <ComboBox x:Name="DeviceRotationOverrideCombo" Grid.Row="4" Grid.Column="1" Margin="0,4">
+                  <ComboBoxItem Content="Automatic (sensor)" Tag="auto"/>
+                  <ComboBoxItem Content="Force 0°" Tag="0"/>
+                  <ComboBoxItem Content="Force 90°" Tag="1"/>
+                  <ComboBoxItem Content="Force 180°" Tag="2"/>
+                  <ComboBoxItem Content="Force 270°" Tag="3"/>
+                </ComboBox>
+                <Button x:Name="ApplyRotationOverrideButton" Grid.Row="4" Grid.Column="2" Content="Apply rotation" HorizontalAlignment="Left" Margin="12,4,0,4"/>
+                <TextBlock Grid.Row="5" Text="Font scale" VerticalAlignment="Center"/>
+                <ComboBox x:Name="DeviceFontScaleCombo" Grid.Row="5" Grid.Column="1" Margin="0,4">
                   <ComboBoxItem Content="Small (0.85×)" Tag="0.85"/><ComboBoxItem Content="Default (1.0×)" Tag="1.0"/><ComboBoxItem Content="Large (1.15×)" Tag="1.15"/><ComboBoxItem Content="Extra large (1.30×)" Tag="1.30"/>
                 </ComboBox>
-                <TextBlock Grid.Row="5" Text="Show physical touches" VerticalAlignment="Center"/>
-                <CheckBox x:Name="DeviceShowTouchesCheck" Grid.Row="5" Grid.Column="1"/>
+                <TextBlock Grid.Row="6" Text="Show physical touches" VerticalAlignment="Center"/>
+                <CheckBox x:Name="DeviceShowTouchesCheck" Grid.Row="6" Grid.Column="1"/>
               </Grid>
             </GroupBox>
 
@@ -581,6 +627,8 @@
               <TextBlock Text="Android/OEM permissions vary. Unsupported commands return the device error instead of pretending success." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
               </StackPanel>
             </GroupBox>
+
+            <TextBlock Text="Forced rotation is best effort. Some apps or OEM policies can request their own orientation. Choose Automatic to restore sensor-driven rotation." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
             <GroupBox Header="Display override (advanced)">
               <StackPanel>

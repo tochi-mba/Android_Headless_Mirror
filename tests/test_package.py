@@ -189,6 +189,7 @@ class RepositoryContractTests(unittest.TestCase):
             "Stop-PhoneMirror.ps1",
             "PatternOverlay.ps1",
             "MirrorChrome.ps1",
+            "MirrorInteraction.ps1",
             "ControlCenter.ps1",
             "ControlCenter.xaml",
             "DeviceControl.ps1",
@@ -233,6 +234,8 @@ class RepositoryContractTests(unittest.TestCase):
             "tests/Test-RexShortcut.ps1",
             "tests/Test-RexBridgeE2E.ps1",
             "tests/Test-PowerShellBehavior.ps1",
+            "tests/Test-MirrorInteractionBehavior.ps1",
+            "tests/Test-ScrcpyControlBehavior.ps1",
             "tests/Test-ControlCenterE2E.ps1",
             "tests/Test-ControlCenterVisual.ps1",
             "tests/visual-thresholds.json",
@@ -365,11 +368,22 @@ class RepositoryContractTests(unittest.TestCase):
                 "MaxZoom",
                 "ToolbarInsetPixels",
                 "PollMilliseconds",
-                "CtrlWheelZoom",
+                "HostZoomModifier",
+                "WheelToHostZoom",
                 "NativeTouchpadGestures",
                 "TouchpadPinchToAndroid",
-                "CtrlTouchpadPinchToHostZoom",
+                "TouchpadPinchToHostZoom",
                 "TouchpadPinchThreshold",
+                "TouchpadPinchDominanceRatio",
+                "TouchpadScrollThreshold",
+                "AndroidPinchSensitivity",
+                "HostZoomPinchSensitivity",
+                "TouchpadScrollSensitivity",
+                "TouchpadScrollDeadzone",
+                "TouchpadScrollMaxDeltaPerSample",
+                "TouchpadSmoothing",
+                "HostPanSensitivity",
+                "ShowZoomMinimap",
                 "TouchpadBaseRadiusRelativeToClient",
             },
         )
@@ -514,19 +528,37 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertTrue(chrome["Enabled"])
         self.assertTrue(chrome["SleepButton"])
         self.assertTrue(chrome["HostZoomEnabled"])
-        self.assertTrue(chrome["CtrlWheelZoom"])
+        self.assertEqual(chrome["HostZoomModifier"], "alt")
+        self.assertTrue(chrome["WheelToHostZoom"])
         self.assertTrue(chrome["NativeTouchpadGestures"])
         self.assertTrue(chrome["TouchpadPinchToAndroid"])
-        self.assertTrue(chrome["CtrlTouchpadPinchToHostZoom"])
+        self.assertTrue(chrome["TouchpadPinchToHostZoom"])
         self.assertGreater(chrome["ZoomStep"], 0)
+        self.assertLessEqual(chrome["ZoomStep"], 0.15)
         self.assertGreaterEqual(chrome["MinZoom"], 1.0)
         self.assertGreater(chrome["MaxZoom"], chrome["MinZoom"])
         self.assertGreaterEqual(chrome["PollMilliseconds"], 12)
         self.assertGreaterEqual(chrome["ToolbarInsetPixels"], 0)
         self.assertGreater(chrome["TouchpadPinchThreshold"], 0)
         self.assertLess(chrome["TouchpadPinchThreshold"], 0.2)
+        self.assertGreater(chrome["TouchpadPinchDominanceRatio"], 1.0)
+        self.assertGreater(chrome["TouchpadScrollThreshold"], 0)
+        self.assertGreaterEqual(chrome["AndroidPinchSensitivity"], 0.1)
+        self.assertLessEqual(chrome["AndroidPinchSensitivity"], 2.0)
+        self.assertGreaterEqual(chrome["HostZoomPinchSensitivity"], 0.1)
+        self.assertLessEqual(chrome["HostZoomPinchSensitivity"], 2.0)
+        self.assertGreater(chrome["TouchpadScrollSensitivity"], 0)
+        self.assertLessEqual(chrome["TouchpadScrollSensitivity"], 0.1)
+        self.assertGreaterEqual(chrome["TouchpadScrollDeadzone"], 0)
+        self.assertLessEqual(chrome["TouchpadScrollMaxDeltaPerSample"], 24)
+        self.assertGreater(chrome["TouchpadSmoothing"], 0)
+        self.assertLessEqual(chrome["TouchpadSmoothing"], 1)
+        self.assertGreater(chrome["HostPanSensitivity"], 0)
+        self.assertTrue(chrome["ShowZoomMinimap"])
         self.assertGreater(chrome["TouchpadBaseRadiusRelativeToClient"], 0.05)
         self.assertLess(chrome["TouchpadBaseRadiusRelativeToClient"], 0.5)
+        self.assertNotIn("CtrlWheelZoom", chrome)
+        self.assertNotIn("CtrlTouchpadPinchToHostZoom", chrome)
 
         center = config["ControlCenter"]
         self.assertTrue(center["Enabled"])
@@ -708,6 +740,99 @@ class RepositoryContractTests(unittest.TestCase):
 
     # ---------- Mirror toolbar / multitouch / host zoom ----------
 
+    def test_scrcpy_shortcut_modifier_is_pinned_and_unoverrideable(self):
+        supervisor = self.read("Start-PhoneMirror.ps1")
+        control = self.read("ScrcpyControl.ps1")
+
+        self.assertIn('$args.Add("--shortcut-mod=lalt")', supervisor)
+        self.assertIn("shortcut-mod", supervisor)
+        self.assertIn("TryFocusTarget", control)
+        self.assertIn("PostShortcut", control)
+        self.assertIn("BuildShortcutInputs", control)
+        self.assertIn("Keep MOD held across repeated key presses", control)
+
+    def test_host_zoom_refresh_navigator_and_reset_state_are_live(self):
+        mirror = self.read("MirrorChrome.ps1")
+        center = self.read("ControlCenter.ps1")
+        xaml = self.read("ControlCenter.xaml")
+
+        self.assertIn("Update-Magnifier", mirror)
+        self.assertIn("Update-ZoomNavigator", mirror)
+        self.assertIn("ZOOM NAVIGATOR", mirror)
+        self.assertIn("mirror-chrome-state.json", mirror)
+        self.assertIn("Write-MirrorChromeState", mirror)
+        self.assertIn("NavigatorVisible", mirror)
+        self.assertIn("Refresh-HostZoomState", center)
+        self.assertIn('ResetHostZoomButton").IsEnabled', center)
+        self.assertIn("Set-TestHostZoomState", center)
+        self.assertIn('x:Name="PcZoomMinimapCheck"', xaml)
+
+    def test_forced_rotation_has_reversible_device_and_ui_paths(self):
+        device = self.read("DeviceControl.ps1")
+        center = self.read("ControlCenter.ps1")
+        xaml = self.read("ControlCenter.xaml")
+        readme = self.read("README.md")
+        pages = self.read("docs/index.html")
+
+        self.assertIn("function Set-AndroidRotationOverride", device)
+        self.assertIn("user_rotation", device)
+        self.assertIn("accelerometer_rotation", device)
+        self.assertIn('"auto"', device)
+        self.assertIn('x:Name="DeviceRotationOverrideCombo"', xaml)
+        self.assertIn('x:Name="ApplyRotationOverrideButton"', xaml)
+        self.assertIn("Set-AndroidRotationOverride", center)
+        self.assertIn("Forced Android rotation", readme)
+        self.assertIn("forced orientation", pages)
+
+    def test_host_zoom_uses_alt_not_ctrl_or_shift(self):
+        mirror = self.read("MirrorChrome.ps1")
+        xaml = self.read("ControlCenter.xaml")
+        readme = self.read("README.md")
+        pages = self.read("docs/index.html")
+
+        self.assertIn("VK_MENU", mirror)
+        self.assertIn("TouchpadPinchToHostZoom", mirror)
+        self.assertIn("WheelToHostZoom", mirror)
+        self.assertIn("Alt + touchpad pinch", xaml)
+        self.assertIn("Alt + mouse wheel", xaml)
+        self.assertIn("Alt + pinch", readme)
+        self.assertIn("Alt + wheel", readme)
+        self.assertIn("Hold Alt + pinch", pages)
+        self.assertNotIn("Hold physical Ctrl + pinch", readme)
+        self.assertNotIn("Ctrl + touchpad pinch zooms only the PC mirror", xaml)
+
+    def test_user_facing_docs_do_not_call_ctrl_the_host_zoom_modifier(self):
+        for path in ["README.md", "docs/index.html", "ControlCenter.xaml"]:
+            text = self.read(path)
+            self.assertNotIn("Ctrl + touchpad pinch zooms only the PC mirror", text)
+            self.assertNotIn("Ctrl + mouse wheel zooms only the PC mirror", text)
+            self.assertNotIn("Hold Ctrl + pinch → magnify the mirror", text)
+
+    def test_touchpad_tuning_is_not_decorative(self):
+        mirror = self.read("MirrorChrome.ps1")
+        center = self.read("ControlCenter.ps1")
+        interaction = self.read("MirrorInteraction.ps1")
+
+        for name in [
+            "AndroidPinchSensitivity",
+            "HostZoomPinchSensitivity",
+            "TouchpadScrollSensitivity",
+            "TouchpadScrollDeadzone",
+            "TouchpadScrollMaxDeltaPerSample",
+            "TouchpadPinchThreshold",
+            "TouchpadPinchDominanceRatio",
+            "TouchpadScrollThreshold",
+            "HostPanSensitivity",
+        ]:
+            self.assertIn(name, mirror)
+            self.assertIn(name, center)
+
+        self.assertIn("Get-InteractionGestureKind", mirror)
+        self.assertIn("Get-ScaledScrollDelta", mirror)
+        self.assertIn("Get-NormalizedPanAnchor", mirror)
+        self.assertIn("SendWheelToTarget", mirror)
+        self.assertIn("Get-SensitivityAdjustedScale", interaction)
+
     def test_scrcpy_forces_sdk_mouse_mode_for_ctrl_drag_multitouch(self):
         text = self.read("Start-PhoneMirror.ps1")
         self.assertIn('$args.Add("--mouse=sdk")', text)
@@ -737,21 +862,26 @@ class RepositoryContractTests(unittest.TestCase):
         end = text.index("$script:gestureHook", start)
         function = text[start:end]
 
-        ctrl_check = function.index("$ctrlPhysicallyDown")
-        android_branch = function.index("$ChromeConfig.TouchpadPinchToAndroid")
-        begin = function.index("BeginScrcpyPinch")
-        self.assertLess(ctrl_check, android_branch)
-        self.assertLess(android_branch, begin)
+        self.assertIn("$hostModifierDown = Test-HostZoomModifierDown", function)
+        self.assertIn("$ChromeConfig.TouchpadPinchToAndroid", function)
+        self.assertIn("BeginScrcpyPinch", function)
         self.assertIn('$script:touchpadGestureKind = "device"', function)
+        self.assertNotIn("$ctrlPhysicallyDown", function)
 
-    def test_ctrl_plus_native_touchpad_pinch_is_host_zoom_not_android_pinch(self):
+        host_branch = function.index("$hostModifierDown -and")
+        android_branch = function.index("$ChromeConfig.TouchpadPinchToAndroid")
+        self.assertLess(host_branch, android_branch)
+
+    def test_alt_plus_native_touchpad_pinch_is_host_zoom_not_android_pinch(self):
         text = self.read("MirrorChrome.ps1")
         start = text.index("function Update-TouchpadGesture")
         end = text.index("$script:gestureHook", start)
         function = text[start:end]
-        self.assertIn("$ChromeConfig.CtrlTouchpadPinchToHostZoom", function)
+        self.assertIn("$ChromeConfig.TouchpadPinchToHostZoom", function)
+        self.assertIn("$hostModifierDown", function)
         self.assertIn('$script:touchpadGestureKind = "host"', function)
-        self.assertIn("Get-ClampedHostZoom", function)
+        self.assertIn("Get-HostZoomFromGesture", function)
+        self.assertIn("HostZoomPinchSensitivity", function)
 
     def test_windows_without_precision_touchpad_api_falls_back_cleanly(self):
         text = self.read("MirrorChrome.ps1")
@@ -768,21 +898,26 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("$chromeProcess = Start-MirrorChrome", text)
         self.assertIn("Stop-MirrorChrome $chromeProcess", text)
 
-    def test_mirror_toolbar_sleep_button_uses_scrcpy_screen_off_shortcut(self):
-        text = self.read("MirrorChrome.ps1")
-        self.assertIn("Sleep phone", text)
-        self.assertIn("$ChromeConfig.SleepButton", text)
-        self.assertIn("SendScrcpyScreenOffShortcut", text)
-        self.assertIn("VK_LMENU", text)
-        self.assertIn("VK_O", text)
-        self.assertIn("turns the Android physical display off while", text)
+    def test_mirror_toolbar_sleep_button_uses_shared_scrcpy_control_path(self):
+        mirror = self.read("MirrorChrome.ps1")
+        control = self.read("ScrcpyControl.ps1")
+        supervisor = self.read("Start-PhoneMirror.ps1")
 
-    def test_host_zoom_is_local_ctrl_wheel_and_has_reset_control(self):
+        self.assertIn("Sleep phone", mirror)
+        self.assertIn("$ChromeConfig.SleepButton", mirror)
+        self.assertIn('Invoke-ScrcpyNamedShortcut', mirror)
+        self.assertIn('-Name "sleep"', mirror)
+        self.assertIn('sleep            = @{', control)
+        self.assertIn('Convert-ToVirtualKey "o"', control)
+        self.assertIn('Alt=$true', control)
+        self.assertIn('$args.Add("--shortcut-mod=lalt")', supervisor)
+
+    def test_host_zoom_is_local_alt_wheel_and_has_reset_control(self):
         text = self.read("MirrorChrome.ps1")
         for contract in [
             "WH_MOUSE_LL",
             "WM_MOUSEWHEEL",
-            "VK_CONTROL",
+            "VK_MENU",
             "StartWheelHook",
             "TryDequeueWheel",
             "Magnification.dll",
