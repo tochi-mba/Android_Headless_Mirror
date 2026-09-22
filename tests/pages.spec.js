@@ -269,7 +269,9 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toBeVisible();
     await expect(section).toContainText('Pinch naturally → Android pinches.');
     await expect(section).toContainText('No keyboard modifier is required');
-    await expect(section).toContainText('Hold Ctrl + pinch → magnify the mirror.');
+    await expect(section).toContainText('Hold Alt + pinch → magnify the mirror.');
+    await expect(section).toContainText('Alt + two-finger slide pans the zoomed viewport');
+    await expect(section).toContainText('Alt + wheel controls host zoom');
     await expect(section).toContainText('The phone receives no pinch');
     await expect(section).toContainText('Reset zoom');
     await expect(section).toContainText('Windows 11');
@@ -319,11 +321,17 @@ test.describe('Android Headless Mirror GitHub Pages', () => {
     await expect(section).toContainText('SHA-256');
   });
 
-  test('FAQ explains native touchpad pinch without Ctrl', async ({ page }) => {
+  test('FAQ separates Android pinch from Alt host-only zoom', async ({ page }) => {
     const summary = page.getByText('Can I pinch TikTok with my laptop touchpad like I would on the phone?');
     await summary.click();
     await expect(page.getByText(/pinch or spread with two fingers/)).toBeVisible();
-    await expect(page.getByText(/You do not hold Ctrl/)).toBeVisible();
+    await expect(page.getByText(/No modifier is required/)).toBeVisible();
+
+    const hostZoom = page.getByText('How do I zoom only the PC mirror without zooming the Android app?');
+    await hostZoom.click();
+    await expect(page.getByText(/Hold Alt/)).toBeVisible();
+    await expect(page.getByText(/Alt \+ mouse wheel/)).toBeVisible();
+    await expect(page.getByText(/Alt \+ two-finger slide pans/)).toBeVisible();
   });
 
   test('FAQ covers no-lock devices and lock-type changes', async ({ page }) => {
