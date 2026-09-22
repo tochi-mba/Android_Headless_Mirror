@@ -178,12 +178,12 @@ public partial class PhonePanel : UserControl
         if (result.Ok)
         {
             Status.Text = string.Empty;
-            _window.SetStatus($"Phone: {id} = {value}", error: false);
+            _window.SetStatus($"Phone: {id} = {value}", false);
             return true;
         }
 
         var error = result.Text;
-        _window.SetStatus(error, error: true);
+        _window.SetStatus(error, true);
         await LoadAsync(target.Adb, target.Serial);
         Status.Text = error;
         return false;
