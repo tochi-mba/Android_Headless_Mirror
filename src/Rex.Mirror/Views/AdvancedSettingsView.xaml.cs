@@ -82,15 +82,24 @@ public partial class AdvancedSettingsView : UserControl
         }
     }
 
-    private bool Confirm(string ns, string key, string risk)
+    private bool Confirm(string ns, string key, string risk, bool always = false, bool deleting = false)
     {
-        if (_host is null || !_host.Config.App.ConfirmSensitiveWrites || risk == AndroidSettings.RiskNormal)
+        if (_host is null)
         {
             return true;
         }
 
+        if (!always && (!_host.Config.App.ConfirmSensitiveWrites || risk == AndroidSettings.RiskNormal))
+        {
+            return true;
+        }
+
+        var action = deleting ? "Delete" : "Change";
+        var consequence = deleting
+            ? "\n\nDeleting a raw setting may restore an Android or OEM default and can change system behaviour."
+            : string.Empty;
         var result = MessageBox.Show(
-            $"Change {ns}/{key}?\n\nRisk: {risk}. Android or the phone maker may refuse or misbehave.",
+            $"{action} {ns}/{key}?\n\nRisk: {risk}. Android or the phone maker may refuse or misbehave.{consequence}",
             "Android Headless Mirror",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
@@ -139,7 +148,8 @@ public partial class AdvancedSettingsView : UserControl
             return;
         }
 
-        if (Target() is not { } target || !Confirm(ns, key, risk == AndroidSettings.RiskNormal ? AndroidSettings.RiskAdvanced : risk))
+        if (Target() is not { } target ||
+            !Confirm(ns, key, risk == AndroidSettings.RiskNormal ? AndroidSettings.RiskAdvanced : risk, always: true, deleting: true))
         {
             return;
         }
