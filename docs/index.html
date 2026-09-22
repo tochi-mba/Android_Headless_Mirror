@@ -254,7 +254,7 @@
       <div class="controls-head reveal">
         <div>
           <div class="eyebrow signal">Desktop-native controls</div>
-          <h2>Use the touchpad like the phone.<br>Use Ctrl when you only want the PC view.</h2>
+          <h2>Use the touchpad like the phone.<br>Use Alt when you only want the PC view.</h2>
         </div>
         <p>Android gestures and desktop magnification stay intentionally separate, so the same touchpad can control the app or just magnify the mirror without ambiguity.</p>
       </div>
@@ -277,14 +277,14 @@
 
           <article class="gesture-card reveal">
             <div class="gesture-visual zoom-visual" aria-hidden="true">
-              <kbd>Ctrl</kbd>
+              <kbd>Alt</kbd>
               <span>+</span>
               <div class="mini-touchpad"><i></i><i></i></div>
             </div>
             <div class="gesture-copy">
               <span class="gesture-kicker">PC-ONLY VIEW</span>
-              <h3>Hold Ctrl + pinch → magnify the mirror.</h3>
-              <p>The phone receives no pinch. The Windows frame zoom persists after Ctrl is released, and <strong>Reset zoom</strong> appears whenever the view is above 100%.</p>
+              <h3>Hold Alt + pinch → magnify the mirror.</h3>
+              <p>The phone receives no pinch. The Windows frame zoom persists after Alt is released. Alt + two-finger slide pans the zoomed viewport, and <strong>Reset zoom</strong> appears only above 100%.</p>
             </div>
           </article>
         </div>
@@ -299,11 +299,12 @@
           <div class="toolbar-notes">
             <div><span>01</span><p><strong>Sleep phone</strong> re-sends scrcpy’s screen-off command while the PC mirror continues.</p></div>
             <div><span>02</span><p><strong>Reset zoom</strong> only appears when the Windows-side magnifier is not at 100%.</p></div>
-            <div><span>03</span><p><strong>Mouse fallback:</strong> Ctrl + wheel controls host zoom; scrcpy Ctrl + left-drag remains available if native touchpad APIs are unavailable.</p></div>
+            <div><span>03</span><p><strong>Mouse fallback:</strong> Alt + wheel controls host zoom. Ctrl and Shift remain available for scrcpy’s Android pinch/rotate and tilt gestures.</p></div>
           </div>
         </div>
       </div>
 
+      <div class="controls-compat reveal"><strong>Smooth by default:</strong> two-finger scroll sensitivity is intentionally conservative, small motion is dead-zoned, and each sample is capped so one swipe cannot fling through several screens. Android pinch and PC host-zoom sensitivity are independently adjustable in Control Center.</div>
       <p class="controls-compat reveal"><strong>Compatibility:</strong> native two-finger Precision Touchpad bridging uses the Windows 11 touchpad pointer API. Windows 10 and unsupported hardware keep normal mirroring and scrcpy’s compatibility gesture path.</p>
     </section>
 
@@ -637,8 +638,8 @@ ADB auth:       <span class="success">AUTHORIZED</span></pre>
         <details class="reveal"><summary>What if the pattern dots are not perfectly aligned on my phone?</summary><p>The guide first tries exact Android pattern-cell bounds, then the runtime LockPatternView bounds. If your OEM still differs, press <strong>Ctrl+Alt+C</strong> and calibrate entirely from the PC with the arrow keys; no physical phone interaction is required.</p></details>
         <details class="reveal"><summary>What if automatic lock-screen detection is wrong on my phone?</summary><p>With the scrcpy window focused, press <strong>Ctrl+Alt+P</strong> to manually toggle the guide. Geometry discovery and visibility detection are separate, so manual visibility still uses the best available geometry source.</p></details>
         <details class="reveal"><summary>What if I change my phone from pattern to PIN, or remove the lock?</summary><p>Run <code>RESET_LOCK_SCREEN_CHOICES.bat</code>, clear that device’s saved choice, then reconnect it. The setup prompt appears again.</p></details>
-        <details class="reveal"><summary>Can I pinch TikTok with my laptop touchpad like I would on the phone?</summary><p>On Windows 11 with a Precision Touchpad, yes: pinch or spread with two fingers and the gesture is bridged into Android multitouch automatically. You do not hold Ctrl. Holding physical Ctrl changes the same pinch into PC-only frame zoom instead.</p></details>
-        <details class="reveal"><summary>How do I zoom only the PC mirror without zooming the Android app?</summary><p>Hold <strong>Ctrl</strong> and pinch/spread on a supported touchpad, or use Ctrl + mouse wheel. The mirror magnification persists after Ctrl is released and a <strong>Reset zoom</strong> button appears whenever the view is above 100%.</p></details>
+        <details class="reveal"><summary>Can I pinch TikTok with my laptop touchpad like I would on the phone?</summary><p>On Windows 11 with a Precision Touchpad, yes: pinch or spread with two fingers and the gesture is bridged into Android multitouch automatically. No modifier is required. Ctrl and Shift remain available for scrcpy's own Android gesture semantics.</p></details>
+        <details class="reveal"><summary>How do I zoom only the PC mirror without zooming the Android app?</summary><p>Hold <strong>Alt</strong> and pinch/spread on a supported touchpad, or use Alt + mouse wheel. The mirror magnification persists after Alt is released; Alt + two-finger slide pans the magnified viewport, and <strong>Reset zoom</strong> appears only when the view is above 100%.</p></details>
         <details class="reveal"><summary>What does the Sleep phone button do?</summary><p>It re-sends scrcpy’s screen-off command to the physical Android display while the mirror stays active. Use it whenever the phone screen has been woken but you want the device dark again.</p></details>
         <details class="reveal"><summary>Does it require Wi-Fi?</summary><p>No. USB is the default path. Wireless ADB is optional and disabled by default.</p></details>
         <details class="reveal"><summary>Will another Android phone work?</summary><p>Yes. The supervisor targets any authorised Android device. A preferred serial only influences selection when multiple ready devices are present; it does not lock the project to the first phone you used.</p></details>
