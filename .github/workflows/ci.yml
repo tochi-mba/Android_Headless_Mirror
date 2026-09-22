@@ -81,6 +81,7 @@ jobs:
             "Stop-PhoneMirror.ps1",
             "PatternOverlay.ps1",
             "MirrorChrome.ps1",
+            "MirrorInteraction.ps1",
             "ControlCenter.ps1",
             "ControlCenter.xaml",
             "DeviceControl.ps1",
@@ -100,7 +101,9 @@ jobs:
             "src\Rex.AndroidMirror.Cli\Rex.AndroidMirror.Cli.csproj",
             "src\Rex.AndroidMirror.Cli\Program.cs",
             "tests\Rex.AndroidMirror.Cli.Tests\Rex.AndroidMirror.Cli.Tests.csproj",
-            "tests\Test-RexCliBootstrap.ps1"
+            "tests\Test-RexCliBootstrap.ps1",
+            "tests\Test-MirrorInteractionBehavior.ps1",
+            "tests\Test-ScrcpyControlBehavior.ps1"
           )
 
           foreach ($file in $required) {
@@ -259,6 +262,26 @@ jobs:
         if: always()
         shell: powershell
         run: .\tests\Test-PowerShellBehavior.ps1
+
+      - name: Run mirror interaction unit tests (PowerShell 7)
+        if: always()
+        shell: pwsh
+        run: ./tests/Test-MirrorInteractionBehavior.ps1
+
+      - name: Run mirror interaction unit tests (Windows PowerShell 5.1)
+        if: always()
+        shell: powershell
+        run: .\tests\Test-MirrorInteractionBehavior.ps1
+
+      - name: Run scrcpy control contract tests (PowerShell 7)
+        if: always()
+        shell: pwsh
+        run: ./tests/Test-ScrcpyControlBehavior.ps1
+
+      - name: Run scrcpy control contract tests (Windows PowerShell 5.1)
+        if: always()
+        shell: powershell
+        run: .\tests\Test-ScrcpyControlBehavior.ps1
 
       - name: Run Control Center E2E
         if: always()
