@@ -518,4 +518,185 @@ public sealed class MachineModeTests
         Assert.True(data.GetProperty("requested").GetBoolean());
     }
 
+    [Fact]
+    public async Task RootStatus_IsPassiveStructuredJson()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "2000", "")
+        };
+        var bridge = RootBridge();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "root", "status", "--serial", "USB123" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        var root = doc.RootElement;
+        Assert.True(root.GetProperty("ok").GetBoolean());
+        Assert.Equal("root.status", root.GetProperty("command").GetString());
+        var data = root.GetProperty("data");
+        Assert.Equal("USB123", data.GetProperty("serial").GetString());
+        Assert.Equal("suDetected", data.GetProperty("state").GetString());
+        Assert.False(data.GetProperty("fromCachedVerification").GetBoolean());
+
+        Assert.DoesNotContain(
+            runner.Calls,
+            call => call.Arguments.Contains("su"));
+    }
+
+    [Fact]
+    public async Task RootRequest_ExplicitlyExercisesPrivilegeProbe()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "0", "")
+        };
+        var bridge = RootBridge();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "root", "request", "--serial", "USB123" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        Assert.Equal(
+            "adbdRoot",
+            doc.RootElement.GetProperty("data").GetProperty("state").GetString());
+        Assert.True(
+            doc.RootElement.GetProperty("data").GetProperty("capabilities").GetArrayLength() >= 7);
+    }
+
+    [Fact]
+    public async Task RootProcesses_UsesVerifiedPerBootState()
+    {
+        using var package = new TempPackage();
+        var runner = new FakeProcessRunner
+        {
+            Result = new ProcessResult(0, "2000", "")
+        };
+        var bridge = RootBridge();
+        new RootStateStore(package.Paths.RootState).Set(
+            RootCache("USB123", "2000"));
+
+        var result = await MachineMode.RunAsync(
+            new[] { "root", "processes", "--serial", "USB123" },
+            package.Paths,
+            runner,
+            bridge,
+            package.Config);
+
+        Assert.Equal(0, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Equal("root.processes", data.GetProperty("operation").GetString());
+        Assert.Equal("readOnly", data.GetProperty("risk").GetString());
+        Assert.True(data.GetProperty("sections").TryGetProperty("processes", out _));
+    }
+
+    [Fact]
+    public async Task RootCriticalFilesystemPath_ReturnsMachineFailure()
+    {
+        using var package = new TempPackage();
+        var bridge = RootBridge();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "root", "files", "read", "/dev/block/by-name/userdata", "--serial", "USB123" },
+            package.Paths,
+            new FakeProcessRunner(),
+            bridge,
+            package.Config);
+
+        Assert.Equal(1, result.ExitCode);
+        using var doc = JsonDocument.Parse(result.Json);
+        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains(
+            "Root v1 blocks",
+            doc.RootElement.GetProperty("error").GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task Capabilities_AdvertiseRootContractAndSafety()
+    {
+        using var package = new TempPackage();
+
+        var result = await MachineMode.RunAsync(
+            new[] { "capabilities" },
+            package.Paths,
+            new FakeProcessRunner(),
+            new FakeBridgeClient(),
+            package.Config);
+
+        using var doc = JsonDocument.Parse(result.Json);
+        var data = doc.RootElement.GetProperty("data");
+        Assert.Contains(
+            data.GetProperty("commands").EnumerateArray(),
+            x => x.GetString() == "root");
+        Assert.True(data.GetProperty("rootCommands").GetArrayLength() >= 10);
+        var safety = data.GetProperty("rootSafety");
+        Assert.True(safety.GetProperty("passiveStatusDoesNotInvokeSu").GetBoolean());
+        Assert.False(safety.GetProperty("rawShell").GetBoolean());
+        Assert.False(safety.GetProperty("rootV1Writes").GetBoolean());
+    }
+
+    private static FakeBridgeClient RootBridge()
+    {
+        var device = new RexDevice(
+            "USB123",
+            "device",
+            false,
+            "Samsung",
+            "SM-G998B",
+            "Samsung Galaxy S21 Ultra");
+
+        var bridge = new FakeBridgeClient
+        {
+            DefaultStatus = new RexStatus(
+                true,
+                false,
+                false,
+                false,
+                false,
+                "adb.exe",
+                "scrcpy.exe",
+                new[] { device })
+        };
+        bridge.Devices.Add(device);
+        return bridge;
+    }
+
+    private static RootSessionCache RootCache(string serial, string bootId) =>
+        new(
+            serial,
+            bootId,
+            RootAccessState.Granted,
+            RootProvider.Magisk,
+            "30",
+            new RootPrivilegeProfile(
+                0,
+                0,
+                new[] { 0 },
+                "u:r:su:s0",
+                "ffff",
+                "ffff",
+                "ffff"),
+            new[]
+            {
+                new RootCapability(
+                    RootCapabilityIds.PrivateAppData,
+                    CapabilityState.Verified,
+                    PrivilegeRisk.ReadOnly,
+                    "Private app data")
+            },
+            DateTimeOffset.UtcNow);
+
 }
