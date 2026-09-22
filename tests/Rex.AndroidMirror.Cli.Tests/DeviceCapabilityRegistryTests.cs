@@ -24,7 +24,7 @@ public sealed class DeviceCapabilityRegistryTests
             new RootStateStore(package.Paths.RootState));
 
         var result = await new DeviceCapabilityRegistry(bridge, manager)
-            .ProbeAsync("USB123");
+            .ProbeAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(CapabilityState.Verified, result.Adb);
         Assert.Equal(
@@ -73,7 +73,7 @@ public sealed class DeviceCapabilityRegistryTests
             store);
 
         var result = await new DeviceCapabilityRegistry(bridge, manager)
-            .ProbeAsync("USB123");
+            .ProbeAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(
             CapabilityState.Verified,
@@ -102,7 +102,7 @@ public sealed class DeviceCapabilityRegistryTests
             new RootStateStore(package.Paths.RootState));
 
         var result = await new DeviceCapabilityRegistry(bridge, manager)
-            .ProbeAsync();
+            .ProbeAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(CapabilityState.Unknown, result.Adb);
         Assert.Null(result.Root);
@@ -122,7 +122,7 @@ public sealed class DeviceCapabilityRegistryTests
             new RootStateStore(package.Paths.RootState));
 
         var result = await new DeviceCapabilityRegistry(bridge, manager)
-            .ProbeAsync("MISSING");
+            .ProbeAsync("MISSING", TestContext.Current.CancellationToken);
 
         Assert.Equal(CapabilityState.Unknown, result.Capabilities["device.root"]);
         Assert.Null(result.Root);
