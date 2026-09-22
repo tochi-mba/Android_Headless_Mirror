@@ -11,6 +11,7 @@ public static class Program
     public static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        ProcessRunner.PreventStandardHandleInheritance();
         var machineArgs = MachineMode.ExtractArguments(args);
         AppPaths paths;
         try

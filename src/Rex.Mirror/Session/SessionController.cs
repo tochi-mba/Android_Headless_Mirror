@@ -102,15 +102,6 @@ public sealed class SessionController : IDisposable
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            await Adb!.StartServerAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException)
-        {
-            _host.Log.Warn("adb start-server failed: " + ex.Message);
-        }
-
         while (!cancellationToken.IsCancellationRequested)
         {
             try

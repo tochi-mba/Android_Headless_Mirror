@@ -12,6 +12,7 @@ jobs:
   installer:
     name: Verify and build the installer
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -43,6 +44,7 @@ jobs:
   pages:
     name: Verify the website
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -58,6 +60,7 @@ jobs:
     name: Publish the GitHub release
     needs: [installer, pages]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:

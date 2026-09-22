@@ -116,6 +116,7 @@ public sealed class AdbTests
         Assert.True(result.Ok);
         var call = Assert.Single(runner.Calls);
         Assert.Equal(["-s", "S", "shell", "settings put system font_scale '1.15 x'"], call.Arguments);
+        Assert.Equal([["start-server"]], runner.Detached);
     }
 
     [Fact]
