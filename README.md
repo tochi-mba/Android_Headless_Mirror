@@ -152,9 +152,14 @@ Android Headless Mirror adds a small always-on-top toolbar to each active mirror
 On **Windows 11 with a Precision Touchpad**, two-finger touchpad gestures are read through the Windows Precision Touchpad pointer API:
 
 - **Pinch/spread with two fingers** → Android receives a real two-finger pinch/rotate gesture through scrcpy.
-- **Hold physical Ctrl + pinch/spread** → zoom the **PC mirror frame only**. Android receives no pinch.
-- Host zoom persists after Ctrl is released.
-- When host zoom is not 100%, the toolbar shows **Reset zoom**.
+- **Two-finger slide** → Android scrolls, with configurable REX sensitivity, deadzone and per-sample fling limits.
+- **Hold physical Alt + pinch/spread** → zoom the **PC mirror frame only**. Android receives no pinch.
+- **Hold physical Alt + two-finger slide while host zoom is active** → pan the magnified PC viewport.
+- **Alt + mouse wheel** → mouse fallback for PC-only host zoom.
+- Host zoom persists after Alt is released.
+- When host zoom is not 100%, the toolbar shows **Reset zoom** and, when enabled, the zoom navigator/minimap.
+
+REX intentionally leaves **Ctrl** and **Shift** to scrcpy/Android gesture semantics. scrcpy uses Ctrl+click-and-move for Android pinch/rotate simulation, Shift+click-and-move for vertical two-finger tilt, and Ctrl+Shift+click-and-move for horizontal tilt. REX therefore reserves **Alt** for Windows-only magnification.
 
 scrcpy is forced to SDK mouse mode so its virtual-finger multitouch path is always available to the bridge.
 
@@ -166,7 +171,7 @@ The toolbar's **Sleep phone** button sends scrcpy's own “turn device screen of
 
 ### Mouse-only host zoom
 
-For mouse users, **Ctrl + mouse wheel** also controls the PC-only frame zoom. This is separate from Android pinch-to-zoom.
+For mouse users, **Alt + mouse wheel** controls the PC-only frame zoom. This is deliberately different from scrcpy's Ctrl/Shift Android gesture modifiers.
 
 ### Control Center
 
@@ -502,7 +507,12 @@ Useful values in `config.json`:
 - `MirrorChrome.SleepButton`: show the persistent **Sleep phone** toolbar action.
 - `MirrorChrome.NativeTouchpadGestures`: enable Windows 11 Precision Touchpad gesture bridging when supported.
 - `MirrorChrome.TouchpadPinchToAndroid`: map a native two-finger pinch/spread to Android multitouch.
-- `MirrorChrome.CtrlTouchpadPinchToHostZoom`: map physical Ctrl + native touchpad pinch to PC-only frame zoom.
+- `MirrorChrome.HostZoomModifier`: reserved modifier for Windows-only magnification; currently `alt`.
+- `MirrorChrome.TouchpadPinchToHostZoom` / `WheelToHostZoom`: enable **Alt + pinch** and **Alt + wheel** PC-only magnification.
+- `MirrorChrome.AndroidPinchSensitivity` / `HostZoomPinchSensitivity`: independently tune Android pinch and Windows magnification response.
+- `MirrorChrome.TouchpadScrollSensitivity` / `TouchpadScrollDeadzone` / `TouchpadScrollMaxDeltaPerSample`: tame two-finger scrolling and cap accidental flings.
+- `MirrorChrome.TouchpadPinchThreshold` / `TouchpadPinchDominanceRatio`: distinguish intentional pinch from ordinary two-finger scrolling.
+- `MirrorChrome.ShowZoomMinimap` / `HostPanSensitivity`: control the zoom navigator and viewport panning.
 - `MirrorChrome.HostZoomEnabled`: enable persistent PC-only frame magnification and **Reset zoom**.
 - `ControlCenter.Enabled`: enable the per-device Windows Control Center.
 - `ControlCenter.ConfirmSensitiveDeviceWrites`: confirm advanced Android writes before execution.
@@ -545,6 +555,7 @@ Tests:
 
 ```powershell
 python tests\test_package.py
+powershell -NoProfile -File tests\Test-MirrorInteractionBehavior.ps1
 ```
 
 The repository includes Windows and browser CI that:
