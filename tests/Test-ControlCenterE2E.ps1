@@ -328,6 +328,18 @@ Assert-False $Config.Root.RawShellEnabled "Root v1 should keep raw root shell di
 Click-Control "ReloadRootSettingsButton"
 Assert-True (C "RootEnabledCheck").IsChecked "Discard should restore saved root enabled state."
 
+Write-Host "[control-center] Exercising forced Android rotation override..."
+Select-Tab "DeviceSettingsTab"
+Assert-Equal "auto" (Get-ComboTag (C "DeviceRotationOverrideCombo")) "Connected device starts in automatic rotation in test mode."
+Select-ComboTag (C "DeviceRotationOverrideCombo") "1"
+Click-Control "ApplyRotationOverrideButton"
+Assert-Contains $script:TestActions "device:rotation-override=1" "90-degree forced rotation should dispatch through the dedicated rotation override path."
+Assert-False (C "DeviceAutoRotateCheck").IsChecked "Forced rotation should present auto-rotate as disabled."
+Select-ComboTag (C "DeviceRotationOverrideCombo") "auto"
+Click-Control "ApplyRotationOverrideButton"
+Assert-Contains $script:TestActions "device:rotation-override=auto" "Automatic rotation restore should dispatch."
+Assert-True (C "DeviceAutoRotateCheck").IsChecked "Restoring automatic rotation should update the UI state."
+
 Write-Host "[control-center] Exercising friendly Android device controls..."
 Select-Tab "DeviceSettingsTab"
 
@@ -444,7 +456,7 @@ $exercised = @(
     $runtimeButtons.Keys +
     @(
         "RefreshAllButton","ResetHostZoomButton","ScreenshotButton","OpenScreenshotFolderButton",
-        "SavePcSettingsButton","ReloadPcSettingsButton","DeviceAutoRotateCheck",
+        "SavePcSettingsButton","ReloadPcSettingsButton","DeviceAutoRotateCheck","ApplyRotationOverrideButton",
         "DisplayRefreshButton","DisplayStartScrcpyButton","DisplayOpenWirelessButton",
         "SaveDisplaySettingsButton","ReloadDisplaySettingsButton",
         "RootRefreshButton","RootRequestButton","RootClearButton",
@@ -517,12 +529,24 @@ exit /b 0
     $wifi = Set-FriendlyAndroidSetting $fakeAdb "USB123" "wifi" "enable"
     Assert-True $wifi.Ok "Friendly Wi-Fi command should reach fake ADB."
 
+    $forcedRotation = Set-AndroidRotationOverride $fakeAdb "USB123" "1"
+    Assert-True $forcedRotation.Ok "90-degree rotation override should reach fake ADB."
+    Assert-True ($forcedRotation.Text -match "90") "Rotation override response should report the requested angle."
+
+    $autoRotation = Set-AndroidRotationOverride $fakeAdb "USB123" "auto"
+    Assert-True $autoRotation.Ok "Automatic rotation restore should reach fake ADB."
+    Assert-True ($autoRotation.Text -match "Automatic rotation restored") "Automatic rotation response should be explicit."
+
     $services = @(Get-AndroidCommandServices $fakeAdb "USB123")
     Assert-Equal @("connectivity","package","uimode") $services "cmd -l services should parse and sort."
 
     $logLines = @(Get-Content $log)
     Assert-True (@($logLines | Where-Object { $_ -match "settings put system font_scale" }).Count -eq 1) "Fake ADB log should contain font_scale write."
     Assert-True (@($logLines | Where-Object { $_ -match "svc wifi enable" }).Count -eq 1) "Fake ADB log should contain Wi-Fi enable."
+    $rotationLines = @($logLines | Where-Object { $_ -match "settings put system (user_rotation|accelerometer_rotation)" })
+    Assert-True (@($rotationLines | Where-Object { $_ -match "user_rotation '1'" }).Count -eq 1) "Forced rotation should set the requested quarter turn."
+    Assert-True (@($rotationLines | Where-Object { $_ -match "accelerometer_rotation '0'" }).Count -eq 1) "Forced rotation should disable sensor rotation after setting the target."
+    Assert-True (@($rotationLines | Where-Object { $_ -match "accelerometer_rotation '1'" }).Count -eq 1) "Automatic rotation restore should re-enable sensor rotation."
 
     $failedAdb = Join-Path $temp "adb-fail.cmd"
     @'
