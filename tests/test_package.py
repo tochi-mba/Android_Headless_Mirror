@@ -1022,6 +1022,7 @@ class RepositoryContractTests(unittest.TestCase):
         manager = self.read("src/Rex.AndroidMirror.Cli/RootManager.cs")
         executor = self.read("src/Rex.AndroidMirror.Cli/AndroidShellRunner.cs")
         policy = self.read("src/Rex.AndroidMirror.Cli/RootPolicy.cs")
+        features = self.read("src/Rex.AndroidMirror.Cli/RootFeatureService.cs")
 
         for needle in [
             "rex root status",
@@ -1039,7 +1040,8 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("rawShell = false", machine)
         self.assertIn("RootExecutionMode.Su", manager)
         self.assertIn("su", executor)
-        self.assertIn("PrivilegeRisk.ReadOnly", router)
+        self.assertIn("PrivilegeRisk.ReadOnly", features)
+        self.assertIn("EnsureAllowed(PrivilegeRisk.ReadOnly)", features)
         self.assertIn("AllowDeviceCritical", policy)
 
         # Root v1 deliberately has no arbitrary privileged shell or flashing path.
