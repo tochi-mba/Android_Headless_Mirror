@@ -27,6 +27,24 @@ if (-not (Test-Path $ConfigFile)) {
 }
 $Config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
 
+function Ensure-HeadlessSessionDefaults {
+    $changed = $false
+
+    if ($null -eq $Config.PSObject.Properties["TurnPhysicalScreenOff"]) {
+        $Config | Add-Member -NotePropertyName TurnPhysicalScreenOff -NotePropertyValue $true
+        $changed = $true
+    }
+
+    if ($changed) {
+        $temp = $ConfigFile + ".tmp"
+        $Config | ConvertTo-Json -Depth 20 | Set-Content -Path $temp -Encoding UTF8
+        [void](Get-Content $temp -Raw | ConvertFrom-Json)
+        Move-Item -Force -Path $temp -Destination $ConfigFile
+    }
+}
+
+Ensure-HeadlessSessionDefaults
+
 $createdNew = $false
 $Mutex = New-Object System.Threading.Mutex($true, "Local\AndroidHeadlessMirrorSupervisor", [ref]$createdNew)
 if (-not $createdNew) {
