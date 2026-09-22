@@ -123,7 +123,7 @@ public sealed class RootFeatureServiceTests
             shell.Success(id, id + "-value");
         }
 
-        var result = await Features(package, shell).DiagnosticsAsync("USB123");
+        var result = await Features(package, shell).DiagnosticsAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal("root.diagnostics", result.Operation);
         Assert.Equal(PrivilegeRisk.ReadOnly, result.Risk);
@@ -145,7 +145,8 @@ public sealed class RootFeatureServiceTests
 
         var result = await Features(package, shell).ListFilesAsync(
             "USB123",
-            "/data/user/0/com.example");
+            "/data/user/0/com.example",
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("listing", result.Sections["listing"]);
         var call = Assert.Single(
@@ -166,7 +167,8 @@ public sealed class RootFeatureServiceTests
 
         await Features(package, shell).ReadFileAsync(
             "USB123",
-            "/data/user/0/com.example/file.txt");
+            "/data/user/0/com.example/file.txt",
+            TestContext.Current.CancellationToken);
 
         var call = Assert.Single(
             shell.Calls,
@@ -186,7 +188,8 @@ public sealed class RootFeatureServiceTests
 
         var result = await Features(package, shell).StatFileAsync(
             "USB123",
-            "/data/system/packages.xml");
+            "/data/system/packages.xml",
+            TestContext.Current.CancellationToken);
 
         Assert.Contains("regular file", result.Sections["stat"]);
     }
@@ -198,7 +201,7 @@ public sealed class RootFeatureServiceTests
         var shell = VerifiedShell();
         shell.Success("root.processes", "PID NAME");
 
-        var result = await Features(package, shell).ProcessesAsync("USB123");
+        var result = await Features(package, shell).ProcessesAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal("PID NAME", result.Sections["processes"]);
         Assert.Contains(
@@ -216,7 +219,7 @@ public sealed class RootFeatureServiceTests
         var shell = VerifiedShell();
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => Features(package, shell).ProcessAsync("USB123", pid));
+            () => Features(package, shell).ProcessAsync("USB123", pid, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -228,7 +231,7 @@ public sealed class RootFeatureServiceTests
         shell.Success("root.process.cmdline", "com.example");
         shell.Success("root.process.limits", "Max open files");
 
-        var result = await Features(package, shell).ProcessAsync("USB123", 1234);
+        var result = await Features(package, shell).ProcessAsync("USB123", 1234, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, result.Sections.Count);
         Assert.Contains("Name: app", result.Sections["status"]);
@@ -249,7 +252,8 @@ public sealed class RootFeatureServiceTests
 
         var result = await Features(package, shell).AppAsync(
             "USB123",
-            "com.example");
+            "com.example",
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(4, result.Sections.Count);
         Assert.Contains("base.apk", result.Sections["apk"]);
@@ -269,7 +273,7 @@ public sealed class RootFeatureServiceTests
         shell.Success("root.hardware.thermal", "thermal_zone0");
         shell.Success("root.hardware.power", "battery");
 
-        var result = await Features(package, shell).HardwareAsync("USB123");
+        var result = await Features(package, shell).HardwareAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(5, result.Sections.Count);
         Assert.Contains("thermal_zone0", result.Sections["thermalZones"]);
@@ -285,7 +289,7 @@ public sealed class RootFeatureServiceTests
         shell.Success("root.network.tcp", "tcp");
         shell.Success("root.network.tcp6", "tcp6");
 
-        var result = await Features(package, shell).NetworkAsync("USB123");
+        var result = await Features(package, shell).NetworkAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Equal(4, result.Sections.Count);
         Assert.DoesNotContain(
@@ -300,7 +304,7 @@ public sealed class RootFeatureServiceTests
         var shell = VerifiedShell();
         shell.Success("root.logs.kernel", "kernel line");
 
-        var result = await Features(package, shell).KernelLogsAsync("USB123");
+        var result = await Features(package, shell).KernelLogsAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Contains("kernel line", result.Sections["kernel"]);
         var call = Assert.Single(shell.Calls, x => x.Command.Id == "root.logs.kernel");
@@ -315,7 +319,7 @@ public sealed class RootFeatureServiceTests
         var shell = VerifiedShell();
         shell.Success("root.properties", "[ro.product.model]: [Galaxy]");
 
-        var result = await Features(package, shell).PropertiesAsync("USB123");
+        var result = await Features(package, shell).PropertiesAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Contains("Galaxy", result.Sections["properties"]);
     }
@@ -327,7 +331,7 @@ public sealed class RootFeatureServiceTests
         var shell = VerifiedShell();
         shell.Failure("root.processes", "permission denied");
 
-        var result = await Features(package, shell).ProcessesAsync("USB123");
+        var result = await Features(package, shell).ProcessesAsync("USB123", TestContext.Current.CancellationToken);
 
         Assert.Contains("[unavailable]", result.Sections["processes"]);
         Assert.Contains("permission denied", result.Sections["processes"]);
@@ -341,7 +345,7 @@ public sealed class RootFeatureServiceTests
         var shell = VerifiedShell();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => Features(package, shell).ProcessesAsync("USB123"));
+            () => Features(package, shell).ProcessesAsync("USB123", TestContext.Current.CancellationToken));
 
         Assert.Contains("policy blocks", ex.Message);
         Assert.DoesNotContain(shell.Calls, x => x.Command.Id == "root.processes");
