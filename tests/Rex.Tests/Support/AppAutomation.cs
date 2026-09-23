@@ -51,6 +51,7 @@ public sealed class AppAutomation(IntPtr window)
         var deadline = DateTime.UtcNow + timeout;
         do
         {
+            TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
             if (pattern.Current.ToggleState == wanted)
             {
                 return true;
@@ -106,6 +107,7 @@ public sealed class AppAutomation(IntPtr window)
         var deadline = DateTime.UtcNow + FindTimeout;
         while (true)
         {
+            TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
             if (find() is { } element)
             {
                 return element;

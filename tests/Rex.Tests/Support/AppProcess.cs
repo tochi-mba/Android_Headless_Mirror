@@ -519,9 +519,34 @@ public sealed class AppProcess : IDisposable
         start.Environment[AppPaths.RootEnvironmentVariable] = _package.Root;
         start.Environment[Ipc.PipeNameOverride] = _pipe;
         using var cli = Process.Start(start)!;
-        var output = await cli.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
-        await cli.WaitForExitAsync(TestContext.Current.CancellationToken);
-        return output;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
+
+        var stdout = cli.StandardOutput.ReadToEndAsync(timeout.Token);
+        var stderr = cli.StandardError.ReadToEndAsync(timeout.Token);
+        try
+        {
+            await cli.WaitForExitAsync(timeout.Token);
+            var output = await stdout;
+            _ = await stderr;
+            return output;
+        }
+        catch (OperationCanceledException) when (!TestContext.Current.CancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                if (!cli.HasExited)
+                {
+                    cli.Kill(entireProcessTree: true);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between the timeout and cleanup.
+            }
+
+            throw new TimeoutException($"rex.exe did not exit within 20 seconds: {string.Join(' ', arguments)}");
+        }
     }
 
     /// <summary>Brings the main window to the foreground the way a user would (Alt tap defeats the foreground lock).</summary>
