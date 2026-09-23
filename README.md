@@ -119,6 +119,7 @@ npm ci; npm run test:pages
 ```
 
 The test suite runs the real app against the fake phone tooling and saves screenshots under
-`artifacts/screens`. CI builds, tests and packages the installer on every push; tagging `v*`
-publishes the installer and its checksum as a GitHub release, which the website's download
-button points at.
+`artifacts/screens`. Pull-request CI builds, tests and packages a synthetic installer. After those
+same gates pass on `main`, CI publishes the version from `Directory.Build.props` only when that
+GitHub release does not exist yet. Published assets are immutable, and the website resolves its
+download button from the latest release.
