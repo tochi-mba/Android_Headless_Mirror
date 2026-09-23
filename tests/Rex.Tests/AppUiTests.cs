@@ -202,7 +202,14 @@ public sealed class AppUiTests
         await app.SaveScreenshotAsync("ui-restart-notice.png");
 
         app.Ui.InvokeNamed("Restart now");
-        await app.WaitForPhaseAsync("waiting", Startup);
+
+        // What matters is that the mirror comes back with the new setting. The app does pass
+        // through Waiting on the way, but on a fast machine it is gone before the next poll, and a
+        // test that insists on seeing it is testing the poll rather than the restart.
+        await app.WaitUntilAsync(
+            () => package.ScrcpyLog().Count(l => l.StartsWith("args ", StringComparison.Ordinal)) == 2,
+            Startup,
+            "the mirror to be relaunched");
         await app.WaitForPhaseAsync("mirroring", Startup);
         await app.WaitForStatusAsync(s => !s["restartRequired"]!.GetValue<bool>(), Soon, "restart notice gone");
         var launches = package.ScrcpyLog().Where(l => l.StartsWith("args ", StringComparison.Ordinal)).ToArray();
