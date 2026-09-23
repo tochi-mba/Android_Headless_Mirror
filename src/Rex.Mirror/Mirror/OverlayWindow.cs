@@ -1,8 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using Rex.Core;
 using Rex.Mirror.Native;
@@ -22,14 +24,24 @@ public sealed class OverlayWindow : Window
 
     private readonly Canvas _canvas = new();
     private readonly Canvas _pattern = new() { IsHitTestVisible = false };
+    private readonly List<Ellipse> _patternDots = [];
     private readonly Polyline _trail = new()
     {
-        Stroke = new SolidColorBrush(Color.FromRgb(0xFF, 0x77, 0x4D)),
-        StrokeThickness = 3,
+        Stroke = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F)),
+        StrokeThickness = 4.5,
         StrokeLineJoin = PenLineJoin.Round,
         StrokeStartLineCap = PenLineCap.Round,
         StrokeEndLineCap = PenLineCap.Round,
         IsHitTestVisible = false,
+    };
+    private readonly Line _trailTail = new()
+    {
+        Stroke = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F)),
+        StrokeThickness = 4.5,
+        StrokeStartLineCap = PenLineCap.Round,
+        StrokeEndLineCap = PenLineCap.Round,
+        IsHitTestVisible = false,
+        Visibility = Visibility.Collapsed,
     };
     private readonly TextBlock _label = new()
     {
@@ -57,6 +69,8 @@ public sealed class OverlayWindow : Window
         Fill = new SolidColorBrush(Color.FromArgb(0x22, 0xD7, 0xFF, 0x3F)),
         IsHitTestVisible = false,
     };
+    private readonly Border _patternLoading;
+    private readonly TextBlock _patternLoadingText;
 
     private HwndSource? _source;
     private bool _navigatorDragging;
@@ -102,11 +116,15 @@ public sealed class OverlayWindow : Window
         Width = 10;
         Height = 10;
 
-        _canvas.Children.Add(_pattern);
         _canvas.Children.Add(_trail);
+        _canvas.Children.Add(_trailTail);
+        _canvas.Children.Add(_pattern);
         _canvas.Children.Add(_label);
         Canvas.SetLeft(_label, 12);
         Canvas.SetTop(_label, 10);
+
+        (_patternLoading, _patternLoadingText) = CreatePatternLoading();
+        _canvas.Children.Add(_patternLoading);
 
         _navigatorCanvas.Children.Add(_navigatorViewport);
         _navigator.Child = _navigatorCanvas;
@@ -214,14 +232,31 @@ public sealed class OverlayWindow : Window
     public void ClearPattern()
     {
         _pattern.Children.Clear();
+        _patternDots.Clear();
+        _patternLoading.Visibility = Visibility.Collapsed;
         _label.Text = string.Empty;
-        _trail.Points.Clear();
+        ClearTrail();
+    }
+
+    public void ShowPatternLoading(string label)
+    {
+        _pattern.Children.Clear();
+        _patternDots.Clear();
+        ClearTrail();
+        _label.Text = "PATTERN GUIDE  ·  aligning with the phone…";
+        _label.Foreground = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F));
+        _patternLoadingText.Text = label;
+        _patternLoading.Visibility = Visibility.Visible;
+        Canvas.SetLeft(_patternLoading, Math.Max(12, (_canvas.Width - _patternLoading.Width) / 2));
+        Canvas.SetTop(_patternLoading, Math.Max(48, (_canvas.Height - _patternLoading.Height) / 2));
     }
 
     /// <summary>Draws nine dots (in overlay pixel coordinates) plus an optional calibration box.</summary>
     public void DrawPattern(IReadOnlyList<PointD> pointsPixels, double radiusPixels, double opacity, string label, bool calibrating)
     {
+        _patternLoading.Visibility = Visibility.Collapsed;
         _pattern.Children.Clear();
+        _patternDots.Clear();
         var scale = 1.0 / _dpiScale;
         var radius = Math.Max(5, radiusPixels * scale);
         var signal = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F));
@@ -259,16 +294,106 @@ public sealed class OverlayWindow : Window
             Canvas.SetLeft(dot, point.X * scale - radius);
             Canvas.SetTop(dot, point.Y * scale - radius);
             _pattern.Children.Add(dot);
+            _patternDots.Add(dot);
         }
 
         _label.Text = label;
         _label.Foreground = calibrating ? live : signal;
     }
 
-    public void AddTrailPoint(double xPixels, double yPixels) =>
-        _trail.Points.Add(new Point(xPixels / _dpiScale, yPixels / _dpiScale));
+    public void UpdatePatternTrace(
+        IReadOnlyList<PointD> pointsPixels,
+        IReadOnlyList<int> selected,
+        PointD? pointerPixels,
+        double opacity)
+    {
+        _trail.Points.Clear();
+        foreach (var index in selected)
+        {
+            if (index >= 0 && index < pointsPixels.Count)
+            {
+                _trail.Points.Add(new Point(pointsPixels[index].X / _dpiScale, pointsPixels[index].Y / _dpiScale));
+            }
+        }
 
-    public void ClearTrail() => _trail.Points.Clear();
+        _trail.Opacity = opacity;
+        for (var i = 0; i < _patternDots.Count; i++)
+        {
+            _patternDots[i].Fill = selected.Contains(i) ? _patternDots[i].Stroke : Brushes.Transparent;
+        }
+
+        if (selected.Count > 0 && pointerPixels is { } pointer && selected[^1] < pointsPixels.Count)
+        {
+            var last = pointsPixels[selected[^1]];
+            _trailTail.X1 = last.X / _dpiScale;
+            _trailTail.Y1 = last.Y / _dpiScale;
+            _trailTail.X2 = pointer.X / _dpiScale;
+            _trailTail.Y2 = pointer.Y / _dpiScale;
+            _trailTail.Opacity = opacity * 0.8;
+            _trailTail.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            _trailTail.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    public void ClearTrail()
+    {
+        _trail.Points.Clear();
+        _trailTail.Visibility = Visibility.Collapsed;
+        foreach (var dot in _patternDots)
+        {
+            dot.Fill = Brushes.Transparent;
+        }
+    }
+
+    private static (Border Border, TextBlock Text) CreatePatternLoading()
+    {
+        var grid = new UniformGrid { Rows = 3, Columns = 3, Width = 70, Height = 70, HorizontalAlignment = HorizontalAlignment.Center };
+        for (var i = 0; i < 9; i++)
+        {
+            var dot = new Ellipse
+            {
+                Width = 9,
+                Height = 9,
+                Margin = new Thickness(6),
+                Fill = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F)),
+                Opacity = 0.2,
+            };
+            dot.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.2, 1, TimeSpan.FromMilliseconds(520))
+            {
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                BeginTime = TimeSpan.FromMilliseconds(i * 55),
+            });
+            grid.Children.Add(dot);
+        }
+
+        var text = new TextBlock
+        {
+            TextAlignment = TextAlignment.Center,
+            Foreground = Brushes.White,
+            FontSize = 12,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+        var content = new StackPanel();
+        content.Children.Add(grid);
+        content.Children.Add(text);
+        return (new Border
+        {
+            Width = 210,
+            Height = 126,
+            Padding = new Thickness(16, 12, 16, 10),
+            CornerRadius = new CornerRadius(14),
+            Background = new SolidColorBrush(Color.FromArgb(0xE8, 0x08, 0x0A, 0x09)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x66, 0xD7, 0xFF, 0x3F)),
+            BorderThickness = new Thickness(1),
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+            Child = content,
+        }, text);
+    }
 
     // ----- Navigator -----
 

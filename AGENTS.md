@@ -97,7 +97,7 @@ docs/                   GitHub Pages site; its download button points at the lat
   it never blocks the mirror from opening.
 - F11 uses the full monitor bounds. Its compact HUD lives in the owned overlay and fades when idle;
   leaving fullscreen restores window placement. Phone orientation actions are distinct from PC view rotation.
-- scrcpy is launched with `--shortcut-mod=rctrl+ralt`, `--mouse=sdk`, `--keyboard=sdk`,
+- scrcpy is launched with `--shortcut-mod=rctrl`, `--mouse=sdk`, `--keyboard=sdk`,
   `--window-borderless` and `--no-window-aspect-ratio-lock`; `Mirror.ExtraArgs` cannot override these
   and is validated wherever it is written (settings panel, `config set`, `Normalize`).
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
@@ -134,7 +134,7 @@ npm ci; npm run test:pages
 The end-to-end tests launch `RexMirror.exe` with `--root <temp package>` against `tests/Rex.FakeAdb`
 and `tests/Rex.FakeScrcpy`, drive it over the pipe (`REX_PIPE_NAME`), and save screenshots to
 `artifacts/screens`. Add a test for every user-visible change; CI is the release gate and also
-compiles the installer. Tagging `v*` publishes `AndroidHeadlessMirror-Setup.exe` plus its SHA-256.
+compiles the installer. Tagging `v*` publishes `AndroidHeadlessMirror-Setup-x.y.z.exe` plus its SHA-256.
 
 ## Generated files (never commit)
 

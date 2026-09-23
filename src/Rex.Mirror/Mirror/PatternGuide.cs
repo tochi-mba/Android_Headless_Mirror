@@ -35,6 +35,11 @@ public sealed class PatternGuide : IDisposable
     private PatternGeometryInfo? _calibration;
     private PatternBounds? _draft;
     private PatternLayout? _lastLayout;
+    private IReadOnlyList<PointD> _patternPoints = [];
+    private readonly List<int> _traceNodes = [];
+    private PointD? _tracePointer;
+    private double _patternRadius;
+    private bool _initialDiscoveryComplete;
     private bool _pollingKeyguard;
     private bool _discovering;
     private bool _leftWasDown;
@@ -50,6 +55,7 @@ public sealed class PatternGuide : IDisposable
         _serial = serial;
         _identity = identity;
         _calibration = PatternGeometry.FromCalibration(host.State.GetDevice(serial)?.Calibration);
+        _initialDiscoveryComplete = _calibration is not null || !host.Config.PatternGuide.AutoDiscoverGeometry;
 
         _frame = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(50) };
         _frame.Tick += (_, _) => Frame();
@@ -61,6 +67,7 @@ public sealed class PatternGuide : IDisposable
 
     public bool IsVisible { get; private set; }
     public bool IsCalibrating => _draft is not null;
+    public bool IsResolving => IsVisible && NeedsInitialDiscovery();
     public string Source => _lastLayout?.Source ?? PatternGeometry.SourceUnavailable;
 
     public event Action? Changed;
@@ -87,6 +94,10 @@ public sealed class PatternGuide : IDisposable
         _manualOverride = !IsVisible;
         _manualUntil = DateTime.UtcNow.AddSeconds(ManualShowSeconds);
         Render();
+        if (_manualOverride == true && NeedsInitialDiscovery())
+        {
+            _ = DiscoverAsync(initial: true);
+        }
     }
 
     public void StartCalibration()
@@ -217,8 +228,9 @@ public sealed class PatternGuide : IDisposable
             _manualOverride = null;
         }
 
-        Render();
         UpdateTrail();
+        Render();
+        DrawTrace();
     }
 
     private async Task PollKeyguardAsync()
@@ -232,13 +244,24 @@ public sealed class PatternGuide : IDisposable
         try
         {
             var state = await _adb.GetKeyguardStateAsync(_serial).ConfigureAwait(true);
-            if (state == KeyguardState.Unlocked && _keyguard != KeyguardState.Unlocked)
+            var previous = _keyguard;
+            if (state == KeyguardState.Unlocked && previous != KeyguardState.Unlocked)
             {
                 _manualOverride = null;
                 _discovered = null;
+                _initialDiscoveryComplete = _calibration is not null || !_host.Config.PatternGuide.AutoDiscoverGeometry;
             }
 
             _keyguard = state;
+            if (state == KeyguardState.Locked && previous != KeyguardState.Locked)
+            {
+                _initialDiscoveryComplete = _calibration is not null || !_host.Config.PatternGuide.AutoDiscoverGeometry;
+                Render();
+                if (NeedsInitialDiscovery())
+                {
+                    _ = DiscoverAsync(initial: true);
+                }
+            }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
@@ -250,7 +273,7 @@ public sealed class PatternGuide : IDisposable
         }
     }
 
-    private async Task DiscoverAsync()
+    private async Task DiscoverAsync(bool initial = false)
     {
         var wanted = _host.Config.PatternGuide.AutoDiscoverGeometry && !IsCalibrating && ShouldShow() && !NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON);
         if (!wanted || _discovering || _disposed)
@@ -259,14 +282,28 @@ public sealed class PatternGuide : IDisposable
         }
 
         _discovering = true;
+        if (initial)
+        {
+            Render();
+        }
+
         try
         {
-            var xml = await _adb.DumpUiHierarchyAsync(_serial).ConfigureAwait(true);
-            var geometry = PatternGeometry.FromUiHierarchy(xml);
-            if (geometry is not null)
+            var attempts = initial ? 3 : 1;
+            for (var attempt = 0; attempt < attempts && !_disposed; attempt++)
             {
-                _discovered = geometry;
-                Render();
+                var xml = await _adb.DumpUiHierarchyAsync(_serial).ConfigureAwait(true);
+                var geometry = PatternGeometry.FromUiHierarchy(xml);
+                if (geometry is not null)
+                {
+                    _discovered = geometry;
+                    break;
+                }
+
+                if (attempt + 1 < attempts)
+                {
+                    await Task.Delay(350).ConfigureAwait(true);
+                }
             }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
@@ -275,9 +312,22 @@ public sealed class PatternGuide : IDisposable
         }
         finally
         {
+            if (initial)
+            {
+                _initialDiscoveryComplete = true;
+            }
+
             _discovering = false;
+            Render();
         }
     }
+
+    private bool NeedsInitialDiscovery() =>
+        _host.Config.PatternGuide.AutoDiscoverGeometry &&
+        !IsCalibrating &&
+        _calibration is null &&
+        _discovered is null &&
+        !_initialDiscoveryComplete;
 
     private bool ShouldShow()
     {
@@ -298,6 +348,21 @@ public sealed class PatternGuide : IDisposable
             {
                 IsVisible = false;
                 _overlay.ClearPattern();
+                ResetTrace();
+                Changed?.Invoke();
+            }
+
+            return;
+        }
+
+        if (NeedsInitialDiscovery())
+        {
+            _lastLayout = null;
+            _patternPoints = [];
+            _overlay.ShowPatternLoading("Finding the pattern position…");
+            if (!IsVisible)
+            {
+                IsVisible = true;
                 Changed?.Invoke();
             }
 
@@ -314,6 +379,8 @@ public sealed class PatternGuide : IDisposable
 
         var points = layout.Points.Select(p => new PointD(p.X + surface.X, p.Y + surface.Y)).ToArray();
         var radius = Math.Max(5, layout.ContentRect.Width * PatternGeometry.DotRadiusRelativeToWidth);
+        _patternPoints = points;
+        _patternRadius = radius;
         var label = IsCalibrating
             ? "CALIBRATE  ·  arrows move  ·  Shift+arrows resize  ·  Ctrl = fine  ·  Enter save  ·  Esc cancel  ·  R reset"
             : $"PATTERN GUIDE  ·  {SourceLabel(layout.Source)}  ·  Ctrl+Alt+P hide  ·  Ctrl+Alt+C calibrate";
@@ -330,29 +397,56 @@ public sealed class PatternGuide : IDisposable
     {
         if (!IsVisible || !_host.Config.PatternGuide.ShowCursorTrail)
         {
+            ResetTrace();
             return;
         }
 
         var leftDown = NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON);
         if (leftDown)
         {
+            if (!_leftWasDown)
+            {
+                _traceNodes.Clear();
+                _tracePointer = null;
+            }
+
             var viewport = _mirror.ViewportScreenRect;
             if (NativeMethods.GetCursorPos(out var cursor) &&
                 cursor.X >= viewport.Left && cursor.X < viewport.Right && cursor.Y >= viewport.Top && cursor.Y < viewport.Bottom)
             {
-                _overlay.AddTrailPoint(cursor.X - viewport.Left, cursor.Y - viewport.Top);
+                var pointer = new PointD(cursor.X - viewport.Left, cursor.Y - viewport.Top);
+                var hit = PatternPath.HitTest(_patternPoints, pointer, Math.Max(18, _patternRadius * 2.4));
+                if (hit is { } index)
+                {
+                    var updated = PatternPath.AddNode(_traceNodes, index);
+                    _traceNodes.Clear();
+                    _traceNodes.AddRange(updated);
+                }
+
+                _tracePointer = _traceNodes.Count > 0 ? pointer : null;
             }
         }
         else if (_leftWasDown)
         {
+            _tracePointer = null;
             _trailClearAt = DateTime.UtcNow.AddMilliseconds(350);
         }
         else if (DateTime.UtcNow >= _trailClearAt)
         {
-            _overlay.ClearTrail();
+            ResetTrace();
         }
 
         _leftWasDown = leftDown;
+    }
+
+    private void DrawTrace() =>
+        _overlay.UpdatePatternTrace(_patternPoints, _traceNodes, _tracePointer, _host.Config.PatternGuide.Opacity);
+
+    private void ResetTrace()
+    {
+        _traceNodes.Clear();
+        _tracePointer = null;
+        _overlay.ClearTrail();
     }
 
     private static string SourceLabel(string source) => source switch

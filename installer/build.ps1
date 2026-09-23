@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-  Builds AndroidHeadlessMirror-Setup.exe: publishes the app and the CLI, bundles the latest
+  Builds AndroidHeadlessMirror-Setup-<version>.exe: publishes the app and the CLI, bundles the latest
   verified scrcpy release and compiles the Inno Setup script. Used by CI and releases; works
   locally when the .NET 10 SDK and Inno Setup 6 are installed.
 
 .PARAMETER Version
-  The product version stamped into the executables and the installer (for example 2.0.0).
+  The product version stamped into the executables and the installer (for example 2.0.1).
 #>
 [CmdletBinding()]
 param(
@@ -14,6 +14,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if ($Version -notmatch '^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?$') {
+    throw "Version '$Version' is not a valid release version. Expected a value such as 2.0.1."
+}
 
 $root = Split-Path -Parent $PSScriptRoot
 $dist = Join-Path $root "dist"
@@ -65,7 +69,8 @@ Write-Host "[installer] Compiling"
 & $iscc "/DAppVersion=$Version" "/DSource=$dist" "/O$dist" "/Q" (Join-Path $PSScriptRoot "AndroidHeadlessMirror.iss")
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed." }
 
-$setup = Join-Path $dist "AndroidHeadlessMirror-Setup.exe"
+$setupName = "AndroidHeadlessMirror-Setup-$Version.exe"
+$setup = Join-Path $dist $setupName
 $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
-"$hash  AndroidHeadlessMirror-Setup.exe" | Set-Content "$setup.sha256" -Encoding ASCII
+"$hash  $setupName" | Set-Content "$setup.sha256" -Encoding ASCII
 Write-Host "[installer] $setup ($([math]::Round((Get-Item $setup).Length / 1MB)) MB)"

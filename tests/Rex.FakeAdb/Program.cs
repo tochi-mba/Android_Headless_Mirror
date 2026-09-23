@@ -118,6 +118,11 @@ int ExecOut(string[] rest)
 
     if (rest.Length >= 2 && rest[0] == "uiautomator" && rest[1] == "dump")
     {
+        if (scenario.UiHierarchyDelayMs > 0)
+        {
+            Thread.Sleep(scenario.UiHierarchyDelayMs);
+        }
+
         return Write("UI hierchary dumped to: /dev/tty\n" + scenario.UiHierarchy + "\n");
     }
 
@@ -311,6 +316,7 @@ internal sealed class Scenario
     public int DisplayWidth { get; set; } = 1080;
     public int DisplayHeight { get; set; } = 2400;
     public bool KeyguardLocked { get; set; }
+    public int UiHierarchyDelayMs { get; set; }
     public string UiHierarchy { get; set; } = "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation=\"0\"><node class=\"android.widget.FrameLayout\" bounds=\"[0,0][1080,2400]\" /></hierarchy>";
 
     public Dictionary<string, string> SettingsFor(string ns)

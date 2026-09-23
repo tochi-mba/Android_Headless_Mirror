@@ -5,7 +5,7 @@ namespace Rex.Mirror.Mirror;
 
 /// <summary>
 /// Delivers scrcpy keyboard shortcuts to the embedded window by posting key messages
-/// directly to it. The launch contract pins scrcpy's modifier to Right Ctrl + Right Alt, so the
+/// directly to it. The launch contract pins scrcpy's modifier to Right Ctrl, so the
 /// same sequence is always valid and nothing depends on which window is in the foreground.
 /// </summary>
 public static class ScrcpyShortcutSender
@@ -21,25 +21,23 @@ public static class ScrcpyShortcutSender
 
         var ok = true;
         ok &= Key(hwnd, NativeMethods.VK_RCONTROL, down: true, extended: true, alt: false);
-        ok &= Key(hwnd, NativeMethods.VK_RMENU, down: true, extended: true, alt: true);
         if (shortcut.Shift)
         {
-            ok &= Key(hwnd, NativeMethods.VK_LSHIFT, down: true, extended: false, alt: true);
+            ok &= Key(hwnd, NativeMethods.VK_LSHIFT, down: true, extended: false, alt: false);
         }
 
         var extendedKey = shortcut.VirtualKey is NativeMethods.VK_LEFT or NativeMethods.VK_UP or NativeMethods.VK_RIGHT or NativeMethods.VK_DOWN;
         for (var i = 0; i < Math.Max(1, shortcut.Repeat); i++)
         {
-            ok &= Key(hwnd, shortcut.VirtualKey, down: true, extended: extendedKey, alt: true);
-            ok &= Key(hwnd, shortcut.VirtualKey, down: false, extended: extendedKey, alt: true);
+            ok &= Key(hwnd, shortcut.VirtualKey, down: true, extended: extendedKey, alt: false);
+            ok &= Key(hwnd, shortcut.VirtualKey, down: false, extended: extendedKey, alt: false);
         }
 
         if (shortcut.Shift)
         {
-            ok &= Key(hwnd, NativeMethods.VK_LSHIFT, down: false, extended: false, alt: true);
+            ok &= Key(hwnd, NativeMethods.VK_LSHIFT, down: false, extended: false, alt: false);
         }
 
-        ok &= Key(hwnd, NativeMethods.VK_RMENU, down: false, extended: true, alt: false);
         ok &= Key(hwnd, NativeMethods.VK_RCONTROL, down: false, extended: true, alt: false);
         return ok;
     }
