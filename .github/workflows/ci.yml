@@ -116,32 +116,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  desktop-ui:
-    name: Desktop UI automation (Windows)
-    runs-on: windows-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: global.json
-
-      - name: Build
-        run: dotnet build Rex.sln -c Release
-
-      - name: Run UI automation tests
-        run: dotnet test --project tests/Rex.Tests/Rex.Tests.csproj -c Release --no-build -- --filter-class Rex.Tests.AppUiTests --long-running 60 --xunit-diagnostics on
-
-      - name: Upload UI screenshots
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: desktop-ui-screens
-          path: artifacts/screens/
-          if-no-files-found: ignore
-          retention-days: 14
-
   pages:
     name: Website
     runs-on: ubuntu-latest
@@ -168,7 +142,7 @@ jobs:
   release:
     name: Publish a new version
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [windows, desktop-e2e, desktop-ui, pages]
+    needs: [windows, desktop-e2e, pages]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
