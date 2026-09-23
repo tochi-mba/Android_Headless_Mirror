@@ -120,7 +120,6 @@ internal sealed class MirrorForm : Form
     }
 
     private readonly System.Windows.Forms.Timer _rotationWatch;
-    private bool _landscape;
 
     /// <summary>
     /// Turns the window when the phone turns, the way scrcpy does. The desktop app has no other way
@@ -145,13 +144,18 @@ internal sealed class MirrorForm : Form
             return;
         }
 
+        // Keep the window the shape the phone is in, rather than turning it once and hoping.
+        //
+        // The app resizes this window to wherever it thinks the picture goes, so a single swap can
+        // be undone a moment later by a resize that was decided before the turn. Checking the shape
+        // every tick means the two converge whichever order they happen in, and once the app has
+        // adopted the new aspect there is nothing left to correct.
         var landscape = value is "1" or "3";
-        if (landscape == _landscape)
+        if (landscape == ClientSize.Width > ClientSize.Height)
         {
             return;
         }
 
-        _landscape = landscape;
         ClientSize = new Size(ClientSize.Height, ClientSize.Width);
         Program.Log($"rotation {value} {ClientSize.Width}x{ClientSize.Height}");
         Invalidate();
