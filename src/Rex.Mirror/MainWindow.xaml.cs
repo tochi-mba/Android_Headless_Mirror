@@ -24,9 +24,12 @@ public partial class MainWindow : Window
     private readonly TouchpadBridge _touchpad;
     private readonly InputHooks _hooks = new();
     private readonly DispatcherTimer _overlayTimer;
+    private readonly DispatcherTimer _ambientTimer;
+    private readonly LiveCapture _liveCapture = new();
     private PatternGuide? _guide;
     private HwndSource? _source;
     private bool _fullscreen;
+    private bool _fullscreenTransition;
     private bool _sidebarWanted = true;
     private bool _quitting;
     private bool _trayHintShown;
@@ -42,6 +45,9 @@ public partial class MainWindow : Window
     private Rect _sidebarWheelBounds = Rect.Empty;
     public bool HudVisible => _overlay.HudVisible;
     public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
+    public bool SidebarVisible => Sidebar.Visibility == Visibility.Visible;
+    public bool AmbientVisible => _overlay.AmbientVisible;
+    public bool NavigatorVisible => _overlay.NavigatorVisible;
     public bool PatternGuideVisible => _guide?.IsVisible == true;
     public bool PatternGuideResolving => _guide?.IsResolving == true;
     public string PatternGuideSource => _guide?.Source ?? PatternGeometry.SourceUnavailable;
@@ -74,6 +80,8 @@ public partial class MainWindow : Window
 
         _overlayTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
         _overlayTimer.Tick += (_, _) => TrackOverlay();
+        _ambientTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(1000 / 15.0) };
+        _ambientTimer.Tick += (_, _) => CaptureAmbientFrame();
 
         Host.ViewChanged += _ => OnViewChanged();
         Host.ChildFocused += () => _overlay.ClearTrail();
@@ -97,6 +105,7 @@ public partial class MainWindow : Window
         host.Session.MirrorEnded += OnMirrorEnded;
         host.Session.LaunchRect = LaunchRect;
         host.ConfigChanged += OnConfigChanged;
+        host.ConfigPreviewed += () => { Host.MaxZoom = _host.Config.Zoom.MaxZoom; TrackOverlay(); };
 
         SourceInitialized += (_, _) =>
         {
@@ -164,6 +173,8 @@ public partial class MainWindow : Window
         _touchpad.Cancel();
         if (_quitting)
         {
+            _ambientTimer.Stop();
+            _liveCapture.Dispose();
             _overlay.Close();
             _hooks.Dispose();
             return;
@@ -230,6 +241,7 @@ public partial class MainWindow : Window
         SettingsPanel.RefreshRestartNotice();
         var mirroring = session.IsMirroring;
         var needsSetup = session.Phase == SessionPhase.NeedsSetup;
+        var usbBlocked = session.Devices.Count == 0 && session.UnreachableAdbInterfaces.Count > 0;
         var onboarding = OnboardingView.IsNeeded(_host);
 
         StatusText.Text = session.Message;
@@ -259,7 +271,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            DeviceName.Text = DeviceStateText.Header(needsSetup, session.Devices);
+            DeviceName.Text = DeviceStateText.Header(needsSetup, session.Devices, usbBlocked);
             DeviceMeta.Text = string.Empty;
         }
 
@@ -282,12 +294,14 @@ public partial class MainWindow : Window
                 SessionPhase.Stopped => "Mirror stopped",
                 _ when session.Devices.Any(d => d.IsUnauthorized) => "Approve USB debugging on the phone",
                 _ when session.Devices.Any(d => d.IsReady) => "Phone ready",
+                _ when usbBlocked => "Phone found, but Windows blocks ADB",
                 _ => "Connect your phone",
             };
-            EmptyText.Text = session.Phase == SessionPhase.Waiting && session.Devices.Count == 0
+            EmptyText.Text = session.Phase == SessionPhase.Waiting && session.Devices.Count == 0 && !usbBlocked
                 ? "Plug in an Android phone with USB debugging turned on. It appears here automatically."
                 : session.Message;
             EmptyPrimary.Visibility = session.Phase == SessionPhase.Stopped ? Visibility.Visible : Visibility.Collapsed;
+            EmptyRepair.Visibility = usbBlocked && session.Phase == SessionPhase.Waiting ? Visibility.Visible : Visibility.Collapsed;
         }
 
         foreach (var button in new[] { QuickHome, QuickBack, QuickRecents, QuickScreenshot })
@@ -337,6 +351,8 @@ public partial class MainWindow : Window
     private void OnMirrorEnded()
     {
         _touchpad.Cancel();
+        _ambientTimer.Stop();
+        _overlay.SetAmbientFrame(null);
         _guide?.Dispose();
         _guide = null;
         Host.Detach();
@@ -416,7 +432,7 @@ public partial class MainWindow : Window
         else _sidebarWheelBounds = Rect.Empty;
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         _overlay.Track(visible ? Host.ViewportScreenRect : default, visible);
-        _overlay.UpdateHud(_fullscreen && visible, Host.Zoom);
+        _overlay.UpdateHud(_fullscreen && visible, Host.Zoom, _host.Config.Hud);
         if (visible)
         {
             UpdateNavigator();
@@ -437,12 +453,44 @@ public partial class MainWindow : Window
         var view = Host.View;
         var show = view.IsZoomed && _host.Config.Zoom.ShowNavigator && Host.HasChild;
         var aspect = view.SurfaceHeight > 0 ? view.SurfaceWidth / view.SurfaceHeight : 0.45;
-        _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction());
-        var ambient = _host.Config.App.AmbientBackground && Host.HasChild;
-        _overlay.UpdateAmbient(ambient, Host.SurfaceRect, _host.Config.App);
-        if ((show || ambient) && IsVisible && WindowState != WindowState.Minimized && !_previewBusy && DateTime.UtcNow >= _nextPreview)
+        _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction(), _host.Config.Zoom);
+        var ambient = _host.Config.Ambient.Enabled && Host.HasChild;
+        _overlay.UpdateAmbient(ambient, Host.SurfaceRect, _host.Config.Ambient);
+        var interval = TimeSpan.FromMilliseconds(1000 / _host.Config.Ambient.FrameRate);
+        if (_ambientTimer.Interval != interval) _ambientTimer.Interval = interval;
+        if (ambient && IsVisible && WindowState != WindowState.Minimized && !_fullscreenTransition)
+        {
+            if (!_ambientTimer.IsEnabled) _ambientTimer.Start();
+        }
+        else
+        {
+            _ambientTimer.Stop();
+            _overlay.SetAmbientFrame(null);
+        }
+
+        if (show && IsVisible && WindowState != WindowState.Minimized && !_previewBusy && DateTime.UtcNow >= _nextPreview)
             _ = RefreshNavigatorPreviewAsync();
-        if (!show && !ambient) _overlay.SetNavigatorPreview(null);
+        if (!show) _overlay.SetNavigatorPreview(null);
+    }
+
+    /// <summary>One frame of the visible mirror surface for the soft background (no phone round trip).</summary>
+    private void CaptureAmbientFrame()
+    {
+        if (!Host.HasChild || !_host.Session.IsMirroring)
+        {
+            return;
+        }
+
+        var surface = Host.SurfaceScreenRect;
+        var viewport = Host.ViewportScreenRect;
+        var visible = new RECT
+        {
+            Left = Math.Max(surface.Left, viewport.Left),
+            Top = Math.Max(surface.Top, viewport.Top),
+            Right = Math.Min(surface.Right, viewport.Right),
+            Bottom = Math.Min(surface.Bottom, viewport.Bottom),
+        };
+        _overlay.SetAmbientFrame(_liveCapture.Capture(visible));
     }
 
     private async Task RefreshNavigatorPreviewAsync()
@@ -722,6 +770,40 @@ public partial class MainWindow : Window
 
     private void OnEmptyPrimary(object sender, RoutedEventArgs e) => _host.Session.StartAgain();
 
+    private async void OnRepairUsb(object sender, RoutedEventArgs e) => await RepairUsbAsync();
+
+    /// <summary>Runs "rex usb repair" elevated; Windows shows the UAC prompt, the exit code tells the outcome.</summary>
+    public async Task RepairUsbAsync()
+    {
+        var cli = Path.Combine(AppContext.BaseDirectory, "rex.exe");
+        if (!File.Exists(cli))
+        {
+            SetStatus("rex.exe was not found next to the app, so the repair cannot run.", isError: true);
+            return;
+        }
+
+        EmptyRepair.IsEnabled = false;
+        SetStatus("Waiting for administrator approval…");
+        try
+        {
+            using var repair = Process.Start(new ProcessStartInfo(cli, "usb repair") { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden })
+                ?? throw new InvalidOperationException("Windows did not start the repair.");
+            await repair.WaitForExitAsync();
+            SetStatus(repair.ExitCode == 0
+                ? "USB driver registered. The phone should appear in a moment; unplug and plug it in again if it does not."
+                : "The repair did not finish. Run 'rex usb repair' in an administrator terminal to see why.", repair.ExitCode != 0);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // ERROR_CANCELLED (1223) is the user declining the UAC prompt.
+            SetStatus(ex is System.ComponentModel.Win32Exception { NativeErrorCode: 1223 } ? "Repair cancelled." : "Could not start the repair: " + ex.Message, isError: true);
+        }
+        finally
+        {
+            EmptyRepair.IsEnabled = true;
+        }
+    }
+
     private void OnToggleSidebar(object sender, RoutedEventArgs e) => SetSidebarVisible(Sidebar.Visibility != Visibility.Visible);
 
     private void OnToggleFullscreen(object sender, RoutedEventArgs e) => ToggleFullscreen();
@@ -735,6 +817,7 @@ public partial class MainWindow : Window
 
     public void ToggleFullscreen()
     {
+        _fullscreenTransition = true;
         _fullscreen = !_fullscreen;
         if (_fullscreen)
         {
@@ -772,6 +855,7 @@ public partial class MainWindow : Window
         }
 
         UpdateLayout();
+        _fullscreenTransition = false;
         TrackOverlay();
 
         if (Host.HasChild)

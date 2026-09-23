@@ -40,6 +40,9 @@ public static class Commands
                 return 0;
             }
 
+            case "usb":
+                return await UsbAsync(context, positional.Length >= 2 ? positional[1] : "list").ConfigureAwait(false);
+
             case "diagnostics":
             {
                 var report = await Diagnostics.BuildAsync(context.Paths, context.Log, context.Runner).ConfigureAwait(false);
@@ -117,6 +120,62 @@ public static class Commands
 
             default:
                 throw new ArgumentException($"Unknown command '{command}'. Run 'rex help'.");
+        }
+    }
+
+    private static async Task<int> UsbAsync(CliContext context, string verb)
+    {
+        switch (verb.ToLowerInvariant())
+        {
+            case "list":
+            {
+                var interfaces = UsbAdbInterfaces.Scan();
+                if (interfaces.Count == 0)
+                {
+                    Console.WriteLine("Windows has no ADB interface registered. Plug the phone in with USB debugging turned on.");
+                    return 0;
+                }
+
+                foreach (var adbInterface in interfaces)
+                {
+                    var state = adbInterface.Unreachable ? "PLUGGED IN, NOT REGISTERED FOR ADB" : adbInterface.Present ? "ok" : "not attached";
+                    Console.WriteLine($"{state,-36} {adbInterface.InstanceId}  ({adbInterface.Description}, {adbInterface.Driver})");
+                }
+
+                if (interfaces.Any(x => x.Unreachable))
+                {
+                    Console.WriteLine("Run 'rex usb repair' to register the interface for ADB (asks for administrator approval).");
+                }
+
+                return 0;
+            }
+
+            case "repair":
+            {
+                if (!UsbAdbInterfaces.IsElevated)
+                {
+                    // Re-run this command through UAC; the elevated copy does the work and its exit code is ours.
+                    try
+                    {
+                        using var elevated = Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "usb repair") { UseShellExecute = true, Verb = "runas" })
+                            ?? throw new InvalidOperationException("Windows did not start the elevated repair.");
+                        await elevated.WaitForExitAsync().ConfigureAwait(false);
+                        Console.WriteLine(elevated.ExitCode == 0 ? "Repair finished. The phone should appear within a few seconds." : "The repair did not finish.");
+                        return elevated.ExitCode;
+                    }
+                    catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                    {
+                        throw new InvalidOperationException("Repair cancelled at the administrator prompt.");
+                    }
+                }
+
+                var repaired = await UsbAdbInterfaces.RepairAsync(context.Runner).ConfigureAwait(false);
+                Console.WriteLine(repaired.Count == 0 ? "Nothing to repair: every attached ADB interface is registered." : $"Registered {repaired.Count} interface(s): {string.Join(", ", repaired)}");
+                return 0;
+            }
+
+            default:
+                throw new ArgumentException("usb expects list or repair.");
         }
     }
 
@@ -210,15 +269,25 @@ public static class Commands
 
     private static async Task<int> PhoneAsync(CliContext context, string[] positional, string? serial)
     {
-        Arguments.Require(positional, 2, "rex phone <get|set> ...");
+        Arguments.Require(positional, 2, "rex phone <get|set|reset> ...");
         var adb = context.RequireAdb();
         var target = await context.ResolveSerialAsync(serial).ConfigureAwait(false);
 
-        if (positional[1] == "get")
+        if (positional[1] is "get" or "list")
         {
-            foreach (var pair in await adb.GetFriendlyStateAsync(target).ConfigureAwait(false))
+            var wanted = positional.Length >= 3 ? positional[2] : null;
+            var values = await adb.ReadPhoneSettingsAsync(target).ConfigureAwait(false);
+            var group = string.Empty;
+            foreach (var value in values.Where(v => wanted is null || v.Setting.Id.Contains(wanted, StringComparison.OrdinalIgnoreCase)))
             {
-                Console.WriteLine($"{pair.Key,-18} {pair.Value}");
+                if (value.Setting.Group != group)
+                {
+                    group = value.Setting.Group;
+                    Console.WriteLine();
+                    Console.WriteLine(group.ToUpperInvariant());
+                }
+
+                Console.WriteLine($"  {value.Setting.Id,-34} {value.Display}");
             }
 
             return 0;
@@ -226,15 +295,23 @@ public static class Commands
 
         if (positional[1] == "set")
         {
-            Arguments.Require(positional, 4, "rex phone set <setting> <value> [--serial S]   (settings: " + string.Join(", ", FriendlySettings.Ids) + ")");
+            Arguments.Require(positional, 4, "rex phone set <setting> <value> [--serial S]   (rex phone list shows every setting)");
             var result = positional[2] == "rotation"
                 ? await adb.SetRotationOverrideAsync(target, positional[3]).ConfigureAwait(false)
-                : await adb.ApplyFriendlySettingAsync(target, positional[2], positional[3]).ConfigureAwait(false);
+                : await adb.ApplyPhoneSettingAsync(target, positional[2], positional[3]).ConfigureAwait(false);
             Console.WriteLine(result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? "Done." : result.Text) : result.Text);
             return result.Ok ? 0 : 1;
         }
 
-        throw new ArgumentException("phone expects get or set.");
+        if (positional[1] == "reset")
+        {
+            Arguments.Require(positional, 3, "rex phone reset <setting> [--serial S]");
+            var result = await adb.ResetPhoneSettingAsync(target, positional[2]).ConfigureAwait(false);
+            Console.WriteLine(result.Ok ? $"{positional[2]} is back to the phone's default." : result.Text);
+            return result.Ok ? 0 : 1;
+        }
+
+        throw new ArgumentException("phone expects get, list, set or reset.");
     }
 
     private static async Task<int> AndroidAsync(CliContext context, string[] positional, string? serial, string? filter)
@@ -398,13 +475,16 @@ public static class Commands
               rex action <name> [--serial S]    Send an action (rex action list)
               rex zoom <in|out|reset>           PC-side zoom of the open mirror
               rex screenshot [--serial S]       Save a PNG of the phone screen
-              rex phone get|set ...             Friendly phone settings (brightness, rotation, dark-mode...)
+              rex phone list [filter]           Every phone setting this phone exposes, with its value
+              rex phone set <setting> <value>   Change one (rex phone list shows the ids)
+              rex phone reset <setting>         Delete the key so Android uses its default
               rex android list|get|set|delete   Raw Android settings provider keys
               rex config list|get|set|restore   App settings (config.json)
               rex autostart on|off              Start with Windows
               rex lock-mode <serial> <mode>     pattern | other | none
               rex reset-lock [serial|ALL]       Forget lock-screen answers
               rex setup                         Install scrcpy without the app
+              rex usb [list|repair]             ADB interfaces Windows sees; repair one adb cannot (administrator)
               rex diagnostics                   Full report
 
             Machine mode (one JSON document, never prompts): rex agent <command>, rex --json <command>

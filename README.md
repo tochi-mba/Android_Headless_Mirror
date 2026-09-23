@@ -39,9 +39,11 @@ until you delete that folder.
   **Alt + wheel** and **Alt + drag** do the same with a mouse. Zoom scales the real video surface,
   so clicks always land where you see them. A small navigator shows where you are: drag it to
   pan, drag a corner to zoom.
-- **Ambient fill.** The empty margins around the phone show a dimmed, blurred preview of the screen
-  instead of black. It refreshes every couple of seconds from a phone screenshot that stays in
-  memory; turn it off or tune blur, dimming and refresh in Settings.
+- **Soft background.** The empty space around the phone shows a blurred, live copy of the mirror
+  instead of black, taken from the pixels already on screen (no phone round trip) at up to 30
+  frames per second. Every part of it is yours to set in Settings: opacity, blur (down to sharp),
+  which margins show it, how it scales, size, position, edge fade, a colour wash, mirroring and
+  frame rate. Changes preview instantly.
 - **Phone controls.** Home, back, recents, power, screen off/on, volume, notifications, quick
   settings, rotation, clipboard both ways, screenshots.
 - **Phone settings.** Brightness, timeout, forced rotation, dark mode, text size, animations, stay
@@ -63,9 +65,10 @@ until you delete that folder.
 | Pan while zoomed               | Alt + drag, Alt + two-finger slide, or drag the navigator      |
 | Pinch inside a phone app       | Two-finger pinch on the touchpad (no modifier)                 |
 | Turn the phone screen off/on   | The moon icon in the top bar / **Wake** in Controls            |
-| Go fullscreen                  | F11 (Esc leaves; the top edge reveals the HUD)                 |
+| Go fullscreen                  | F11 (Esc leaves; the edge you pin the HUD to reveals it)       |
 | Force landscape / portrait     | Ctrl+Alt+L / Ctrl+Alt+U; Ctrl+Alt+A restores auto rotation     |
 | Show or hide the pattern guide | Ctrl+Alt+P; Ctrl+Alt+C calibrates it with the arrow keys       |
+| Change how the mirror looks     | Settings → Display; every change previews instantly            |
 | Stop the mirror                | **Stop mirror** in Controls; the app keeps waiting in the tray |
 | Quit completely                | Tray icon → **Quit**                                           |
 
@@ -103,13 +106,23 @@ scripts and coding agents is documented in [AGENTS.md](AGENTS.md).
 Installed, the app keeps `config.json`, `state.json`, logs and captures under
 `%LocalAppData%\REX\Android Headless Mirror`. In a checkout, the repository folder is the root.
 
+## When the phone does not show up
+
+- **Windows sees the phone, ADB does not.** Windows sometimes binds a generic driver to the phone's
+  USB debugging interface without the ADB interface GUID, typically after the phone changes USB
+  mode or port. The app detects this and offers **Repair USB driver**; `rex usb` lists what Windows
+  has and `rex usb repair` registers it (one administrator approval).
+- **The phone asks to allow USB debugging.** Unlock it, tick *Always allow from this computer*, Allow.
+- **Nothing at all.** Try another cable or port; charge-only cables have no data lines.
+
 ## Security notes
 
 - USB debugging gives this PC full control of the phone. Only authorise computers you trust.
 - Wireless ADB is off by default. USB remains the recovery path.
 - The app never stores or injects a PIN, password or pattern. After a reboot some phones require the
   first unlock on the device itself; that is an Android boundary, not something the app bypasses.
-- Nothing needs administrator rights. REX has no account or telemetry and does not upload the
+- Nothing needs administrator rights except the optional USB driver repair, which always goes
+  through the Windows administrator prompt. REX has no account or telemetry and does not upload the
   mirrored screen, control data, lock information or phone content. Setup and updates connect to
   GitHub only to download REX and the official scrcpy distribution.
 

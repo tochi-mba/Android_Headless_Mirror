@@ -35,6 +35,9 @@ public sealed class SessionController : IDisposable
 {
     private const int MaxConsecutiveRestarts = 4;
 
+    /// <summary>Polls the stopped phone must be missing from ADB before the app accepts it as unplugged.</summary>
+    private const int StoppedPhoneMissedPolls = 3;
+
     private readonly AppHost _host;
     private readonly OwnedProcessJob _ownedProcesses = new();
     private readonly CancellationTokenSource _shutdown = new();
@@ -47,6 +50,8 @@ public sealed class SessionController : IDisposable
     private bool _restartRequested;
     private DateTime _retryAfter = DateTime.MinValue;
     private DateTime _nextWirelessAttempt = DateTime.MinValue;
+    private DateTime _nextUsbScan = DateTime.MinValue;
+    private int _stoppedSerialMissedPolls;
     private readonly HashSet<string> _wirelessBootstrapped = new(StringComparer.Ordinal);
     private CancellationTokenSource? _batteryPoll;
     private ScrcpyProcess? _pending;
@@ -64,6 +69,9 @@ public sealed class SessionController : IDisposable
     public AdbClient? Adb { get; private set; }
     public ScrcpyProcess? Scrcpy { get; private set; }
     public string? PendingLockQuestionSerial { get; private set; }
+
+    /// <summary>ADB interfaces Windows reports as attached that adb cannot see (see <see cref="AdbInterface.Unreachable"/>).</summary>
+    public IReadOnlyList<AdbInterface> UnreachableAdbInterfaces { get; private set; } = [];
     public bool IsMirroring => Phase == SessionPhase.Mirroring && Scrcpy is { HasExited: false };
     private IReadOnlyList<string>? _activeLaunchSettings;
     public bool NeedsRestart => IsMirroring && _activeLaunchSettings is not null &&
@@ -136,11 +144,23 @@ public sealed class SessionController : IDisposable
         var devices = await Adb!.ListDevicesAsync(cancellationToken).ConfigureAwait(false);
         var snapshot = string.Join("|", devices.Select(d => d.Serial + ":" + d.State));
         var changed = snapshot != _lastSnapshot;
+        if (changed)
+        {
+            _host.Log.Info("ADB devices: " + (devices.Count == 0 ? "none" : string.Join(", ", devices.Select(d => $"{d.Serial} {d.State} ({d.Transport})"))));
+        }
+
         _lastSnapshot = snapshot;
 
+        var unreachable = await ScanUsbAsync(devices).ConfigureAwait(false);
         await OnUi(() =>
         {
             Devices = devices;
+            if (unreachable is not null)
+            {
+                UnreachableAdbInterfaces = unreachable;
+                changed = true;
+            }
+
             if (changed)
             {
                 Changed?.Invoke();
@@ -153,13 +173,22 @@ public sealed class SessionController : IDisposable
             return;
         }
 
-        if (phase == SessionPhase.Stopped && devices.Any(d => d.Serial == _stoppedSerial && d.IsReady))
-        {
-            return;
-        }
-
         if (phase == SessionPhase.Stopped)
         {
+            if (devices.Any(d => d.Serial == _stoppedSerial && d.IsReady))
+            {
+                _stoppedSerialMissedPolls = 0;
+                return;
+            }
+
+            // A stop stays a stop until the phone really leaves. ADB drops a device from one poll
+            // often enough (a busy server, a USB hiccup) that a single miss must not restart it.
+            if (++_stoppedSerialMissedPolls < StoppedPhoneMissedPolls)
+            {
+                return;
+            }
+
+            _stoppedSerialMissedPolls = 0;
             _stoppedSerial = string.Empty;
             _restartAttempts = 0;
         }
@@ -168,12 +197,37 @@ public sealed class SessionController : IDisposable
         var selected = DeviceSelection.Select(devices, DeviceSelection.EffectivePreferredSerial(config, _host.State), config.Session.PreferUsb);
         if (selected is null)
         {
-            await OnUi(() => SetState(SessionPhase.Waiting, DeviceStateText.Describe(devices))).ConfigureAwait(false);
+            await OnUi(() => SetState(SessionPhase.Waiting, DeviceStateText.Describe(devices, UnreachableAdbInterfaces.Count > 0))).ConfigureAwait(false);
             await TryWirelessAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
 
         await StartMirrorAsync(selected, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// While adb sees nothing, checks every few seconds whether Windows has an attached ADB
+    /// interface that adb cannot enumerate. Returns the new list only when it changed.
+    /// </summary>
+    private Task<IReadOnlyList<AdbInterface>?> ScanUsbAsync(IReadOnlyList<AdbDevice> devices)
+    {
+        if (devices.Count > 0)
+        {
+            return Task.FromResult<IReadOnlyList<AdbInterface>?>(UnreachableAdbInterfaces.Count > 0 ? [] : null);
+        }
+
+        if (DateTime.UtcNow < _nextUsbScan)
+        {
+            return Task.FromResult<IReadOnlyList<AdbInterface>?>(null);
+        }
+
+        _nextUsbScan = DateTime.UtcNow.AddSeconds(5);
+        return Task.Run(() =>
+        {
+            var unreachable = UsbAdbInterfaces.Unreachable();
+            var same = unreachable.Select(u => u.InstanceId).SequenceEqual(UnreachableAdbInterfaces.Select(u => u.InstanceId));
+            return same ? null : unreachable;
+        });
     }
 
     private async Task StartMirrorAsync(AdbDevice device, CancellationToken cancellationToken)
@@ -281,7 +335,7 @@ public sealed class SessionController : IDisposable
             return;
         }
 
-        _host.Log.Info($"scrcpy exited with code {exitCode}");
+        _host.Log.Info($"scrcpy exited with code {exitCode}: {ScrcpyFailureText(scrcpy)}");
         var userStopped = _stoppedSerial == scrcpy.Serial;
         StopBatteryPoll();
         Scrcpy = null;
@@ -295,6 +349,7 @@ public sealed class SessionController : IDisposable
             _restartAttempts = 0;
         }
 
+        var phoneStillReady = Devices.Any(d => d.Serial == scrcpy.Serial && d.IsReady);
         if (userStopped)
         {
             SetState(SessionPhase.Stopped, "Mirror stopped. Press Start, or reconnect the phone.");
@@ -304,8 +359,16 @@ public sealed class SessionController : IDisposable
             _retryAfter = DateTime.MinValue;
             SetState(SessionPhase.Waiting, "Restarting mirror…");
         }
-        else if (config.Session.RestartOnUnexpectedExit && _restartAttempts < MaxConsecutiveRestarts &&
-                 Devices.Any(d => d.Serial == scrcpy.Serial && d.IsReady))
+        else if (!phoneStillReady)
+        {
+            // The USB link dropped (phones re-enumerate when they change USB mode, e.g. on unlock).
+            // That is not a stop: pick the phone up again as soon as ADB sees it.
+            _stoppedSerial = string.Empty;
+            _retryAfter = DateTime.UtcNow.AddSeconds(1);
+            _host.Log.Info($"{scrcpy.Serial} is no longer ready in ADB; waiting for it to come back.");
+            SetState(SessionPhase.Waiting, "Phone disconnected. Waiting for it to come back…");
+        }
+        else if (config.Session.RestartOnUnexpectedExit && _restartAttempts < MaxConsecutiveRestarts)
         {
             _restartAttempts++;
             _retryAfter = DateTime.UtcNow.AddSeconds(config.Session.RetrySeconds);
@@ -348,6 +411,7 @@ public sealed class SessionController : IDisposable
         }
 
         _stoppedSerial = scrcpy.Serial;
+        _stoppedSerialMissedPolls = 0;
         _restartRequested = false;
         _host.Log.Info("Mirror stopped by the user.");
         scrcpy.Kill();

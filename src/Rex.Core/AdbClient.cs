@@ -249,23 +249,94 @@ public sealed class AdbClient
         return (true, string.Empty, AdbParsing.ParseSettingsList(ns, result.StdOut));
     }
 
-    /// <summary>Applies one of the friendly device settings (brightness, dark mode, Wi-Fi...).</summary>
-    public async Task<AndroidResult> ApplyFriendlySettingAsync(string serial, string id, string value, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Every catalogue setting this phone actually has, with its current value. Reads the three
+    /// settings namespaces in one pass plus a probe for the few settings that are not plain keys;
+    /// entries the phone does not expose are left out rather than shown as dead rows.
+    /// </summary>
+    public async Task<IReadOnlyList<PhoneSettingValue>> ReadPhoneSettingsAsync(string serial, CancellationToken cancellationToken = default)
     {
-        var validation = FriendlySettings.Validate(id, value);
+        var stored = new Dictionary<(string Namespace, string Key), string>();
+        foreach (var ns in PhoneSettings.ReadNamespaces)
+        {
+            var (ok, _, rows) = await ListSettingsAsync(serial, ns, cancellationToken).ConfigureAwait(false);
+            if (!ok)
+            {
+                continue;
+            }
+
+            foreach (var row in rows)
+            {
+                stored[(row.Namespace, row.Key)] = row.Value;
+            }
+        }
+
+        var probed = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (id, command) in PhoneSettings.Probes)
+        {
+            var result = await ShellAsync(serial, command, cancellationToken).ConfigureAwait(false);
+            if (result.Ok)
+            {
+                probed[id] = PhoneSettings.ParseProbe(id, result.StdOut);
+            }
+        }
+
+        var values = new List<PhoneSettingValue>();
+        foreach (var setting in PhoneSettings.All)
+        {
+            var value = probed.TryGetValue(setting.Id, out var probe) && probe.Length > 0
+                ? probe
+                : stored.GetValueOrDefault((setting.Namespace, setting.Key), string.Empty);
+
+            if (setting.AlwaysAvailable || stored.ContainsKey((setting.Namespace, setting.Key)))
+            {
+                values.Add(new PhoneSettingValue(setting, value));
+            }
+        }
+
+        return values;
+    }
+
+    /// <summary>Writes one catalogue setting after checking the value against its own rules.</summary>
+    public async Task<AndroidResult> ApplyPhoneSettingAsync(string serial, string id, string value, CancellationToken cancellationToken = default)
+    {
+        if (PhoneSettings.Find(id) is not { } setting)
+        {
+            return AndroidResult.Failure($"Unknown phone setting '{id}'.");
+        }
+
+        var validation = PhoneSettings.Validate(setting, value);
         if (!validation.Ok)
         {
             return validation;
         }
 
-        var command = FriendlySettings.Command(id, value);
-        if (command.Kind == FriendlyCommandKind.SettingsPut)
+        if (setting.Source == PhoneSettingSource.SettingsProvider)
         {
-            return await PutSettingAsync(serial, command.Namespace!, command.Key!, command.Value, cancellationToken).ConfigureAwait(false);
+            // Provider writes go through PutSettingAsync so the protected-key guard is never bypassed.
+            return await PutSettingAsync(serial, setting.Namespace, setting.Key, validation.Text, cancellationToken).ConfigureAwait(false);
         }
 
-        var result = await ShellAsync(serial, command.ShellArguments, cancellationToken).ConfigureAwait(false);
-        return AndroidResult.From(result);
+        var result = await ShellAsync(serial, PhoneSettings.WriteCommand(setting, validation.Text), cancellationToken).ConfigureAwait(false);
+        return result.Ok
+            ? AndroidResult.Success($"{setting.Label}: {setting.Describe(validation.Text)}")
+            : AndroidResult.Failure(result.FailureText);
+    }
+
+    /// <summary>Deletes a catalogue setting's key so Android falls back to its own default.</summary>
+    public async Task<AndroidResult> ResetPhoneSettingAsync(string serial, string id, CancellationToken cancellationToken = default)
+    {
+        if (PhoneSettings.Find(id) is not { } setting)
+        {
+            return AndroidResult.Failure($"Unknown phone setting '{id}'.");
+        }
+
+        if (!setting.CanReset)
+        {
+            return AndroidResult.Failure($"{setting.Label} has no stored key to delete; set it to the value you want instead.");
+        }
+
+        return await DeleteSettingAsync(serial, setting.Namespace, setting.Key, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Forces a display rotation (0..3) or restores sensor rotation ("auto"). Reversible.</summary>
@@ -297,15 +368,6 @@ public sealed class AdbClient
 
         var degrees = int.Parse(mode, CultureInfo.InvariantCulture) * 90;
         return AndroidResult.Success($"Rotation locked to {degrees}°.");
-    }
-
-    public async Task<IReadOnlyDictionary<string, string>> GetFriendlyStateAsync(string serial, CancellationToken cancellationToken = default)
-    {
-        // One remote shell round trip for every key; each 'settings get' is cheap on-device.
-        var script = string.Join(" ; ", FriendlySettings.StateProbes.Select(probe =>
-            $"echo {probe.Name}=$({probe.Command})"));
-        var result = await ShellCommandAsync(serial, script, cancellationToken, TimeSpan.FromSeconds(20)).ConfigureAwait(false);
-        return AdbParsing.ParseKeyValueLines(result.StdOut);
     }
 
     // ----- Lock screen support -----
@@ -621,106 +683,4 @@ public static partial class AndroidSettings
 
         return ns is "secure" or "global" ? RiskAdvanced : RiskNormal;
     }
-}
-
-public enum FriendlyCommandKind
-{
-    SettingsPut,
-    Shell,
-}
-
-public sealed record FriendlyCommand(FriendlyCommandKind Kind, string? Namespace, string? Key, string Value, IReadOnlyList<string> ShellArguments);
-
-public sealed record FriendlyProbe(string Name, string Command);
-
-/// <summary>The curated "Phone" settings: id, validation and the ADB command behind each one.</summary>
-public static class FriendlySettings
-{
-    public static readonly string[] Ids =
-    [
-        "brightness", "brightness-mode", "screen-timeout-ms", "auto-rotate", "user-rotation",
-        "font-scale", "show-touches", "stay-awake", "animation-scale", "dark-mode",
-        "wifi", "mobile-data", "airplane-mode", "wm-size", "wm-density",
-    ];
-
-    public static readonly IReadOnlyList<FriendlyProbe> StateProbes =
-    [
-        new("Brightness", "settings get system screen_brightness"),
-        new("BrightnessMode", "settings get system screen_brightness_mode"),
-        new("ScreenTimeoutMs", "settings get system screen_off_timeout"),
-        new("AutoRotate", "settings get system accelerometer_rotation"),
-        new("UserRotation", "settings get system user_rotation"),
-        new("FontScale", "settings get system font_scale"),
-        new("ShowTouches", "settings get system show_touches"),
-        new("StayAwake", "settings get global stay_on_while_plugged_in"),
-        new("WindowAnimation", "settings get global window_animation_scale"),
-        new("UiMode", "cmd uimode night"),
-        new("WmSize", "wm size | tr '\\n' ' '"),
-        new("WmDensity", "wm density | tr '\\n' ' '"),
-    ];
-
-    public static AndroidResult Validate(string id, string value)
-    {
-        return id switch
-        {
-            "brightness" => Range(value, 1, 255, "Brightness must be 1-255."),
-            "brightness-mode" => OneOf(value, ["0", "1"], "Brightness mode must be 0 (manual) or 1 (automatic)."),
-            "screen-timeout-ms" => Range(value, 5000, 86_400_000, "Screen timeout must be between 5 seconds and 24 hours."),
-            "auto-rotate" => OneOf(value, ["0", "1"], "Auto rotate must be 0 or 1."),
-            "user-rotation" => OneOf(value, ["0", "1", "2", "3"], "Rotation must be 0, 1, 2 or 3."),
-            "font-scale" => Range(value, 0.5, 2.0, "Font scale must be between 0.5 and 2.0."),
-            "show-touches" => OneOf(value, ["0", "1"], "Show touches must be 0 or 1."),
-            "stay-awake" => OneOf(value, ["0", "1", "2", "4", "7"], "Stay awake must be 0, 1, 2, 4 or 7."),
-            "animation-scale" => Range(value, 0, 10, "Animation scale must be between 0 and 10."),
-            "dark-mode" => OneOf(value, ["yes", "no", "auto"], "Dark mode must be yes, no or auto."),
-            "wifi" or "mobile-data" or "airplane-mode" => OneOf(value, ["enable", "disable"], "Use enable or disable."),
-            "wm-size" => value == "reset" || Regex.IsMatch(value, @"^\d{3,5}x\d{3,5}$")
-                ? AndroidResult.Success()
-                : AndroidResult.Failure("Display size must look like 1080x2400, or reset."),
-            "wm-density" => value == "reset"
-                ? AndroidResult.Success()
-                : Range(value, 120, 1000, "Display density must be 120-1000, or reset."),
-            _ => AndroidResult.Failure($"Unknown phone setting '{id}'."),
-        };
-    }
-
-    public static FriendlyCommand Command(string id, string value)
-    {
-        return id switch
-        {
-            "brightness" => Put("system", "screen_brightness", ((int)double.Parse(value, CultureInfo.InvariantCulture)).ToString(CultureInfo.InvariantCulture)),
-            "brightness-mode" => Put("system", "screen_brightness_mode", value),
-            "screen-timeout-ms" => Put("system", "screen_off_timeout", ((long)double.Parse(value, CultureInfo.InvariantCulture)).ToString(CultureInfo.InvariantCulture)),
-            "auto-rotate" => Put("system", "accelerometer_rotation", value),
-            "user-rotation" => Put("system", "user_rotation", value),
-            "font-scale" => Put("system", "font_scale", value),
-            "show-touches" => Put("system", "show_touches", value),
-            "stay-awake" => Put("global", "stay_on_while_plugged_in", value),
-            "animation-scale" => Shell("sh", "-c",
-                $"settings put global window_animation_scale {ShellQuoting.Quote(value)} && " +
-                $"settings put global transition_animation_scale {ShellQuoting.Quote(value)} && " +
-                $"settings put global animator_duration_scale {ShellQuoting.Quote(value)}"),
-            "dark-mode" => Shell("cmd", "uimode", "night", value),
-            "wifi" => Shell("svc", "wifi", value),
-            "mobile-data" => Shell("svc", "data", value),
-            "airplane-mode" => Shell("cmd", "connectivity", "airplane-mode", value),
-            "wm-size" => Shell("wm", "size", value),
-            "wm-density" => Shell("wm", "density", value),
-            _ => throw new ArgumentException($"Unknown phone setting '{id}'.", nameof(id)),
-        };
-    }
-
-    private static FriendlyCommand Put(string ns, string key, string value) =>
-        new(FriendlyCommandKind.SettingsPut, ns, key, value, []);
-
-    private static FriendlyCommand Shell(params string[] args) =>
-        new(FriendlyCommandKind.Shell, null, null, string.Empty, args);
-
-    private static AndroidResult Range(string value, double min, double max, string message) =>
-        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && number >= min && number <= max
-            ? AndroidResult.Success()
-            : AndroidResult.Failure(message);
-
-    private static AndroidResult OneOf(string value, string[] allowed, string message) =>
-        allowed.Contains(value, StringComparer.Ordinal) ? AndroidResult.Success() : AndroidResult.Failure(message);
 }

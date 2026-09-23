@@ -131,6 +131,39 @@
     <Setter Property="BorderBrush" Value="Transparent" />
   </Style>
 
+  <!-- Chip: a pill that is either in or out. Used to pick from a set, never for a lone setting. -->
+  <Style x:Key="Chip" TargetType="ToggleButton">
+    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Margin" Value="0,0,6,6" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Focusable" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="Pill" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                  CornerRadius="999" Padding="11,6" TextElement.Foreground="{TemplateBinding Foreground}">
+            <ContentPresenter VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Pill" Property="Background" Value="{StaticResource Signal}" />
+              <Setter TargetName="Pill" Property="BorderBrush" Value="{StaticResource Signal}" />
+              <Setter Property="Foreground" Value="{StaticResource Ink}" />
+              <Setter Property="FontWeight" Value="SemiBold" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Pill" Property="BorderBrush" Value="{StaticResource Muted}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Pill" Property="BorderBrush" Value="{StaticResource Signal}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- Icon button: Tag holds the geometry key -->
   <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
     <Setter Property="Padding" Value="0" />
@@ -201,6 +234,61 @@
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Opacity" Value="0.4" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Expander: a bold header with a chevron, the content indented underneath -->
+  <Style TargetType="Expander">
+    <Setter Property="Foreground" Value="{StaticResource Text}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Expander">
+          <StackPanel>
+            <ToggleButton x:Name="Toggle" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                          Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" Cursor="Hand"
+                          Foreground="{TemplateBinding Foreground}" FontSize="13" FontWeight="SemiBold">
+              <ToggleButton.Template>
+                <ControlTemplate TargetType="ToggleButton">
+                  <Border Background="Transparent" Padding="0,9">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <ContentPresenter VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
+                      <Path x:Name="Chevron" Grid.Column="1" Data="M4 7 L9 12 L14 7" Stroke="{StaticResource Muted}" StrokeThickness="1.6"
+                            Width="18" Height="18" Stretch="None" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                        <Path.RenderTransform>
+                          <RotateTransform Angle="0" />
+                        </Path.RenderTransform>
+                      </Path>
+                    </Grid>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                      <Setter TargetName="Chevron" Property="RenderTransform">
+                        <Setter.Value>
+                          <RotateTransform Angle="180" />
+                        </Setter.Value>
+                      </Setter>
+                      <Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource Signal}" />
+                    </Trigger>
+                    <Trigger Property="IsMouseOver" Value="True">
+                      <Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource Text}" />
+                    </Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </ToggleButton.Template>
+            </ToggleButton>
+            <ContentPresenter x:Name="Content" Visibility="Collapsed" Margin="0,0,0,6" />
+          </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsExpanded" Value="True">
+              <Setter TargetName="Content" Property="Visibility" Value="Visible" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

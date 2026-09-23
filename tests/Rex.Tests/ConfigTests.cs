@@ -171,6 +171,111 @@ public sealed class ConfigTests
     }
 
     [Fact]
+    public void Normalize_ClampsEverySoftBackgroundKnob()
+    {
+        var config = new RexConfig();
+        config.Ambient.Placement = "LEFT";
+        config.Ambient.Scaling = "sideways";
+        config.Ambient.Opacity = 7;
+        config.Ambient.Blur = -3;
+        config.Ambient.Size = double.NaN;
+        config.Ambient.OffsetX = -9;
+        config.Ambient.OffsetY = 0.25;
+        config.Normalize();
+        Assert.Equal("left", config.Ambient.Placement);
+        Assert.Equal("cover", config.Ambient.Scaling);
+        Assert.Equal(1, config.Ambient.Opacity);
+        Assert.Equal(0, config.Ambient.Blur);
+        Assert.Equal(1, config.Ambient.Size);
+        Assert.Equal(-1, config.Ambient.OffsetX);
+        Assert.Equal(0.25, config.Ambient.OffsetY);
+        config.Ambient.TintHue = 400;
+        config.Ambient.FrameRate = 500;
+        config.Zoom.NavigatorCorner = "middle";
+        config.Zoom.NavigatorWidth = 5;
+        config.Normalize();
+        Assert.Equal(360, config.Ambient.TintHue);
+        Assert.Equal(30, config.Ambient.FrameRate);
+        Assert.Equal("bottom-right", config.Zoom.NavigatorCorner);
+        Assert.Equal(100, config.Zoom.NavigatorWidth);
+
+        using var package = new TestPackage();
+        var store = new ConfigStore(package.Paths.Config);
+        Assert.Equal("0.5", store.Set("Ambient.Size", "0.5").Value);
+        Assert.Equal("bottom", store.Set("Ambient.Placement", "bottom").Value);
+    }
+
+    [Fact]
+    public void Hud_KeepsItsChoicesUsableAndItsButtonsReal()
+    {
+        var config = new RexConfig();
+        config.Hud.Position = "MIDDLE";
+        config.Hud.Scale = 9;
+        config.Hud.Opacity = 0;
+        config.Hud.HideSeconds = 99;
+        config.Hud.Buttons = ["home", "home", "not-an-action", "screenshot"];
+        config.Normalize();
+
+        Assert.Equal("top", config.Hud.Position);
+        Assert.Equal(1.75, config.Hud.Scale);
+        Assert.Equal(0.3, config.Hud.Opacity);
+        Assert.Equal(15, config.Hud.HideSeconds);
+        Assert.Equal(["home", "screenshot"], config.Hud.Buttons);
+
+        // A copy must not share the button list with the original.
+        var copy = config.Copy();
+        copy.Hud.Buttons.Add("back");
+        Assert.Equal(["home", "screenshot"], config.Hud.Buttons);
+        Assert.All(HudSettings.DefaultButtons, id => Assert.NotNull(MirrorActions.Find(id)));
+    }
+
+    [Fact]
+    public void HudLayout_PinsTheBarAndListensAtThatEdge()
+    {
+        Assert.Equal((440, 12), HudLayout.Anchor("top", 120, 40, 1000, 800, 12));
+        Assert.Equal((440, 748), HudLayout.Anchor("bottom", 120, 40, 1000, 800, 12));
+        Assert.Equal((12, 380), HudLayout.Anchor("left", 120, 40, 1000, 800, 12));
+        Assert.Equal((868, 12), HudLayout.Anchor("top-right", 120, 40, 1000, 800, 12));
+
+        var top = HudLayout.HoverZone("top", 1000, 800);
+        Assert.True(HudLayout.Contains(top, 500, 2));
+        Assert.False(HudLayout.Contains(top, 500, 400));
+
+        var bottomRight = HudLayout.HoverZone("bottom-right", 1000, 800);
+        Assert.True(HudLayout.Contains(bottomRight, 980, 780));
+        Assert.False(HudLayout.Contains(bottomRight, 20, 780));
+        Assert.False(HudLayout.Contains(HudLayout.HoverZone("left", 1000, 800), 980, 400));
+        Assert.True(HudLayout.Contains(HudLayout.HoverZone("right", 1000, 800), 995, 400));
+        Assert.True(HudLayout.IsVertical("left"));
+        Assert.False(HudLayout.IsVertical("top-left"));
+    }
+
+    [Fact]
+    public void AmbientLayout_PlacesTheCaptureAndPicksTheMargins()
+    {
+        var cover = new AmbientSettings();
+        Assert.Equal((900, 2000), AmbientLayout.ImageSize(cover, 450, 1000, 900, 600));
+        Assert.Equal((270, 600), AmbientLayout.ImageSize(new AmbientSettings { Scaling = "fit" }, 450, 1000, 900, 600));
+        Assert.Equal((1800, 1200), AmbientLayout.ImageSize(new AmbientSettings { Scaling = "stretch", Size = 2 }, 450, 1000, 900, 600));
+        Assert.Equal((0, 0), AmbientLayout.ImageSize(cover, 0, 0, 900, 600));
+
+        var phone = new RectD(300, 0, 300, 600);
+        Assert.Equal(new RectD(0, 0, 900, 600), AmbientLayout.Region("around", phone, 900, 600));
+        Assert.Equal(new RectD(0, 0, 300, 600), AmbientLayout.Region("left", phone, 900, 600));
+        Assert.Equal(new RectD(600, 0, 300, 600), AmbientLayout.Region("right", phone, 900, 600));
+        Assert.Equal(new RectD(0, 0, 900, 0), AmbientLayout.Region("top", phone, 900, 600));
+        Assert.Equal(new RectD(0, 600, 900, 0), AmbientLayout.Region("bottom", phone, 900, 600));
+
+        Assert.Equal(((byte)255, (byte)0, (byte)0), AmbientLayout.HueToRgb(0));
+        Assert.Equal(((byte)0, (byte)255, (byte)0), AmbientLayout.HueToRgb(120));
+        Assert.Equal(((byte)0, (byte)0, (byte)255), AmbientLayout.HueToRgb(240));
+        Assert.Equal((12, 12), AmbientLayout.NavigatorPosition("top-left", 150, 100, 900, 600, 12));
+        Assert.Equal((738, 488), AmbientLayout.NavigatorPosition("bottom-right", 150, 100, 900, 600, 12));
+        // A navigator wider than the window still starts inside it.
+        Assert.Equal((0, 488), AmbientLayout.NavigatorPosition("bottom-right", 2000, 100, 900, 600, 12));
+    }
+
+    [Fact]
     public void Normalize_DropsMalformedOrManagedExtraArgs()
     {
         var malformed = new RexConfig();

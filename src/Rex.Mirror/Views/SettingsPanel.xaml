@@ -13,7 +13,7 @@
       </Grid>
     </Border>
 
-    <Expander Header="Display" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupDisplay" Header="Display" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Resolution">
       <ComboBox x:Name="MaxSize" SelectionChanged="OnMirrorChanged">
         <ComboBoxItem Content="Native" Tag="0" />
@@ -49,31 +49,113 @@
         <ComboBoxItem Content="AV1" Tag="av1" />
       </ComboBox>
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Soft background around the mirror">
-      <CheckBox x:Name="AmbientBackground" Click="OnLiveChanged" />
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Soft background around the phone">
+      <CheckBox x:Name="AmbientEnabled" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
-    <StackPanel x:Name="AmbientOptions" Margin="0,8,0,0">
-      <TextBlock Text="Blur strength" />
-      <Slider x:Name="AmbientBlur" Minimum="4" Maximum="60" ValueChanged="OnAppearanceChanged" ToolTip="Light blur to soft blur" />
-      <TextBlock Text="Background dimming" Margin="0,8,0,0" />
-      <Slider x:Name="AmbientDim" Minimum="0.15" Maximum="0.9" ValueChanged="OnAppearanceChanged" ToolTip="Lower is brighter" />
+    <StackPanel x:Name="AmbientOptions" Margin="0,4,0,0">
+      <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
+                 Text="A blurred copy of the phone screen fills the empty space around the mirror. Changes preview instantly." />
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Where it shows">
+        <ComboBox x:Name="AmbientPlacement" SelectionChanged="OnLiveChanged">
+          <ComboBoxItem Content="All around the phone" Tag="around" />
+          <ComboBoxItem Content="Left of the phone" Tag="left" />
+          <ComboBoxItem Content="Right of the phone" Tag="right" />
+          <ComboBoxItem Content="Above the phone" Tag="top" />
+          <ComboBoxItem Content="Below the phone" Tag="bottom" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="How it scales">
+        <ComboBox x:Name="AmbientScaling" SelectionChanged="OnLiveChanged">
+          <ComboBoxItem Content="Fill the window (crops)" Tag="cover" />
+          <ComboBoxItem Content="Show the whole screen" Tag="fit" />
+          <ComboBoxItem Content="Stretch to the window" Tag="stretch" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <StackPanel Margin="0,10,0,0">
+        <Grid><TextBlock Text="Opacity" /><TextBlock x:Name="AmbientOpacityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientOpacity" Minimum="0.05" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
+        <Grid Margin="0,8,0,0"><TextBlock Text="Blur" /><TextBlock x:Name="AmbientBlurValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientBlur" Minimum="0" Maximum="80" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" ToolTip="0 shows the capture sharp" />
+        <Grid Margin="0,8,0,0"><TextBlock Text="Size" /><TextBlock x:Name="AmbientSizeValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientSize" Minimum="0.5" Maximum="3" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
+        <Grid Margin="0,8,0,0"><TextBlock Text="Horizontal position" /><TextBlock x:Name="AmbientOffsetXValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientOffsetX" Minimum="-1" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
+        <Grid Margin="0,8,0,0"><TextBlock Text="Vertical position" /><TextBlock x:Name="AmbientOffsetYValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientOffsetY" Minimum="-1" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
+        <Grid Margin="0,8,0,0"><TextBlock Text="Fade towards the edges" /><TextBlock x:Name="AmbientEdgeFadeValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientEdgeFade" Minimum="0" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
+        <Grid Margin="0,8,0,0"><TextBlock Text="Colour wash" /><TextBlock x:Name="AmbientTintValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientTintStrength" Minimum="0" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
+        <Slider x:Name="AmbientTintHue" Minimum="0" Maximum="360" Margin="0,6,0,0" ValueChanged="OnAmbientChanged" ToolTip="Hue of the wash">
+          <Slider.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+              <GradientStop Color="#FF4D4D" Offset="0" /><GradientStop Color="#FFE04D" Offset="0.17" /><GradientStop Color="#4DFF4D" Offset="0.33" />
+              <GradientStop Color="#4DFFFF" Offset="0.5" /><GradientStop Color="#4D4DFF" Offset="0.67" /><GradientStop Color="#FF4DFF" Offset="0.83" /><GradientStop Color="#FF4D4D" Offset="1" />
+            </LinearGradientBrush>
+          </Slider.Background>
+        </Slider>
+        <Grid Margin="0,8,0,0"><TextBlock Text="Live frame rate" /><TextBlock x:Name="AmbientFrameRateValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="AmbientFrameRate" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" ToolTip="How closely the background follows the video. Lower uses less power." />
+      </StackPanel>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mirror it left to right">
+        <CheckBox x:Name="AmbientFlip" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
+      </HeaderedContentControl>
+      <Button Content="Reset soft background" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetAmbient" />
     </StackPanel>
-    <TextBlock Text="Preview refresh (seconds)" Margin="0,8,0,0" />
-    <Slider x:Name="PreviewInterval" Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" ToolTip="Applies to ambient fill and minimap. Slower refresh uses less power." />
-    <TextBlock Text="Fullscreen HUD hide delay (seconds)" Margin="0,8,0,0" />
-    <Slider x:Name="HudDelay" Minimum="1" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" />
     </StackPanel></Expander>
 
-    <Expander Header="Audio" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupHud" Header="Fullscreen HUD" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
+               Text="In fullscreen the controls hide themselves. Move the pointer to the edge you pin them to and they come back." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the floating controls">
+      <CheckBox x:Name="HudEnabled" Checked="OnHudChanged" Unchecked="OnHudChanged" />
+    </HeaderedContentControl>
+    <StackPanel x:Name="HudOptions">
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Where they sit">
+        <ComboBox x:Name="HudPosition" SelectionChanged="OnHudChanged">
+          <ComboBoxItem Content="Top" Tag="top" />
+          <ComboBoxItem Content="Bottom" Tag="bottom" />
+          <ComboBoxItem Content="Left" Tag="left" />
+          <ComboBoxItem Content="Right" Tag="right" />
+          <ComboBoxItem Content="Top left" Tag="top-left" />
+          <ComboBoxItem Content="Top right" Tag="top-right" />
+          <ComboBoxItem Content="Bottom left" Tag="bottom-left" />
+          <ComboBoxItem Content="Bottom right" Tag="bottom-right" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the status line under them">
+        <CheckBox x:Name="HudMessages" Checked="OnHudChanged" Unchecked="OnHudChanged" />
+      </HeaderedContentControl>
+      <Grid Margin="0,10,0,0"><TextBlock Text="Size" /><TextBlock x:Name="HudScaleValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="HudScale" Minimum="0.75" Maximum="1.75" Margin="0,2,0,0" ValueChanged="OnHudSlider" />
+      <Grid Margin="0,8,0,0"><TextBlock Text="Opacity" /><TextBlock x:Name="HudOpacityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="HudOpacity" Minimum="0.3" Maximum="1" Margin="0,2,0,0" ValueChanged="OnHudSlider" />
+      <Grid Margin="0,8,0,0"><TextBlock Text="Hides after" /><TextBlock x:Name="HudDelayValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="HudDelay" Minimum="1" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnHudSlider" />
+      <TextBlock Text="Buttons" Margin="0,14,0,0" />
+      <TextBlock x:Name="HudButtonCount" Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,6"
+                 Text="Tap to add or remove. They appear in this order." TextWrapping="Wrap" />
+      <Border Background="{StaticResource Ink}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="8,7" Margin="0,0,0,10">
+        <StackPanel>
+          <TextBlock Text="PREVIEW" Style="{StaticResource Eyebrow}" FontSize="9" Margin="2,0,0,6" />
+          <WrapPanel x:Name="HudPreview" />
+        </StackPanel>
+      </Border>
+      <WrapPanel x:Name="HudButtons" />
+      <Button Content="Reset the HUD" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetHud" />
+    </StackPanel>
+    </StackPanel></Expander>
+
+    <Expander x:Name="GroupAudio" Header="Audio" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Phone audio on this PC">
-      <CheckBox x:Name="Audio" Click="OnMirrorChanged" />
+      <CheckBox x:Name="Audio" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep audio playing on the phone too">
-      <CheckBox x:Name="AudioDup" Click="OnMirrorChanged" />
+      <CheckBox x:Name="AudioDup" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
     </StackPanel></Expander>
 
-    <Expander Header="Phone screen &amp; session" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupSession" Header="Phone screen &amp; session" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -81,20 +163,20 @@
           <TextBlock Text="Saves battery and blocks touches on the handset." Style="{StaticResource MutedText}" FontSize="11" />
         </StackPanel>
       </HeaderedContentControl.Header>
-      <CheckBox x:Name="TurnScreenOff" Click="OnMirrorChanged" />
+      <CheckBox x:Name="TurnScreenOff" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep the phone awake on USB">
-      <CheckBox x:Name="StayAwake" Click="OnMirrorChanged" />
+      <CheckBox x:Name="StayAwake" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Turn the phone screen off when the mirror closes">
-      <CheckBox x:Name="PowerOffOnClose" Click="OnMirrorChanged" />
+      <CheckBox x:Name="PowerOffOnClose" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Restart the mirror if it crashes">
-      <CheckBox x:Name="RestartOnCrash" Click="OnSessionChanged" />
+      <CheckBox x:Name="RestartOnCrash" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
     </HeaderedContentControl>
 
     </StackPanel></Expander>
-    <Expander Header="Controls &amp; zoom" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupControls" Header="Controls &amp; zoom" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -102,7 +184,7 @@
           <TextBlock x:Name="TouchpadHint" Text="Pinch, rotate and pan like on the phone screen." Style="{StaticResource MutedText}" FontSize="11" />
         </StackPanel>
       </HeaderedContentControl.Header>
-      <CheckBox x:Name="TwoFinger" Click="OnLiveChanged" />
+      <CheckBox x:Name="TwoFinger" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <StackPanel Margin="0,10,0,4">
       <Grid>
@@ -112,18 +194,30 @@
       <Slider x:Name="Sensitivity" Minimum="0.25" Maximum="3" Margin="0,2,0,0" ValueChanged="OnSensitivity" />
     </StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Alt + pinch / Alt + wheel zooms the PC view">
-      <CheckBox x:Name="HostZoom" Click="OnLiveChanged" />
+      <CheckBox x:Name="HostZoom" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the navigator while zoomed">
-      <CheckBox x:Name="Navigator" Click="OnLiveChanged" />
+      <CheckBox x:Name="Navigator" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
 
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Navigator corner">
+      <ComboBox x:Name="NavigatorCorner" SelectionChanged="OnLiveChanged">
+        <ComboBoxItem Content="Bottom right" Tag="bottom-right" />
+        <ComboBoxItem Content="Bottom left" Tag="bottom-left" />
+        <ComboBoxItem Content="Top right" Tag="top-right" />
+        <ComboBoxItem Content="Top left" Tag="top-left" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <Grid Margin="0,8,0,0"><TextBlock Text="Navigator size" /><TextBlock x:Name="NavigatorWidthValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="NavigatorWidth" Minimum="100" Maximum="360" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
+    <Grid Margin="0,8,0,0"><TextBlock Text="Navigator thumbnail refresh" /><TextBlock x:Name="PreviewIntervalValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="PreviewInterval" Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" ToolTip="The thumbnail is a phone screenshot; slower refresh uses less power." />
     <TextBlock Text="Maximum zoom" Margin="0,8,0,0" />
     <Slider x:Name="MaximumZoom" Minimum="1.5" Maximum="8" TickFrequency="0.5" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" />
     <TextBlock Text="Wheel zoom speed" Margin="0,8,0,0" />
     <Slider x:Name="WheelSpeed" Minimum="0.05" Maximum="0.5" ValueChanged="OnAppearanceChanged" />
     </StackPanel></Expander>
-    <Expander Header="Lock screen" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupLockScreen" Header="Lock screen" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -131,18 +225,18 @@
           <TextBlock Text="For phones whose secure lock screen mirrors as black." Style="{StaticResource MutedText}" FontSize="11" />
         </StackPanel>
       </HeaderedContentControl.Header>
-      <CheckBox x:Name="PatternEnabled" Click="OnLiveChanged" />
+      <CheckBox x:Name="PatternEnabled" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show automatically when locked">
-      <CheckBox x:Name="PatternAuto" Click="OnLiveChanged" />
+      <CheckBox x:Name="PatternAuto" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Use the phone's real pattern position">
-      <CheckBox x:Name="PatternDiscover" Click="OnLiveChanged" />
+      <CheckBox x:Name="PatternDiscover" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <Button Content="Forget lock-screen answers" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OnForgetLocks" ToolTip="Ask again which lock type each phone uses" />
 
     </StackPanel></Expander>
-    <Expander Header="Screenshots &amp; recording" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupCaptures" Header="Screenshots &amp; recording" Margin="0,12,0,0"><StackPanel>
     <TextBlock Text="Save screenshots to" Margin="0,8,0,0" />
     <TextBlock x:Name="ScreenshotLocation" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,8" />
     <StackPanel Orientation="Horizontal">
@@ -152,34 +246,34 @@
     <TextBlock Text="Applies to new screenshots. Existing files stay where they are." Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" />
 
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Record every session">
-      <CheckBox x:Name="Record" Click="OnMirrorChanged" />
+      <CheckBox x:Name="Record" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
     </StackPanel></Expander>
-    <Expander Header="Startup &amp; window" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupStartup" Header="Startup &amp; window" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Start with Windows">
-      <CheckBox x:Name="StartWithWindows" Click="OnStartWithWindows" />
+      <CheckBox x:Name="StartWithWindows" Checked="OnStartWithWindows" Unchecked="OnStartWithWindows" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep running in the tray when closed">
-      <CheckBox x:Name="RunInBackground" Click="OnLiveChanged" />
+      <CheckBox x:Name="RunInBackground" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Open the window when a phone connects">
-      <CheckBox x:Name="OpenOnConnect" Click="OnLiveChanged" />
+      <CheckBox x:Name="OpenOnConnect" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Confirm risky Android setting writes">
-      <CheckBox x:Name="ConfirmWrites" Click="OnLiveChanged" />
+      <CheckBox x:Name="ConfirmWrites" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
 
     </StackPanel></Expander>
-    <Expander Margin="0,18,0,0" Foreground="{StaticResource Text}" BorderThickness="0">
+    <Expander x:Name="GroupAdvanced" Margin="0,18,0,0">
       <Expander.Header>
         <TextBlock Text="Connection &amp; advanced" FontWeight="SemiBold" />
       </Expander.Header>
       <StackPanel Margin="0,8,0,0">
         <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Wireless ADB fallback (off = USB only)">
-          <CheckBox x:Name="Wireless" Click="OnSessionChanged" />
+          <CheckBox x:Name="Wireless" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
         </HeaderedContentControl>
         <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Enable TCP/IP on the phone from a USB session">
-          <CheckBox x:Name="WirelessTcpip" Click="OnSessionChanged" />
+          <CheckBox x:Name="WirelessTcpip" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
         </HeaderedContentControl>
         <TextBlock Text="Extra scrcpy arguments" Margin="0,12,0,4" />
         <TextBox x:Name="ExtraArgs" LostFocus="OnExtraArgs" KeyDown="OnExtraArgsKey" ToolTip="Passed to scrcpy at launch, for options this app does not expose" />

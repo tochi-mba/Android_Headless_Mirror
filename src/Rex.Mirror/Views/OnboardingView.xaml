@@ -98,9 +98,12 @@
               <TextBlock Style="{StaticResource StepBody}"
                          Text="Use a USB cable. The phone asks “Allow USB debugging?” once: tick “Always allow from this computer” and tap Allow." />
               <Border Margin="0,12,0,0" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Padding="12,9">
-                <StackPanel Orientation="Horizontal">
-                  <Ellipse x:Name="PhoneDot" Width="8" Height="8" Fill="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                  <TextBlock x:Name="PhoneStatus" Text="Waiting for a phone…" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <StackPanel>
+                  <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="PhoneDot" Width="8" Height="8" Fill="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock x:Name="PhoneStatus" Text="Waiting for a phone…" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Button x:Name="RepairButton" Content="Repair USB driver" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="18,10,0,0" Visibility="Collapsed" Click="OnRepairUsb" />
                 </StackPanel>
               </Border>
             </StackPanel>
@@ -109,7 +112,7 @@
       </Border>
 
       <HeaderedContentControl Style="{StaticResource SettingRow}" Margin="0,18,0,0" Header="Start with Windows and wait for the phone in the tray">
-        <CheckBox x:Name="StartWithWindows" Click="OnStartWithWindows" />
+        <CheckBox x:Name="StartWithWindows" Checked="OnStartWithWindows" Unchecked="OnStartWithWindows" />
       </HeaderedContentControl>
 
       <Grid Margin="0,14,0,0">

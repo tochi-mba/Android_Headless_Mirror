@@ -206,6 +206,7 @@ rex agent capabilities            the machine-readable contract</code></pre>
       <details><summary>Can I still touch the phone while it is mirrored?</summary><p>Yes. The screen is off, not locked. Tap the power button or press Wake in the app to turn it back on.</p></details>
       <details><summary>Is anything sent anywhere?</summary><p>REX has no account or telemetry and does not upload your mirrored screen, control data, lock information or phone content. Setup and updates may connect to GitHub to download REX and the official scrcpy distribution.</p></details>
       <details><summary>What does “Stop mirror” do?</summary><p>It closes the mirror and stays in the tray. The app will not reopen until the phone reconnects or you press Start. Quit in the tray menu exits completely.</p></details>
+      <details><summary>The phone is plugged in but the app says no phone is connected.</summary><p>Windows sometimes attaches a generic driver to the phone's USB debugging interface without telling ADB about it, typically after the phone changes USB mode or port. The app notices and shows <strong>Repair USB driver</strong>; it registers the interface for ADB and asks for administrator approval once. The same repair is <code>rex usb repair</code>.</p></details>
       <details><summary>Does it need administrator rights or root?</summary><p>No. Everything runs as your user with standard ADB permissions. The app never roots, flashes or modifies the phone.</p></details>
     </div>
   </section>

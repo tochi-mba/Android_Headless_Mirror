@@ -19,29 +19,80 @@ namespace Rex.Mirror.Mirror;
 /// </summary>
 public sealed class OverlayWindow : Window
 {
-    private const double NavigatorWidth = 150;
     private const double NavigatorMargin = 12;
 
     private readonly Canvas _canvas = new();
     private readonly Image _ambient = new()
     {
-        Stretch = Stretch.UniformToFill, Opacity = 0.42, IsHitTestVisible = false,
+        Stretch = Stretch.Fill, IsHitTestVisible = false,
         Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 24 },
     };
-    private readonly Grid _ambientContainer = new() { IsHitTestVisible = false, ClipToBounds = true };
+    private readonly Canvas _ambientContainer = new() { IsHitTestVisible = false, ClipToBounds = true };
+    private readonly Rectangle _tint = new() { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
 
-    public void UpdateAmbient(bool enabled, RectD surface, AppSettings settings)
+    public bool AmbientVisible => _ambientContainer.Visibility == Visibility.Visible && _ambient.Source is not null;
+    public bool NavigatorVisible => _navigator.Visibility == Visibility.Visible;
+
+    /// <summary>
+    /// Draws the soft background exactly as configured: the capture is scaled (cover / fit /
+    /// stretch, times Size), shifted by the offsets, clipped to the chosen margins, and the phone
+    /// surface itself is always cut out so the live video is never covered.
+    /// </summary>
+    public void UpdateAmbient(bool enabled, RectD surface, AmbientSettings settings)
     {
-        ((System.Windows.Media.Effects.BlurEffect)_ambient.Effect).Radius = settings.AmbientBlur;
-        _ambient.Opacity = 1 - settings.AmbientDim;
-        _hudWindow.HideSeconds = settings.HudHideSeconds;
         _ambientContainer.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
-        _ambientContainer.Width = Math.Max(0, _canvas.Width);
-        _ambientContainer.Height = Math.Max(0, _canvas.Height);
-        var full = new RectangleGeometry(new Rect(0, 0, _ambientContainer.Width, _ambientContainer.Height));
-        var phone = new RectangleGeometry(new Rect(surface.X / _dpiScale, surface.Y / _dpiScale,
-            Math.Max(0, surface.Width / _dpiScale), Math.Max(0, surface.Height / _dpiScale)));
-        _ambientContainer.Clip = new CombinedGeometry(GeometryCombineMode.Exclude, full, phone);
+        if (!enabled)
+        {
+            return;
+        }
+
+        var effect = (System.Windows.Media.Effects.BlurEffect)_ambient.Effect;
+        effect.Radius = settings.Blur;
+        _ambient.Opacity = settings.Opacity;
+        var width = Math.Max(0, _canvas.Width);
+        var height = Math.Max(0, _canvas.Height);
+        _ambientContainer.Width = width;
+        _ambientContainer.Height = height;
+
+        if (_ambient.Source is { Width: > 0, Height: > 0 } source && width > 0 && height > 0)
+        {
+            var (imageWidth, imageHeight) = AmbientLayout.ImageSize(settings, source.Width, source.Height, width, height);
+            _ambient.Width = imageWidth;
+            _ambient.Height = imageHeight;
+            Canvas.SetLeft(_ambient, (width - imageWidth) / 2 + settings.OffsetX * width / 2);
+            Canvas.SetTop(_ambient, (height - imageHeight) / 2 + settings.OffsetY * height / 2);
+            _ambient.RenderTransformOrigin = new Point(0.5, 0.5);
+            _ambient.RenderTransform = new ScaleTransform(settings.FlipHorizontal ? -1 : 1, 1);
+        }
+
+        _tint.Width = width;
+        _tint.Height = height;
+        _tint.Visibility = settings.TintStrength > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var (r, g, b) = AmbientLayout.HueToRgb(settings.TintHue);
+        _tint.Fill = new SolidColorBrush(Color.FromRgb(r, g, b));
+        _tint.Opacity = settings.TintStrength * settings.Opacity;
+        _ambientContainer.OpacityMask = settings.EdgeFade > 0
+            ? new RadialGradientBrush
+            {
+                Center = new Point(0.5, 0.5),
+                GradientOrigin = new Point(0.5, 0.5),
+                RadiusX = 0.75,
+                RadiusY = 0.75,
+                GradientStops =
+                {
+                    new GradientStop(Colors.White, 0),
+                    new GradientStop(Colors.White, 1 - settings.EdgeFade),
+                    new GradientStop(Colors.Transparent, 1),
+                },
+            }
+            : null;
+
+        var phone = new RectD(surface.X / _dpiScale, surface.Y / _dpiScale, Math.Max(0, surface.Width / _dpiScale), Math.Max(0, surface.Height / _dpiScale));
+        var region = AmbientLayout.Region(settings.Placement, phone, width, height);
+        _ambientContainer.Clip = new CombinedGeometry(
+            GeometryCombineMode.Exclude,
+            new RectangleGeometry(new Rect(region.X, region.Y, region.Width, region.Height)),
+            new RectangleGeometry(new Rect(phone.X, phone.Y, phone.Width, phone.Height)));
     }
     private readonly Canvas _pattern = new() { IsHitTestVisible = false };
     private readonly List<Ellipse> _patternDots = [];
@@ -92,11 +143,9 @@ public sealed class OverlayWindow : Window
     public event Action? NavigatorDragStarted;
     public double NavigatorMinScale { get; set; } = 0.1;
     public double NavigatorMaxScale { get; set; } = 10;
-    public void SetNavigatorPreview(ImageSource? image)
-    {
-        _preview.Source = image;
-        _ambient.Source = image;
-    }
+    public void SetNavigatorPreview(ImageSource? image) => _preview.Source = image;
+
+    public void SetAmbientFrame(ImageSource? image) => _ambient.Source = image;
     public bool PreviewAvailable => _preview.Source is not null;
     private readonly Rectangle _navigatorViewport = new()
     {
@@ -123,17 +172,18 @@ public sealed class OverlayWindow : Window
     public bool HudVisible => IsVisible && _hudWindow.HudVisible;
     public void RevealHud(string? message = null) => _hudWindow.Reveal(message);
 
-    public void UpdateHud(bool fullscreen, double zoom)
+    /// <summary>Reveals the HUD when the pointer reaches the strip it is pinned to, wherever that is.</summary>
+    public void UpdateHud(bool fullscreen, double zoom, HudSettings settings)
     {
-        var atTop = false;
+        var inZone = false;
         if (fullscreen && Handle != IntPtr.Zero && NativeMethods.GetCursorPos(out var cursor))
         {
             NativeMethods.ScreenToClient(Handle, ref cursor);
-            atTop = cursor.Y >= 0 && cursor.Y <= 12 * _dpiScale &&
-                cursor.X >= 0 && cursor.X < Width * _dpiScale;
+            var zone = HudLayout.HoverZone(settings.Position, Width, Height);
+            inZone = HudLayout.Contains(zone, cursor.X / _dpiScale, cursor.Y / _dpiScale);
         }
 
-        _hudWindow.Update(fullscreen && IsVisible, atTop, zoom, _screenPixels, _dpiScale);
+        _hudWindow.Update(fullscreen && IsVisible && settings.Enabled, inZone, zoom, _screenPixels, _dpiScale, settings);
     }
 
     public OverlayWindow(Window owner)
@@ -153,6 +203,7 @@ public sealed class OverlayWindow : Window
         Height = 10;
 
         _ambientContainer.Children.Add(_ambient);
+        _ambientContainer.Children.Add(_tint);
         _canvas.Children.Add(_ambientContainer);
         _canvas.Children.Add(_trail);
         _canvas.Children.Add(_trailTail);
@@ -245,7 +296,7 @@ public sealed class OverlayWindow : Window
         if (!visible || screenPixels.Width <= 0 || screenPixels.Height <= 0)
         {
             _screenPixels = default;
-            _hudWindow.Update(false, false, 1, default, _dpiScale);
+            _hudWindow.Update(false, false, 1, default, _dpiScale, new HudSettings());
             if (IsVisible)
             {
                 Hide();
@@ -446,7 +497,7 @@ public sealed class OverlayWindow : Window
 
     // ----- Navigator -----
 
-    public void UpdateNavigator(bool show, double surfaceAspect, RectD visibleFraction)
+    public void UpdateNavigator(bool show, double surfaceAspect, RectD visibleFraction, ZoomSettings zoom)
     {
         if (!show)
         {
@@ -456,14 +507,15 @@ public sealed class OverlayWindow : Window
             return;
         }
 
-        var innerWidth = Math.Min(NavigatorWidth - 12, 220 * Math.Max(0.1, surfaceAspect));
+        var navigatorWidth = zoom.NavigatorWidth;
+        var innerWidth = Math.Min(navigatorWidth - 12, (navigatorWidth + 70) * Math.Max(0.1, surfaceAspect));
         var innerHeight = innerWidth / Math.Max(0.1, surfaceAspect);
         _visibleFraction = visibleFraction;
         _preview.Width = innerWidth;
         _preview.Height = innerHeight;
         _navigatorCanvas.Width = innerWidth;
         _navigatorCanvas.Height = innerHeight;
-        _navigator.Width = NavigatorWidth;
+        _navigator.Width = navigatorWidth;
         _navigator.Visibility = Visibility.Visible;
 
         Canvas.SetLeft(_navigatorViewport, visibleFraction.X * innerWidth);
@@ -476,11 +528,10 @@ public sealed class OverlayWindow : Window
             Canvas.SetTop(_handles[i], (visibleFraction.Y + (i / 2) * visibleFraction.Height) * innerHeight - 5);
         }
 
-        var left = _canvas.Width - NavigatorWidth - NavigatorMargin;
-        var top = _canvas.Height - innerHeight - 12 - NavigatorMargin;
-        Canvas.SetLeft(_navigator, Math.Max(0, left));
-        Canvas.SetTop(_navigator, Math.Max(0, top));
-        _navigatorScreenRect = new Rect(Math.Max(0, left) * _dpiScale, Math.Max(0, top) * _dpiScale, NavigatorWidth * _dpiScale, (innerHeight + 12) * _dpiScale);
+        var (left, top) = AmbientLayout.NavigatorPosition(zoom.NavigatorCorner, navigatorWidth, innerHeight + 12, _canvas.Width, _canvas.Height, NavigatorMargin);
+        Canvas.SetLeft(_navigator, left);
+        Canvas.SetTop(_navigator, top);
+        _navigatorScreenRect = new Rect(left * _dpiScale, top * _dpiScale, navigatorWidth * _dpiScale, (innerHeight + 12) * _dpiScale);
     }
 
     private void OnNavigatorDown(object sender, MouseButtonEventArgs e)

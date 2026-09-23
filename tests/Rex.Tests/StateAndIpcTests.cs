@@ -226,9 +226,13 @@ public sealed class StateAndIpcTests
     public void Diagnostics_ReportSerializesToTextAndJson()
     {
         var report = new DiagnosticsReport("C:\\r", null, null, null, null, false, false,
-            [new DiagnosedDevice(new AdbDevice("X", "unauthorized", false, "", ""), null, "approve")], ["line"]);
+            [new DiagnosedDevice(new AdbDevice("X", "unauthorized", false, "", ""), null, "approve")],
+            [new AdbInterface(@"USB\VID_04E8&PID_6860&MI_03\1", "WinUsb Device", "WINUSB", Present: true, Registered: false)],
+            ["line"]);
 
         Assert.Contains("NOT INSTALLED", report.ToText());
+        Assert.Contains("rex usb repair", report.ToText());
+        Assert.True(report.ToJson()["usbInterfaces"]![0]!["unreachable"]!.GetValue<bool>());
         Assert.False(report.SetupComplete);
         Assert.Equal("unauthorized", report.ToJson()["devices"]![0]!["state"]!.GetValue<string>());
     }
