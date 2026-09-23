@@ -14,9 +14,10 @@ public sealed class AppUiTests
     private static readonly TimeSpan Startup = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan Soon = TimeSpan.FromSeconds(8);
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task Sidebar_TabsAndToggle_PersistAcrossRuns()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using (var app = new AppProcess(package))
         {
@@ -41,9 +42,10 @@ public sealed class AppUiTests
         await again.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task Settings_SoftBackgroundControls_PreviewLiveAndSave()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         TestPackage.WritePreviewImage(Path.Combine(package.ToolsFolder, "preview.png"));
         using var app = new AppProcess(package);
@@ -79,9 +81,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task Settings_LaunchTimeChange_OffersRestartAndAppliesIt()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -100,9 +103,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task TopBar_QuickActions_ReachThePhone()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -117,9 +121,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task LockQuestion_AnswerIsRemembered()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForStatusAsync(s => s["lockQuestion"]!.GetValue<bool>(), Startup, "lock-type question");
@@ -131,9 +136,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task Controls_StopAndStartMirror()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -145,9 +151,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task PhonePanel_ShowsTheCatalogueAndWritesEveryKindOfSetting()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -169,9 +176,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task PhonePanel_SearchNarrowsToOneGroup()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -190,9 +198,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task Advanced_FiltersEveryAndroidKey()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -204,9 +213,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task CloseButton_HidesToTray_AndShowReturns()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -217,9 +227,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task FirstRun_SkipForNow_HidesTheGuide()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         package.WriteScenario(new { Devices = Array.Empty<object>() });
         using var app = new AppProcess(package);
@@ -230,9 +241,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task AltWheel_ZoomsAndShowsTheNavigator()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -252,9 +264,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task Hud_ButtonsPositionAndHoverZoneFollowTheSettings()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -291,9 +304,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task Info_ListsToolsAndVersion()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -304,9 +318,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task CliConfigSet_AppliesWhileTheAppRuns()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
@@ -320,9 +335,10 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 75_000)]
     public async Task WindowPlacement_IsRemembered()
     {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         double scale;
         using (var app = new AppProcess(package))
