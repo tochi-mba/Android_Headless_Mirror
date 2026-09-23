@@ -9,17 +9,45 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   windows:
     name: Build, test and package (Windows)
     runs-on: windows-latest
     timeout-minutes: 30
+    outputs:
+      release_version: ${{ steps.version.outputs.release_version }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+
+      - id: version
+        name: Resolve package version
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref }}
+        run: |
+          [xml]$props = Get-Content Directory.Build.props -Raw
+          $version = [string]$props.Project.PropertyGroup.Version
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?$') {
+            throw "Directory.Build.props contains invalid version '$version'."
+          }
+
+          $packageVersion = if ($env:EVENT_NAME -eq 'push' -and $env:REF_NAME -eq 'refs/heads/main') {
+            $version
+          } else {
+            "0.0.${{ github.run_number }}"
+          }
+
+          "release_version=$version" >> $env:GITHUB_OUTPUT
+          "package_version=$packageVersion" >> $env:GITHUB_OUTPUT
+          Write-Host "Building installer version $packageVersion"
 
       - name: Build (warnings are errors)
         run: dotnet build Rex.sln -c Release
@@ -31,7 +59,7 @@ jobs:
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./installer/build.ps1 -Version 0.0.${{ github.run_number }}
+        run: ./installer/build.ps1 -Version "${{ steps.version.outputs.package_version }}"
 
       - name: Smoke test the published CLI
         shell: pwsh
@@ -84,3 +112,45 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  release:
+    name: Publish a new version
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [windows, pages]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: installer-and-screens
+          path: release-artifact
+
+      - name: Verify and publish the versioned installer
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.windows.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          tag="v${RELEASE_VERSION}"
+          installer_name="AndroidHeadlessMirror-Setup-${RELEASE_VERSION}.exe"
+          installer="release-artifact/dist/${installer_name}"
+          checksum="${installer}.sha256"
+
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $tag already exists; keeping its published assets immutable."
+            exit 0
+          fi
+
+          test -f "$installer"
+          test -f "$checksum"
+          (cd "$(dirname "$installer")" && sha256sum --check "${installer_name}.sha256")
+
+          gh release create "$tag" "$installer" "$checksum" \
+            --repo "${{ github.repository }}" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --generate-notes \
+            --latest

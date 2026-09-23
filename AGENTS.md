@@ -134,7 +134,9 @@ npm ci; npm run test:pages
 The end-to-end tests launch `RexMirror.exe` with `--root <temp package>` against `tests/Rex.FakeAdb`
 and `tests/Rex.FakeScrcpy`, drive it over the pipe (`REX_PIPE_NAME`), and save screenshots to
 `artifacts/screens`. Add a test for every user-visible change; CI is the release gate and also
-compiles the installer. Tagging `v*` publishes `AndroidHeadlessMirror-Setup-x.y.z.exe` plus its SHA-256.
+compiles the installer. A successful `main` run publishes `AndroidHeadlessMirror-Setup-x.y.z.exe`
+plus its SHA-256 when the version in `Directory.Build.props` is new. Releases are immutable; tags
+and manual dispatch remain recovery paths, not the normal delivery path.
 
 ## Generated files (never commit)
 

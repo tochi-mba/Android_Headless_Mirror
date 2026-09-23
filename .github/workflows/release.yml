@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "v*"
-    branches:
-      - "release/v*"
   workflow_dispatch:
     inputs:
       version:
@@ -137,12 +135,13 @@ jobs:
           installer="dist/AndroidHeadlessMirror-Setup-${RELEASE_VERSION}.exe"
 
           if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "$installer" "$installer.sha256" --clobber --repo "${{ github.repository }}"
-          else
-            args=()
-            if [[ "${GITHUB_REF}" != refs/tags/* ]]; then
-              args+=(--target "$DEFAULT_BRANCH")
-            fi
-
-            gh release create "$RELEASE_TAG" "$installer" "$installer.sha256" --repo "${{ github.repository }}" --title "$RELEASE_TAG" --generate-notes "${args[@]}"
+            echo "::error::Release $RELEASE_TAG already exists. Published releases are immutable."
+            exit 1
           fi
+
+          args=()
+          if [[ "${GITHUB_REF}" != refs/tags/* ]]; then
+            args+=(--target "$DEFAULT_BRANCH")
+          fi
+
+          gh release create "$RELEASE_TAG" "$installer" "$installer.sha256" --repo "${{ github.repository }}" --title "$RELEASE_TAG" --generate-notes --latest "${args[@]}"

@@ -98,6 +98,25 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public void ContinuousDelivery_PublishesEachMainVersionOnce()
+    {
+        var ci = File.ReadAllText(Path.Combine(RepoPaths.Root, ".github", "workflows", "ci.yml"));
+        var release = File.ReadAllText(Path.Combine(RepoPaths.Root, ".github", "workflows", "release.yml"));
+
+        Assert.Contains("if: github.event_name == 'push' && github.ref == 'refs/heads/main'", ci);
+        Assert.Contains("$props.Project.PropertyGroup.Version", ci);
+        Assert.Contains("needs: [windows, pages]", ci);
+        Assert.Contains("gh release view \"$tag\"", ci);
+        Assert.Contains("gh release create \"$tag\"", ci);
+        Assert.Contains("--target \"$GITHUB_SHA\"", ci);
+        Assert.Contains("sha256sum --check", ci);
+        Assert.DoesNotContain("gh release upload", ci);
+        Assert.DoesNotContain("--clobber", ci);
+        Assert.DoesNotContain("--clobber", release);
+        Assert.Contains("Published releases are immutable", release);
+    }
+
+    [Fact]
     public void PagesSiteHasNoBrokenLocalAnchorsOrAssets()
     {
         var docs = Path.Combine(RepoPaths.Root, "docs");
