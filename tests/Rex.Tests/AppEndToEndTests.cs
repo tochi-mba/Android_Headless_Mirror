@@ -15,7 +15,7 @@ public sealed class AppEndToEndTests
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(45);
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task AmbientAndNavigatorPreview_RenderThePhoneCapture()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -32,7 +32,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task SidebarWheelScrollsSettingsWithoutReachingPhone()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -46,7 +46,7 @@ public sealed class AppEndToEndTests
         Assert.Equal(before, package.ScrcpyLog().Count(line => line.Contains("mousewheel", StringComparison.Ordinal)));
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task MirrorsAFakePhone_ZoomsAndAcceptsActions()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -96,7 +96,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task WithoutTools_ShowsFirstRunSetup()
     {
         using var package = new TestPackage(withFakeTools: false);
@@ -109,7 +109,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task FirstRun_GuidesUntilTheFirstPhoneIsMirrored()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -136,7 +136,7 @@ public sealed class AppEndToEndTests
         await second.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task PatternGuide_DiscoversAndroidGeometryAndRenders()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -167,7 +167,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task PhoneThatReenumerates_IsPickedUpAgainWithoutPressingStart()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -187,7 +187,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task SecondInstance_HandsOverToTheFirst()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -202,7 +202,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task Pipe_AcceptsConcurrentClientsAndSurvivesMalformedRequest()
     {
         using var package = new TestPackage(withFakeTools: false);
@@ -231,7 +231,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task ForceKillingRex_CleansOwnedScrcpyProcessTree()
     {
         using var package = new TestPackage(withFakeTools: true, configure: config =>
@@ -258,7 +258,7 @@ public sealed class AppEndToEndTests
         }
     }
 
-    [Theory]
+    [Theory(Timeout = 90_000)]
     [InlineData(false, 1)]
     [InlineData(true, 5)]
     public async Task UnexpectedExit_RespectsRestartPreferenceAndLimit(bool restart, int launches)
@@ -287,7 +287,7 @@ public sealed class AppEndToEndTests
         await app.QuitAsync();
     }
 
-    [Fact]
+    [Fact(Timeout = 90_000)]
     public async Task Fullscreen_FillsMonitorHidesHudRotatesAndRestoresWindow()
     {
         using var package = new TestPackage(withFakeTools: true);
