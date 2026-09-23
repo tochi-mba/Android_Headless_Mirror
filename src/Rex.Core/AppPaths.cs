@@ -119,6 +119,9 @@ public sealed class AppPaths
         return combined;
     }
 
+    public string ScreenshotFolder(string configuredPath) =>
+        Path.IsPathFullyQualified(configuredPath) ? Path.GetFullPath(configuredPath) : Inside(configuredPath);
+
     private static bool LooksLikeCheckout(string path) =>
         File.Exists(Path.Combine(path, "config.json")) &&
         File.Exists(Path.Combine(path, "REX.bat"));

@@ -121,7 +121,7 @@
             <RadioButton x:Name="TabSettings" Style="{StaticResource SidebarTab}" Content="Settings" Tag="{StaticResource IconSettings}" Checked="OnTabChecked" />
             <RadioButton x:Name="TabInfo" Style="{StaticResource SidebarTab}" Content="Info" Tag="{StaticResource IconInfo}" Checked="OnTabChecked" />
           </UniformGrid>
-          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,4,16,16">
+          <ScrollViewer x:Name="SidebarScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,4,16,16">
             <Grid>
               <views:ControlsPanel x:Name="ControlsPanel" />
               <views:PhonePanel x:Name="PhonePanel" Visibility="Collapsed" />

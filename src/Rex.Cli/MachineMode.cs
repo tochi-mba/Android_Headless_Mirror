@@ -156,7 +156,7 @@ public static class MachineMode
         var adb = context.RequireAdb();
         var target = await context.ResolveSerialAsync(serial).ConfigureAwait(false);
         var bytes = await adb.ScreencapAsync(target).ConfigureAwait(false) ?? throw new InvalidOperationException("The phone did not return a screenshot.");
-        var directory = context.Paths.Inside(context.Config.Load().App.ScreenshotDirectory);
+        var directory = context.Paths.ScreenshotFolder(context.Config.Load().App.ScreenshotDirectory);
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture) + ".png");
         await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(false);

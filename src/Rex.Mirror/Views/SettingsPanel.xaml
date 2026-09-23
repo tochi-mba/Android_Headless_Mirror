@@ -13,7 +13,7 @@
       </Grid>
     </Border>
 
-    <TextBlock Text="MIRROR" Style="{StaticResource Eyebrow}" />
+    <Expander Header="Display" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Resolution">
       <ComboBox x:Name="MaxSize" SelectionChanged="OnMirrorChanged">
         <ComboBoxItem Content="Native" Tag="0" />
@@ -49,17 +49,31 @@
         <ComboBoxItem Content="AV1" Tag="av1" />
       </ComboBox>
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Soft background around the mirror">
+      <CheckBox x:Name="AmbientBackground" Click="OnLiveChanged" />
+    </HeaderedContentControl>
+    <StackPanel x:Name="AmbientOptions" Margin="0,8,0,0">
+      <TextBlock Text="Blur strength" />
+      <Slider x:Name="AmbientBlur" Minimum="4" Maximum="60" ValueChanged="OnAppearanceChanged" ToolTip="Light blur to soft blur" />
+      <TextBlock Text="Background dimming" Margin="0,8,0,0" />
+      <Slider x:Name="AmbientDim" Minimum="0.15" Maximum="0.9" ValueChanged="OnAppearanceChanged" ToolTip="Lower is brighter" />
+    </StackPanel>
+    <TextBlock Text="Preview refresh (seconds)" Margin="0,8,0,0" />
+    <Slider x:Name="PreviewInterval" Minimum="0.5" Maximum="5" TickFrequency="0.5" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" ToolTip="Applies to ambient fill and minimap. Slower refresh uses less power." />
+    <TextBlock Text="Fullscreen HUD hide delay (seconds)" Margin="0,8,0,0" />
+    <Slider x:Name="HudDelay" Minimum="1" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" />
+    </StackPanel></Expander>
+
+    <Expander Header="Audio" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Phone audio on this PC">
       <CheckBox x:Name="Audio" Click="OnMirrorChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep audio playing on the phone too">
       <CheckBox x:Name="AudioDup" Click="OnMirrorChanged" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Record every session">
-      <CheckBox x:Name="Record" Click="OnMirrorChanged" />
-    </HeaderedContentControl>
+    </StackPanel></Expander>
 
-    <TextBlock Text="SESSION" Style="{StaticResource Eyebrow}" />
+    <Expander Header="Phone screen &amp; session" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -79,7 +93,8 @@
       <CheckBox x:Name="RestartOnCrash" Click="OnSessionChanged" />
     </HeaderedContentControl>
 
-    <TextBlock Text="TOUCHPAD &amp; ZOOM" Style="{StaticResource Eyebrow}" />
+    </StackPanel></Expander>
+    <Expander Header="Controls &amp; zoom" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -103,7 +118,12 @@
       <CheckBox x:Name="Navigator" Click="OnLiveChanged" />
     </HeaderedContentControl>
 
-    <TextBlock Text="PATTERN GUIDE" Style="{StaticResource Eyebrow}" />
+    <TextBlock Text="Maximum zoom" Margin="0,8,0,0" />
+    <Slider x:Name="MaximumZoom" Minimum="1.5" Maximum="8" TickFrequency="0.5" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" />
+    <TextBlock Text="Wheel zoom speed" Margin="0,8,0,0" />
+    <Slider x:Name="WheelSpeed" Minimum="0.05" Maximum="0.5" ValueChanged="OnAppearanceChanged" />
+    </StackPanel></Expander>
+    <Expander Header="Lock screen" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -121,7 +141,21 @@
     </HeaderedContentControl>
     <Button Content="Forget lock-screen answers" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OnForgetLocks" ToolTip="Ask again which lock type each phone uses" />
 
-    <TextBlock Text="WINDOWS" Style="{StaticResource Eyebrow}" />
+    </StackPanel></Expander>
+    <Expander Header="Screenshots &amp; recording" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Text="Save screenshots to" Margin="0,8,0,0" />
+    <TextBlock x:Name="ScreenshotLocation" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,8" />
+    <StackPanel Orientation="Horizontal">
+      <Button Content="Choose folder…" Click="OnChooseScreenshotFolder" Margin="0,0,6,0" />
+      <Button Content="Use default" Click="OnDefaultScreenshotFolder" />
+    </StackPanel>
+    <TextBlock Text="Applies to new screenshots. Existing files stay where they are." Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" />
+
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Record every session">
+      <CheckBox x:Name="Record" Click="OnMirrorChanged" />
+    </HeaderedContentControl>
+    </StackPanel></Expander>
+    <Expander Header="Startup &amp; window" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Start with Windows">
       <CheckBox x:Name="StartWithWindows" Click="OnStartWithWindows" />
     </HeaderedContentControl>
@@ -135,9 +169,10 @@
       <CheckBox x:Name="ConfirmWrites" Click="OnLiveChanged" />
     </HeaderedContentControl>
 
+    </StackPanel></Expander>
     <Expander Margin="0,18,0,0" Foreground="{StaticResource Text}" BorderThickness="0">
       <Expander.Header>
-        <TextBlock Text="Advanced" FontWeight="SemiBold" />
+        <TextBlock Text="Connection &amp; advanced" FontWeight="SemiBold" />
       </Expander.Header>
       <StackPanel Margin="0,8,0,0">
         <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Wireless ADB fallback (off = USB only)">

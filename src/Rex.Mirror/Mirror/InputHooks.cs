@@ -24,6 +24,7 @@ public sealed class InputHooks : IDisposable
 
     /// <summary>Must return true when the wheel event should be consumed. Args: delta, screen x, screen y.</summary>
     public Func<int, int, int, bool>? AltWheel { get; set; }
+    public Func<int, int, int, bool>? PanelWheel { get; set; }
 
     /// <summary>Must return true when the key should be consumed. Args: virtual key, ctrl, alt, shift.</summary>
     public Func<int, bool, bool, bool, bool>? KeyDown { get; set; }
@@ -63,11 +64,12 @@ public sealed class InputHooks : IDisposable
 
     private IntPtr MouseProc(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && wParam.ToInt64() == NativeMethods.WM_MOUSEWHEEL && IsActive?.Invoke() == true && NativeMethods.IsKeyDown(NativeMethods.VK_MENU))
+        if (nCode >= 0 && wParam.ToInt64() == NativeMethods.WM_MOUSEWHEEL && IsActive?.Invoke() == true)
         {
             var data = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
             var delta = (short)((data.mouseData >> 16) & 0xFFFF);
-            if (AltWheel?.Invoke(delta, data.pt.X, data.pt.Y) == true)
+            if (PanelWheel?.Invoke(delta, data.pt.X, data.pt.Y) == true ||
+                (NativeMethods.IsKeyDown(NativeMethods.VK_MENU) && AltWheel?.Invoke(delta, data.pt.X, data.pt.Y) == true))
             {
                 return new IntPtr(1);
             }

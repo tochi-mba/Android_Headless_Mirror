@@ -125,6 +125,12 @@ internal sealed class MirrorForm : Form
 
         using var brush = new LinearGradientBrush(rect, Color.FromArgb(26, 32, 27), Color.FromArgb(56, 70, 58), 90f);
         g.FillRectangle(brush, rect);
+        var fixture = Path.Combine(AppContext.BaseDirectory, "preview.png");
+        if (File.Exists(fixture))
+        {
+            using var preview = Image.FromFile(fixture);
+            g.DrawImage(preview, rect);
+        }
 
         using var pen = new Pen(Color.FromArgb(215, 255, 63), 3f);
         g.DrawRectangle(pen, rect.X + 6, rect.Y + 6, rect.Width - 12, rect.Height - 12);
@@ -141,6 +147,7 @@ internal sealed class MirrorForm : Form
 
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == 0x020A) Program.Log("mousewheel");
         if (m.Msg is WmKeydown or WmSyskeydown)
         {
             Program.Log($"key vk={(int)m.WParam} scan=0x{((int)m.LParam >> 16) & 0xFF:X2} ext={(((int)m.LParam >> 24) & 1)}");

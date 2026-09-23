@@ -16,6 +16,35 @@ public sealed class AppEndToEndTests
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(45);
 
     [Fact]
+    public async Task AmbientAndNavigatorPreview_RenderStockFixture()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        using (var stock = System.Drawing.Image.FromFile(Path.Combine(RepoPaths.Root, "tests", "fixtures", "mountain-lake.jpg")))
+            stock.Save(Path.Combine(package.ToolsFolder, "preview.png"), System.Drawing.Imaging.ImageFormat.Png);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.WaitForStatusAsync(s => s["previewAvailable"]!.GetValue<bool>(), StartupTimeout, "stock preview");
+        await app.PressKeyAsync(0x11); // Bring the test window to the foreground before capturing.
+        await app.SaveScreenshotAsync("ambient-stock.png");
+        await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
+        await app.SaveScreenshotAsync("navigator-stock.png");
+    }
+
+    [Fact]
+    public async Task SidebarWheelScrollsSettingsWithoutReachingPhone()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        new StateStore(package.Paths.State).SetUi(new UiState { SidebarTab = "settings", SidebarVisible = true });
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        var before = package.ScrcpyLog().Count(line => line.Contains("mousewheel", StringComparison.Ordinal));
+        await app.ScrollSidebarAsync();
+        await app.SaveScreenshotAsync("sidebar-scroll.png");
+        await app.WaitForStatusAsync(s => s["sidebarScrollOffset"]!.GetValue<double>() > 0, TimeSpan.FromSeconds(5), "sidebar scroll");
+        Assert.Equal(before, package.ScrcpyLog().Count(line => line.Contains("mousewheel", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public async Task MirrorsAFakePhone_ZoomsAndAcceptsActions()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -357,6 +386,26 @@ public sealed class AppEndToEndTests
         {
             var bounds = WindowBounds();
             SetPhysicalCursorPos(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
+        }
+
+        public async Task ScrollSidebarAsync()
+        {
+            var main = FindMainWindow();
+            for (var attempt = 0; attempt < 20 && GetAncestor(GetForegroundWindow(), 2) != main; attempt++)
+            {
+                keybd_event(0x12, 0, 0, UIntPtr.Zero);
+                keybd_event(0x12, 0, 2, UIntPtr.Zero);
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+                SetForegroundWindow(main);
+                await Task.Delay(100, TestContext.Current.CancellationToken);
+            }
+            Assert.Equal(main, GetAncestor(GetForegroundWindow(), 2));
+            var bounds = WindowBounds();
+            var dpiContext = SetThreadDpiAwarenessContext(new IntPtr(-4));
+            try { SetCursorPos(bounds.Right - 100, bounds.Top + bounds.Height / 2); }
+            finally { SetThreadDpiAwarenessContext(dpiContext); }
+            await Task.Delay(200, TestContext.Current.CancellationToken);
+            mouse_event(0x0800, 0, 0, unchecked((uint)-360), UIntPtr.Zero);
         }
 
         public void MovePointerToTop()

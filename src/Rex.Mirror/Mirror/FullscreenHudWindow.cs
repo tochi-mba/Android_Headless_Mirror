@@ -54,6 +54,7 @@ public sealed class FullscreenHudWindow : Window
     public event Action<string>? ActionRequested;
 
     public bool HudVisible => IsVisible && _hud.IsShown;
+    public double HideSeconds { set => _hud.HideSeconds = value; }
 
     private IntPtr Handle => _source?.Handle ?? IntPtr.Zero;
 

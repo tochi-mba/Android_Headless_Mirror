@@ -58,7 +58,12 @@
     "RunInBackground": true,
     "OpenOnConnect": true,
     "ConfirmSensitiveWrites": true,
-    "ScreenshotDirectory": "captures/screenshots"
+    "ScreenshotDirectory": "captures/screenshots",
+    "AmbientBackground": true,
+    "AmbientBlur": 24,
+    "AmbientDim": 0.58,
+    "PreviewIntervalSeconds": 1,
+    "HudHideSeconds": 3
   },
   "Logging": {
     "Enabled": true,

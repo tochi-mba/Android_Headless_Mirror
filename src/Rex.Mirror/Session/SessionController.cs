@@ -65,6 +65,9 @@ public sealed class SessionController : IDisposable
     public ScrcpyProcess? Scrcpy { get; private set; }
     public string? PendingLockQuestionSerial { get; private set; }
     public bool IsMirroring => Phase == SessionPhase.Mirroring && Scrcpy is { HasExited: false };
+    private IReadOnlyList<string>? _activeLaunchSettings;
+    public bool NeedsRestart => IsMirroring && _activeLaunchSettings is not null &&
+        !_activeLaunchSettings.SequenceEqual(ScrcpyArguments.LaunchSettings(_host.Config, ActiveDevice?.IsTcp == true));
 
     /// <summary>Set by the window: the screen rectangle (pixels) where scrcpy should first appear.</summary>
     public Func<(int X, int Y, int Width, int Height)?>? LaunchRect { get; set; }
@@ -226,6 +229,7 @@ public sealed class SessionController : IDisposable
         var title = $"Android Headless Mirror [{device.Serial}]";
 
         var args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, launchRect, recordPath);
+        var launchSettings = ScrcpyArguments.LaunchSettings(config, device.IsTcp);
         _host.Log.Info($"Launching scrcpy for {device.Serial} ({device.Transport}): {string.Join(' ', args)}");
 
         ScrcpyProcess scrcpy;
@@ -259,6 +263,7 @@ public sealed class SessionController : IDisposable
             Scrcpy = scrcpy;
             Identity = identity;
             PendingLockQuestionSerial = askLock ? device.Serial : null;
+            _activeLaunchSettings = launchSettings;
             _mirrorStartedAt = DateTime.UtcNow;
             SetState(SessionPhase.Mirroring, identity.DisplayName);
             MirrorReady?.Invoke(scrcpy);
@@ -448,7 +453,7 @@ public sealed class SessionController : IDisposable
             return (false, "The phone did not return a screenshot.");
         }
 
-        var directory = _host.Paths.Inside(_host.Config.App.ScreenshotDirectory);
+        var directory = _host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory);
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".png");
         await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(true);

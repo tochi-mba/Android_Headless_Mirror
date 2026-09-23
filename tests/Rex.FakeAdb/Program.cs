@@ -111,7 +111,9 @@ int ExecOut(string[] rest)
 {
     if (rest.Length >= 2 && rest[0] == "screencap")
     {
-        stdout.Write(Scenario.TinyPng, 0, Scenario.TinyPng.Length);
+        var fixture = Path.Combine(AppContext.BaseDirectory, "preview.png");
+        var bytes = File.Exists(fixture) ? File.ReadAllBytes(fixture) : Scenario.TinyPng;
+        stdout.Write(bytes, 0, bytes.Length);
         stdout.Flush();
         return 0;
     }

@@ -23,6 +23,26 @@ public sealed class OverlayWindow : Window
     private const double NavigatorMargin = 12;
 
     private readonly Canvas _canvas = new();
+    private readonly Image _ambient = new()
+    {
+        Stretch = Stretch.UniformToFill, Opacity = 0.42, IsHitTestVisible = false,
+        Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 24 },
+    };
+    private readonly Grid _ambientContainer = new() { IsHitTestVisible = false, ClipToBounds = true };
+
+    public void UpdateAmbient(bool enabled, RectD surface, AppSettings settings)
+    {
+        ((System.Windows.Media.Effects.BlurEffect)_ambient.Effect).Radius = settings.AmbientBlur;
+        _ambient.Opacity = 1 - settings.AmbientDim;
+        _hudWindow.HideSeconds = settings.HudHideSeconds;
+        _ambientContainer.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        _ambientContainer.Width = Math.Max(0, _canvas.Width);
+        _ambientContainer.Height = Math.Max(0, _canvas.Height);
+        var full = new RectangleGeometry(new Rect(0, 0, _ambientContainer.Width, _ambientContainer.Height));
+        var phone = new RectangleGeometry(new Rect(surface.X / _dpiScale, surface.Y / _dpiScale,
+            Math.Max(0, surface.Width / _dpiScale), Math.Max(0, surface.Height / _dpiScale)));
+        _ambientContainer.Clip = new CombinedGeometry(GeometryCombineMode.Exclude, full, phone);
+    }
     private readonly Canvas _pattern = new() { IsHitTestVisible = false };
     private readonly List<Ellipse> _patternDots = [];
     private readonly Polyline _trail = new()
@@ -62,6 +82,22 @@ public sealed class OverlayWindow : Window
         Visibility = Visibility.Collapsed,
     };
     private readonly Canvas _navigatorCanvas = new() { Background = new SolidColorBrush(Color.FromRgb(0x10, 0x15, 0x11)) };
+    private readonly Image _preview = new() { Stretch = Stretch.Fill, IsHitTestVisible = false };
+    private readonly List<Rectangle> _handles = [];
+    private RectD _visibleFraction;
+    private Point _dragStart;
+    private RectD _dragView;
+    private int _resizeCorner = -1;
+    public event Action<double, double, double>? NavigatorResize;
+    public event Action? NavigatorDragStarted;
+    public double NavigatorMinScale { get; set; } = 0.1;
+    public double NavigatorMaxScale { get; set; } = 10;
+    public void SetNavigatorPreview(ImageSource? image)
+    {
+        _preview.Source = image;
+        _ambient.Source = image;
+    }
+    public bool PreviewAvailable => _preview.Source is not null;
     private readonly Rectangle _navigatorViewport = new()
     {
         Stroke = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F)),
@@ -116,6 +152,8 @@ public sealed class OverlayWindow : Window
         Width = 10;
         Height = 10;
 
+        _ambientContainer.Children.Add(_ambient);
+        _canvas.Children.Add(_ambientContainer);
         _canvas.Children.Add(_trail);
         _canvas.Children.Add(_trailTail);
         _canvas.Children.Add(_pattern);
@@ -126,7 +164,18 @@ public sealed class OverlayWindow : Window
         (_patternLoading, _patternLoadingText) = CreatePatternLoading();
         _canvas.Children.Add(_patternLoading);
 
+        _navigatorCanvas.Children.Add(_preview);
         _navigatorCanvas.Children.Add(_navigatorViewport);
+        for (var i = 0; i < 4; i++)
+        {
+            var handle = new Rectangle { Width = 10, Height = 10, Fill = Brushes.White,
+                Stroke = Brushes.Black, StrokeThickness = 1, Tag = i,
+                Cursor = i is 0 or 3 ? Cursors.SizeNWSE : Cursors.SizeNESW };
+            _handles.Add(handle);
+            _navigatorCanvas.Children.Add(handle);
+        }
+        _navigator.ToolTip = "Drag to pan · Drag a corner to zoom";
+        _navigator.LostMouseCapture += (_, _) => { _navigatorDragging = false; _resizeCorner = -1; };
         _navigator.Child = _navigatorCanvas;
         _canvas.Children.Add(_navigator);
         _navigator.MouseLeftButtonDown += OnNavigatorDown;
@@ -401,13 +450,17 @@ public sealed class OverlayWindow : Window
     {
         if (!show)
         {
+            if (_navigatorDragging) _navigator.ReleaseMouseCapture();
             _navigator.Visibility = Visibility.Collapsed;
             _navigatorScreenRect = Rect.Empty;
             return;
         }
 
-        var innerWidth = NavigatorWidth - 12;
-        var innerHeight = Math.Clamp(innerWidth / Math.Max(0.1, surfaceAspect), 40, 220);
+        var innerWidth = Math.Min(NavigatorWidth - 12, 220 * Math.Max(0.1, surfaceAspect));
+        var innerHeight = innerWidth / Math.Max(0.1, surfaceAspect);
+        _visibleFraction = visibleFraction;
+        _preview.Width = innerWidth;
+        _preview.Height = innerHeight;
         _navigatorCanvas.Width = innerWidth;
         _navigatorCanvas.Height = innerHeight;
         _navigator.Width = NavigatorWidth;
@@ -417,6 +470,11 @@ public sealed class OverlayWindow : Window
         Canvas.SetTop(_navigatorViewport, visibleFraction.Y * innerHeight);
         _navigatorViewport.Width = Math.Max(4, visibleFraction.Width * innerWidth);
         _navigatorViewport.Height = Math.Max(4, visibleFraction.Height * innerHeight);
+        for (var i = 0; i < 4; i++)
+        {
+            Canvas.SetLeft(_handles[i], (visibleFraction.X + (i % 2) * visibleFraction.Width) * innerWidth - 5);
+            Canvas.SetTop(_handles[i], (visibleFraction.Y + (i / 2) * visibleFraction.Height) * innerHeight - 5);
+        }
 
         var left = _canvas.Width - NavigatorWidth - NavigatorMargin;
         var top = _canvas.Height - innerHeight - 12 - NavigatorMargin;
@@ -428,8 +486,18 @@ public sealed class OverlayWindow : Window
     private void OnNavigatorDown(object sender, MouseButtonEventArgs e)
     {
         _navigatorDragging = true;
+        NavigatorDragStarted?.Invoke();
+        _dragStart = e.GetPosition(_navigatorCanvas);
+        _dragView = _visibleFraction;
+        _resizeCorner = e.OriginalSource is Rectangle { Tag: int corner } ? corner : -1;
         _navigator.CaptureMouse();
-        RaiseNavigator(e.GetPosition(_navigatorCanvas));
+        if (_resizeCorner < 0 && !new Rect(_dragView.X * _navigatorCanvas.Width,
+            _dragView.Y * _navigatorCanvas.Height, _dragView.Width * _navigatorCanvas.Width,
+            _dragView.Height * _navigatorCanvas.Height).Contains(_dragStart))
+        {
+            RaiseNavigator(_dragStart);
+            _dragView = _visibleFraction;
+        }
         e.Handled = true;
     }
 
@@ -437,7 +505,15 @@ public sealed class OverlayWindow : Window
     {
         if (_navigatorDragging)
         {
-            RaiseNavigator(e.GetPosition(_navigatorCanvas));
+            var point = e.GetPosition(_navigatorCanvas);
+            var dx = (point.X - _dragStart.X) / _navigatorCanvas.Width;
+            var dy = (point.Y - _dragStart.Y) / _navigatorCanvas.Height;
+            if (_resizeCorner >= 0)
+            {
+                var resized = NavigatorMath.Resize(_dragView, _resizeCorner, dx, dy, NavigatorMinScale, NavigatorMaxScale);
+                NavigatorResize?.Invoke(resized.Scale, resized.X, resized.Y);
+            }
+            else NavigatorTarget?.Invoke(_dragView.X + _dragView.Width / 2 + dx, _dragView.Y + _dragView.Height / 2 + dy);
             e.Handled = true;
         }
     }

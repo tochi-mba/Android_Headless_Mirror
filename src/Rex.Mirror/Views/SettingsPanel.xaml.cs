@@ -15,7 +15,6 @@ public partial class SettingsPanel : UserControl
     private MainWindow? _window;
     private AppHost? _host;
     private bool _loading;
-    private bool _launchSettingsDirty;
 
     public SettingsPanel()
     {
@@ -56,6 +55,15 @@ public partial class SettingsPanel : UserControl
             SensitivityValue.Text = c.Touchpad.Sensitivity.ToString("0.0", CultureInfo.InvariantCulture) + "×";
             HostZoom.IsChecked = c.Zoom.Enabled;
             Navigator.IsChecked = c.Zoom.ShowNavigator;
+            AmbientBackground.IsChecked = c.App.AmbientBackground;
+            AmbientOptions.IsEnabled = c.App.AmbientBackground;
+            AmbientBlur.Value = c.App.AmbientBlur;
+            AmbientDim.Value = c.App.AmbientDim;
+            PreviewInterval.Value = c.App.PreviewIntervalSeconds;
+            HudDelay.Value = c.App.HudHideSeconds;
+            MaximumZoom.Value = c.Zoom.MaxZoom;
+            WheelSpeed.Value = c.Zoom.WheelStep;
+            AudioDup.IsEnabled = c.Mirror.Audio;
             PatternEnabled.IsChecked = c.PatternGuide.Enabled;
             PatternAuto.IsChecked = c.PatternGuide.AutoShowOnKeyguard;
             PatternDiscover.IsChecked = c.PatternGuide.AutoDiscoverGeometry;
@@ -66,7 +74,8 @@ public partial class SettingsPanel : UserControl
             Wireless.IsChecked = c.Wireless.Enabled;
             WirelessTcpip.IsChecked = c.Wireless.EnableTcpipWhenUsbAvailable;
             ExtraArgs.Text = c.Mirror.ExtraArgs;
-            RestartBar.Visibility = _launchSettingsDirty && _host.Session.IsMirroring ? Visibility.Visible : Visibility.Collapsed;
+            ScreenshotLocation.Text = _host.Paths.ScreenshotFolder(c.App.ScreenshotDirectory);
+            RefreshRestartNotice();
         }
         finally
         {
@@ -98,11 +107,6 @@ public partial class SettingsPanel : UserControl
         }
 
         _host.UpdateConfig(mutate);
-        if (launchTime)
-        {
-            _launchSettingsDirty = true;
-        }
-
         Refresh();
     }
 
@@ -135,6 +139,7 @@ public partial class SettingsPanel : UserControl
         c.Zoom.WheelZoom = c.Zoom.Enabled;
         c.Zoom.PinchZoom = c.Zoom.Enabled;
         c.Zoom.ShowNavigator = Navigator.IsChecked == true;
+        c.App.AmbientBackground = AmbientBackground.IsChecked == true;
         c.PatternGuide.Enabled = PatternEnabled.IsChecked == true;
         c.PatternGuide.AutoShowOnKeyguard = PatternAuto.IsChecked == true;
         c.PatternGuide.AutoDiscoverGeometry = PatternDiscover.IsChecked == true;
@@ -157,7 +162,6 @@ public partial class SettingsPanel : UserControl
 
     private void OnRestartNow(object sender, RoutedEventArgs e)
     {
-        _launchSettingsDirty = false;
         _host?.Session.RestartMirror();
         Refresh();
     }
@@ -180,8 +184,10 @@ public partial class SettingsPanel : UserControl
 
     private void CommitExtraArgs()
     {
-        if (_host is null || ExtraArgs.Text.Trim() == _host.Config.Mirror.ExtraArgs)
+        if (_host is null) return;
+        if (ExtraArgs.Text.Trim() == _host.Config.Mirror.ExtraArgs)
         {
+            ExtraArgsError.Text = string.Empty;
             return;
         }
 
@@ -222,7 +228,6 @@ public partial class SettingsPanel : UserControl
             }
 
             _host.ReloadConfigFromDisk();
-            _launchSettingsDirty = true;
             Refresh();
             Status.Text = "Previous configuration restored.";
         }
@@ -231,4 +236,38 @@ public partial class SettingsPanel : UserControl
             Status.Text = ex.Message;
         }
     }
+
+    private void OnAppearanceChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_loading || _host is null) return;
+        Save(c =>
+        {
+            c.App.AmbientBlur = Math.Round(AmbientBlur.Value);
+            c.App.AmbientDim = Math.Round(AmbientDim.Value, 2);
+            c.App.PreviewIntervalSeconds = PreviewInterval.Value;
+            c.App.HudHideSeconds = HudDelay.Value;
+            c.Zoom.MaxZoom = MaximumZoom.Value;
+            c.Zoom.WheelStep = Math.Round(WheelSpeed.Value, 2);
+        }, launchTime: false);
+    }
+
+    public void RefreshRestartNotice()
+    {
+        RestartBar.Visibility = _host?.Session.NeedsRestart == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnChooseScreenshotFolder(object sender, RoutedEventArgs e)
+    {
+        if (_host is null) return;
+        var picker = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Choose where screenshots are saved",
+            InitialDirectory = _host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory),
+        };
+        if (picker.ShowDialog(_window!) == true)
+            Save(c => c.App.ScreenshotDirectory = picker.FolderName, launchTime: false);
+    }
+
+    private void OnDefaultScreenshotFolder(object sender, RoutedEventArgs e) =>
+        Save(c => c.App.ScreenshotDirectory = new AppSettings().ScreenshotDirectory, launchTime: false);
 }

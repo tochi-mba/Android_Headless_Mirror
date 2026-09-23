@@ -30,9 +30,16 @@ public partial class MainWindow : Window
     private bool _sidebarWanted = true;
     private bool _quitting;
     private bool _trayHintShown;
+    private double _navigatorStartZoom;
+    private bool _previewBusy;
+    private DateTime _nextPreview;
     private WindowState _restoreState = WindowState.Normal;
     private Rect _windowedBounds;
     public bool IsFullscreen => _fullscreen;
+    public double SidebarScrollOffset => SidebarScroll.VerticalOffset;
+    public bool PreviewAvailable => _overlay.PreviewAvailable;
+    public string SidebarTab => CurrentTab();
+    private Rect _sidebarWheelBounds = Rect.Empty;
     public bool HudVisible => _overlay.HudVisible;
     public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
     public bool PatternGuideVisible => _guide?.IsVisible == true;
@@ -50,6 +57,18 @@ public partial class MainWindow : Window
         _overlay.PointerMessage += OnOverlayPointer;
         _overlay.PanDelta += (dx, dy) => Host.Pan(dx, dy);
         _overlay.NavigatorTarget += (fx, fy) => Host.CenterOn(fx, fy);
+        _overlay.NavigatorDragStarted += () =>
+        {
+            _navigatorStartZoom = Host.Zoom;
+            _overlay.NavigatorMinScale = Host.Zoom / Host.MaxZoom;
+            _overlay.NavigatorMaxScale = Host.Zoom;
+        };
+        _overlay.NavigatorResize += (scale, x, y) =>
+        {
+            var (width, height) = Host.ViewportPixels;
+            Host.SetZoom(_navigatorStartZoom / scale, width / 2.0, height / 2.0);
+            Host.CenterOn(x, y);
+        };
         _overlay.PanAllowed = () => _host.Config.Zoom.Enabled && Host.View.IsZoomed && NativeMethods.IsKeyDown(NativeMethods.VK_MENU);
         _touchpad = new TouchpadBridge(Host, _injector, () => _host.Config, host.Log.Warn);
 
@@ -64,6 +83,7 @@ public partial class MainWindow : Window
         _hooks.IsActive = () => _source is not null && IsVisible && WindowState != WindowState.Minimized &&
             NativeMethods.GetAncestor(NativeMethods.GetForegroundWindow(), 2) == _source.Handle;
         _hooks.AltWheel = OnAltWheel;
+        _hooks.PanelWheel = OnPanelWheel;
         _hooks.KeyDown = OnHotkey;
 
         ControlsPanel.Attach(this, host);
@@ -207,6 +227,7 @@ public partial class MainWindow : Window
     private void OnSessionChanged()
     {
         var session = _host.Session;
+        SettingsPanel.RefreshRestartNotice();
         var mirroring = session.IsMirroring;
         var needsSetup = session.Phase == SessionPhase.NeedsSetup;
         var onboarding = OnboardingView.IsNeeded(_host);
@@ -349,6 +370,12 @@ public partial class MainWindow : Window
     {
         _touchpad.Cancel();
         Host.MaxZoom = _host.Config.Zoom.MaxZoom;
+        if (!_host.Config.Zoom.Enabled) Host.ResetZoom();
+        else if (Host.Zoom > Host.MaxZoom)
+        {
+            var (width, height) = Host.ViewportPixels;
+            Host.SetZoom(Host.MaxZoom, width / 2.0, height / 2.0);
+        }
         if (!_host.Config.PatternGuide.Enabled && _guide is not null)
         {
             _guide.Dispose();
@@ -379,6 +406,14 @@ public partial class MainWindow : Window
 
     private void TrackOverlay()
     {
+        if (SidebarScroll.IsVisible && _source is not null)
+        {
+            var origin = SidebarScroll.PointToScreen(new Point());
+            var scale = VisualTreeHelper.GetDpi(SidebarScroll);
+            _sidebarWheelBounds = new Rect(origin.X, origin.Y, SidebarScroll.ActualWidth * scale.DpiScaleX,
+                SidebarScroll.ActualHeight * scale.DpiScaleY);
+        }
+        else _sidebarWheelBounds = Rect.Empty;
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         _overlay.Track(visible ? Host.ViewportScreenRect : default, visible);
         _overlay.UpdateHud(_fullscreen && visible, Host.Zoom);
@@ -403,6 +438,55 @@ public partial class MainWindow : Window
         var show = view.IsZoomed && _host.Config.Zoom.ShowNavigator && Host.HasChild;
         var aspect = view.SurfaceHeight > 0 ? view.SurfaceWidth / view.SurfaceHeight : 0.45;
         _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction());
+        var ambient = _host.Config.App.AmbientBackground && Host.HasChild;
+        _overlay.UpdateAmbient(ambient, Host.SurfaceRect, _host.Config.App);
+        if ((show || ambient) && IsVisible && WindowState != WindowState.Minimized && !_previewBusy && DateTime.UtcNow >= _nextPreview)
+            _ = RefreshNavigatorPreviewAsync();
+        if (!show && !ambient) _overlay.SetNavigatorPreview(null);
+    }
+
+    private async Task RefreshNavigatorPreviewAsync()
+    {
+        var device = _host.Session.ActiveDevice;
+        var adb = _host.Session.Adb;
+        if (device is null || adb is null) return;
+        _previewBusy = true;
+        try
+        {
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var bytes = await adb.ScreencapAsync(device.Serial, deadline.Token);
+            if (bytes is null || _quitting || !_host.Session.IsMirroring || _host.Session.ActiveDevice?.Serial != device.Serial) return;
+            using var stream = new MemoryStream(bytes);
+            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bitmap.DecodePixelWidth = 180;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            _overlay.SetNavigatorPreview(bitmap);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or NotSupportedException or ArgumentException or OperationCanceledException)
+        {
+            _overlay.SetNavigatorPreview(null);
+        }
+        finally { _previewBusy = false; _nextPreview = DateTime.UtcNow.AddSeconds(_host.Config.App.PreviewIntervalSeconds); }
+    }
+
+    private bool OnPanelWheel(int delta, int screenX, int screenY)
+    {
+        if (!SidebarScroll.IsVisible) return false;
+        if (!_sidebarWheelBounds.Contains(screenX, screenY))
+            return false;
+        // scrcpy can retain native keyboard focus even when the pointer is over WPF.
+        // Consume this event before Windows delivers it to the focused child HWND.
+        Dispatcher.BeginInvoke(() =>
+        {
+            var distance = SystemParameters.WheelScrollLines < 0
+                ? SidebarScroll.ViewportHeight : SystemParameters.WheelScrollLines * 16;
+            SidebarScroll.ScrollToVerticalOffset(SidebarScroll.VerticalOffset - delta / 120.0 * distance);
+        });
+        return true;
     }
 
     private bool OnAltWheel(int delta, int screenX, int screenY)
@@ -527,8 +611,50 @@ public partial class MainWindow : Window
 
     private async Task SaveScreenshotAsync()
     {
+        try { await SaveScreenshotCoreAsync(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            SetStatus("Could not save screenshot: " + ex.Message, isError: true);
+        }
+    }
+
+    private async Task SaveScreenshotCoreAsync()
+    {
         var (ok, text) = await _host.Session.SaveScreenshotAsync();
         SetStatus(ok ? "Screenshot saved: " + Path.GetFileName(text) : text, !ok);
+        if (ok)
+        {
+            StatusText.Inlines.Clear();
+            StatusText.Inlines.Add("Screenshot saved: ");
+            var link = new System.Windows.Documents.Hyperlink(
+                new System.Windows.Documents.Run(Path.GetFileName(text)))
+            {
+                Foreground = (Brush)FindResource("Signal"),
+                ToolTip = "Show in File Explorer: " + text,
+            };
+            link.Click += (_, _) => RevealScreenshot(text);
+            StatusText.Inlines.Add(link);
+        }
+    }
+
+    private void RevealScreenshot(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                SetStatus("This screenshot has been moved or deleted.", isError: true);
+                return;
+            }
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"")
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            SetStatus("Could not open File Explorer: " + ex.Message, isError: true);
+        }
     }
 
     public void SetStatus(string text, bool isError = false)

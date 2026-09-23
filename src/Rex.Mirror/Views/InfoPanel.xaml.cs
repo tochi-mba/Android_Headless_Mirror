@@ -91,7 +91,7 @@ public partial class InfoPanel : UserControl
     {
         if (_host is not null)
         {
-            _window?.OpenFolder(_host.Paths.Inside(_host.Config.App.ScreenshotDirectory));
+            _window?.OpenFolder(_host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory));
         }
     }
 

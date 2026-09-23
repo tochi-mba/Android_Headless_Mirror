@@ -10,6 +10,10 @@ namespace Rex.Core;
 /// </summary>
 public static partial class ScrcpyArguments
 {
+    public static IReadOnlyList<string> LaunchSettings(RexConfig config, bool isTcp) =>
+        Build(config, "", isTcp, "", null,
+            config.Mirror.RecordOnStart ? config.Mirror.RecordDirectory : null);
+
     /// <summary>
     /// Modifier for scrcpy's own keyboard shortcuts. scrcpy 4.1 no longer accepts combined
     /// modifiers, so use the rarely pressed Right Ctrl key and send that same key from the app.

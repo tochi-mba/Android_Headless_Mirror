@@ -30,6 +30,15 @@ until you delete that folder.
 
 ## What you get
 
+- **Personal display controls.** Settings groups display, audio, gestures, lock screen, captures,
+  startup and advanced connection options. Ambient fill replaces empty margins with a dimmed,
+  blurred phone preview; turn it off or adjust blur, dimming and refresh rate. Preview images
+  refresh periodically (not at video frame rate) and protected screens may remain black.
+- **A useful navigator.** While zoomed, drag the minimap viewport to pan or drag a corner to zoom.
+  Preview captures stay in memory and are never saved or uploaded.
+- **Your screenshot folder.** Choose a default folder in Settings → Screenshots & recording.
+  Click a saved filename in the status bar to select it in File Explorer.
+
 - **One window.** The mirror fills the left; a side panel holds Controls, Phone, Settings and Info.
   F11 is true fullscreen with a small HUD at the top edge.
 - **Automatic.** The app waits in the tray, opens when an authorised phone connects, restarts the

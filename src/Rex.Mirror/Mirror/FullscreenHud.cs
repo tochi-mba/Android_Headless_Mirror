@@ -23,6 +23,7 @@ public sealed class FullscreenHud : Border
     public event Action<string>? ActionRequested;
     public bool Expanded => _rotation.Visibility == Visibility.Visible;
     public bool IsShown => _shown;
+    public double HideSeconds { get; set; } = 3;
 
     public FullscreenHud()
     {
@@ -105,7 +106,7 @@ public sealed class FullscreenHud : Border
 
     public void Reveal(string? message = null)
     {
-        _visibleUntil = DateTime.UtcNow.AddSeconds(3);
+        _visibleUntil = DateTime.UtcNow.AddSeconds(HideSeconds);
         if (message is not null) _message.Text = message;
         ShowHud(true);
     }
@@ -121,7 +122,7 @@ public sealed class FullscreenHud : Border
         }
         Visibility = Visibility.Visible;
         _fit.Content = zoom > 1.001 ? $"{zoom * 100:0}%" : "Fit";
-        if (pointerAtTop || IsMouseOver) _visibleUntil = DateTime.UtcNow.AddSeconds(3);
+        if (pointerAtTop || IsMouseOver || IsKeyboardFocusWithin || Expanded) _visibleUntil = DateTime.UtcNow.AddSeconds(HideSeconds);
         var visible = DateTime.UtcNow < _visibleUntil;
         if (!visible) _rotation.Visibility = Visibility.Collapsed;
         ShowHud(visible);
