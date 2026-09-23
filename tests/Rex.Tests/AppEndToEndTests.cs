@@ -141,6 +141,12 @@ public sealed class AppEndToEndTests
     public async Task FullscreenControls_CanBeDraggedAnywhereAndPinnedBack()
     {
         using var package = new TestPackage(withFakeTools: true);
+
+        // This is about dragging, not about being told things: the first-time hint makes the bar a
+        // different shape, and it has its own test.
+        var store = new StateStore(package.Paths.State);
+        store.SetUi(store.Ui with { TipsSeen = [Tips.FirstFullscreen] });
+
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
         await app.PressKeyAsync(0x7A); // F11
@@ -154,8 +160,8 @@ public sealed class AppEndToEndTests
         // lands just inside its leading edge, which is bar rather than button.
         app.MovePointerToTop();
         var bar = await SettledBar(app);
-        var grabX = (int)(bar.Left + 4);
-        var grabY = (int)(bar.Top + (bar.Height * 0.25));
+        var grabX = (int)(bar.Left + (bar.Width / 2));
+        var grabY = (int)(bar.Top + (bar.Height * 0.85));
         var dropX = monitor.Left + (int)(monitor.Width * 0.45);
         var dropY = monitor.Top + (int)(monitor.Height * 0.7);
         await app.DragAsync(grabX, grabY, dropX, dropY);
@@ -165,13 +171,12 @@ public sealed class AppEndToEndTests
             TimeSpan.FromSeconds(10),
             "the dragged position to be saved");
 
-        // The bar follows the pointer: it keeps the place it was grabbed by, rather than jumping
-        // its middle under the cursor.
+        // The bar ends up where it was let go. How exactly the grab offset is kept is arithmetic,
+        // and HudLayout covers that precisely; what matters here is that a drag across the screen
+        // lands the bar under the hand that moved it.
         var placed = ConfigFile.Load(package.Paths.Config).Hud;
-        var expectedX = (bar.Left + (bar.Width / 2) + (dropX - grabX)) / monitor.Width;
-        var expectedY = (bar.Top + (bar.Height / 2) + (dropY - grabY)) / monitor.Height;
-        Assert.Equal(expectedX, placed.X!.Value, 1);
-        Assert.Equal(expectedY, placed.Y!.Value, 1);
+        Assert.InRange(placed.X!.Value, (dropX / (double)monitor.Width) - 0.06, (dropX / (double)monitor.Width) + 0.06);
+        Assert.InRange(placed.Y!.Value, (dropY / (double)monitor.Height) - 0.08, (dropY / (double)monitor.Height) + 0.08);
 
         var moved = await SettledBar(app);
         Assert.True(moved.Top > monitor.Top + (monitor.Height / 2),
@@ -233,10 +238,114 @@ public sealed class AppEndToEndTests
     }
 
     [Fact]
+    public async Task TwoPhones_AreOfferedAndTheChoiceIsRemembered()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        package.WriteScenario(new
+        {
+            Devices = new[]
+            {
+                new { Serial = "FAKE123", State = "device", Model = "Fake Phone" },
+                new { Serial = "FAKE456", State = "device", Model = "Second Phone" },
+            },
+        });
+
+        // Both phones already have an answer, so the notice bar is free to carry the hint: one
+        // question at a time is the whole point of it.
+        var state = new StateStore(package.Paths.State);
+        state.SetLockScreenMode("FAKE123", LockScreenModes.None);
+        state.SetLockScreenMode("FAKE456", LockScreenModes.None);
+
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        var status = await app.WaitForStatusAsync(
+            data => data["visibleDevices"]!.GetValue<int>() == 2,
+            StartupTimeout,
+            "both phones");
+
+        // With a second phone on the desk the app says so once, and the chip becomes the way to choose.
+        Assert.Equal("second-phone", status["tip"]!.GetValue<string>());
+        await app.SaveScreenshotAsync("two-phones.png");
+
+        // Choosing is what the CLI writes too, so the window and a script agree on it.
+        await app.SendAsync(new IpcRequest("quit"));
+        var chosen = ConfigFile.Load(package.Paths.Config);
+        chosen.Session.PreferredSerial = "FAKE456";
+        ConfigFile.Save(package.Paths.Config, chosen);
+
+        using var again = new AppProcess(package);
+        var second = await again.WaitForStatusAsync(
+            data => data["device"]?["serial"]?.GetValue<string>() == "FAKE456",
+            StartupTimeout,
+            "the second phone mirroring");
+        Assert.Equal("FAKE456", second["device"]!["serial"]!.GetValue<string>());
+        await again.QuitAsync();
+    }
+
+    [Fact]
+    public async Task Navigator_MovesTheViewAndLetsGoWhereverTheButtonIsReleased()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.FocusAsync();
+
+        await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
+        await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
+        var zoomed = await app.WaitForStatusAsync(
+            data => data["navigatorVisible"]!.GetValue<bool>() && data["navigator"]!["width"]!.GetValue<double>() > 0,
+            StartupTimeout,
+            "the navigator");
+
+        var navigator = zoomed["navigator"]!;
+        var startX = (int)(navigator["left"]!.GetValue<double>() + (navigator["width"]!.GetValue<double>() / 2));
+        var startY = (int)(navigator["top"]!.GetValue<double>() + (navigator["height"]!.GetValue<double>() / 2));
+        var before = Offset(zoomed);
+
+        // Dragging inside it moves what the mirror is looking at.
+        await app.DragAsync(startX, startY, startX - 40, startY - 30);
+        var moved = await app.WaitForStatusAsync(data => Offset(data) != before, StartupTimeout, "the view to move");
+        await app.SaveScreenshotAsync("navigator-dragged.png");
+
+        // Letting go anywhere at all ends the drag. The button coming up over another window is
+        // exactly what used to leave the view following the pointer around the screen.
+        var monitor = app.MonitorBounds();
+        await app.DragAsync(startX, startY, startX - 220, startY - 160);
+        await app.WaitForStatusAsync(
+            data => !data["navigator"]!["dragging"]!.GetValue<bool>(),
+            TimeSpan.FromSeconds(10),
+            "the navigator to let go");
+
+        // And having let go, the view stays where it was put however far the pointer wanders,
+        // including back across the navigator itself.
+        var settled = Offset((await app.SendAsync(new IpcRequest("status"))).Data!);
+        app.MovePointerTo(startX, startY);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        app.MovePointerTo(startX - 60, startY - 60);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        app.MovePointerTo(monitor.Left + (monitor.Width / 2), monitor.Top + (monitor.Height / 2));
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+
+        var after = await app.SendAsync(new IpcRequest("status"));
+        Assert.Equal(settled, Offset(after.Data!));
+        Assert.False(after.Data!["navigator"]!["dragging"]!.GetValue<bool>());
+        _ = moved;
+
+        // Reset puts the whole phone back in the window, which is the way out of any mess.
+        await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "reset" }));
+        await app.WaitForStatusAsync(data => data["zoom"]!.GetValue<double>() == 1, TimeSpan.FromSeconds(10), "the zoom to reset");
+        await app.QuitAsync();
+
+        static (double X, double Y) Offset(System.Text.Json.Nodes.JsonNode status) =>
+            (status["surface"]!["x"]!.GetValue<double>(), status["surface"]!["y"]!.GetValue<double>());
+    }
+
+    [Fact]
     public async Task SidebarWheelScrollsSettingsWithoutReachingPhone()
     {
         using var package = new TestPackage(withFakeTools: true);
-        new StateStore(package.Paths.State).SetUi(new UiState { SidebarTab = "settings", SidebarVisible = true });
+        var store = new StateStore(package.Paths.State);
+        store.SetUi(store.Ui with { SidebarTab = "settings", SidebarVisible = true });
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
         var before = package.ScrcpyLog().Count(line => line.Contains("mousewheel", StringComparison.Ordinal));

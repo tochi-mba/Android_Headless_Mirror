@@ -251,6 +251,77 @@ public sealed class ConfigTests
     }
 
     [Fact]
+    public void TourLayout_PutsTheCalloutWhereThereIsRoomForIt()
+    {
+        var target = new RectD(400, 300, 120, 40);
+        var spot = TourLayout.Spotlight(target, 8);
+        Assert.Equal(new RectD(392, 292, 136, 56), spot);
+        Assert.Equal(new RectD(400, 300, 120, 40), TourLayout.Spotlight(target, 0));
+
+        // With room underneath, the callout sits under the thing it explains, centred on it.
+        var (below, side) = TourLayout.Callout(spot, 330, 160, 1000, 700, "bottom");
+        Assert.Equal("bottom", side);
+        Assert.Equal(362, below.Y, 3);
+        Assert.Equal(295, below.X, 3);
+
+        // Against the bottom of the window it flips to the other side rather than hanging off.
+        var low = TourLayout.Spotlight(new RectD(400, 600, 120, 40), 8);
+        var (above, flipped) = TourLayout.Callout(low, 330, 160, 1000, 700, "bottom");
+        Assert.Equal("top", flipped);
+        Assert.True(above.Y + above.Height <= low.Y);
+
+        // In a corner it takes whichever side is left, and never leaves the window.
+        var corner = TourLayout.Spotlight(new RectD(0, 0, 60, 40), 8);
+        var (placed, _) = TourLayout.Callout(corner, 330, 160, 1000, 700, "left");
+        Assert.True(placed.X >= TourLayout.Margin);
+        Assert.True(placed.Y >= TourLayout.Margin);
+
+        // A window barely bigger than the callout still shows all of it that will fit.
+        var (squeezed, _) = TourLayout.Callout(corner, 330, 160, 340, 200, "bottom");
+        Assert.True(squeezed.X >= 0);
+        Assert.True(squeezed.Y >= 0);
+
+        // Something too small to see, or off the window entirely, is not worth pointing at.
+        Assert.True(TourLayout.Fits(new RectD(10, 10, 200, 80), 1000, 700));
+        Assert.False(TourLayout.Fits(new RectD(10, 10, 4, 80), 1000, 700));
+        Assert.False(TourLayout.Fits(new RectD(1200, 10, 200, 80), 1000, 700));
+        Assert.False(TourLayout.Fits(new RectD(-300, 10, 200, 80), 1000, 700));
+    }
+
+    [Fact]
+    public void Shortcuts_AreOneListWithNothingSaidTwice()
+    {
+        Assert.NotEmpty(Shortcuts.All);
+        Assert.Equal(Shortcuts.All.Count, Shortcuts.All.Select(s => s.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(Shortcuts.All.Count, Shortcuts.All.Select(s => s.Gesture).Distinct(StringComparer.Ordinal).Count());
+        Assert.All(Shortcuts.All, s => Assert.False(string.IsNullOrWhiteSpace(s.Description)));
+
+        // Plain keys reach the phone, so every key shortcut needs a modifier scrcpy does not take.
+        Assert.All(
+            Shortcuts.All.Where(s => s.IsKey && !s.Gesture.StartsWith('F') && s.Gesture != "Esc"),
+            s => Assert.StartsWith("Ctrl+Alt+", s.Gesture, StringComparison.Ordinal));
+
+        Assert.Equal("F11", Shortcuts.Gesture("fullscreen"));
+        Assert.Equal(string.Empty, Shortcuts.Gesture("nothing-like-this"));
+        Assert.Equal("Save a screenshot · Ctrl+Alt+S", Shortcuts.Tip("Save a screenshot", "screenshot"));
+        Assert.Equal("Just words", Shortcuts.Tip("Just words", "nothing-like-this"));
+    }
+
+    [Fact]
+    public void Tips_AreOfferedOnceEachAndSayWhatToDo()
+    {
+        Assert.Equal(Tips.All.Count, Tips.All.Select(t => t.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.All(Tips.All, tip =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(tip.Title));
+            Assert.True(tip.Text.Length > 40, $"'{tip.Id}' should explain itself, not just name itself.");
+        });
+
+        Assert.NotNull(Tips.Find(Tips.FirstZoom));
+        Assert.Null(Tips.Find("nothing-like-this"));
+    }
+
+    [Fact]
     public void HudLayout_HonoursADraggedPositionAndBringsItBackIntoView()
     {
         // With nothing dragged the bar sits where it is pinned.

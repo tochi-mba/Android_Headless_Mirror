@@ -222,6 +222,61 @@ test.describe('mobile behaviour', () => {
   });
 });
 
+test.describe('the rest of the site', () => {
+  test('a mistyped address lands on a 404 that looks like the site', async ({ page }) => {
+    await page.goto('/404.html');
+    await expect(page.locator('h1')).toHaveText(/Nothing is mirrored here/);
+    await expect(page.locator('.brand-name')).toHaveText('Android Headless Mirror');
+    await expect(page.locator('.not-found .button-primary')).toHaveAttribute('href', './');
+    await expect(page).toHaveTitle(/Page not found/);
+    // A 404 that search engines index is a 404 that shows up in results.
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+  });
+
+  test('links preview with a picture and describe the app to search engines', async ({ page, request }) => {
+    await page.goto('/');
+    const image = await page.locator('meta[property="og:image"]').getAttribute('content');
+    expect(image).toMatch(/og\.png$/);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+
+    const response = await request.get('/og.png');
+    expect(response.status()).toBe(200);
+    expect(Number(response.headers()['content-length'] ?? 1)).toBeGreaterThan(1000);
+
+    const blocks = await page.locator('script[type="application/ld+json"]').allTextContents();
+    const types = blocks.map(block => JSON.parse(block)['@type']);
+    expect(types).toContain('SoftwareApplication');
+    expect(types).toContain('FAQPage');
+  });
+
+  test('copying the clone command says so out loud', async ({ page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'clipboard permissions are only granted on Chromium');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/');
+    await page.locator('.source-note summary').click();
+    await page.locator('.copy-button').click();
+    await expect(page.locator('#copy-status')).toHaveText(/copied/i);
+  });
+
+  test('the navigation marks the section being read', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#faq').scrollIntoViewIfNeeded();
+    await expect(page.locator('.site-nav a[href="#faq"]')).toHaveAttribute('aria-current', 'true');
+  });
+});
+
+test('closing the menu with Escape puts focus back on the button', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.locator('.menu-button').click();
+  await expect(page.locator('.site-nav')).toHaveClass(/open/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.site-nav')).not.toHaveClass(/open/);
+  await expect(page.locator('.menu-button')).toBeFocused();
+  await context.close();
+});
+
 test('no-JavaScript fallback keeps content and navigation available', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();

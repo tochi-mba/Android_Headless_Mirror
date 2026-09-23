@@ -14,16 +14,11 @@ public partial class InfoPanel : UserControl
     public InfoPanel()
     {
         InitializeComponent();
-        ShortcutRows.ItemsSource = new[]
-        {
-            KeyValuePair.Create("Alt + wheel", "Zoom the PC view at the cursor"),
-            KeyValuePair.Create("Alt + pinch", "Zoom the PC view on a touchpad"),
-            KeyValuePair.Create("Alt + drag", "Pan while zoomed"),
-            KeyValuePair.Create("Two fingers", "Pinch, rotate and pan on the phone"),
-            KeyValuePair.Create("F11", "Fullscreen"),
-            KeyValuePair.Create("Ctrl+Alt+P", "Show or hide the pattern guide"),
-            KeyValuePair.Create("Ctrl+Alt+C", "Calibrate the pattern guide"),
-        };
+
+        // One list, from the registry the window and the website also read, so it cannot drift.
+        ShortcutRows.ItemsSource = Shortcuts.All
+            .Select(shortcut => KeyValuePair.Create(shortcut.Gesture, shortcut.Description))
+            .ToArray();
     }
 
     public void Attach(MainWindow window, AppHost host)
@@ -85,6 +80,14 @@ public partial class InfoPanel : UserControl
         };
 
         LogText.Text = string.Join(Environment.NewLine, _host.Log.Tail(12));
+    }
+
+    private void OnTour(object sender, RoutedEventArgs e) => _window?.StartTour();
+
+    private void OnResetTips(object sender, RoutedEventArgs e)
+    {
+        _window?.ForgetTips();
+        _window?.SetStatus("The one-time hints will be offered again.");
     }
 
     private void OnOpenCaptures(object sender, RoutedEventArgs e)

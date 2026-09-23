@@ -15,6 +15,114 @@ public sealed class AppUiTests
     private static readonly TimeSpan Soon = TimeSpan.FromSeconds(8);
 
     [Fact(Timeout = 75_000)]
+    public async Task Tour_ShowsItselfOnceAndCanBeTakenAgain()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true, showTour: true);
+        using (var app = new AppProcess(package))
+        {
+            await app.WaitForPhaseAsync("mirroring", Startup);
+            var started = await app.WaitForStatusAsync(s => s["tour"]!["visible"]!.GetValue<bool>(), Startup, "the tour");
+            Assert.Equal(1, started["tour"]!["step"]!.GetValue<int>());
+            Assert.True(started["tour"]!["steps"]!.GetValue<int>() >= 4);
+            await app.SaveScreenshotAsync("ui-tour-first-step.png");
+
+            app.Ui.Invoke("NextButton");
+            await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 2, Soon, "the second step");
+            app.Ui.Invoke("BackButton");
+            await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 1, Soon, "the first step again");
+
+            app.Ui.Invoke("SkipButton");
+            await app.WaitForStatusAsync(s => !s["tour"]!["visible"]!.GetValue<bool>(), Soon, "the tour to close");
+            await app.QuitAsync();
+        }
+
+        Assert.True(new StateStore(package.Paths.State).Ui.TourSeenVersion > 0);
+
+        // Seen once is seen: it does not ambush the next launch, but Info can bring it back.
+        using var again = new AppProcess(package);
+        await again.WaitForPhaseAsync("mirroring", Startup);
+        await Task.Delay(1500, TestContext.Current.CancellationToken);
+        var quiet = await again.SendAsync(new IpcRequest("status"));
+        Assert.False(quiet.Data!["tour"]!["visible"]!.GetValue<bool>());
+
+        again.Ui.Select("TabInfo");
+        again.Ui.Invoke("TourButton");
+        await again.WaitForStatusAsync(s => s["tour"]!["visible"]!.GetValue<bool>(), Soon, "the tour again");
+        await again.QuitAsync();
+    }
+
+    [Fact(Timeout = 75_000)]
+    public async Task Settings_SearchNarrowsToTheGroupThatMentionsIt()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", Startup);
+        app.Ui.Select("TabSettings");
+
+        app.Ui.SetText("SettingsFilter", "wash");
+        await app.WaitUntilAsync(() => app.Ui.Exists("AmbientTintHue"), Soon, "the soft background group to stay");
+        Assert.False(app.Ui.Exists("HudScale"), "A group that does not mention the search should be hidden.");
+        await app.SaveScreenshotAsync("ui-settings-search.png");
+
+        app.Ui.SetText("SettingsFilter", "nothing whatsoever");
+        await app.WaitUntilAsync(() => !app.Ui.Exists("AmbientTintHue"), Soon, "every group to go");
+
+        app.Ui.SetText("SettingsFilter", string.Empty);
+        await app.WaitUntilAsync(() => app.Ui.Exists("AmbientTintHue"), Soon, "the groups to come back");
+        await app.QuitAsync();
+    }
+
+    [Fact(Timeout = 75_000)]
+    public async Task Settings_ResetEverything_AsksInTheWindowAndCanBeCancelled()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", Startup);
+        app.Ui.Select("TabSettings");
+        app.Ui.Toggle("AmbientEnabled", false);
+        await app.WaitUntilAsync(() => !ConfigFile.Load(package.Paths.Config).Ambient.Enabled, Soon, "the change to save");
+
+        app.Ui.ExpandGroup("GroupAdvanced");
+        app.Ui.Invoke("ResetEverything");
+        await app.WaitUntilAsync(() => app.Ui.Exists("ConfirmCancel"), Soon, "the question");
+        await app.SaveScreenshotAsync("ui-confirm-sheet.png");
+
+        // Cancelling changes nothing at all.
+        app.Ui.Invoke("ConfirmCancel");
+        await app.WaitUntilAsync(() => !app.Ui.Exists("ConfirmCancel"), Soon, "the question to close");
+        Assert.False(ConfigFile.Load(package.Paths.Config).Ambient.Enabled);
+
+        app.Ui.Invoke("ResetEverything");
+        await app.WaitUntilAsync(() => app.Ui.Exists("ConfirmAccept"), Soon, "the question again");
+        app.Ui.Invoke("ConfirmAccept");
+        await app.WaitUntilAsync(() => ConfigFile.Load(package.Paths.Config).Ambient.Enabled, Soon, "everything back to how it ships");
+        await app.QuitAsync();
+    }
+
+    [Fact(Timeout = 75_000)]
+    public async Task Sidebar_WidthIsRememberedAcrossRuns()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        var store = new StateStore(package.Paths.State);
+        store.SetUi(store.Ui with { SidebarWidth = 420 });
+
+        using var app = new AppProcess(package);
+        var status = await app.WaitForPhaseAsync("mirroring", Startup);
+        Assert.Equal(420, status["sidebarWidth"]!.GetValue<double>());
+
+        // Hiding the panel and bringing it back keeps the width, rather than snapping to default.
+        app.Ui.Invoke("SidebarToggle");
+        await app.WaitForStatusAsync(s => !s["sidebarVisible"]!.GetValue<bool>(), Soon, "the panel to go");
+        app.Ui.Invoke("SidebarToggle");
+        await app.WaitForStatusAsync(s => s["sidebarWidth"]!.GetValue<double>() == 420, Soon, "the width to come back");
+        await app.QuitAsync();
+    }
+
+    [Fact(Timeout = 75_000)]
     public async Task Sidebar_TabsAndToggle_PersistAcrossRuns()
     {
         TestContext.Current.CancellationToken.ThrowIfCancellationRequested();

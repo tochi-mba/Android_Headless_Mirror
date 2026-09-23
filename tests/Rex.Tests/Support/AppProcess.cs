@@ -110,6 +110,9 @@ public sealed class AppProcess : IDisposable
         finally { SetThreadDpiAwarenessContext(previous); }
     }
 
+    /// <summary>Puts the pointer at a point in physical pixels, with no buttons pressed.</summary>
+    public void MovePointerTo(int x, int y) => MovePointer(x, y);
+
     public void MovePointerToCenter()
     {
         var bounds = WindowBounds();
@@ -513,7 +516,8 @@ public sealed class AppProcess : IDisposable
             {
                 var title = new System.Text.StringBuilder(256);
                 GetWindowText(hwnd, title, title.Capacity);
-                if (title.ToString() == "Android Headless Mirror")
+                // The window puts the phone's name in front of its own once one is connected.
+                if (title.ToString().EndsWith("Android Headless Mirror", StringComparison.Ordinal))
                 {
                     found = hwnd;
                     return false;
@@ -648,7 +652,11 @@ public sealed class AppProcess : IDisposable
     public async Task FocusAsync()
     {
         var main = FindMainWindow();
-        for (var attempt = 0; attempt < 20 && GetAncestor(GetForegroundWindow(), 2) != main; attempt++)
+
+        // Windows hands the foreground to its own notification banners and will not take it back
+        // while one is up. They last a few seconds, so this outwaits them rather than carrying on
+        // without focus: a keystroke sent to a window that is not in front goes to whatever is.
+        for (var attempt = 0; attempt < 100 && GetAncestor(GetForegroundWindow(), 2) != main; attempt++)
         {
             keybd_event(0x12, 0, 0, UIntPtr.Zero);
             keybd_event(0x12, 0, 2, UIntPtr.Zero);
@@ -657,7 +665,29 @@ public sealed class AppProcess : IDisposable
             await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
-        Assert.Equal(main, GetAncestor(GetForegroundWindow(), 2));
+        Assert.True(
+            GetAncestor(GetForegroundWindow(), 2) == main,
+            $"The app never reached the foreground; '{ForegroundTitle()}' from {ForegroundProcess()} held it.");
+    }
+
+    private static string ForegroundProcess()
+    {
+        GetWindowThreadProcessId(GetForegroundWindow(), out var processId);
+        try
+        {
+            return Process.GetProcessById((int)processId).ProcessName;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string ForegroundTitle()
+    {
+        var title = new System.Text.StringBuilder(256);
+        GetWindowText(GetForegroundWindow(), title, title.Capacity);
+        return title.Length == 0 ? "an unnamed window" : title.ToString();
     }
 
     /// <summary>Alt + mouse wheel over the mirror, as real input, so the low-level hook path is exercised.</summary>
@@ -665,7 +695,7 @@ public sealed class AppProcess : IDisposable
     {
         await FocusAsync();
         var bounds = WindowBounds();
-        SetPhysicalCursorPos(bounds.Left + bounds.Width / 3, bounds.Top + bounds.Height / 2);
+        MovePointer(bounds.Left + (bounds.Width / 3), bounds.Top + (bounds.Height / 2));
         await Task.Delay(150, TestContext.Current.CancellationToken);
         keybd_event(0x12, 0, 0, UIntPtr.Zero);
         try

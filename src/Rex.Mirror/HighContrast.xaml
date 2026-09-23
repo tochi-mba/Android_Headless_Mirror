@@ -1,0 +1,22 @@
+<!--
+  The same palette keys as Theme.xaml, answered by whatever Windows High Contrast is set to.
+
+  High Contrast exists to replace an app's colours with ones a person can actually see, so an app
+  that keeps painting its own defeats the point of it. Only the colours change here: every style,
+  template and icon in Theme.xaml carries on unchanged.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <SolidColorBrush x:Key="Ink" Color="{x:Static SystemColors.WindowColor}" />
+  <SolidColorBrush x:Key="Panel" Color="{x:Static SystemColors.ControlColor}" />
+  <SolidColorBrush x:Key="Raised" Color="{x:Static SystemColors.ControlColor}" />
+  <SolidColorBrush x:Key="Line" Color="{x:Static SystemColors.ActiveBorderColor}" />
+  <SolidColorBrush x:Key="Text" Color="{x:Static SystemColors.WindowTextColor}" />
+  <SolidColorBrush x:Key="Muted" Color="{x:Static SystemColors.GrayTextColor}" />
+  <SolidColorBrush x:Key="Signal" Color="{x:Static SystemColors.HighlightColor}" />
+  <SolidColorBrush x:Key="SignalWash" Color="{x:Static SystemColors.ControlColor}" />
+  <SolidColorBrush x:Key="Live" Color="{x:Static SystemColors.HotTrackColor}" />
+  <SolidColorBrush x:Key="LiveWash" Color="{x:Static SystemColors.ControlColor}" />
+  <SolidColorBrush x:Key="Hover" Color="{x:Static SystemColors.HighlightColor}" />
+</ResourceDictionary>

@@ -2,7 +2,7 @@
 ; Built by installer\build.ps1: ISCC /DAppVersion=<x.y.z> /DSource=<dist folder> AndroidHeadlessMirror.iss
 ;
 ; Per-user install (no administrator prompt) into %LocalAppData%\Programs. The app keeps its own
-; data in %LocalAppData%\REX\Android Headless Mirror, which the uninstaller leaves alone.
+; data in %LocalAppData%\REX\Android Headless Mirror; the uninstaller keeps it unless asked.
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
@@ -26,6 +26,13 @@ AppPublisher=REX Technologies
 AppPublisherURL=https://tochi-mba.github.io/Android_Headless_Mirror/
 AppSupportURL=https://github.com/tochi-mba/Android_Headless_Mirror/issues
 AppUpdatesURL=https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest
+AppComments=Your Android phone in one window on this PC, over USB.
+AppContact=https://github.com/tochi-mba/Android_Headless_Mirror/issues
+VersionInfoDescription={#AppName} setup
+VersionInfoProductName={#AppName}
+VersionInfoCompany=REX Technologies
+; A second installer would fight the first over the same files.
+SetupMutex=AndroidHeadlessMirrorSetup
 DefaultDirName={localappdata}\Programs\{#AppName}
 DisableDirPage=yes
 DisableProgramGroupPage=yes
@@ -48,6 +55,14 @@ ChangesEnvironment=yes
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+; The wizard is three clicks, so the words on it are most of what anyone reads about the app.
+[Messages]
+SelectTasksLabel2=Choose how {#AppName} should behave, then click Next.%n%nIt installs for you only, without administrator rights, and puts the rex command on your PATH.
+FinishedHeadingLabel=Ready to mirror
+FinishedLabelNoIcons=Plug your Android phone in with USB debugging turned on and tap Allow when it asks. The mirror opens by itself, and the app will show you the exact taps if you have not turned it on yet.
+FinishedLabel=Plug your Android phone in with USB debugging turned on and tap Allow when it asks. The mirror opens by itself, and the app will show you the exact taps if you have not turned it on yet.
+ConfirmUninstall=Remove {#AppName} from this PC?%n%nYour phone is not touched, and nothing on it changes.
+
 [Tasks]
 Name: "autostart"; Description: "Start with Windows and wait for the phone in the tray"; GroupDescription: "After installing:"; Flags: checkedonce
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "After installing:"; Flags: checkedonce
@@ -68,6 +83,7 @@ Root: HKCU; Subkey: "{#RunKey}"; ValueType: none; ValueName: "{#RunValue}"; Flag
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Open {#AppName}"; Flags: nowait postinstall skipifsilent
+Filename: "https://tochi-mba.github.io/Android_Headless_Mirror/#install"; Description: "Show me how to turn on USB debugging"; Flags: shellexec nowait postinstall skipifsilent unchecked
 
 [UninstallRun]
 Filename: "{app}\{#CliExe}"; Parameters: "quit"; Flags: runhidden; RunOnceId: "QuitApp"
@@ -138,8 +154,26 @@ begin
     EnvAddPath(ExpandConstant('{app}'));
 end;
 
+// Settings, screenshots and logs outlive the app on purpose, so removing them is asked for
+// rather than assumed, and never happens during a silent uninstall.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  DataDirectory: String;
 begin
-  if CurUninstallStep = usPostUninstall then
-    EnvRemovePath(ExpandConstant('{app}'));
+  if CurUninstallStep <> usPostUninstall then
+    exit;
+
+  EnvRemovePath(ExpandConstant('{app}'));
+  DataDirectory := ExpandConstant('{localappdata}\REX\{#AppName}');
+  if not DirExists(DataDirectory) then
+    exit;
+
+  if UninstallSilent then
+    exit;
+
+  if MsgBox('Also delete your settings, screenshots and logs?' + #13#10 + #13#10 +
+      DataDirectory + #13#10 + #13#10 +
+      'Keep them if you plan to install {#AppName} again.',
+      mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+    DelTree(DataDirectory, True, True, True);
 end;

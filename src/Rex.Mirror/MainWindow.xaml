@@ -38,29 +38,39 @@
           </StackPanel>
         </StackPanel>
 
-        <Border x:Name="DeviceChip" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="16"
-                Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="12,6" Margin="16,0">
+        <!-- The chip names the phone, and picks between them once there is more than one. -->
+        <Button x:Name="DeviceChip" Grid.Column="1" Style="{StaticResource Pill}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Margin="16,0" Click="OnDeviceChip" AutomationProperties.Name="Connected phone">
           <StackPanel Orientation="Horizontal">
             <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBlock x:Name="DeviceName" Text="Starting…" FontWeight="SemiBold" VerticalAlignment="Center" />
             <TextBlock x:Name="DeviceMeta" Text="" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <Path x:Name="DeviceChevron" Data="M0 0 L4 4 L8 0" Stroke="{StaticResource Muted}" StrokeThickness="1.5" Margin="8,1,0,0"
+                  VerticalAlignment="Center" Visibility="Collapsed" />
           </StackPanel>
-        </Border>
+        </Button>
 
-        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="QuickHome" Style="{StaticResource IconButton}" Content="{StaticResource IconHome}" ToolTip="Home" Click="OnQuickAction" Tag="home" />
-          <Button x:Name="QuickBack" Style="{StaticResource IconButton}" Content="{StaticResource IconBack}" ToolTip="Back" Click="OnQuickAction" Tag="back" />
-          <Button x:Name="QuickRecents" Style="{StaticResource IconButton}" Content="{StaticResource IconRecents}" ToolTip="Recent apps" Click="OnQuickAction" Tag="recents" />
+        <StackPanel x:Name="QuickActions" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button x:Name="QuickHome" Style="{StaticResource IconButton}" Content="{StaticResource IconHome}" Click="OnQuickAction" Tag="home"
+                  AutomationProperties.Name="Home" />
+          <Button x:Name="QuickBack" Style="{StaticResource IconButton}" Content="{StaticResource IconBack}" Click="OnQuickAction" Tag="back"
+                  AutomationProperties.Name="Back" />
+          <Button x:Name="QuickRecents" Style="{StaticResource IconButton}" Content="{StaticResource IconRecents}" Click="OnQuickAction" Tag="recents"
+                  AutomationProperties.Name="Recent apps" />
           <Rectangle Width="1" Height="22" Fill="{StaticResource Line}" Margin="6,0" />
-          <Button x:Name="QuickSleep" Style="{StaticResource IconButton}" Content="{StaticResource IconMoon}" ToolTip="Turn the phone screen off (mirror keeps running)" Click="OnQuickAction" Tag="sleep" />
-          <Button x:Name="QuickScreenshot" Style="{StaticResource IconButton}" Content="{StaticResource IconCamera}" ToolTip="Save a screenshot" Click="OnQuickAction" Tag="screenshot" />
+          <Button x:Name="QuickSleep" Style="{StaticResource IconButton}" Content="{StaticResource IconMoon}" Click="OnQuickAction" Tag="sleep"
+                  AutomationProperties.Name="Turn the phone screen off" />
+          <Button x:Name="QuickScreenshot" Style="{StaticResource IconButton}" Content="{StaticResource IconCamera}" Click="OnQuickAction" Tag="screenshot"
+                  AutomationProperties.Name="Save a screenshot" />
           <Rectangle Width="1" Height="22" Fill="{StaticResource Line}" Margin="6,0" />
-          <Button x:Name="ZoomBadge" Style="{StaticResource GhostButton}" Padding="8,4" MinHeight="28" ToolTip="Reset zoom (Alt + wheel or Alt + pinch to zoom, Alt + drag to pan)"
-                  Click="OnQuickAction" Tag="zoom-reset" Visibility="Collapsed">
+          <Button x:Name="ZoomBadge" Style="{StaticResource GhostButton}" Padding="8,4" MinHeight="28"
+                  Click="OnQuickAction" Tag="zoom-reset" Visibility="Collapsed" AutomationProperties.Name="Reset zoom">
             <TextBlock x:Name="ZoomText" Text="100%" FontFamily="{StaticResource Mono}" FontSize="12" Foreground="{StaticResource Signal}" />
           </Button>
-          <Button x:Name="SidebarToggle" Style="{StaticResource IconButton}" Content="{StaticResource IconSidebar}" ToolTip="Show or hide the side panel" Click="OnToggleSidebar" />
-          <Button x:Name="FullscreenButton" Style="{StaticResource IconButton}" Content="{StaticResource IconFullscreen}" ToolTip="Fullscreen (F11)" Click="OnToggleFullscreen" />
+          <Button x:Name="SidebarToggle" Style="{StaticResource IconButton}" Content="{StaticResource IconSidebar}" Click="OnToggleSidebar"
+                  AutomationProperties.Name="Show or hide the side panel" />
+          <Button x:Name="FullscreenButton" Style="{StaticResource IconButton}" Content="{StaticResource IconFullscreen}" Click="OnToggleFullscreen"
+                  AutomationProperties.Name="Fullscreen" />
         </StackPanel>
       </Grid>
     </Border>
@@ -69,27 +79,30 @@
     <Border x:Name="NoticeBar" Grid.Row="1" Background="{StaticResource SignalWash}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="14,8" Visibility="Collapsed">
       <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" MinWidth="180" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <StackPanel VerticalAlignment="Center">
           <TextBlock x:Name="NoticeTitle" FontWeight="SemiBold" Text="How does this phone unlock?" />
           <TextBlock x:Name="NoticeText" Style="{StaticResource MutedText}" Text="Pattern phones get a nine-dot guide when the lock screen shows black. Nothing about the pattern itself is stored." Margin="0,2,0,0" />
         </StackPanel>
-        <StackPanel x:Name="NoticeActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-          <Button Content="Pattern" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="12,4" Margin="0,0,6,0" Click="OnLockAnswer" Tag="pattern" />
-          <Button Content="PIN, password or other" MinHeight="30" Padding="12,4" Margin="0,0,6,0" Click="OnLockAnswer" Tag="other" />
-          <Button Content="No lock" MinHeight="30" Padding="12,4" Margin="0,0,6,0" Click="OnLockAnswer" Tag="none" />
-          <Button Content="Later" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Click="OnLockAnswer" Tag="later" />
-        </StackPanel>
+        <!-- A wrap panel so a narrow window stacks the answers instead of squeezing the question out. -->
+        <WrapPanel x:Name="NoticeActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" MaxWidth="460">
+          <Button x:Name="NoticePattern" Content="Pattern" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnLockAnswer" Tag="pattern" />
+          <Button x:Name="NoticeOther" Content="PIN, password or other" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnLockAnswer" Tag="other" />
+          <Button x:Name="NoticeNone" Content="No lock" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnLockAnswer" Tag="none" />
+          <Button x:Name="NoticeLater" Content="Later" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Margin="0,2,0,2" Click="OnLockAnswer" Tag="later" />
+          <Button x:Name="NoticeDismiss" Content="Got it" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="14,4" Margin="0,2,0,2" Click="OnDismissTip" Visibility="Collapsed" />
+        </WrapPanel>
       </Grid>
     </Border>
 
     <!-- Body -->
     <Grid x:Name="Body" Grid.Row="2">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition x:Name="SidebarColumn" Width="330" />
+        <ColumnDefinition Width="*" MinWidth="240" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition x:Name="SidebarColumn" Width="330" MinWidth="280" MaxWidth="560" />
       </Grid.ColumnDefinitions>
 
       <Grid x:Name="MirrorArea" Background="{StaticResource Ink}">
@@ -104,19 +117,24 @@
             <TextBlock x:Name="EmptyText" Text="Plug in an Android phone with USB debugging turned on. It appears here automatically." Style="{StaticResource MutedText}" FontSize="13" TextAlignment="Center" Margin="0,8,0,18" />
             <StackPanel x:Name="EmptyActions" Orientation="Horizontal" HorizontalAlignment="Center">
               <Button x:Name="EmptyPrimary" Content="Start mirror" Style="{StaticResource PrimaryButton}" Click="OnEmptyPrimary" Visibility="Collapsed" />
-              <Button x:Name="EmptyRepair" Content="Repair USB driver" Style="{StaticResource PrimaryButton}" Click="OnRepairUsb" Visibility="Collapsed" ToolTip="Registers the phone's USB debugging interface for ADB. Windows asks for administrator approval once." />
+              <Button x:Name="EmptyRepair" Content="Repair USB driver" Style="{StaticResource PrimaryButton}" Click="OnRepairUsb" Visibility="Collapsed" Margin="6,0,0,0" ToolTip="Registers the phone's USB debugging interface for ADB. Windows asks for administrator approval once." />
             </StackPanel>
           </StackPanel>
         </Grid>
       </Grid>
 
-      <Border x:Name="Sidebar" Grid.Column="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1,0,0,0">
+      <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                    Background="Transparent" Cursor="SizeWE" ShowsPreview="False" DragCompleted="OnSidebarResized"
+                    MouseDoubleClick="OnSidebarSplitterDoubleClick" AutomationProperties.Name="Resize the side panel"
+                    ToolTip="Drag to resize · double-click to reset" />
+
+      <Border x:Name="Sidebar" Grid.Column="2" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1,0,0,0">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
-          <UniformGrid Rows="1" Margin="8,8,8,4">
+          <UniformGrid x:Name="SidebarTabs" Rows="1" Margin="8,8,8,4">
             <RadioButton x:Name="TabControls" Style="{StaticResource SidebarTab}" Content="Controls" Tag="{StaticResource IconSliders}" IsChecked="True" Checked="OnTabChecked" />
             <RadioButton x:Name="TabPhone" Style="{StaticResource SidebarTab}" Content="Phone" Tag="{StaticResource IconPhone}" Checked="OnTabChecked" />
             <RadioButton x:Name="TabSettings" Style="{StaticResource SidebarTab}" Content="Settings" Tag="{StaticResource IconSettings}" Checked="OnTabChecked" />
@@ -133,7 +151,7 @@
         </Grid>
       </Border>
 
-      <views:OnboardingView x:Name="Onboarding" Grid.ColumnSpan="2" Visibility="Collapsed" />
+      <views:OnboardingView x:Name="Onboarding" Grid.ColumnSpan="3" Visibility="Collapsed" />
     </Grid>
 
     <!-- Status bar -->
@@ -143,9 +161,30 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <TextBlock x:Name="StatusText" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="Starting…" />
+        <TextBlock x:Name="StatusText" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="Starting…"
+                   AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="Status" />
         <TextBlock x:Name="HintText" Grid.Column="1" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center" Text="Alt + wheel zoom · Alt + drag pan · F11 fullscreen" />
       </Grid>
     </Border>
+
+    <!-- Asking before something risky, in the window rather than in a system dialog -->
+    <Grid x:Name="ConfirmSheet" Grid.RowSpan="4" Background="#B4050705" Visibility="Collapsed">
+      <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="14"
+              Padding="20,18" MaxWidth="440" VerticalAlignment="Center" HorizontalAlignment="Center"
+              AutomationProperties.LiveSetting="Assertive">
+        <StackPanel>
+          <TextBlock x:Name="ConfirmRisk" Style="{StaticResource Eyebrow}" Foreground="{StaticResource Live}" Margin="0,0,0,6" Visibility="Collapsed" />
+          <TextBlock x:Name="ConfirmTitle" Style="{StaticResource SectionTitle}" />
+          <TextBlock x:Name="ConfirmBody" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button x:Name="ConfirmCancel" Content="Cancel" MinHeight="32" Padding="14,5" Margin="0,0,8,0" Click="OnConfirmCancel" />
+            <Button x:Name="ConfirmAccept" Content="Continue" Style="{StaticResource DangerButton}" MinHeight="32" Padding="16,5" Click="OnConfirmAccept" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- The tour covers everything, so it comes last -->
+    <views:TourOverlay x:Name="TourLayer" Grid.RowSpan="4" />
   </Grid>
 </Window>

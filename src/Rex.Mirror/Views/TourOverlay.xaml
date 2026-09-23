@@ -1,0 +1,29 @@
+<UserControl x:Class="Rex.Mirror.Views.TourOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="True" Visibility="Collapsed">
+  <Grid>
+    <!-- The scrim is one shape: the whole window with the spotlight cut out of it. -->
+    <Path x:Name="Scrim" Fill="#C8050705" />
+    <Canvas x:Name="Layer">
+      <Rectangle x:Name="Ring" Stroke="{StaticResource Signal}" StrokeThickness="2" RadiusX="10" RadiusY="10" IsHitTestVisible="False" />
+      <Border x:Name="Callout" Width="330" Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}"
+              BorderThickness="1" CornerRadius="14" Padding="16,14"
+              AutomationProperties.LiveSetting="Assertive">
+        <StackPanel>
+          <TextBlock x:Name="StepCounter" Style="{StaticResource Eyebrow}" Margin="0,0,0,4" />
+          <TextBlock x:Name="StepTitle" Style="{StaticResource SectionTitle}" />
+          <TextBlock x:Name="StepBody" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+          <Grid Margin="0,14,0,0">
+            <Button x:Name="SkipButton" Content="Skip tour" Style="{StaticResource GhostButton}" MinHeight="30"
+                    Padding="8,4" HorizontalAlignment="Left" Click="OnSkip" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button x:Name="BackButton" Content="Back" MinHeight="30" Padding="12,4" Margin="0,0,6,0" Click="OnBack" />
+              <Button x:Name="NextButton" Content="Next" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="16,4" Click="OnNext" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Canvas>
+  </Grid>
+</UserControl>

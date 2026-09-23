@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Browser regression tests for the Android Headless Mirror GitHub Pages site.",
   "scripts": {
-    "test:pages": "playwright test tests/pages.spec.js"
+    "test:pages": "playwright test tests/pages.spec.js",
+    "build:og": "node scripts/build-og.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

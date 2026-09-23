@@ -166,7 +166,10 @@ internal static partial class NativeMethods
     public const int VK_UP = 0x26;
     public const int VK_RIGHT = 0x27;
     public const int VK_DOWN = 0x28;
+    public const int VK_F1 = 0x70;
     public const int VK_F11 = 0x7A;
+    public const int VK_OEM_PLUS = 0xBB;
+    public const int VK_OEM_MINUS = 0xBD;
     public const int VK_LBUTTON = 0x01;
 
     public const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
@@ -233,9 +236,6 @@ internal static partial class NativeMethods
 
     [LibraryImport("user32.dll")]
     public static partial IntPtr SetFocus(IntPtr hWnd);
-
-    [LibraryImport("user32.dll")]
-    public static partial IntPtr GetFocus();
 
     [LibraryImport("user32.dll")]
     public static partial IntPtr GetForegroundWindow();
@@ -307,10 +307,6 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool InjectTouchInput(uint count, [In] POINTER_TOUCH_INFO[] contacts);
-
-    [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool GetPointerType(uint pointerId, out uint pointerType);
 
     [LibraryImport("user32.dll")]
     public static partial uint GetDpiForWindow(IntPtr hWnd);

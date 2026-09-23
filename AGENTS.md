@@ -109,6 +109,20 @@ docs/                   GitHub Pages site; its download button points at the lat
   Its dragging is driven from the window's own messages: the HUD never takes activation, and WPF
   does not route input through the element tree of a window that is never active. Buttons are
   excluded by where they were laid out, not by hit testing, for the same reason.
+- Every control whose content is not already the words a person would say carries an
+  `AutomationProperties.Name`: an icon button without one is announced as its own path data, and a
+  slider without one as a bare number. The window is expected to be drivable with Narrator alone.
+- Shortcuts come from `Shortcuts` in Rex.Core, never written out a second time. The Info panel, the
+  tooltips, the pattern guide's own label and the website's table all read it, and a repository test
+  fails if the site and the registry disagree.
+- The first-run tour lives in `Views/Tour.cs` (the steps), `Views/TourOverlay` (the spotlight) and
+  `TourLayout` in Rex.Core (where the callout goes). One-time hints come from `Tips` and appear in
+  the notice bar, never in a second mechanism of their own. Tests opt into the tour with
+  `new TestPackage(showTour: true)`; it is off by default because it covers the window on purpose.
+- Asking before something risky is `MainWindow.ConfirmAsync`, in the window and in the app's voice.
+  A system message box is only for failures that happen before a window exists.
+- High Contrast swaps `HighContrast.xaml` over the palette, and the soft background stands down.
+  Any new palette key needs an answer in both files or a repository test fails.
 - Two fingers over one of the app's own lists scroll that list. The mirror is a child window that
   otherwise takes the whole gesture, so anything scrollable the pointer can rest on has to be
   offered to `TouchpadBridge.PanelAt` or it will be scrolled on the phone instead.

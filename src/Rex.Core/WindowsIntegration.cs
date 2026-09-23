@@ -21,12 +21,6 @@ public static class StartupRegistration
         return key?.GetValue(ValueName) is string value && value.Length > 0;
     }
 
-    public static string? CurrentCommand()
-    {
-        using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: false);
-        return key?.GetValue(ValueName) as string;
-    }
-
     public static void Enable(string executablePath)
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true)

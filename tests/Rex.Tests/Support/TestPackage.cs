@@ -9,7 +9,11 @@ namespace Rex.Tests.Support;
 /// </summary>
 public sealed class TestPackage : IDisposable
 {
-    public TestPackage(bool withFakeTools = false, Action<RexConfig>? configure = null)
+    /// <param name="showTour">
+    /// Whether the first-run tour should appear. It is off by default because it covers the window
+    /// on purpose: a test that is not about the tour would otherwise be driving a scrim.
+    /// </param>
+    public TestPackage(bool withFakeTools = false, Action<RexConfig>? configure = null, bool showTour = false)
     {
         Root = Path.Combine(Path.GetTempPath(), "rex-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Root);
@@ -21,6 +25,11 @@ public sealed class TestPackage : IDisposable
         File.Delete(Path.Combine(Root, "config.json.rex-backup"));
 
         Paths = AppPaths.FromRoot(Root);
+        if (!showTour)
+        {
+            new StateStore(Paths.State).SetUi(new UiState { TourSeenVersion = Rex.Mirror.Views.Tour.Version });
+        }
+
         if (withFakeTools)
         {
             InstallFakeTools();

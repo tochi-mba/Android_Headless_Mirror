@@ -11,7 +11,12 @@
 <meta property="og:description" content="Your Android phone, in one window on your Windows PC. Automatic over USB, real touchpad gestures, phone controls and settings.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Android Headless Mirror: your phone, one window.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
 <link rel="canonical" href="https://tochi-mba.github.io/Android_Headless_Mirror/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="site.webmanifest">
@@ -22,6 +27,23 @@
 <script>document.documentElement.classList.replace("no-js","js");</script>
 <noscript><style>@media(max-width:760px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
 <title>Android Headless Mirror — your phone in one window — REX Technologies</title>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Android Headless Mirror",
+"applicationCategory":"UtilitiesApplication","operatingSystem":"Windows 10, Windows 11",
+"description":"Your Android phone in one window on your Windows PC, over USB, with the phone's own screen off.",
+"url":"https://tochi-mba.github.io/Android_Headless_Mirror/",
+"downloadUrl":"https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest",
+"author":{"@type":"Organization","name":"REX Technologies"},
+"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Does it work with phones other than the Galaxy S21 Ultra?","acceptedAnswer":{"@type":"Answer","text":"REX is designed for Android devices supported by ADB and scrcpy. Current hardware testing is primarily on the Galaxy S21 Ultra, so other phones and OEM builds may expose different encoder, settings or lock-screen behaviour."}},
+{"@type":"Question","name":"Why is the lock screen black on the mirror?","acceptedAnswer":{"@type":"Answer","text":"Some manufacturers mark the secure lock screen as protected content, which Android will not stream. For pattern locks the app draws a guide so you can unlock blind afterwards. The pattern itself is never stored or replayed."}},
+{"@type":"Question","name":"Can I still touch the phone while it is mirrored?","acceptedAnswer":{"@type":"Answer","text":"Yes. The screen is off, not locked. Tap the power button or press Wake in the app to turn it back on."}},
+{"@type":"Question","name":"Is anything sent anywhere?","acceptedAnswer":{"@type":"Answer","text":"REX has no account or telemetry and does not upload your mirrored screen, control data, lock information or phone content. Setup and updates may connect to GitHub to download REX and the official scrcpy distribution."}},
+{"@type":"Question","name":"Does it need administrator rights or root?","acceptedAnswer":{"@type":"Answer","text":"No. Everything runs as your user with standard ADB permissions. The app never roots, flashes or modifies the phone."}}]}
+</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -61,8 +83,8 @@
       <div class="hero-meta" aria-label="Project highlights"><span>No account</span><span>No telemetry</span><span>No administrator rights</span></div>
     </div>
 
-    <div class="hero-stage reveal" aria-label="Preview of the Android Headless Mirror window">
-      <div class="app-window">
+    <div class="hero-stage reveal" role="img" aria-label="The app window: the phone mirrored on the left, with Controls, Phone, Settings and Info in a side panel on the right.">
+      <div class="app-window" aria-hidden="true">
         <div class="app-topbar">
           <span class="app-title">Android Headless Mirror</span>
           <span class="app-chip"><i aria-hidden="true"></i>Galaxy S21 Ultra · USB · 74%</span>
@@ -151,11 +173,17 @@
       </article>
     </div>
     <div class="shortcut-table reveal">
-      <div><kbd>F11</kbd><span>True fullscreen · Esc leaves · top edge reveals controls</span></div>
-      <div><kbd>Ctrl + Alt + L / U / A</kbd><span>Force landscape / portrait / restore auto rotation</span></div>
-      <div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>P</kbd><span>Show or hide the pattern guide</span></div>
-      <div><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>C</kbd><span>Calibrate the guide with the arrow keys</span></div>
-      <div><kbd>Alt</kbd><span>+ wheel, pinch or drag: PC‑side zoom and pan</span></div>
+      <div><kbd>F11</kbd><kbd>Esc</kbd><span>Fill the display, and leave it</span></div>
+      <div><kbd>F1</kbd><span>Show the tour again</span></div>
+      <div><kbd>Ctrl+Alt+B</kbd><span>Show or hide the side panel</span></div>
+      <div><kbd>Ctrl+Alt+1</kbd><kbd>Ctrl+Alt+2</kbd><kbd>Ctrl+Alt+3</kbd><kbd>Ctrl+Alt+4</kbd><span>Controls, Phone, Settings, Info</span></div>
+      <div><kbd>Ctrl+Alt+H</kbd><kbd>Ctrl+Alt+S</kbd><span>Home, and save a screenshot</span></div>
+      <div><kbd>Ctrl+Alt+Plus</kbd><kbd>Ctrl+Alt+Minus</kbd><kbd>Ctrl+Alt+0</kbd><span>Zoom the PC view in, out, and back to fit</span></div>
+      <div><kbd>Ctrl+Alt+U</kbd><kbd>Ctrl+Alt+L</kbd><kbd>Ctrl+Alt+A</kbd><span>Portrait, landscape, or let the phone decide</span></div>
+      <div><kbd>Ctrl+Alt+Left</kbd><kbd>Ctrl+Alt+Right</kbd><span>Turn the PC view</span></div>
+      <div><kbd>Ctrl+Alt+P</kbd><kbd>Ctrl+Alt+C</kbd><span>Show the pattern guide, and line it up</span></div>
+      <div><kbd>Alt + wheel</kbd><kbd>Alt + pinch</kbd><kbd>Alt + drag</kbd><span>Zoom and pan the PC view</span></div>
+      <div><kbd>Two fingers</kbd><span>Pinch, rotate and pan on the phone</span></div>
     </div>
   </section>
 
@@ -176,6 +204,7 @@
       <summary>Building from source instead</summary>
       <p>With the .NET 10 SDK installed, clone the repository and run <code>REX.bat</code>. It builds the app into <code>tools\rex</code> on first use and opens it; <code>REX.bat --build</code> rebuilds after a change.</p>
       <div class="command-row"><code id="clone-command">git clone https://github.com/tochi-mba/Android_Headless_Mirror.git</code><button class="copy-button" type="button" data-copy="git clone https://github.com/tochi-mba/Android_Headless_Mirror.git">Copy</button></div>
+      <p class="sr-only" id="copy-status" role="status" aria-live="polite"></p>
     </details>
   </section>
 
@@ -216,6 +245,10 @@ rex agent capabilities            the machine-readable contract</code></pre>
   <div class="container footer-wrap">
     <span>© <span id="year">2026</span> REX Technologies · Android Headless Mirror</span>
     <span>Built on <a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a> and Android Debug Bridge.</span>
+    <span class="footer-links">
+      <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases" target="_blank" rel="noopener noreferrer">What's new <span aria-hidden="true">↗</span></a>
+      <a href="#top">Back to top <span aria-hidden="true">↑</span></a>
+    </span>
   </div>
 </footer>
 <script src="app.js" defer></script>

@@ -27,7 +27,6 @@ public sealed class MirrorHost : HwndHost
 
     public bool HasChild => _child != IntPtr.Zero && NativeMethods.IsWindow(_child);
     public IntPtr ViewportHandle => _viewport;
-    public IntPtr ChildHandle => _child;
     public double Zoom => _zoom;
     public ZoomView View => _view;
     public double MaxZoom { get; set; } = 4.0;
@@ -174,7 +173,6 @@ public sealed class MirrorHost : HwndHost
         Apply();
     }
 
-    public void ZoomBy(double factor, double anchorX, double anchorY) => SetZoom(_zoom * factor, anchorX, anchorY);
 
     public void ZoomStep(int direction, double? anchorX = null, double? anchorY = null, double step = 0.1)
     {

@@ -2,6 +2,19 @@ namespace Rex.Core;
 
 public static class NavigatorMath
 {
+    /// <summary>
+    /// Whether a drag of the view should still be following the pointer.
+    ///
+    /// The view moves only while the left button is genuinely held, and both the event and the
+    /// mouse itself have to agree about that. The release that ends a drag can happen somewhere
+    /// the window never hears about - the touchpad bridge consumes the pointer messages it
+    /// handles, and a button let go over the phone or another window may never come back as a
+    /// mouse event - which used to leave the view following the pointer around the screen with
+    /// nothing short of resetting the zoom to get out of it.
+    /// </summary>
+    public static bool KeepsDragging(bool dragging, bool eventSaysHeld, bool buttonIsDown) =>
+        dragging && eventSaysHeld && buttonIsDown;
+
     public static (double Scale, double X, double Y) Resize(RectD view, int corner, double dx, double dy,
         double minScale = 0.1, double maxScale = 10)
     {

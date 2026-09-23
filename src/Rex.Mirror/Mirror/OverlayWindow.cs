@@ -654,6 +654,12 @@ public sealed class OverlayWindow : Window
 
     private void OnNavigatorMove(object sender, MouseEventArgs e)
     {
+        if (_navigatorDragging && !LeftButtonHeld(e))
+        {
+            EndNavigatorDrag();
+            return;
+        }
+
         if (_navigatorDragging)
         {
             var point = e.GetPosition(_navigatorCanvas);
@@ -673,10 +679,49 @@ public sealed class OverlayWindow : Window
     {
         if (_navigatorDragging)
         {
-            _navigatorDragging = false;
-            _navigator.ReleaseMouseCapture();
+            EndNavigatorDrag();
             e.Handled = true;
         }
+    }
+
+    /// <summary>True while the navigator is being dragged, for the window to keep an eye on.</summary>
+    public bool NavigatorDragging => _navigatorDragging;
+
+    /// <summary>Where the navigator is on screen, in physical pixels.</summary>
+    public RectD NavigatorScreenRect => _navigatorScreenRect.IsEmpty
+        ? default
+        : new RectD(_navigatorScreenRect.X + _screenPixels.Left, _navigatorScreenRect.Y + _screenPixels.Top, _navigatorScreenRect.Width, _navigatorScreenRect.Height);
+
+    /// <summary>
+    /// Ends any drag whose button is no longer down, without waiting to be told.
+    ///
+    /// Nothing here needs a message to arrive, which is the point: the navigator used to go on
+    /// dragging the view around after the finger had lifted, and only resetting the zoom got out
+    /// of it. This runs on every frame, so the worst case is one frame of catching up.
+    /// </summary>
+    public void ReleaseStuckDrags()
+    {
+        if (NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON))
+        {
+            return;
+        }
+
+        if (_navigatorDragging)
+        {
+            EndNavigatorDrag();
+        }
+
+        if (_panning)
+        {
+            EndPan();
+        }
+    }
+
+    private void EndNavigatorDrag()
+    {
+        _navigatorDragging = false;
+        _resizeCorner = -1;
+        _navigator.ReleaseMouseCapture();
     }
 
     private void RaiseNavigator(Point point)
@@ -709,6 +754,12 @@ public sealed class OverlayWindow : Window
             return;
         }
 
+        if (!LeftButtonHeld(e))
+        {
+            EndPan();
+            return;
+        }
+
         var current = e.GetPosition(_canvas);
         PanDelta?.Invoke((current.X - _panLast.X) * _dpiScale, (current.Y - _panLast.Y) * _dpiScale);
         _panLast = current;
@@ -719,12 +770,28 @@ public sealed class OverlayWindow : Window
     {
         if (_panning)
         {
-            _panning = false;
-            _canvas.ReleaseMouseCapture();
-            _canvas.Cursor = Cursors.Arrow;
+            EndPan();
             e.Handled = true;
         }
     }
+
+    private void EndPan()
+    {
+        _panning = false;
+        _canvas.ReleaseMouseCapture();
+        _canvas.Cursor = Cursors.Arrow;
+    }
+
+    /// <summary>
+    /// Whether the left button is genuinely down.
+    ///
+    /// Both what the event says and what the mouse says have to agree, because the release that
+    /// ends a drag can happen where this window never hears it: the touchpad bridge consumes the
+    /// pointer messages it handles, and a button let go over the phone or another window may never
+    /// come back as a mouse event here.
+    /// </summary>
+    private static bool LeftButtonHeld(MouseEventArgs e) =>
+        NavigatorMath.KeepsDragging(true, e.LeftButton == MouseButtonState.Pressed, NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON));
 
     // ----- Win32 plumbing -----
 

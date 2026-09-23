@@ -30,8 +30,12 @@ until you delete that folder.
 
 ## What you get
 
-- **One window.** The mirror fills the left; a side panel holds Controls, Phone, Settings and Info.
-  F11 is true fullscreen with a small HUD at the top edge.
+- **One window.** The mirror fills the left; a side panel holds Controls, Phone, Settings and Info,
+  and can be dragged wider. F11 is true fullscreen, where the controls become a small bar you can
+  drag anywhere and reach for again by moving the pointer back to it.
+- **It shows you around.** The first run walks through the window a step at a time, and one-time
+  hints explain zooming, fullscreen and risky settings the first time you meet them. F1 brings the
+  tour back, and Info offers the hints again.
 - **Automatic.** The app waits in the tray, opens when an authorised phone connects, restarts the
   mirror if it crashes, and stays closed after you stop it until the phone reconnects.
 - **Real gestures.** Two fingers on a Windows Precision Touchpad become two fingers on the phone:
@@ -65,9 +69,14 @@ until you delete that folder.
 | Pan while zoomed               | Alt + drag, Alt + two-finger slide, or drag the navigator      |
 | Pinch inside a phone app       | Two-finger pinch on the touchpad (no modifier)                 |
 | Turn the phone screen off/on   | The moon icon in the top bar / **Wake** in Controls            |
-| Go fullscreen                  | F11 (Esc leaves; the edge you pin the HUD to reveals it)       |
+| Go fullscreen                  | F11 (Esc leaves; reach for wherever you left the controls)     |
 | Force landscape / portrait     | Ctrl+Alt+L / Ctrl+Alt+U; Ctrl+Alt+A restores auto rotation     |
 | Show or hide the pattern guide | Ctrl+Alt+P; Ctrl+Alt+C calibrates it with the arrow keys       |
+| Jump between the side tabs     | Ctrl+Alt+1 to Ctrl+Alt+4; Ctrl+Alt+B hides the panel           |
+| Take a screenshot              | Ctrl+Alt+S, or the camera in the top bar                       |
+| See the window explained again | F1, or Info → **Take the tour**                                 |
+| Find a setting                 | The search box at the top of Settings                          |
+| Choose between two phones      | The chip in the top bar lists them once more than one is in    |
 | Change how the mirror looks     | Settings → Display; every change previews instantly            |
 | Stop the mirror                | **Stop mirror** in Controls; the app keeps waiting in the tray |
 | Quit completely                | Tray icon → **Quit**                                           |

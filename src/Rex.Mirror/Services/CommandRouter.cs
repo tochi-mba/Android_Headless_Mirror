@@ -111,15 +111,35 @@ public static class CommandRouter
                 ["height"] = Math.Round(hud.HudBarRect.Height),
             } : null,
             ["onboarding"] = host.Window?.OnboardingVisible ?? false,
+            // What the app is teaching right now, so a test can drive the tour and the hints.
+            ["tour"] = host.Window is { } teaching ? new JsonObject
+            {
+                ["visible"] = teaching.TourVisible,
+                ["step"] = teaching.TourStep,
+                ["steps"] = teaching.TourStepCount,
+            } : null,
+            ["tip"] = host.Window?.TipShowing ?? string.Empty,
             ["sidebarVisible"] = host.Window?.SidebarVisible ?? false,
+            ["sidebarWidth"] = host.Window?.SidebarWidthDip ?? 0,
             ["ambientVisible"] = host.Window?.AmbientVisible ?? false,
             ["navigatorVisible"] = host.Window?.NavigatorVisible ?? false,
+            // Where the navigator is and whether it is being dragged, so a test can grab it.
+            ["navigator"] = host.Window is { } nav ? new JsonObject
+            {
+                ["left"] = Math.Round(nav.NavigatorRect.X),
+                ["top"] = Math.Round(nav.NavigatorRect.Y),
+                ["width"] = Math.Round(nav.NavigatorRect.Width),
+                ["height"] = Math.Round(nav.NavigatorRect.Height),
+                ["dragging"] = nav.NavigatorDragging,
+            } : null,
             ["lockQuestion"] = session.PendingLockQuestionSerial is not null,
             ["zoom"] = host.Window is { } w ? Math.Round(w.Host.Zoom, 3) : 1.0,
             // Where the picture sits inside the mirror area, so a caller can tell whether it fills
             // the space it is given: after the phone turns, a landscape picture should.
             ["surface"] = host.Window is { } mirror ? new JsonObject
             {
+                ["x"] = Math.Round(mirror.Host.SurfaceRect.X),
+                ["y"] = Math.Round(mirror.Host.SurfaceRect.Y),
                 ["width"] = Math.Round(mirror.Host.SurfaceRect.Width),
                 ["height"] = Math.Round(mirror.Host.SurfaceRect.Height),
                 ["viewportWidth"] = mirror.Host.ViewportPixels.Width,

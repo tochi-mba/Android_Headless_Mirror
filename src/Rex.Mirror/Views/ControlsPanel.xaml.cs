@@ -23,6 +23,11 @@ public partial class ControlsPanel : UserControl
     {
         _window = window;
         _host = host;
+        RotationPortrait.ToolTip = Shortcuts.Tip("Lock the phone to portrait", "rotation-portrait");
+        RotationLandscape.ToolTip = Shortcuts.Tip("Lock the phone to landscape", "rotation-landscape");
+        RotationAuto.ToolTip = Shortcuts.Tip("Let the phone rotate by itself", "rotation-auto");
+        PatternToggle.ToolTip = Shortcuts.Tip("Show or hide the nine-dot guide", "pattern-guide");
+        PatternCalibrate.ToolTip = Shortcuts.Tip("Line the guide up with the arrow keys", "pattern-calibrate");
         NavigationTiles.ItemsSource = Tiles(["home", "back", "recents", "power", "wake", "sleep", "volume-up", "volume-down", "mute", "notifications", "quick-settings", "collapse"]);
         ViewTiles.ItemsSource = Tiles(["rotate-device", "rotate-left", "rotate-right", "pause", "resume", "reset-capture", "screenshot", "fullscreen", "fps"]);
         Refresh();
@@ -72,6 +77,9 @@ public partial class ControlsPanel : UserControl
         var ready = session.Devices.Any(d => d.IsReady);
         NavigationTiles.IsEnabled = ready;
         ViewTiles.IsEnabled = ready;
+        RotationPortrait.IsEnabled = ready;
+        RotationLandscape.IsEnabled = ready;
+        RotationAuto.IsEnabled = ready;
 
         ZoomLabel.Text = $"{_window.Host.Zoom * 100:0}%";
         ZoomReset.IsEnabled = _window.Host.View.IsZoomed;
@@ -84,8 +92,58 @@ public partial class ControlsPanel : UserControl
             PatternCalibrate.Content = guide.IsCalibrating ? "Save calibration" : "Calibrate";
             PatternStatus.Text = guide.IsVisible
                 ? "Guide is showing (source: " + guide.Source + "). Drag the pattern as usual; nothing is recorded."
-                : "Appears automatically when the lock screen is black. Ctrl+Alt+P toggles it.";
+                : $"Appears automatically when the lock screen is black. {Shortcuts.Gesture("pattern-guide")} toggles it.";
         }
+    }
+
+    private async void OnRotation(object sender, RoutedEventArgs e)
+    {
+        if (_window is null || sender is not System.Windows.Controls.Primitives.ToggleButton { Tag: string id })
+        {
+            return;
+        }
+
+        await _window.RunActionAsync(id);
+        await RefreshRotationAsync();
+        Refresh();
+    }
+
+    /// <summary>
+    /// Shows which way the phone is actually locked, by asking the phone rather than remembering
+    /// what was last pressed: rotation can be changed on the handset too, and a choice that lies
+    /// about the current state is worse than no choice at all.
+    /// </summary>
+    public async Task RefreshRotationAsync()
+    {
+        var serial = _host?.Session.ActiveDevice?.Serial;
+        var adb = _host?.Session.Adb;
+        if (adb is null || string.IsNullOrEmpty(serial))
+        {
+            SetRotation(null);
+            return;
+        }
+
+        var auto = await adb.GetSettingAsync(serial, "system", "accelerometer_rotation").ConfigureAwait(true);
+        if (auto.Ok && auto.Text.Trim() == "1")
+        {
+            SetRotation(RotationAuto);
+            return;
+        }
+
+        var user = await adb.GetSettingAsync(serial, "system", "user_rotation").ConfigureAwait(true);
+        SetRotation(!user.Ok ? null : user.Text.Trim() switch
+        {
+            "0" or "2" => RotationPortrait,
+            "1" or "3" => RotationLandscape,
+            _ => null,
+        });
+    }
+
+    private void SetRotation(System.Windows.Controls.Primitives.ToggleButton? chosen)
+    {
+        RotationPortrait.IsChecked = ReferenceEquals(chosen, RotationPortrait);
+        RotationLandscape.IsChecked = ReferenceEquals(chosen, RotationLandscape);
+        RotationAuto.IsChecked = ReferenceEquals(chosen, RotationAuto);
     }
 
     private async void OnTile(object sender, RoutedEventArgs e)
