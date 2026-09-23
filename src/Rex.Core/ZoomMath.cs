@@ -80,6 +80,16 @@ public static class ZoomMath
         return ClampView(viewportWidth, viewportHeight, new ZoomView(zoom, offsetX, offsetY, surfaceWidth, surfaceHeight));
     }
 
+    /// <summary>
+    /// A view centred on a freshly fitted picture. Used when the video's shape changes: carrying
+    /// the old view forward would keep a landscape picture in the portrait rectangle it replaced.
+    /// </summary>
+    public static ZoomView Refit(double viewportWidth, double viewportHeight, double aspect, double zoom)
+    {
+        var fit = FitRect(viewportWidth, viewportHeight, aspect, 1.0);
+        return Compute(viewportWidth, viewportHeight, fit, zoom, viewportWidth / 2, viewportHeight / 2, null);
+    }
+
     public static ZoomView Pan(double viewportWidth, double viewportHeight, ZoomView view, double deltaX, double deltaY) =>
         ClampView(viewportWidth, viewportHeight, view with { OffsetX = view.OffsetX + deltaX, OffsetY = view.OffsetY + deltaY });
 

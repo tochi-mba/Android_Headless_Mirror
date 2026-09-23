@@ -82,9 +82,13 @@ public partial class AdvancedSettingsView : UserControl
         }
     }
 
-    private bool Confirm(string ns, string key, string risk, bool always = false, bool deleting = false)
+    /// <summary>
+    /// Asks before writing a raw key, in the window rather than in a system dialog, with the risk
+    /// shown as a label and the button naming what happens.
+    /// </summary>
+    private async Task<bool> ConfirmAsync(string ns, string key, string risk, bool always = false, bool deleting = false)
     {
-        if (_host is null)
+        if (_host is null || _window is null)
         {
             return true;
         }
@@ -94,16 +98,14 @@ public partial class AdvancedSettingsView : UserControl
             return true;
         }
 
-        var action = deleting ? "Delete" : "Change";
-        var consequence = deleting
-            ? "\n\nDeleting a raw setting may restore an Android or OEM default and can change system behaviour."
-            : string.Empty;
-        var result = MessageBox.Show(
-            $"{action} {ns}/{key}?\n\nRisk: {risk}. Android or the phone maker may refuse or misbehave.{consequence}",
-            "Android Headless Mirror",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-        return result == MessageBoxResult.Yes;
+        _window.ShowTipOnce(Tips.FirstRiskyWrite);
+        return await _window.ConfirmAsync(
+            deleting ? $"Delete {ns}/{key}?" : $"Change {ns}/{key}?",
+            deleting
+                ? "Android or the phone maker may put its own default back, which can change how the phone behaves."
+                : "This goes straight into Android's settings provider. Android or the phone maker may refuse it or behave differently.",
+            deleting ? "Delete the key" : "Write the value",
+            risk);
     }
 
     private async void OnWrite(object sender, RoutedEventArgs e)
@@ -123,7 +125,7 @@ public partial class AdvancedSettingsView : UserControl
             return;
         }
 
-        if (Target() is not { } target || !Confirm(ns, key, risk))
+        if (Target() is not { } target || !await ConfirmAsync(ns, key, risk))
         {
             return;
         }
@@ -149,7 +151,7 @@ public partial class AdvancedSettingsView : UserControl
         }
 
         if (Target() is not { } target ||
-            !Confirm(ns, key, risk == AndroidSettings.RiskNormal ? AndroidSettings.RiskAdvanced : risk, always: true, deleting: true))
+            !await ConfirmAsync(ns, key, risk == AndroidSettings.RiskNormal ? AndroidSettings.RiskAdvanced : risk, always: true, deleting: true))
         {
             return;
         }

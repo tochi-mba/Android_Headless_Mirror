@@ -12,12 +12,16 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <TextBox x:Name="SettingsSearch" TextChanged="OnSearch" ToolTip="Filter by name, description or Android key" />
+        <Grid>
+          <TextBox x:Name="SettingsSearch" TextChanged="OnSearch" AutomationProperties.Name="Search phone settings"
+                   ToolTip="Filter by name, description or Android key" />
+          <TextBlock x:Name="SearchHint" Style="{StaticResource MutedText}" Text="Search phone settings"
+                     Margin="10,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False" />
+        </Grid>
         <Button x:Name="ReloadButton" Grid.Column="1" Content="Reload" Margin="6,0,0,0" Click="OnReload"
                 ToolTip="Read every setting from the phone again" />
       </Grid>
-      <TextBlock x:Name="SearchHint" Style="{StaticResource MutedText}" FontSize="11" Margin="2,4,0,0"
-                 Text="Search phone settings" IsHitTestVisible="False" />
+      <TextBlock x:Name="SearchCount" Style="{StaticResource MutedText}" FontSize="11" Margin="2,4,0,0" />
 
       <TextBlock x:Name="LoadingText" Style="{StaticResource MutedText}" Margin="0,12,0,0" Text="Reading settings from the phone…" />
       <TextBlock x:Name="EmptyText" Style="{StaticResource MutedText}" Margin="0,12,0,0" Visibility="Collapsed"
@@ -27,7 +31,7 @@
 
       <TextBlock x:Name="Status" Style="{StaticResource MutedText}" Margin="0,10,0,0" TextWrapping="Wrap" />
 
-      <Expander x:Name="GroupRaw" Margin="0,18,0,0">
+      <Expander x:Name="GroupRaw" Margin="0,18,0,0" ToolTip="Everything Android exposes, including keys with no friendly control above">
         <Expander.Header>
           <TextBlock Text="All Android keys" FontWeight="SemiBold" />
         </Expander.Header>

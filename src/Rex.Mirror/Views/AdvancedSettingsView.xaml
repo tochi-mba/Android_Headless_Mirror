@@ -11,13 +11,16 @@
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <ComboBox x:Name="Namespace" MinWidth="90" SelectedIndex="0" SelectionChanged="OnNamespace">
+      <ComboBox x:Name="Namespace" MinWidth="90" SelectedIndex="0" SelectionChanged="OnNamespace"
+               AutomationProperties.Name="Settings namespace" ToolTip="Which of Android's three settings tables to read">
         <ComboBoxItem Content="system" Tag="system" />
         <ComboBoxItem Content="secure" Tag="secure" />
         <ComboBoxItem Content="global" Tag="global" />
       </ComboBox>
-      <TextBox x:Name="Search" Grid.Column="1" Margin="6,0" TextChanged="OnSearch" ToolTip="Filter keys and values" />
-      <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="{StaticResource IconRefresh}" ToolTip="Reload" Click="OnReload" />
+      <TextBox x:Name="Search" Grid.Column="1" Margin="6,0" TextChanged="OnSearch"
+               AutomationProperties.Name="Filter keys" ToolTip="Show only the keys and values that mention this" />
+      <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="{StaticResource IconRefresh}" Click="OnReload"
+              AutomationProperties.Name="Reload" ToolTip="Read every key from the phone again" />
     </Grid>
     <Border Margin="0,8,0,0" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Background="{StaticResource Ink}">
       <ListBox x:Name="Rows" MaxHeight="260" Background="Transparent" BorderThickness="0" SelectionChanged="OnRowSelected"
@@ -69,10 +72,12 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <TextBox x:Name="Key" ToolTip="Key" />
-      <TextBox x:Name="Value" Grid.Column="1" Margin="6,0" ToolTip="New value" />
-      <Button Grid.Column="2" Content="Write" Style="{StaticResource PrimaryButton}" Click="OnWrite" />
-      <Button Grid.Column="3" Content="Delete" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Click="OnDelete" />
+      <TextBox x:Name="Key" AutomationProperties.Name="Key" ToolTip="The Android settings key, for example screen_brightness" />
+      <TextBox x:Name="Value" Grid.Column="1" Margin="6,0" AutomationProperties.Name="Value" ToolTip="What to write into that key" />
+      <Button x:Name="WriteButton" Grid.Column="2" Content="Write" Style="{StaticResource PrimaryButton}" Click="OnWrite"
+              ToolTip="Put this value into the key on the phone" />
+      <Button x:Name="DeleteButton" Grid.Column="3" Content="Delete" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Click="OnDelete"
+              ToolTip="Remove the key so Android uses its own default" />
     </Grid>
     <TextBlock x:Name="Status" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
   </StackPanel>

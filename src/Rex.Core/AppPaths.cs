@@ -21,7 +21,6 @@ public sealed class AppPaths
     public string State => Path.Combine(Root, "state.json");
     public string Logs => Path.Combine(Root, "logs");
     public string LogFile => Path.Combine(Logs, "mirror.log");
-    public string Captures => Path.Combine(Root, "captures");
     public string Tools => Path.Combine(Root, "tools");
 
     /// <summary>scrcpy versions installed or updated by the app itself.</summary>

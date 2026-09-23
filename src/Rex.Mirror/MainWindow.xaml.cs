@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -34,20 +35,26 @@ public partial class MainWindow : Window
     private bool _quitting;
     private bool _trayHintShown;
     private double _navigatorStartZoom;
-    private bool _previewBusy;
-    private DateTime _nextPreview;
     private WindowState _restoreState = WindowState.Normal;
     private Rect _windowedBounds;
     public bool IsFullscreen => _fullscreen;
     public double SidebarScrollOffset => SidebarScroll.VerticalOffset;
-    public bool PreviewAvailable => _overlay.PreviewAvailable;
+    public bool AmbientFrameAvailable => _overlay.AmbientFrameAvailable;
     public string SidebarTab => CurrentTab();
     private Rect _sidebarWheelBounds = Rect.Empty;
     public bool HudVisible => _overlay.HudVisible;
+    public RectD HudBarRect => _overlay.HudBarRect;
     public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
     public bool SidebarVisible => Sidebar.Visibility == Visibility.Visible;
+    public double SidebarWidthDip => Math.Round(SidebarColumn.ActualWidth);
     public bool AmbientVisible => _overlay.AmbientVisible;
     public bool NavigatorVisible => _overlay.NavigatorVisible;
+    public bool NavigatorDragging => _overlay.NavigatorDragging;
+    public RectD NavigatorRect => _overlay.NavigatorScreenRect;
+    public bool TourVisible => TourLayer.IsRunning;
+    public int TourStep => TourLayer.StepNumber;
+    public int TourStepCount => TourLayer.StepCount;
+    public string TipShowing => _tipShowing ?? string.Empty;
     public bool PatternGuideVisible => _guide?.IsVisible == true;
     public bool PatternGuideResolving => _guide?.IsResolving == true;
     public string PatternGuideSource => _guide?.Source ?? PatternGeometry.SourceUnavailable;
@@ -61,6 +68,13 @@ public partial class MainWindow : Window
         _overlay = new OverlayWindow(this);
         _overlay.HudActionRequested += async id => await RunActionAsync(id);
         _overlay.PointerMessage += OnOverlayPointer;
+        // Dragging moves the bar as it happens; the drop is what gets written to disk.
+        _overlay.HudMovedTo += (x, y) => _host.PreviewConfig(c => { c.Hud.X = x; c.Hud.Y = y; });
+        _overlay.HudMoveFinished += () =>
+        {
+            var (x, y) = (_host.Config.Hud.X, _host.Config.Hud.Y);
+            _host.UpdateConfig(c => { c.Hud.X = x; c.Hud.Y = y; });
+        };
         _overlay.PanDelta += (dx, dy) => Host.Pan(dx, dy);
         _overlay.NavigatorTarget += (fx, fy) => Host.CenterOn(fx, fy);
         _overlay.NavigatorDragStarted += () =>
@@ -76,7 +90,11 @@ public partial class MainWindow : Window
             Host.CenterOn(x, y);
         };
         _overlay.PanAllowed = () => _host.Config.Zoom.Enabled && Host.View.IsZoomed && NativeMethods.IsKeyDown(NativeMethods.VK_MENU);
-        _touchpad = new TouchpadBridge(Host, _injector, () => _host.Config, host.Log.Warn);
+        _touchpad = new TouchpadBridge(Host, _injector, () => _host.Config, host.Log.Warn)
+        {
+            PanelAt = (x, y) => SidebarScroll.IsVisible && _sidebarWheelBounds.Contains(x, y),
+            ScrollPanel = delta => SidebarScroll.ScrollToVerticalOffset(SidebarScroll.VerticalOffset - delta),
+        };
 
         _overlayTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
         _overlayTimer.Tick += (_, _) => TrackOverlay();
@@ -191,48 +209,6 @@ public partial class MainWindow : Window
         QuitApplication();
     }
 
-    private void ApplyPlacement()
-    {
-        var placement = _host.State.Ui;
-        if (placement.Width >= 600 && placement.Height >= 400)
-        {
-            Width = placement.Width;
-            Height = placement.Height;
-            var virtualScreen = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
-            if (virtualScreen.Contains(new Point(placement.Left + 40, placement.Top + 40)))
-            {
-                WindowStartupLocation = WindowStartupLocation.Manual;
-                Left = placement.Left;
-                Top = placement.Top;
-            }
-
-            if (placement.Maximized)
-            {
-                WindowState = WindowState.Maximized;
-            }
-        }
-    }
-
-    private void SavePlacement()
-    {
-        if (_fullscreen)
-        {
-            return;
-        }
-
-        var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
-        _host.State.SetUi(_host.State.Ui with
-        {
-            Left = bounds.Left,
-            Top = bounds.Top,
-            Width = bounds.Width,
-            Height = bounds.Height,
-            Maximized = WindowState == WindowState.Maximized,
-            SidebarVisible = _sidebarWanted,
-            SidebarTab = CurrentTab(),
-        });
-    }
-
     // ----- Session events -----
 
     private void OnSessionChanged()
@@ -275,6 +251,18 @@ public partial class MainWindow : Window
             DeviceMeta.Text = string.Empty;
         }
 
+        var choosable = session.Devices.Count > 1;
+        DeviceChevron.Visibility = choosable ? Visibility.Visible : Visibility.Collapsed;
+        DeviceChip.IsHitTestVisible = choosable;
+        DeviceChip.Focusable = choosable;
+        DeviceChip.Cursor = choosable ? System.Windows.Input.Cursors.Hand : System.Windows.Input.Cursors.Arrow;
+        AutomationProperties.SetName(DeviceChip, choosable
+            ? $"Connected phone: {DeviceName.Text}. Choose which phone to mirror."
+            : "Connected phone: " + DeviceName.Text);
+        Title = session.Identity is null
+            ? "Android Headless Mirror"
+            : session.Identity.DisplayName + " — Android Headless Mirror";
+
         Onboarding.Visibility = onboarding ? Visibility.Visible : Visibility.Collapsed;
         MirrorArea.Visibility = onboarding ? Visibility.Collapsed : Visibility.Visible;
         Sidebar.Visibility = onboarding ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);
@@ -302,6 +290,11 @@ public partial class MainWindow : Window
                 : session.Message;
             EmptyPrimary.Visibility = session.Phase == SessionPhase.Stopped ? Visibility.Visible : Visibility.Collapsed;
             EmptyRepair.Visibility = usbBlocked && session.Phase == SessionPhase.Waiting ? Visibility.Visible : Visibility.Collapsed;
+
+            // Two primary buttons side by side say neither is the thing to do. Repairing the driver
+            // is what unblocks everything else, so it takes the emphasis when it is offered.
+            var repairing = EmptyRepair.Visibility == Visibility.Visible;
+            EmptyPrimary.Style = (Style)FindResource(repairing ? "BaseButton" : "PrimaryButton");
         }
 
         foreach (var button in new[] { QuickHome, QuickBack, QuickRecents, QuickScreenshot })
@@ -312,11 +305,33 @@ public partial class MainWindow : Window
         QuickSleep.IsEnabled = mirroring;
 
         var question = session.PendingLockQuestionSerial is not null && _host.Config.PatternGuide.Enabled;
-        NoticeBar.Visibility = question && !_fullscreen ? Visibility.Visible : Visibility.Collapsed;
-        if (question && session.Identity is not null)
+        if (question && !_fullscreen)
         {
-            NoticeTitle.Text = $"How does {session.Identity.DisplayName} unlock?";
+            _tipShowing = null;
+            ShowNoticeAnswers(question: true);
+            NoticeBar.Visibility = Visibility.Visible;
+            if (session.Identity is not null)
+            {
+                NoticeTitle.Text = $"How does {session.Identity.DisplayName} unlock?";
+                NoticeText.Text = "Pattern phones get a nine-dot guide when the lock screen shows black. Nothing about the pattern itself is stored.";
+            }
         }
+        else if (_tipShowing is null || _fullscreen)
+        {
+            NoticeBar.Visibility = Visibility.Collapsed;
+        }
+
+        if (session.Devices.Count > 1)
+        {
+            ShowTipOnce(Tips.SecondPhone);
+        }
+
+        HintText.Text = session.IsMirroring
+            ? $"{Shortcuts.Gesture("host-zoom")} zoom · {Shortcuts.Gesture("host-pan")} pan · {Shortcuts.Gesture("fullscreen")} fullscreen"
+            : session.Devices.Count == 0
+                ? $"Plug a phone in over USB · {Shortcuts.Gesture("tour")} shows the tour"
+                : $"{Shortcuts.Gesture("tour")} shows the tour";
+        ConsiderTour();
 
         ControlsPanel.Refresh();
         PhonePanel.Refresh();
@@ -336,6 +351,10 @@ public partial class MainWindow : Window
         Host.Attach(scrcpy.Hwnd, scrcpy.ThreadId, (uint)scrcpy.ProcessId);
         _hooks.Install();
         _overlayTimer.Start();
+
+        // The orientation choice shows what the phone is actually set to, which can only be read
+        // once there is a phone to ask.
+        _ = ControlsPanel.RefreshRotationAsync();
 
         StartPatternGuideIfNeeded();
 
@@ -431,6 +450,7 @@ public partial class MainWindow : Window
         }
         else _sidebarWheelBounds = Rect.Empty;
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
+        _overlay.ReleaseStuckDrags();
         _overlay.Track(visible ? Host.ViewportScreenRect : default, visible);
         _overlay.UpdateHud(_fullscreen && visible, Host.Zoom, _host.Config.Hud);
         if (visible)
@@ -442,6 +462,11 @@ public partial class MainWindow : Window
     private void OnViewChanged()
     {
         var zoomed = Host.View.IsZoomed;
+        if (zoomed)
+        {
+            ShowTipSoon(Tips.FirstZoom);
+        }
+
         ZoomBadge.Visibility = zoomed ? Visibility.Visible : Visibility.Collapsed;
         ZoomText.Text = $"{Host.Zoom * 100:0}%";
         UpdateNavigator();
@@ -454,7 +479,8 @@ public partial class MainWindow : Window
         var show = view.IsZoomed && _host.Config.Zoom.ShowNavigator && Host.HasChild;
         var aspect = view.SurfaceHeight > 0 ? view.SurfaceWidth / view.SurfaceHeight : 0.45;
         _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction(), _host.Config.Zoom);
-        var ambient = _host.Config.Ambient.Enabled && Host.HasChild;
+        // A blurred wash is the opposite of what High Contrast is for, so it stands down there.
+        var ambient = _host.Config.Ambient.Enabled && Host.HasChild && !SystemParameters.HighContrast;
         _overlay.UpdateAmbient(ambient, Host.SurfaceRect, _host.Config.Ambient);
         var interval = TimeSpan.FromMilliseconds(1000 / _host.Config.Ambient.FrameRate);
         if (_ambientTimer.Interval != interval) _ambientTimer.Interval = interval;
@@ -467,14 +493,13 @@ public partial class MainWindow : Window
             _ambientTimer.Stop();
             _overlay.SetAmbientFrame(null);
         }
-
-        if (show && IsVisible && WindowState != WindowState.Minimized && !_previewBusy && DateTime.UtcNow >= _nextPreview)
-            _ = RefreshNavigatorPreviewAsync();
-        if (!show) _overlay.SetNavigatorPreview(null);
     }
 
-    /// <summary>One frame of the visible mirror surface for the soft background (no phone round trip).</summary>
-    private void CaptureAmbientFrame()
+    /// <summary>
+    /// One frame of the visible mirror surface for the soft background, taken on a worker thread so
+    /// the window stays responsive, and never from the phone.
+    /// </summary>
+    private async void CaptureAmbientFrame()
     {
         if (!Host.HasChild || !_host.Session.IsMirroring)
         {
@@ -490,35 +515,12 @@ public partial class MainWindow : Window
             Right = Math.Min(surface.Right, viewport.Right),
             Bottom = Math.Min(surface.Bottom, viewport.Bottom),
         };
-        _overlay.SetAmbientFrame(_liveCapture.Capture(visible));
-    }
 
-    private async Task RefreshNavigatorPreviewAsync()
-    {
-        var device = _host.Session.ActiveDevice;
-        var adb = _host.Session.Adb;
-        if (device is null || adb is null) return;
-        _previewBusy = true;
-        try
+        var frame = await _liveCapture.CaptureAsync(visible, _host.Config.Ambient.Blur);
+        if (frame is not null && !_quitting && _ambientTimer.IsEnabled)
         {
-            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            var bytes = await adb.ScreencapAsync(device.Serial, deadline.Token);
-            if (bytes is null || _quitting || !_host.Session.IsMirroring || _host.Session.ActiveDevice?.Serial != device.Serial) return;
-            using var stream = new MemoryStream(bytes);
-            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            bitmap.DecodePixelWidth = 180;
-            bitmap.StreamSource = stream;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            _overlay.SetNavigatorPreview(bitmap);
+            _overlay.SetAmbientFrame(frame);
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or NotSupportedException or ArgumentException or OperationCanceledException)
-        {
-            _overlay.SetNavigatorPreview(null);
-        }
-        finally { _previewBusy = false; _nextPreview = DateTime.UtcNow.AddSeconds(_host.Config.App.PreviewIntervalSeconds); }
     }
 
     private bool OnPanelWheel(int delta, int screenX, int screenY)
@@ -600,6 +602,39 @@ public partial class MainWindow : Window
                 return true;
             case 'C' when ctrl && alt:
                 Dispatcher.BeginInvoke(() => _guide?.StartCalibration());
+                return true;
+            case NativeMethods.VK_F1:
+                Dispatcher.BeginInvoke(StartTour);
+                return true;
+            case 'S' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("screenshot"));
+                return true;
+            case 'H' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("home"));
+                return true;
+            case 'B' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => SetSidebarVisible(!_sidebarWanted));
+                return true;
+            case >= '1' and <= '4' when ctrl && alt:
+                var tab = virtualKey - '1';
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (!_sidebarWanted)
+                    {
+                        SetSidebarVisible(true);
+                    }
+
+                    SelectTab(TabOrder[tab]);
+                });
+                return true;
+            case '0' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-reset"));
+                return true;
+            case NativeMethods.VK_OEM_PLUS when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-in"));
+                return true;
+            case NativeMethods.VK_OEM_MINUS when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-out"));
                 return true;
             default:
                 return false;
@@ -804,66 +839,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnToggleSidebar(object sender, RoutedEventArgs e) => SetSidebarVisible(Sidebar.Visibility != Visibility.Visible);
-
-    private void OnToggleFullscreen(object sender, RoutedEventArgs e) => ToggleFullscreen();
-
-    private void SetSidebarVisible(bool visible)
-    {
-        _sidebarWanted = visible;
-        Sidebar.Visibility = visible && !_fullscreen ? Visibility.Visible : Visibility.Collapsed;
-        SidebarColumn.Width = visible && !_fullscreen ? new GridLength(330) : new GridLength(0);
-    }
-
-    public void ToggleFullscreen()
-    {
-        _fullscreenTransition = true;
-        _fullscreen = !_fullscreen;
-        if (_fullscreen)
-        {
-            _restoreState = WindowState;
-            _windowedBounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
-            var screen = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle).Bounds;
-            WindowState = WindowState.Normal;
-            WindowStyle = WindowStyle.None;
-            ResizeMode = ResizeMode.NoResize;
-            // Use the monitor bounds, including the taskbar area, in physical pixels.
-            NativeMethods.SetWindowPos(new WindowInteropHelper(this).Handle, NativeMethods.HWND_TOP,
-                screen.Left, screen.Top, screen.Width, screen.Height, NativeMethods.SWP_FRAMECHANGED);
-            TopBar.Visibility = Visibility.Collapsed;
-            NoticeBar.Visibility = Visibility.Collapsed;
-            StatusBar.Visibility = Visibility.Collapsed;
-            Sidebar.Visibility = Visibility.Collapsed;
-            SidebarColumn.Width = new GridLength(0);
-            Host.ResetZoom();
-            _overlay.RevealHud("Top edge shows controls · Esc exits fullscreen");
-        }
-        else
-        {
-            WindowStyle = WindowStyle.SingleBorderWindow;
-            ResizeMode = ResizeMode.CanResize;
-            WindowState = WindowState.Normal;
-            Left = _windowedBounds.Left;
-            Top = _windowedBounds.Top;
-            Width = _windowedBounds.Width;
-            Height = _windowedBounds.Height;
-            WindowState = _restoreState == WindowState.Minimized ? WindowState.Normal : _restoreState;
-            TopBar.Visibility = Visibility.Visible;
-            StatusBar.Visibility = Visibility.Visible;
-            SetSidebarVisible(_sidebarWanted);
-            OnSessionChanged();
-        }
-
-        UpdateLayout();
-        _fullscreenTransition = false;
-        TrackOverlay();
-
-        if (Host.HasChild)
-        {
-            Host.FocusChild();
-        }
-    }
-
     private void OnTabChecked(object sender, RoutedEventArgs e)
     {
         if (ControlsPanel is null)
@@ -876,7 +851,11 @@ public partial class MainWindow : Window
         PhonePanel.Visibility = tab == "phone" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = tab == "settings" ? Visibility.Visible : Visibility.Collapsed;
         InfoPanel.Visibility = tab == "info" ? Visibility.Visible : Visibility.Collapsed;
-        if (tab == "phone")
+        if (tab == "controls")
+        {
+            _ = ControlsPanel.RefreshRotationAsync();
+        }
+        else if (tab == "phone")
         {
             PhonePanel.Refresh();
         }
@@ -892,6 +871,9 @@ public partial class MainWindow : Window
 
     private string CurrentTab() =>
         TabPhone.IsChecked == true ? "phone" : TabSettings.IsChecked == true ? "settings" : TabInfo.IsChecked == true ? "info" : "controls";
+
+    /// <summary>The tabs in the order Ctrl+Alt+1 to 4 reach them.</summary>
+    private static readonly string[] TabOrder = ["controls", "phone", "settings", "info"];
 
     private void SelectTab(string tab)
     {

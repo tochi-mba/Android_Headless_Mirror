@@ -53,9 +53,11 @@
                   <ColumnDefinition Width="Auto" />
                   <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="InstallButton" Content="Install scrcpy" Style="{StaticResource PrimaryButton}" Click="OnInstall" />
+                <Button x:Name="InstallButton" Content="Install scrcpy" Style="{StaticResource PrimaryButton}" Click="OnInstall"
+                        ToolTip="Downloads the official scrcpy release from GitHub and checks it before installing" />
                 <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                  <ProgressBar x:Name="Progress" Height="6" Minimum="0" Maximum="1" Visibility="Collapsed" Foreground="{StaticResource Signal}" Background="{StaticResource Line}" BorderThickness="0" />
+                  <ProgressBar x:Name="Progress" Height="6" Minimum="0" Maximum="1" Visibility="Collapsed" Foreground="{StaticResource Signal}" Background="{StaticResource Line}" BorderThickness="0"
+                               AutomationProperties.Name="Download progress" />
                   <TextBlock x:Name="InstallStatus" Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" />
                 </StackPanel>
               </Grid>
@@ -103,7 +105,8 @@
                     <Ellipse x:Name="PhoneDot" Width="8" Height="8" Fill="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
                     <TextBlock x:Name="PhoneStatus" Text="Waiting for a phone…" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" />
                   </StackPanel>
-                  <Button x:Name="RepairButton" Content="Repair USB driver" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="18,10,0,0" Visibility="Collapsed" Click="OnRepairUsb" />
+                  <Button x:Name="RepairButton" Content="Repair USB driver" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="18,10,0,0" Visibility="Collapsed" Click="OnRepairUsb"
+                            ToolTip="Registers the phone's USB debugging interface for ADB. Windows asks for administrator approval once." />
                 </StackPanel>
               </Border>
             </StackPanel>
@@ -118,7 +121,8 @@
       <Grid Margin="0,14,0,0">
         <TextBlock Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center"
                    Text="No administrator rights. The mirror never leaves this PC." />
-        <Button x:Name="SkipButton" Content="Skip for now" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Click="OnSkip" />
+        <Button x:Name="SkipButton" Content="Skip for now" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Click="OnSkip"
+                ToolTip="Go to the app without finishing setup; this guide comes back until a phone is mirrored" />
       </Grid>
     </StackPanel>
   </ScrollViewer>

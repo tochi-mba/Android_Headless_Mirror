@@ -34,6 +34,14 @@ public partial class App : Application
         }
 
         DispatcherUnhandledException += OnUnhandledException;
+        ApplyContrast();
+        SystemParameters.StaticPropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(SystemParameters.HighContrast))
+            {
+                ApplyContrast();
+            }
+        };
 
         try
         {
@@ -53,6 +61,26 @@ public partial class App : Application
         {
             _window.ShowFromTray();
         }
+    }
+
+    /// <summary>
+    /// Hands the palette over to Windows in High Contrast, and takes it back when that is turned
+    /// off again. Everything else about the look stays where it is: only the colour keys change.
+    /// </summary>
+    private void ApplyContrast()
+    {
+        var wanted = SystemParameters.HighContrast;
+        var loaded = Resources.MergedDictionaries.FirstOrDefault(d => d.Source?.OriginalString.EndsWith("HighContrast.xaml", StringComparison.Ordinal) == true);
+        if (wanted && loaded is null)
+        {
+            Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("HighContrast.xaml", UriKind.Relative) });
+        }
+        else if (!wanted && loaded is not null)
+        {
+            Resources.MergedDictionaries.Remove(loaded);
+        }
+
+        _host?.Log.Info("High contrast: " + (wanted ? "on" : "off"));
     }
 
     protected override void OnExit(ExitEventArgs e)

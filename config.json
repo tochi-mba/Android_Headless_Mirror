@@ -65,6 +65,8 @@
   "Hud": {
     "Enabled": true,
     "Position": "top",
+    "X": null,
+    "Y": null,
     "Buttons": [
       "back",
       "home",
@@ -94,8 +96,7 @@
     "RunInBackground": true,
     "OpenOnConnect": true,
     "ConfirmSensitiveWrites": true,
-    "ScreenshotDirectory": "captures/screenshots",
-    "PreviewIntervalSeconds": 2
+    "ScreenshotDirectory": "captures/screenshots"
   },
   "Logging": {
     "Enabled": true,

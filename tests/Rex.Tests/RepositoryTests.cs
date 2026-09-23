@@ -1,3 +1,4 @@
+using Rex.Core;
 using System.Text.RegularExpressions;
 using Rex.Tests.Support;
 
@@ -105,7 +106,11 @@ public sealed class RepositoryTests
 
         Assert.Contains("if: github.event_name == 'push' && github.ref == 'refs/heads/main'", ci);
         Assert.Contains("$props.Project.PropertyGroup.Version", ci);
-        Assert.Contains("needs: [windows, desktop-e2e, pages]", ci);
+        // Every suite that can block a release is a gate on it, the desktop UI automation included.
+        Assert.Contains("needs: [windows, desktop-e2e, desktop-ui, pages]", ci);
+        Assert.Contains("--filter-class Rex.Tests.AppUiTests", ci);
+        Assert.False(File.Exists(Path.Combine(RepoPaths.Root, "URGENT.md")),
+            "URGENT.md tracked a release exception that no longer exists.");
         Assert.Contains("gh release view \"$tag\"", ci);
         Assert.Contains("gh release create \"$tag\"", ci);
         Assert.Contains("--target \"$GITHUB_SHA\"", ci);
@@ -114,6 +119,48 @@ public sealed class RepositoryTests
         Assert.DoesNotContain("--clobber", ci);
         Assert.DoesNotContain("--clobber", release);
         Assert.Contains("Published releases are immutable", release);
+    }
+
+    [Fact]
+    public void TheSiteAndTheAppAgreeOnEveryShortcut()
+    {
+        var html = File.ReadAllText(Path.Combine(RepoPaths.Root, "docs", "index.html"));
+        foreach (var shortcut in Shortcuts.All)
+        {
+            Assert.True(
+                html.Contains(">" + shortcut.Gesture + "<", StringComparison.Ordinal),
+                $"The website does not list '{shortcut.Gesture}', which the app answers to.");
+        }
+    }
+
+    [Fact]
+    public void EveryPaletteKeyHasAHighContrastAnswer()
+    {
+        var theme = Keys(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "Theme.xaml"));
+        var contrast = Keys(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "HighContrast.xaml"));
+
+        // Anything the theme paints with must have a system colour to fall back to, or High
+        // Contrast keeps that one hardcoded colour and the window stops making sense.
+        Assert.Equal(theme, contrast);
+
+        static SortedSet<string> Keys(string path) =>
+            [.. Regex.Matches(File.ReadAllText(path), "<SolidColorBrush x:Key=\"([^\"]+)\"").Select(m => m.Groups[1].Value)];
+    }
+
+    [Fact]
+    public void TheSiteHasAPageForAddressesThatDoNotExist()
+    {
+        var notFound = File.ReadAllText(Path.Combine(RepoPaths.Root, "docs", "404.html"));
+        Assert.Contains("Android Headless Mirror", notFound, StringComparison.Ordinal);
+        Assert.Contains("styles.css", notFound, StringComparison.Ordinal);
+        Assert.Contains("noindex", notFound, StringComparison.Ordinal);
+
+        var html = File.ReadAllText(Path.Combine(RepoPaths.Root, "docs", "index.html"));
+        Assert.Contains("og:image", html, StringComparison.Ordinal);
+        Assert.Contains("summary_large_image", html, StringComparison.Ordinal);
+        Assert.Contains("SoftwareApplication", html, StringComparison.Ordinal);
+        Assert.Contains("FAQPage", html, StringComparison.Ordinal);
+        Assert.True(new FileInfo(Path.Combine(RepoPaths.Root, "docs", "og.png")).Length > 1000, "The share image must be a real picture.");
     }
 
     [Fact]

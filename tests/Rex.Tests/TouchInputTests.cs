@@ -1,3 +1,4 @@
+using Rex.Core;
 using Rex.Mirror.Mirror;
 using Rex.Mirror.Native;
 
@@ -5,6 +6,32 @@ namespace Rex.Tests;
 
 public sealed class TouchInputTests
 {
+    [Fact]
+    public void TwoFingers_OverOneOfTheAppsOwnLists_ScrollThatListRatherThanThePhone()
+    {
+        var config = new RexConfig();
+
+        // The mirror is a child window, so without this the whole gesture reaches the phone and the
+        // settings list sits still under the fingers scrolling it.
+        Assert.Equal(TouchpadBridge.GestureKind.Panel, TouchpadBridge.Decide(overPanel: true, altDown: false, config, injectorAvailable: true));
+        Assert.Equal(TouchpadBridge.GestureKind.Panel, TouchpadBridge.Decide(overPanel: true, altDown: true, config, injectorAvailable: false));
+
+        // Everywhere else two fingers still mean what they did.
+        Assert.Equal(TouchpadBridge.GestureKind.Android, TouchpadBridge.Decide(overPanel: false, altDown: false, config, injectorAvailable: true));
+        Assert.Equal(TouchpadBridge.GestureKind.Host, TouchpadBridge.Decide(overPanel: false, altDown: true, config, injectorAvailable: true));
+
+        // And a gesture with nowhere to go is left to Windows.
+        Assert.Equal(TouchpadBridge.GestureKind.None, TouchpadBridge.Decide(overPanel: false, altDown: false, config, injectorAvailable: false));
+
+        var noPinch = new RexConfig();
+        noPinch.Zoom.PinchZoom = false;
+        Assert.Equal(TouchpadBridge.GestureKind.None, TouchpadBridge.Decide(overPanel: false, altDown: true, noPinch, injectorAvailable: true));
+
+        var noAndroid = new RexConfig();
+        noAndroid.Touchpad.TwoFingerToAndroid = false;
+        Assert.Equal(TouchpadBridge.GestureKind.None, TouchpadBridge.Decide(overPanel: false, altDown: false, noAndroid, injectorAvailable: true));
+    }
+
     [Fact]
     public void ZoomedContactsCannotEscapeTheVisibleViewport()
     {

@@ -24,6 +24,7 @@ public sealed class FullscreenHud : Border
     };
 
     private readonly Dictionary<string, Button> _zoomLabels = new(StringComparer.Ordinal);
+    private readonly Border _grip;
     private DateTime _visibleUntil;
     private bool _shown;
     private string _builtFor = string.Empty;
@@ -42,6 +43,7 @@ public sealed class FullscreenHud : Border
         Padding = new Thickness(6);
         Visibility = Visibility.Collapsed;
         _buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+        _grip = CreateGrip();
         _message.Margin = new Thickness(6, 3, 6, 2);
         _message.Foreground = (Brush)FindResource("Muted");
         var body = new StackPanel();
@@ -63,7 +65,10 @@ public sealed class FullscreenHud : Border
         _builtFor = signature;
         _zoomLabels.Clear();
         _buttons.Children.Clear();
-        _buttons.Orientation = HudLayout.IsVertical(settings.Position) ? Orientation.Vertical : Orientation.Horizontal;
+        var vertical = HudLayout.IsVertical(settings.Position);
+        _buttons.Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal;
+        _grip.LayoutTransform = vertical ? new RotateTransform(90) : Transform.Identity;
+        _buttons.Children.Add(_grip);
         _message.Visibility = settings.ShowMessages ? Visibility.Visible : Visibility.Collapsed;
         LayoutTransform = settings.Scale is > 0.99 and < 1.01 ? Transform.Identity : new ScaleTransform(settings.Scale, settings.Scale);
 
@@ -80,6 +85,75 @@ public sealed class FullscreenHud : Border
             _message.Visibility = Visibility.Visible;
             _message.Text = "No buttons chosen. Settings → Fullscreen HUD.";
         }
+    }
+
+    /// <summary>
+    /// The handle that moves the bar. A grip of its own means dragging can never be confused with
+    /// pressing a control, and it shows the bar can be moved at all, which a bare drag target does
+    /// not. It carries an automation id so the move can be driven from a test.
+    /// </summary>
+    private Border CreateGrip()
+    {
+        var dots = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        for (var column = 0; column < 2; column++)
+        {
+            var stack = new StackPanel { Margin = new Thickness(1, 0, 1, 0) };
+            for (var row = 0; row < 3; row++)
+            {
+                stack.Children.Add(new Ellipse
+                {
+                    Width = 2.5,
+                    Height = 2.5,
+                    Margin = new Thickness(0, 1.5, 0, 1.5),
+                    Fill = (Brush)FindResource("Muted"),
+                });
+            }
+
+            dots.Children.Add(stack);
+        }
+
+        var grip = new Border
+        {
+            Child = dots,
+            Padding = new Thickness(5, 8, 5, 8),
+            Margin = new Thickness(0, 2, 4, 2),
+            CornerRadius = new CornerRadius(6),
+            Background = Brushes.Transparent,
+            Cursor = System.Windows.Input.Cursors.SizeAll,
+            ToolTip = "Drag these controls anywhere · double-click to put them back",
+        };
+
+        AutomationProperties.SetName(grip, "Move the controls");
+        AutomationProperties.SetAutomationId(grip, "hud-grip");
+
+        return grip;
+    }
+
+    /// <summary>
+    /// True when this point belongs to one of the bar's controls. Everything else about the bar -
+    /// the grip, the space between the buttons, the status line - is somewhere it can be dragged
+    /// by. The controls are found by where they were laid out rather than by hit testing, which
+    /// this window cannot rely on: it never takes activation.
+    /// </summary>
+    public bool HitsButton(Point point)
+    {
+        foreach (var button in _buttons.Children.OfType<System.Windows.Controls.Primitives.ButtonBase>())
+        {
+            try
+            {
+                var origin = button.TransformToAncestor(this).Transform(new Point());
+                if (new Rect(origin, button.RenderSize).Contains(point))
+                {
+                    return true;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // The bar is between layouts; treat it as somewhere the bar can be dragged by.
+            }
+        }
+
+        return false;
     }
 
     private Button Create(MirrorAction action)
@@ -192,12 +266,19 @@ public static class HudIcons
         ["sleep"] = "IconMoon",
         ["volume-up"] = "IconVolumeUp",
         ["volume-down"] = "IconVolumeDown",
+        ["mute"] = "IconVolumeDown",
         ["notifications"] = "IconBell",
         ["quick-settings"] = "IconSliders",
         ["rotate-device"] = "IconRotate",
         ["rotate-left"] = "IconRotate",
         ["rotate-right"] = "IconRotate",
         ["pause"] = "IconPause",
+        ["resume"] = "IconPlay",
+        ["reset-capture"] = "IconRefresh",
+        ["copy"] = "IconClipboard",
+        ["cut"] = "IconClipboard",
+        ["paste"] = "IconClipboard",
+        ["paste-text"] = "IconKeyboard",
         ["screenshot"] = "IconCamera",
         ["fullscreen"] = "IconFullscreen",
         ["zoom-out"] = "IconZoomOut",

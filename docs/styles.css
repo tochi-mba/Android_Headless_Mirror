@@ -176,6 +176,18 @@ strong{font-weight:700;color:var(--text)}
 .footer-wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 .site-footer a{text-decoration:underline;text-underline-offset:3px}
 
+.footer-links{display:flex;gap:18px}
+.site-nav a[aria-current="true"]{color:var(--signal)}
+
+/* 404 */
+.not-found{padding:clamp(72px,14vh,140px) 0;max-width:720px}
+.not-found h1{margin:14px 0 0;font-size:clamp(34px,5.6vw,60px)}
+.not-found .hero-lede{margin-top:16px}
+.not-found .hero-actions{margin-top:28px}
+.not-found-links{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:40px;padding-top:24px;border-top:1px solid var(--line)}
+.not-found-links a{color:var(--muted)}
+.not-found-links a:hover{color:var(--signal)}
+
 /* Reveal */
 .motion-ready .reveal{transform:translateY(14px);transition:transform .5s ease}
 .motion-ready .reveal.visible{transform:none}

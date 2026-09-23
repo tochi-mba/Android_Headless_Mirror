@@ -7,7 +7,7 @@
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <Button x:Name="SessionButton" Content="Stop mirror" Click="OnSessionButton" />
+      <Button x:Name="SessionButton" Content="Stop mirror" Click="OnSessionButton" ToolTip="Close the mirror and keep waiting in the tray" />
       <Button x:Name="RestartButton" Grid.Column="1" Content="Restart" Margin="6,0,0,0" ToolTip="Relaunch scrcpy (applies changed mirror settings)" Click="OnRestart" />
     </Grid>
 
@@ -20,16 +20,20 @@
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile" />
+          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile"
+                  AutomationProperties.Name="{Binding Label}" />
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
 
     <TextBlock Text="PHONE ORIENTATION" Style="{StaticResource Eyebrow}" />
     <UniformGrid Columns="3">
-      <Button Content="Portrait" Tag="rotation-portrait" Click="OnTile" Margin="0,0,3,0" ToolTip="Lock Android to portrait · Ctrl+Alt+U" />
-      <Button Content="Landscape" Tag="rotation-landscape" Click="OnTile" Margin="3,0" Padding="6,7" ToolTip="Lock Android to landscape · Ctrl+Alt+L" />
-      <Button Content="Auto" Tag="rotation-auto" Click="OnTile" Margin="3,0,0,0" ToolTip="Restore sensor rotation · Ctrl+Alt+A" />
+      <RadioButton x:Name="RotationPortrait" Style="{StaticResource Segment}" Content="Portrait" Tag="rotation-portrait" Click="OnRotation"
+                   GroupName="Rotation" HorizontalContentAlignment="Center" />
+      <RadioButton x:Name="RotationLandscape" Style="{StaticResource Segment}" Content="Landscape" Tag="rotation-landscape" Click="OnRotation"
+                   GroupName="Rotation" HorizontalContentAlignment="Center" />
+      <RadioButton x:Name="RotationAuto" Style="{StaticResource Segment}" Content="Auto" Tag="rotation-auto" Click="OnRotation"
+                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="0" />
     </UniformGrid>
     <TextBlock Text="VIEW" Style="{StaticResource Eyebrow}" />
     <ItemsControl x:Name="ViewTiles">
@@ -40,7 +44,8 @@
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate>
-          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile" />
+          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile"
+                  AutomationProperties.Name="{Binding Label}" />
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
@@ -53,10 +58,10 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <Button Content="−" Width="40" Padding="0" Tag="zoom-out" Click="OnTile" />
+      <Button Content="−" Width="40" Padding="0" Tag="zoom-out" Click="OnTile" AutomationProperties.Name="Zoom out" ToolTip="Zoom the PC view out" />
       <TextBlock x:Name="ZoomLabel" Grid.Column="1" Text="100%" FontFamily="{StaticResource Mono}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Button Grid.Column="2" Content="+" Width="40" Padding="0" Tag="zoom-in" Click="OnTile" />
-      <Button x:Name="ZoomReset" Grid.Column="3" Content="Reset" Margin="6,0,0,0" Tag="zoom-reset" Click="OnTile" IsEnabled="False" />
+      <Button Grid.Column="2" Content="+" Width="40" Padding="0" Tag="zoom-in" Click="OnTile" AutomationProperties.Name="Zoom in" ToolTip="Zoom the PC view in" />
+      <Button x:Name="ZoomReset" Grid.Column="3" Content="Reset" Margin="6,0,0,0" Tag="zoom-reset" Click="OnTile" IsEnabled="False" ToolTip="Fit the whole phone screen in the window" />
     </Grid>
     <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0"
                Text="Two fingers on the touchpad act on the phone (pinch, rotate, pan). Hold Alt to zoom or pan the PC view instead; Alt + wheel and Alt + drag work with a mouse." />
@@ -64,7 +69,7 @@
     <TextBlock Text="CLIPBOARD" Style="{StaticResource Eyebrow}" />
     <UniformGrid Columns="4">
       <Button Content="Copy" Margin="0,0,3,0" Tag="copy" Click="OnTile" ToolTip="Copy on the phone into the PC clipboard" />
-      <Button Content="Cut" Margin="3,0" Tag="cut" Click="OnTile" />
+      <Button Content="Cut" Margin="3,0" Tag="cut" Click="OnTile" ToolTip="Cut on the phone into the PC clipboard" />
       <Button Content="Paste" Margin="3,0" Tag="paste" Click="OnTile" ToolTip="Paste the PC clipboard on the phone" />
       <Button Content="Type" Margin="3,0,0,0" Tag="paste-text" Click="OnTile" ToolTip="Type the PC clipboard as keystrokes" />
     </UniformGrid>
@@ -73,8 +78,8 @@
       <TextBlock Text="PATTERN GUIDE" Style="{StaticResource Eyebrow}" />
       <TextBlock x:Name="PatternStatus" Style="{StaticResource MutedText}" Text="Shows nine dots over a black lock screen." />
       <UniformGrid Columns="2" Margin="0,8,0,0">
-        <Button x:Name="PatternToggle" Content="Show guide" Margin="0,0,3,0" Click="OnPatternToggle" ToolTip="Ctrl+Alt+P" />
-        <Button x:Name="PatternCalibrate" Content="Calibrate" Margin="3,0,0,0" Click="OnPatternCalibrate" ToolTip="Ctrl+Alt+C, then arrow keys" />
+        <Button x:Name="PatternToggle" Content="Show guide" Margin="0,0,3,0" Click="OnPatternToggle" />
+        <Button x:Name="PatternCalibrate" Content="Calibrate" Margin="3,0,0,0" Click="OnPatternCalibrate" />
       </UniformGrid>
     </StackPanel>
   </StackPanel>

@@ -73,11 +73,11 @@ public partial class SettingsPanel : UserControl
             AmbientFrameRate.Value = c.Ambient.FrameRate;
             SelectTag(NavigatorCorner, c.Zoom.NavigatorCorner);
             NavigatorWidth.Value = c.Zoom.NavigatorWidth;
-            PreviewInterval.Value = c.App.PreviewIntervalSeconds;
             HudEnabled.IsChecked = c.Hud.Enabled;
             HudOptions.IsEnabled = c.Hud.Enabled;
             HudMessages.IsChecked = c.Hud.ShowMessages;
             SelectTag(HudPosition, c.Hud.Position);
+            HudDraggedRow.Visibility = c.Hud.IsPlaced ? Visibility.Visible : Visibility.Collapsed;
             HudScale.Value = c.Hud.Scale;
             HudOpacity.Value = c.Hud.Opacity;
             HudDelay.Value = c.Hud.HideSeconds;
@@ -271,15 +271,14 @@ public partial class SettingsPanel : UserControl
         // labels do not exist yet and Refresh() writes them once the host is attached.
         if (_host is null) return;
         NavigatorWidthValue.Text = $"{NavigatorWidth.Value:0} px";
-        PreviewIntervalValue.Text = $"{PreviewInterval.Value:0} s";
+        MaximumZoomValue.Text = $"{MaximumZoom.Value:0.#}×";
+        WheelSpeedValue.Text = $"{WheelSpeed.Value * 100:0}% per notch";
         if (_loading) return;
-        var interval = PreviewInterval.Value;
         var maxZoom = MaximumZoom.Value;
         var wheelStep = Math.Round(WheelSpeed.Value, 2);
         var navigatorWidth = Math.Round(NavigatorWidth.Value);
         _host.PreviewConfig(c =>
         {
-            c.App.PreviewIntervalSeconds = interval;
             c.Zoom.MaxZoom = maxZoom;
             c.Zoom.WheelStep = wheelStep;
             c.Zoom.NavigatorWidth = navigatorWidth;
@@ -325,9 +324,10 @@ public partial class SettingsPanel : UserControl
         AmbientOffsetXValue.Text = Offset(c.Ambient.OffsetX, "left", "right");
         AmbientOffsetYValue.Text = Offset(c.Ambient.OffsetY, "up", "down");
         AmbientEdgeFadeValue.Text = c.Ambient.EdgeFade < 0.005 ? "off" : $"{c.Ambient.EdgeFade * 100:0}%";
-        AmbientTintValue.Text = c.Ambient.TintStrength < 0.005 ? "off" : $"{c.Ambient.TintStrength * 100:0}% at {c.Ambient.TintHue:0}°";
+        AmbientTintValue.Text = c.Ambient.TintStrength < 0.005 ? "off" : $"{c.Ambient.TintStrength * 100:0}%";
+        AmbientTintHueValue.Text = $"{c.Ambient.TintHue:0}°";
+        AmbientTintHue.IsEnabled = c.Ambient.TintStrength >= 0.005;
         AmbientFrameRateValue.Text = $"{c.Ambient.FrameRate:0} fps";
-        PreviewIntervalValue.Text = $"{c.App.PreviewIntervalSeconds:0} s";
 
         static string Offset(double value, string negative, string positive) =>
             Math.Abs(value) < 0.005 ? "centred" : $"{Math.Abs(value) * 100:0}% {(value < 0 ? negative : positive)}";
@@ -335,11 +335,130 @@ public partial class SettingsPanel : UserControl
 
     private void OnResetAmbient(object sender, RoutedEventArgs e) => Save(c => c.Ambient = new AmbientSettings());
 
+    /// <summary>
+    /// Narrows the panel to the groups that mention what was typed, and opens them.
+    ///
+    /// Nine groups and sixty-odd controls is more than anyone should have to scroll through
+    /// hunting for one switch, and the phone settings next door have had a search from the start.
+    /// </summary>
+    private void OnFilter(object sender, TextChangedEventArgs e)
+    {
+        var query = SettingsFilter.Text.Trim();
+        FilterHint.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var matches = 0;
+        foreach (var group in Groups())
+        {
+            var hit = query.Length == 0 || Mentions(group, query);
+            group.Visibility = hit ? Visibility.Visible : Visibility.Collapsed;
+            if (query.Length > 0 && hit)
+            {
+                group.IsExpanded = true;
+                matches++;
+            }
+        }
+
+        FilterEmpty.Visibility = query.Length > 0 && matches == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private IEnumerable<Expander> Groups() =>
+        [GroupDisplay, GroupAudio, GroupSession, GroupControls, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
+
+    /// <summary>Whether a group says the words somewhere: its header, a label, a hint or an option.</summary>
+    private static bool Mentions(Expander group, string query)
+    {
+        if (group.Header is string header && header.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        foreach (var text in Descendants(group).OfType<TextBlock>())
+        {
+            if (text.Text.Contains(query, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        foreach (var item in Descendants(group).OfType<ComboBoxItem>())
+        {
+            if (item.Content is string content && content.Contains(query, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        // The content of a collapsed expander is never realised, so the logical tree is what has
+        // the words in it whether the group is open or shut.
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            yield return child;
+            foreach (var deeper in Descendants(child))
+            {
+                yield return deeper;
+            }
+        }
+    }
+
+    private async void OnResetEverything(object sender, RoutedEventArgs e)
+    {
+        if (_window is null || _host is null)
+        {
+            return;
+        }
+
+        var confirmed = await _window.ConfirmAsync(
+            "Reset every app setting?",
+            "Everything in this panel goes back to how it ships, including the soft background and the fullscreen controls. Your phone is not touched, and Undo last config change puts this back.",
+            "Reset everything");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        Save(c =>
+        {
+            var fresh = new RexConfig();
+            c.Mirror = fresh.Mirror;
+            c.Session = fresh.Session;
+            c.Touchpad = fresh.Touchpad;
+            c.Zoom = fresh.Zoom;
+            c.Ambient = fresh.Ambient;
+            c.Hud = fresh.Hud;
+            c.PatternGuide = fresh.PatternGuide;
+            c.Wireless = fresh.Wireless;
+            c.Logging = fresh.Logging;
+            c.App = fresh.App;
+        });
+
+        Status.Text = "Every app setting is back to how it ships.";
+    }
+
     private void OnHudChanged(object sender, RoutedEventArgs e) => Save(c =>
     {
         c.Hud.Enabled = HudEnabled.IsChecked == true;
         c.Hud.ShowMessages = HudMessages.IsChecked == true;
+    });
+
+    /// <summary>
+    /// Choosing a position is how the bar gets pinned back: it overrides wherever it was dragged to,
+    /// which the other HUD settings must leave alone.
+    /// </summary>
+    private void OnHudPosition(object sender, SelectionChangedEventArgs e) => Save(c =>
+    {
         c.Hud.Position = SelectedTag(HudPosition, "top");
+        c.Hud.X = null;
+        c.Hud.Y = null;
+    });
+
+    private void OnHudPinBack(object sender, RoutedEventArgs e) => Save(c =>
+    {
+        c.Hud.X = null;
+        c.Hud.Y = null;
     });
 
     private void OnHudSlider(object sender, RoutedPropertyChangedEventArgs<double> e)

@@ -18,6 +18,7 @@ public partial class PhonePanel : UserControl
 {
     private readonly List<SettingRow> _rows = [];
     private readonly Dictionary<string, Expander> _groups = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _openGroups = new(StringComparer.Ordinal) { PhoneSettings.GroupDisplay };
     private MainWindow? _window;
     private AppHost? _host;
     private bool _loading;
@@ -118,10 +119,14 @@ public partial class PhonePanel : UserControl
                 var expander = new Expander
                 {
                     Header = $"{group}  ({inGroup.Length})",
-                    IsExpanded = group == PhoneSettings.GroupDisplay,
+                    IsExpanded = _openGroups.Contains(group),
                     Margin = new Thickness(0, 6, 0, 0),
                     Content = content,
                 };
+                // Applying a setting rebuilds these rows; remember what the user had open.
+                var name = group;
+                expander.Expanded += (_, _) => _openGroups.Add(name);
+                expander.Collapsed += (_, _) => _openGroups.Remove(name);
                 // x:Name is not available for generated controls; give automation a stable id.
                 System.Windows.Automation.AutomationProperties.SetAutomationId(expander, "PhoneGroup " + group);
                 _groups[group] = expander;
@@ -167,6 +172,11 @@ public partial class PhonePanel : UserControl
         }
 
         EmptyText.Visibility = matches == 0 && _rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SearchCount.Text = _rows.Count == 0
+            ? string.Empty
+            : search.Length == 0
+                ? $"{_rows.Count} settings this phone exposes"
+                : $"{matches} of {_rows.Count} settings";
     }
 
     private void OnReload(object sender, RoutedEventArgs e) => Refresh(force: true);
@@ -179,7 +189,7 @@ public partial class PhonePanel : UserControl
             return;
         }
 
-        if (!Confirm(setting, $"Change {setting.Label}?"))
+        if (!await ConfirmAsync(setting, $"Change {setting.Label}?", $"Set it to {setting.Describe(value)}.", "Change it"))
         {
             await LoadAsync(target.Adb, target.Serial);
             return;
@@ -199,7 +209,11 @@ public partial class PhonePanel : UserControl
             return;
         }
 
-        if (!Confirm(setting, $"Reset {setting.Label} to the phone's default?\n\nThe stored value is deleted."))
+        if (!await ConfirmAsync(
+                setting,
+                $"Put {setting.Label} back to the phone's default?",
+                "The value this app stored is deleted and Android decides again.",
+                "Use the default"))
         {
             return;
         }
@@ -210,18 +224,21 @@ public partial class PhonePanel : UserControl
         await LoadAsync(target.Adb, target.Serial);
     }
 
-    private bool Confirm(PhoneSetting setting, string question)
+    /// <summary>
+    /// Asks before a setting that can change how the phone behaves. The question is asked in the
+    /// window, in the app's own voice, and names what is about to happen rather than offering Yes.
+    /// </summary>
+    private async Task<bool> ConfirmAsync(PhoneSetting setting, string title, string detail, string action)
     {
-        if (_host is null || !_host.Config.App.ConfirmSensitiveWrites || setting.Risk is AndroidSettings.RiskNormal or AndroidSettings.RiskAdvanced)
+        if (_host is null || _window is null || !_host.Config.App.ConfirmSensitiveWrites ||
+            setting.Risk is AndroidSettings.RiskNormal or AndroidSettings.RiskAdvanced)
         {
             return true;
         }
 
-        return MessageBox.Show(
-            $"{question}\n\nRisk: {setting.Risk}. {setting.Description}",
-            "Android Headless Mirror",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        _window.ShowTipOnce(Tips.FirstRiskyWrite);
+        var body = string.IsNullOrWhiteSpace(setting.Description) ? detail : detail + " " + setting.Description;
+        return await _window.ConfirmAsync(title, body, action, setting.Risk);
     }
 
     /// <summary>One row: label, description, the control the setting deserves, and a reset button.</summary>

@@ -104,12 +104,41 @@ docs/                   GitHub Pages site; its download button points at the lat
   it never blocks the mirror from opening.
 - F11 uses the full monitor bounds. Its compact HUD lives in the owned overlay and fades when idle;
   leaving fullscreen restores window placement. Phone orientation actions are distinct from PC view rotation.
+- The HUD is dragged by its bar and dropped anywhere; the position is a fraction of the mirror area,
+  so it survives resizing and rotation, and reaching for it brings it back where it was left.
+  Its dragging is driven from the window's own messages: the HUD never takes activation, and WPF
+  does not route input through the element tree of a window that is never active. Buttons are
+  excluded by where they were laid out, not by hit testing, for the same reason.
+- Every control whose content is not already the words a person would say carries an
+  `AutomationProperties.Name`: an icon button without one is announced as its own path data, and a
+  slider without one as a bare number. The window is expected to be drivable with Narrator alone.
+- Shortcuts come from `Shortcuts` in Rex.Core, never written out a second time. The Info panel, the
+  tooltips, the pattern guide's own label and the website's table all read it, and a repository test
+  fails if the site and the registry disagree.
+- The first-run tour lives in `Views/Tour.cs` (the steps), `Views/TourOverlay` (the spotlight) and
+  `TourLayout` in Rex.Core (where the callout goes). One-time hints come from `Tips` and appear in
+  the notice bar, never in a second mechanism of their own. Tests opt into the tour with
+  `new TestPackage(showTour: true)`; it is off by default because it covers the window on purpose.
+- Asking before something risky is `MainWindow.ConfirmAsync`, in the window and in the app's voice.
+  A system message box is only for failures that happen before a window exists.
+- High Contrast swaps `HighContrast.xaml` over the palette, and the soft background stands down.
+  Any new palette key needs an answer in both files or a repository test fails.
+- Two fingers over one of the app's own lists scroll that list. The mirror is a child window that
+  otherwise takes the whole gesture, so anything scrollable the pointer can rest on has to be
+  offered to `TouchpadBridge.PanelAt` or it will be scrolled on the phone instead.
 - scrcpy is launched with `--shortcut-mod=rctrl`, `--mouse=sdk`, `--keyboard=sdk`,
   `--window-borderless` and `--no-window-aspect-ratio-lock`; `Mirror.ExtraArgs` cannot override these
   and is validated wherever it is written (settings panel, `config set`, `Normalize`).
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
 - The soft background is a live copy of the on-screen mirror (`LiveCapture`), never a phone
-  screenshot: it must not add ADB traffic. Phone screenshots feed only the navigator thumbnail.
+  screenshot: it must not add ADB traffic, and nothing else may poll the phone for pictures either.
+  It is captured small and blurred before it reaches the window (`AmbientBlur`), so its cost does
+  not grow with the window; never blur it at display size. The navigator is a frame and a viewport
+  box, with no picture inside it.
+- The mirror overlay is a transparent window, which Windows redraws whole whenever anything on it
+  changes. Everything drawn there is compared against what it drew last (soft background, navigator,
+  HUD placement, pattern trail) and skipped when nothing moved. Adding a per-frame assignment there
+  costs a full-window repaint thirty times a second.
 - Every visual choice the user can make lives in `config.json` and previews instantly:
   `AppHost.PreviewConfig` updates memory and debounces the write, `UpdateConfig` writes at once.
   The app also watches config.json, so `rex config set` applies to the running window.

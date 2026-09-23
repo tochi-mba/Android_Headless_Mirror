@@ -22,6 +22,18 @@ public sealed class SettingsTests
         Assert.True(double.IsFinite(NavigatorMath.Resize(new RectD(0, 0, 0, 0), corner, dx, dy).Scale));
     }
     [Fact]
+    public void NavigatorDrag_FollowsThePointerOnlyWhileTheButtonIsHeld()
+    {
+        // Both have to agree. The release that ends a drag can happen where the window never hears
+        // it, and a drag that keeps going after the finger lifts moves the view around the screen
+        // with nothing but resetting the zoom to get out of it.
+        Assert.True(NavigatorMath.KeepsDragging(dragging: true, eventSaysHeld: true, buttonIsDown: true));
+        Assert.False(NavigatorMath.KeepsDragging(dragging: true, eventSaysHeld: true, buttonIsDown: false));
+        Assert.False(NavigatorMath.KeepsDragging(dragging: true, eventSaysHeld: false, buttonIsDown: true));
+        Assert.False(NavigatorMath.KeepsDragging(dragging: false, eventSaysHeld: true, buttonIsDown: true));
+    }
+
+    [Fact]
     public void LaunchSettings_RevertingAudioRemovesDifference_AndLiveSettingsDoNotRequireRestart()
     {
         var config = new RexConfig();

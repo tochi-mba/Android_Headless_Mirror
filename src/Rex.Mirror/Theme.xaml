@@ -49,12 +49,6 @@
   <Geometry x:Key="IconRefresh">M4 12 A8 8 0 0 1 18 6.3 M20 3 V8 H15 M20 12 A8 8 0 0 1 6 17.7 M4 21 V16 H9</Geometry>
   <Geometry x:Key="IconClipboard">M9 4 H15 V7 H9 Z M7 6 H5 V21 H19 V6 H17</Geometry>
   <Geometry x:Key="IconKeyboard">M3 7 H21 V17 H3 Z M7 11 H7.5 M11 11 H11.5 M15 11 H15.5 M8 14 H16</Geometry>
-  <Geometry x:Key="IconLock">M7 11 V8 A5 5 0 0 1 17 8 V11 M5 11 H19 V21 H5 Z</Geometry>
-  <Geometry x:Key="IconGrid">M6 6 H6.1 M12 6 H12.1 M18 6 H18.1 M6 12 H6.1 M12 12 H12.1 M18 12 H18.1 M6 18 H6.1 M12 18 H12.1 M18 18 H18.1</Geometry>
-  <Geometry x:Key="IconStop">M6 6 H18 V18 H6 Z</Geometry>
-  <Geometry x:Key="IconFolder">M3 6 H9 L11 8 H21 V19 H3 Z</Geometry>
-  <Geometry x:Key="IconCheck">M5 12 L10 17 L20 7</Geometry>
-  <Geometry x:Key="IconWifi">M3 9 A14 14 0 0 1 21 9 M6.5 12.5 A9 9 0 0 1 17.5 12.5 M10 16 A4 4 0 0 1 14 16 M12 19 H12.1</Geometry>
 
   <!-- Base text -->
   <Style TargetType="TextBlock">
@@ -116,6 +110,32 @@
     </Setter>
   </Style>
   <Style TargetType="Button" BasedOn="{StaticResource BaseButton}" />
+
+  <!-- Pill: a rounded button that reads as a chip. Used for the device chip in the top bar. -->
+  <Style x:Key="Pill" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+    <Setter Property="Padding" Value="12,6" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="16" Padding="{TemplateBinding Padding}"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Muted}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Signal}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
     <Setter Property="Background" Value="{StaticResource Signal}" />
     <Setter Property="BorderBrush" Value="{StaticResource Signal}" />
@@ -157,6 +177,9 @@
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="Pill" Property="BorderBrush" Value="{StaticResource Signal}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.4" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -373,6 +396,7 @@
                 <Path Grid.Column="1" Data="M0 0 L4 4 L8 0" Stroke="{StaticResource Muted}" StrokeThickness="1.5" Margin="8,0,0,0" VerticalAlignment="Center" />
               </Grid>
             </ToggleButton>
+            <Border x:Name="FocusRing" CornerRadius="8" BorderBrush="Transparent" BorderThickness="1" IsHitTestVisible="False" />
             <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                    PopupAnimation="Fade" StaysOpen="False">
               <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8"
@@ -383,6 +407,11 @@
               </Border>
             </Popup>
           </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+              <Setter TargetName="FocusRing" Property="BorderBrush" Value="{StaticResource Signal}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
@@ -437,7 +466,7 @@
                 </RepeatButton>
               </Track.IncreaseRepeatButton>
               <Track.Thumb>
-                <Thumb Width="16" Height="16" Focusable="False">
+                <Thumb x:Name="Knob" Width="16" Height="16" Focusable="False">
                   <Thumb.Template>
                     <ControlTemplate TargetType="Thumb">
                       <Ellipse Fill="{StaticResource Text}" Stroke="{StaticResource Ink}" StrokeThickness="2" />
@@ -447,6 +476,20 @@
               </Track.Thumb>
             </Track>
           </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Knob" Property="Width" Value="20" />
+              <Setter TargetName="Knob" Property="Height" Value="20" />
+              <Setter TargetName="Knob" Property="Effect">
+                <Setter.Value>
+                  <DropShadowEffect Color="{StaticResource SignalColor}" BlurRadius="10" ShadowDepth="0" Opacity="0.9" />
+                </Setter.Value>
+              </Setter>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.4" />
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
@@ -511,6 +554,10 @@
             </Trigger>
             <Trigger Property="IsMouseOver" Value="True">
               <Setter Property="Foreground" Value="{StaticResource Text}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Signal}" />
+              <Setter TargetName="Border" Property="BorderThickness" Value="1" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

@@ -43,8 +43,20 @@ public sealed record UiState
     public bool SidebarVisible { get; set; } = true;
     public string SidebarTab { get; set; } = "controls";
 
+    /// <summary>0 means the panel has never been resized; the window then uses its own default.</summary>
+    public double SidebarWidth { get; set; }
+
     /// <summary>The user left the first-run guide before a phone was ever mirrored.</summary>
     public bool SetupDismissed { get; set; }
+
+    /// <summary>
+    /// Which tour has been seen through. 0 means never; a later release can raise the number it
+    /// looks for and show what is new without repeating the whole thing.
+    /// </summary>
+    public int TourSeenVersion { get; set; }
+
+    /// <summary>Ids from <see cref="Tips"/> that have been shown once already.</summary>
+    public List<string> TipsSeen { get; set; } = [];
 }
 
 public sealed record StateDocument

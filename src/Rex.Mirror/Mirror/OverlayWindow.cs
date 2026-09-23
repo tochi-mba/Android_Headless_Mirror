@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using Rex.Core;
@@ -22,16 +23,27 @@ public sealed class OverlayWindow : Window
     private const double NavigatorMargin = 12;
 
     private readonly Canvas _canvas = new();
-    private readonly Image _ambient = new()
-    {
-        Stretch = Stretch.Fill, IsHitTestVisible = false,
-        Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 24 },
-    };
+    private readonly Image _ambient = new() { Stretch = Stretch.Fill, IsHitTestVisible = false };
+    private WriteableBitmap? _ambientBitmap;
     private readonly Canvas _ambientContainer = new() { IsHitTestVisible = false, ClipToBounds = true };
     private readonly Rectangle _tint = new() { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
 
     public bool AmbientVisible => _ambientContainer.Visibility == Visibility.Visible && _ambient.Source is not null;
     public bool NavigatorVisible => _navigator.Visibility == Visibility.Visible;
+
+    /// <summary>
+    /// Everything the soft background's layout depends on. The window redraws whenever any of its
+    /// content changes, and this is a transparent window, so a redraw costs a full-window blit.
+    /// Rebuilding the same geometry every tick paid that cost thirty times a second for a picture
+    /// that had not moved; comparing this first means the work happens only when something changed.
+    /// </summary>
+    private readonly record struct AmbientLayoutKey(
+        bool Enabled, RectD Surface, double Width, double Height, double SourceWidth, double SourceHeight,
+        double Opacity, string Placement, string Scaling, double Size, double OffsetX, double OffsetY,
+        bool FlipHorizontal, double EdgeFade, double TintStrength, double TintHue);
+
+    private AmbientLayoutKey? _ambientKey;
+    private bool _trailEmpty = true;
 
     /// <summary>
     /// Draws the soft background exactly as configured: the capture is scaled (cover / fit /
@@ -40,21 +52,30 @@ public sealed class OverlayWindow : Window
     /// </summary>
     public void UpdateAmbient(bool enabled, RectD surface, AmbientSettings settings)
     {
+        var width = Finite(_canvas.Width);
+        var height = Finite(_canvas.Height);
+        var source = _ambient.Source;
+        var key = new AmbientLayoutKey(
+            enabled, surface, width, height, source?.Width ?? 0, source?.Height ?? 0,
+            settings.Opacity, settings.Placement, settings.Scaling, settings.Size, settings.OffsetX,
+            settings.OffsetY, settings.FlipHorizontal, settings.EdgeFade, settings.TintStrength, settings.TintHue);
+        if (key == _ambientKey)
+        {
+            return;
+        }
+
+        _ambientKey = key;
         _ambientContainer.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
         if (!enabled)
         {
             return;
         }
 
-        var effect = (System.Windows.Media.Effects.BlurEffect)_ambient.Effect;
-        effect.Radius = settings.Blur;
         _ambient.Opacity = settings.Opacity;
-        var width = Math.Max(0, _canvas.Width);
-        var height = Math.Max(0, _canvas.Height);
         _ambientContainer.Width = width;
         _ambientContainer.Height = height;
 
-        if (_ambient.Source is { Width: > 0, Height: > 0 } source && width > 0 && height > 0)
+        if (source is { Width: > 0, Height: > 0 } && width > 0 && height > 0)
         {
             var (imageWidth, imageHeight) = AmbientLayout.ImageSize(settings, source.Width, source.Height, width, height);
             _ambient.Width = imageWidth;
@@ -62,17 +83,21 @@ public sealed class OverlayWindow : Window
             Canvas.SetLeft(_ambient, (width - imageWidth) / 2 + settings.OffsetX * width / 2);
             Canvas.SetTop(_ambient, (height - imageHeight) / 2 + settings.OffsetY * height / 2);
             _ambient.RenderTransformOrigin = new Point(0.5, 0.5);
-            _ambient.RenderTransform = new ScaleTransform(settings.FlipHorizontal ? -1 : 1, 1);
+            _ambient.RenderTransform = Frozen(new ScaleTransform(settings.FlipHorizontal ? -1 : 1, 1));
         }
 
         _tint.Width = width;
         _tint.Height = height;
         _tint.Visibility = settings.TintStrength > 0 ? Visibility.Visible : Visibility.Collapsed;
-        var (r, g, b) = AmbientLayout.HueToRgb(settings.TintHue);
-        _tint.Fill = new SolidColorBrush(Color.FromRgb(r, g, b));
-        _tint.Opacity = settings.TintStrength * settings.Opacity;
+        if (settings.TintStrength > 0)
+        {
+            var (r, g, b) = AmbientLayout.HueToRgb(settings.TintHue);
+            _tint.Fill = Frozen(new SolidColorBrush(Color.FromRgb(r, g, b)));
+            _tint.Opacity = settings.TintStrength * settings.Opacity;
+        }
+
         _ambientContainer.OpacityMask = settings.EdgeFade > 0
-            ? new RadialGradientBrush
+            ? Frozen(new RadialGradientBrush
             {
                 Center = new Point(0.5, 0.5),
                 GradientOrigin = new Point(0.5, 0.5),
@@ -84,16 +109,30 @@ public sealed class OverlayWindow : Window
                     new GradientStop(Colors.White, 1 - settings.EdgeFade),
                     new GradientStop(Colors.Transparent, 1),
                 },
-            }
+            })
             : null;
 
         var phone = new RectD(surface.X / _dpiScale, surface.Y / _dpiScale, Math.Max(0, surface.Width / _dpiScale), Math.Max(0, surface.Height / _dpiScale));
         var region = AmbientLayout.Region(settings.Placement, phone, width, height);
-        _ambientContainer.Clip = new CombinedGeometry(
+        _ambientContainer.Clip = Frozen(new CombinedGeometry(
             GeometryCombineMode.Exclude,
             new RectangleGeometry(new Rect(region.X, region.Y, region.Width, region.Height)),
-            new RectangleGeometry(new Rect(phone.X, phone.Y, phone.Width, phone.Height)));
+            new RectangleGeometry(new Rect(phone.X, phone.Y, phone.Width, phone.Height))));
     }
+
+    /// <summary>A freezable the render thread can share instead of copying it on every frame.</summary>
+    private static T Frozen<T>(T value) where T : Freezable
+    {
+        if (value.CanFreeze)
+        {
+            value.Freeze();
+        }
+
+        return value;
+    }
+
+    private static double Finite(double value) => double.IsFinite(value) ? Math.Max(0, value) : 0;
+
     private readonly Canvas _pattern = new() { IsHitTestVisible = false };
     private readonly List<Ellipse> _patternDots = [];
     private readonly Polyline _trail = new()
@@ -133,7 +172,6 @@ public sealed class OverlayWindow : Window
         Visibility = Visibility.Collapsed,
     };
     private readonly Canvas _navigatorCanvas = new() { Background = new SolidColorBrush(Color.FromRgb(0x10, 0x15, 0x11)) };
-    private readonly Image _preview = new() { Stretch = Stretch.Fill, IsHitTestVisible = false };
     private readonly List<Rectangle> _handles = [];
     private RectD _visibleFraction;
     private Point _dragStart;
@@ -143,10 +181,31 @@ public sealed class OverlayWindow : Window
     public event Action? NavigatorDragStarted;
     public double NavigatorMinScale { get; set; } = 0.1;
     public double NavigatorMaxScale { get; set; } = 10;
-    public void SetNavigatorPreview(ImageSource? image) => _preview.Source = image;
+    /// <summary>
+    /// Shows one captured frame. The pixels are already blurred, so the picture is simply scaled
+    /// up: no render-time effect, which is what made a large soft background expensive.
+    /// </summary>
+    public void SetAmbientFrame(AmbientFrame? frame)
+    {
+        if (frame is null)
+        {
+            _ambient.Source = null;
+            return;
+        }
 
-    public void SetAmbientFrame(ImageSource? image) => _ambient.Source = image;
-    public bool PreviewAvailable => _preview.Source is not null;
+        if (_ambientBitmap is null || _ambientBitmap.PixelWidth != frame.Width || _ambientBitmap.PixelHeight != frame.Height)
+        {
+            _ambientBitmap = new WriteableBitmap(frame.Width, frame.Height, 96, 96, PixelFormats.Pbgra32, null);
+        }
+
+        _ambientBitmap.WritePixels(new Int32Rect(0, 0, frame.Width, frame.Height), frame.Pixels, frame.Width * 4, 0);
+
+        // Switching the soft background off clears the picture but keeps the bitmap, so this has to
+        // be set on the way back in and not only when a new bitmap is made.
+        _ambient.Source = _ambientBitmap;
+    }
+
+    public bool AmbientFrameAvailable => _ambient.Source is not null;
     private readonly Rectangle _navigatorViewport = new()
     {
         Stroke = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F)),
@@ -169,7 +228,14 @@ public sealed class OverlayWindow : Window
     private RECT _screenPixels;
 
     public event Action<string>? HudActionRequested;
+
+    /// <summary>Raised while the fullscreen controls are dragged, or with nothing when they are pinned back.</summary>
+    public event Action<double?, double?>? HudMovedTo;
+
+    /// <summary>Raised when the fullscreen controls are dropped.</summary>
+    public event Action? HudMoveFinished;
     public bool HudVisible => IsVisible && _hudWindow.HudVisible;
+    public RectD HudBarRect => _hudWindow.BarRect;
     public void RevealHud(string? message = null) => _hudWindow.Reveal(message);
 
     /// <summary>Reveals the HUD when the pointer reaches the strip it is pinned to, wherever that is.</summary>
@@ -179,7 +245,8 @@ public sealed class OverlayWindow : Window
         if (fullscreen && Handle != IntPtr.Zero && NativeMethods.GetCursorPos(out var cursor))
         {
             NativeMethods.ScreenToClient(Handle, ref cursor);
-            var zone = HudLayout.HoverZone(settings.Position, Width, Height);
+            var zone = HudLayout.HoverZone(
+                settings.X, settings.Y, _hudWindow.BarWidth, _hudWindow.BarHeight, Width, Height, settings.Position, 12);
             inZone = HudLayout.Contains(zone, cursor.X / _dpiScale, cursor.Y / _dpiScale);
         }
 
@@ -191,6 +258,8 @@ public sealed class OverlayWindow : Window
         _owner = owner;
         _hudWindow = new FullscreenHudWindow(this);
         _hudWindow.ActionRequested += id => HudActionRequested?.Invoke(id);
+        _hudWindow.MovedTo += (x, y) => HudMovedTo?.Invoke(x, y);
+        _hudWindow.MoveFinished += () => HudMoveFinished?.Invoke();
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = true;
@@ -202,6 +271,8 @@ public sealed class OverlayWindow : Window
         Width = 10;
         Height = 10;
 
+        // The frame is a couple of hundred pixels wide; a cheap linear upscale is exactly right.
+        RenderOptions.SetBitmapScalingMode(_ambient, BitmapScalingMode.LowQuality);
         _ambientContainer.Children.Add(_ambient);
         _ambientContainer.Children.Add(_tint);
         _canvas.Children.Add(_ambientContainer);
@@ -215,7 +286,6 @@ public sealed class OverlayWindow : Window
         (_patternLoading, _patternLoadingText) = CreatePatternLoading();
         _canvas.Children.Add(_patternLoading);
 
-        _navigatorCanvas.Children.Add(_preview);
         _navigatorCanvas.Children.Add(_navigatorViewport);
         for (var i = 0; i < 4; i++)
         {
@@ -315,6 +385,14 @@ public sealed class OverlayWindow : Window
         if ((style & NativeMethods.WS_EX_TRANSPARENT) != 0)
             NativeMethods.SetStyle(source.Handle, NativeMethods.GWL_EXSTYLE, style & ~NativeMethods.WS_EX_TRANSPARENT);
 
+        // Moving a window to where it already is still costs a repaint, and this runs thirty times
+        // a second while the mirror sits perfectly still.
+        if (screenPixels.Left == _screenPixels.Left && screenPixels.Top == _screenPixels.Top
+            && screenPixels.Width == _screenPixels.Width && screenPixels.Height == _screenPixels.Height)
+        {
+            return;
+        }
+
         NativeMethods.SetWindowPos(source.Handle, IntPtr.Zero, screenPixels.Left, screenPixels.Top, screenPixels.Width, screenPixels.Height,
             NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOSENDCHANGING);
         _screenPixels = screenPixels;
@@ -407,6 +485,13 @@ public sealed class OverlayWindow : Window
         PointD? pointerPixels,
         double opacity)
     {
+        if (selected.Count == 0 && pointerPixels is null)
+        {
+            ClearTrail();
+            return;
+        }
+
+        _trailEmpty = false;
         _trail.Points.Clear();
         foreach (var index in selected)
         {
@@ -440,6 +525,14 @@ public sealed class OverlayWindow : Window
 
     public void ClearTrail()
     {
+        // Clearing what is already clear still marks the window as changed, and this runs twenty
+        // times a second whenever the pattern guide is off, which is nearly always.
+        if (_trailEmpty)
+        {
+            return;
+        }
+
+        _trailEmpty = true;
         _trail.Points.Clear();
         _trailTail.Visibility = Visibility.Collapsed;
         foreach (var dot in _patternDots)
@@ -497,8 +590,17 @@ public sealed class OverlayWindow : Window
 
     // ----- Navigator -----
 
+    private (bool Show, double Aspect, RectD Visible, double Width, string Corner, double CanvasWidth, double CanvasHeight)? _navigatorKey;
+
     public void UpdateNavigator(bool show, double surfaceAspect, RectD visibleFraction, ZoomSettings zoom)
     {
+        var key = (show, surfaceAspect, visibleFraction, zoom.NavigatorWidth, zoom.NavigatorCorner, Finite(_canvas.Width), Finite(_canvas.Height));
+        if (_navigatorKey is { } previous && previous == key)
+        {
+            return;
+        }
+
+        _navigatorKey = key;
         if (!show)
         {
             if (_navigatorDragging) _navigator.ReleaseMouseCapture();
@@ -511,8 +613,6 @@ public sealed class OverlayWindow : Window
         var innerWidth = Math.Min(navigatorWidth - 12, (navigatorWidth + 70) * Math.Max(0.1, surfaceAspect));
         var innerHeight = innerWidth / Math.Max(0.1, surfaceAspect);
         _visibleFraction = visibleFraction;
-        _preview.Width = innerWidth;
-        _preview.Height = innerHeight;
         _navigatorCanvas.Width = innerWidth;
         _navigatorCanvas.Height = innerHeight;
         _navigator.Width = navigatorWidth;
@@ -554,6 +654,12 @@ public sealed class OverlayWindow : Window
 
     private void OnNavigatorMove(object sender, MouseEventArgs e)
     {
+        if (_navigatorDragging && !LeftButtonHeld(e))
+        {
+            EndNavigatorDrag();
+            return;
+        }
+
         if (_navigatorDragging)
         {
             var point = e.GetPosition(_navigatorCanvas);
@@ -573,10 +679,49 @@ public sealed class OverlayWindow : Window
     {
         if (_navigatorDragging)
         {
-            _navigatorDragging = false;
-            _navigator.ReleaseMouseCapture();
+            EndNavigatorDrag();
             e.Handled = true;
         }
+    }
+
+    /// <summary>True while the navigator is being dragged, for the window to keep an eye on.</summary>
+    public bool NavigatorDragging => _navigatorDragging;
+
+    /// <summary>Where the navigator is on screen, in physical pixels.</summary>
+    public RectD NavigatorScreenRect => _navigatorScreenRect.IsEmpty
+        ? default
+        : new RectD(_navigatorScreenRect.X + _screenPixels.Left, _navigatorScreenRect.Y + _screenPixels.Top, _navigatorScreenRect.Width, _navigatorScreenRect.Height);
+
+    /// <summary>
+    /// Ends any drag whose button is no longer down, without waiting to be told.
+    ///
+    /// Nothing here needs a message to arrive, which is the point: the navigator used to go on
+    /// dragging the view around after the finger had lifted, and only resetting the zoom got out
+    /// of it. This runs on every frame, so the worst case is one frame of catching up.
+    /// </summary>
+    public void ReleaseStuckDrags()
+    {
+        if (NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON))
+        {
+            return;
+        }
+
+        if (_navigatorDragging)
+        {
+            EndNavigatorDrag();
+        }
+
+        if (_panning)
+        {
+            EndPan();
+        }
+    }
+
+    private void EndNavigatorDrag()
+    {
+        _navigatorDragging = false;
+        _resizeCorner = -1;
+        _navigator.ReleaseMouseCapture();
     }
 
     private void RaiseNavigator(Point point)
@@ -609,6 +754,12 @@ public sealed class OverlayWindow : Window
             return;
         }
 
+        if (!LeftButtonHeld(e))
+        {
+            EndPan();
+            return;
+        }
+
         var current = e.GetPosition(_canvas);
         PanDelta?.Invoke((current.X - _panLast.X) * _dpiScale, (current.Y - _panLast.Y) * _dpiScale);
         _panLast = current;
@@ -619,12 +770,28 @@ public sealed class OverlayWindow : Window
     {
         if (_panning)
         {
-            _panning = false;
-            _canvas.ReleaseMouseCapture();
-            _canvas.Cursor = Cursors.Arrow;
+            EndPan();
             e.Handled = true;
         }
     }
+
+    private void EndPan()
+    {
+        _panning = false;
+        _canvas.ReleaseMouseCapture();
+        _canvas.Cursor = Cursors.Arrow;
+    }
+
+    /// <summary>
+    /// Whether the left button is genuinely down.
+    ///
+    /// Both what the event says and what the mouse says have to agree, because the release that
+    /// ends a drag can happen where this window never hears it: the touchpad bridge consumes the
+    /// pointer messages it handles, and a button let go over the phone or another window may never
+    /// come back as a mouse event here.
+    /// </summary>
+    private static bool LeftButtonHeld(MouseEventArgs e) =>
+        NavigatorMath.KeepsDragging(true, e.LeftButton == MouseButtonState.Pressed, NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON));
 
     // ----- Win32 plumbing -----
 

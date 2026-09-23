@@ -383,7 +383,7 @@ public sealed class PatternGuide : IDisposable
         _patternRadius = radius;
         var label = IsCalibrating
             ? "CALIBRATE  ·  arrows move  ·  Shift+arrows resize  ·  Ctrl = fine  ·  Enter save  ·  Esc cancel  ·  R reset"
-            : $"PATTERN GUIDE  ·  {SourceLabel(layout.Source)}  ·  Ctrl+Alt+P hide  ·  Ctrl+Alt+C calibrate";
+            : $"PATTERN GUIDE  ·  {SourceLabel(layout.Source)}  ·  {Shortcuts.Gesture("pattern-guide")} hide  ·  {Shortcuts.Gesture("pattern-calibrate")} calibrate";
 
         _overlay.DrawPattern(points, radius, _host.Config.PatternGuide.Opacity, label, IsCalibrating);
         if (!IsVisible)

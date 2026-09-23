@@ -27,7 +27,6 @@ public sealed class MirrorHost : HwndHost
 
     public bool HasChild => _child != IntPtr.Zero && NativeMethods.IsWindow(_child);
     public IntPtr ViewportHandle => _viewport;
-    public IntPtr ChildHandle => _child;
     public double Zoom => _zoom;
     public ZoomView View => _view;
     public double MaxZoom { get; set; } = 4.0;
@@ -71,8 +70,25 @@ public sealed class MirrorHost : HwndHost
     {
         if (width > 0 && height > 0)
         {
-            _videoAspect = (double)width / height;
+            SetAspect((double)width / height);
+        }
+    }
+
+    /// <summary>Adopts a new video shape and re-fits the picture to the viewport.</summary>
+    private void SetAspect(double aspect)
+    {
+        if (Math.Abs(aspect - _videoAspect) < 0.001)
+        {
             Relayout();
+            return;
+        }
+
+        _videoAspect = aspect;
+        var (width, height) = ViewportPixels;
+        if (width > 0 && height > 0)
+        {
+            _view = ZoomMath.Refit(width, height, _videoAspect, _zoom);
+            Apply();
         }
     }
 
@@ -157,7 +173,6 @@ public sealed class MirrorHost : HwndHost
         Apply();
     }
 
-    public void ZoomBy(double factor, double anchorX, double anchorY) => SetZoom(_zoom * factor, anchorX, anchorY);
 
     public void ZoomStep(int direction, double? anchorX = null, double? anchorY = null, double step = 0.1)
     {
@@ -261,14 +276,9 @@ public sealed class MirrorHost : HwndHost
             return;
         }
 
-        // A size change we did not request: the video orientation changed. Adopt the new aspect.
-        var aspect = (double)width / height;
-        if (Math.Abs(aspect - _videoAspect) > 0.01)
-        {
-            _videoAspect = aspect;
-        }
-
-        Relayout();
+        // A size change we did not request: the video orientation changed. Adopt the new shape and
+        // re-fit, so a landscape picture fills the viewport instead of sitting in the old rectangle.
+        SetAspect((double)width / height);
     }
 
     // ----- HwndHost plumbing -----

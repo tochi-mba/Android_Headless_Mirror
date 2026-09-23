@@ -570,24 +570,6 @@ public static partial class AdbParsing
         return rows.OrderBy(x => x.Key, StringComparer.Ordinal).ToArray();
     }
 
-    public static IReadOnlyDictionary<string, string> ParseKeyValueLines(string text)
-    {
-        var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var raw in text.Split('\n'))
-        {
-            var line = raw.TrimEnd('\r');
-            var equals = line.IndexOf('=', StringComparison.Ordinal);
-            if (equals < 1)
-            {
-                continue;
-            }
-
-            values[line[..equals]] = line[(equals + 1)..].Trim();
-        }
-
-        return values;
-    }
-
     public static IReadOnlyList<string> ParseIpCandidates(string text)
     {
         var preferred = new List<string>();

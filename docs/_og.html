@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+  The source of docs/og.png, the picture link previews show.
+
+  It is generated rather than drawn by hand so it always matches the site: same palette, same type,
+  same words. Regenerate with "npm run build:og" after changing it.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  html,body{margin:0;padding:0;overflow:hidden}
+  .card{width:1200px;height:630px;background:var(--ink);position:relative;display:flex;flex-direction:column;
+        justify-content:center;padding:0 88px;box-sizing:border-box;font-family:var(--font);overflow:hidden}
+  .glow{position:absolute;border-radius:50%;filter:blur(90px)}
+  .glow-a{width:560px;height:560px;background:var(--signal);opacity:.16;top:-160px;right:-160px}
+  .glow-b{width:420px;height:420px;background:var(--live);opacity:.14;bottom:-180px;left:-120px}
+  .lockup{display:flex;align-items:center;gap:16px;margin-bottom:34px}
+  .lockup svg{width:44px;height:44px;fill:none;stroke:var(--signal);stroke-width:2;stroke-linecap:round}
+  .lockup span{font-size:22px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  h1{margin:0;font-size:92px;line-height:1.02;font-weight:900;letter-spacing:-.035em;color:var(--text)}
+  h1 em{font-style:normal;color:var(--signal)}
+  p{margin:28px 0 0;font-size:30px;line-height:1.35;color:var(--muted);max-width:820px}
+  .meta{position:absolute;left:88px;bottom:56px;display:flex;gap:14px;align-items:center}
+  .meta span{font-size:20px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:9px 18px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="glow glow-a"></div>
+  <div class="glow glow-b"></div>
+  <div class="lockup">
+    <svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg>
+    <span>REX Technologies</span>
+  </div>
+  <h1>Your phone.<br><em>One window.</em></h1>
+  <p>Plug an Android phone into Windows and it appears on your PC with its own screen off.</p>
+  <div class="meta"><span>USB</span><span>No account</span><span>No telemetry</span><span>Open source</span></div>
+</div>
+</body>
+</html>
