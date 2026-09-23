@@ -14,7 +14,7 @@ different encoder, settings or lock-screen behaviour.
 
 ## Install
 
-1. Download the versioned **AndroidHeadlessMirror-Setup-x.y.z.exe** from the website (or the
+1. Download **AndroidHeadlessMirror-Setup.exe** from the website (or the
    [latest release](https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest)) and run it.
    It installs for your user only, needs no administrator rights, and includes scrcpy. The
    installer is not code-signed yet: if SmartScreen appears, choose *More info → Run anyway*.
@@ -30,15 +30,6 @@ until you delete that folder.
 
 ## What you get
 
-- **Personal display controls.** Settings groups display, audio, gestures, lock screen, captures,
-  startup and advanced connection options. Ambient fill replaces empty margins with a dimmed,
-  blurred phone preview; turn it off or adjust blur, dimming and refresh rate. Preview images
-  refresh periodically (not at video frame rate) and protected screens may remain black.
-- **A useful navigator.** While zoomed, drag the minimap viewport to pan or drag a corner to zoom.
-  Preview captures stay in memory and are never saved or uploaded.
-- **Your screenshot folder.** Choose a default folder in Settings → Screenshots & recording.
-  Click a saved filename in the status bar to select it in File Explorer.
-
 - **One window.** The mirror fills the left; a side panel holds Controls, Phone, Settings and Info.
   F11 is true fullscreen with a small HUD at the top edge.
 - **Automatic.** The app waits in the tray, opens when an authorised phone connects, restarts the
@@ -46,12 +37,18 @@ until you delete that folder.
 - **Real gestures.** Two fingers on a Windows Precision Touchpad become two fingers on the phone:
   pinch, rotate and pan exactly like on the glass. Hold **Alt** to zoom or pan the PC view instead;
   **Alt + wheel** and **Alt + drag** do the same with a mouse. Zoom scales the real video surface,
-  so clicks always land where you see them, and a small navigator shows where you are.
+  so clicks always land where you see them. A small navigator shows where you are: drag it to
+  pan, drag a corner to zoom.
+- **Ambient fill.** The empty margins around the phone show a dimmed, blurred preview of the screen
+  instead of black. It refreshes every couple of seconds from a phone screenshot that stays in
+  memory; turn it off or tune blur, dimming and refresh in Settings.
 - **Phone controls.** Home, back, recents, power, screen off/on, volume, notifications, quick
   settings, rotation, clipboard both ways, screenshots.
 - **Phone settings.** Brightness, timeout, forced rotation, dark mode, text size, animations, stay
   awake, Wi-Fi, mobile data, airplane mode, display size and density, plus a searchable browser for
   the raw Android settings provider (keys that would cut off ADB are protected).
+- **Screenshots where you want them.** Pick the folder in Settings; click a saved filename in the
+  status bar to reveal it in File Explorer.
 - **Pattern-lock guide.** Some phones mirror their secure lock screen as black. For pattern locks the
   app draws a nine-dot guide, positioned from Android's own UI layout when available, with keyboard
   calibration as a fallback. The pattern itself is never stored or replayed.
@@ -98,7 +95,7 @@ scripts and coding agents is documented in [AGENTS.md](AGENTS.md).
   scrcpy installer, state, geometry and the pipe protocol. The app and the CLI share it.
 - `src/Rex.Cli` is `rex.exe`. Commands that need the live mirror talk to the app over a per-user
   named pipe; everything else uses ADB directly.
-- `installer/` builds a versioned `AndroidHeadlessMirror-Setup-x.y.z.exe` (Inno Setup): the published app and CLI,
+- `installer/` builds `AndroidHeadlessMirror-Setup.exe` (Inno Setup): the published app and CLI,
   plus the latest scrcpy release, downloaded and SHA-256 verified by `rex setup`.
 - `tests/` contains the xUnit suite, a fake `adb.exe` and a fake `scrcpy.exe` that let the whole
   app run end to end in CI without a phone, plus the Playwright checks for the website.
@@ -124,7 +121,7 @@ REX.bat --build                           # rebuilds after a change
 dotnet build Rex.sln
 dotnet test --project tests/Rex.Tests/Rex.Tests.csproj
 npm ci; npm run test:pages
-./installer/build.ps1 -Version 2.0.1      # needs Inno Setup 6; writes dist/AndroidHeadlessMirror-Setup-2.0.1.exe
+./installer/build.ps1 -Version 2.0.4      # needs Inno Setup 6; writes dist/AndroidHeadlessMirror-Setup.exe
 ```
 
 The test suite runs the real app against the fake phone tooling and saves screenshots under

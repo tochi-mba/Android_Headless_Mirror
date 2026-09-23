@@ -90,11 +90,11 @@ public sealed class RepositoryTests
         var release = File.ReadAllText(Path.Combine(RepoPaths.Root, ".github", "workflows", "release.yml"));
 
         Assert.Contains("AppId={{6C1E7A2B-5D3F-4E8A-9B0C-7A2D4F6E8B10}", installer);
-        Assert.Contains("OutputBaseFilename=AndroidHeadlessMirror-Setup-{#AppVersion}", installer);
+        Assert.Contains("OutputBaseFilename=AndroidHeadlessMirror-Setup\n", installer.ReplaceLineEndings("\n"));
         Assert.Contains("function PrepareToInstall", installer);
         Assert.Contains("ignoreversion recursesubdirs", installer);
-        Assert.Contains("AndroidHeadlessMirror-Setup-$Version.exe", build);
-        Assert.Contains("AndroidHeadlessMirror-Setup-${RELEASE_VERSION}.exe", release);
+        Assert.Contains("AndroidHeadlessMirror-Setup.exe", build);
+        Assert.Contains("dist/AndroidHeadlessMirror-Setup.exe", release);
     }
 
     [Fact]

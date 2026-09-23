@@ -30,7 +30,9 @@ if (meta && 'fetch' in window) {
   fetch('https://api.github.com/repos/tochi-mba/Android_Headless_Mirror/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
     .then(response => (response.ok ? response.json() : null))
     .then(release => {
-      const asset = release?.assets?.find(a => /^AndroidHeadlessMirror-Setup-\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?\.exe$/.test(a.name));
+      // The static link already points at the stable asset name; the API only adds the version
+      // and size, and covers older releases that used a versioned file name.
+      const asset = release?.assets?.find(a => /^AndroidHeadlessMirror-Setup.*\.exe$/.test(a.name));
       if (asset) {
         document.querySelectorAll('[data-latest-installer]').forEach(link => {
           link.href = asset.browser_download_url;

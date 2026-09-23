@@ -62,7 +62,7 @@
     "AmbientBackground": true,
     "AmbientBlur": 24,
     "AmbientDim": 0.58,
-    "PreviewIntervalSeconds": 1,
+    "PreviewIntervalSeconds": 2,
     "HudHideSeconds": 3
   },
   "Logging": {

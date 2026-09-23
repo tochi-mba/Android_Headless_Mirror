@@ -99,7 +99,7 @@ public partial class SettingsPanel : UserControl
 
     private static string SelectedTag(ComboBox combo, string fallback) => (combo.SelectedItem as ComboBoxItem)?.Tag as string ?? fallback;
 
-    private void Save(Action<RexConfig> mutate, bool launchTime)
+    private void Save(Action<RexConfig> mutate)
     {
         if (_loading || _host is null)
         {
@@ -122,14 +122,14 @@ public partial class SettingsPanel : UserControl
         c.Session.TurnScreenOff = TurnScreenOff.IsChecked == true;
         c.Session.StayAwake = StayAwake.IsChecked == true;
         c.Session.PowerOffOnClose = PowerOffOnClose.IsChecked == true;
-    }, launchTime: true);
+    });
 
     private void OnSessionChanged(object sender, RoutedEventArgs e) => Save(c =>
     {
         c.Session.RestartOnUnexpectedExit = RestartOnCrash.IsChecked == true;
         c.Wireless.Enabled = Wireless.IsChecked == true;
         c.Wireless.EnableTcpipWhenUsbAvailable = WirelessTcpip.IsChecked == true;
-    }, launchTime: false);
+    });
 
     private void OnLiveChanged(object sender, RoutedEventArgs e) => Save(c =>
     {
@@ -146,7 +146,7 @@ public partial class SettingsPanel : UserControl
         c.App.RunInBackground = RunInBackground.IsChecked == true;
         c.App.OpenOnConnect = OpenOnConnect.IsChecked == true;
         c.App.ConfirmSensitiveWrites = ConfirmWrites.IsChecked == true;
-    }, launchTime: false);
+    });
 
     private void OnSensitivity(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -196,7 +196,7 @@ public partial class SettingsPanel : UserControl
             ScrcpyArguments.SplitExtraArgs(ExtraArgs.Text);
             ExtraArgsError.Text = string.Empty;
             var text = ExtraArgs.Text.Trim();
-            Save(c => c.Mirror.ExtraArgs = text, launchTime: true);
+            Save(c => c.Mirror.ExtraArgs = text);
         }
         catch (FormatException ex)
         {
@@ -248,7 +248,7 @@ public partial class SettingsPanel : UserControl
             c.App.HudHideSeconds = HudDelay.Value;
             c.Zoom.MaxZoom = MaximumZoom.Value;
             c.Zoom.WheelStep = Math.Round(WheelSpeed.Value, 2);
-        }, launchTime: false);
+        });
     }
 
     public void RefreshRestartNotice()
@@ -265,9 +265,9 @@ public partial class SettingsPanel : UserControl
             InitialDirectory = _host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory),
         };
         if (picker.ShowDialog(_window!) == true)
-            Save(c => c.App.ScreenshotDirectory = picker.FolderName, launchTime: false);
+            Save(c => c.App.ScreenshotDirectory = picker.FolderName);
     }
 
     private void OnDefaultScreenshotFolder(object sender, RoutedEventArgs e) =>
-        Save(c => c.App.ScreenshotDirectory = new AppSettings().ScreenshotDirectory, launchTime: false);
+        Save(c => c.App.ScreenshotDirectory = new AppSettings().ScreenshotDirectory);
 }

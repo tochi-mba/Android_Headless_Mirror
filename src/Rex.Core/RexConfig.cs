@@ -270,7 +270,8 @@ public sealed record AppSettings
     public bool AmbientBackground { get; set; } = true;
     public double AmbientBlur { get; set; } = 24;
     public double AmbientDim { get; set; } = 0.58;
-    public double PreviewIntervalSeconds { get; set; } = 1;
+    /// <summary>Seconds between the phone screenshots that feed the ambient fill and the navigator thumbnail.</summary>
+    public double PreviewIntervalSeconds { get; set; } = 2;
     public double HudHideSeconds { get; set; } = 3;
 
     public AppSettings Copy() => this with { };
@@ -279,7 +280,7 @@ public sealed record AppSettings
     {
         AmbientBlur = double.IsFinite(AmbientBlur) ? Math.Clamp(AmbientBlur, 4, 60) : 24;
         AmbientDim = double.IsFinite(AmbientDim) ? Math.Clamp(AmbientDim, 0.15, 0.9) : 0.58;
-        PreviewIntervalSeconds = double.IsFinite(PreviewIntervalSeconds) ? Math.Clamp(PreviewIntervalSeconds, 0.5, 5) : 1;
+        PreviewIntervalSeconds = double.IsFinite(PreviewIntervalSeconds) ? Math.Clamp(PreviewIntervalSeconds, 1, 10) : 2;
         HudHideSeconds = double.IsFinite(HudHideSeconds) ? Math.Clamp(HudHideSeconds, 1, 15) : 3;
         ScreenshotDirectory = !string.IsNullOrWhiteSpace(ScreenshotDirectory) &&
             (Path.IsPathFullyQualified(ScreenshotDirectory) || PathRules.IsSafeRelativePath(ScreenshotDirectory))

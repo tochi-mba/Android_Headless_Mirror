@@ -84,8 +84,8 @@ jobs:
         with:
           name: installer-and-screens
           path: |
-            dist/AndroidHeadlessMirror-Setup-*.exe
-            dist/AndroidHeadlessMirror-Setup-*.exe.sha256
+            dist/AndroidHeadlessMirror-Setup.exe
+            dist/AndroidHeadlessMirror-Setup.exe.sha256
             artifacts/screens/
           if-no-files-found: ignore
           retention-days: 14
@@ -135,7 +135,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="v${RELEASE_VERSION}"
-          installer_name="AndroidHeadlessMirror-Setup-${RELEASE_VERSION}.exe"
+          installer_name="AndroidHeadlessMirror-Setup.exe"
           installer="release-artifact/dist/${installer_name}"
           checksum="${installer}.sha256"
 

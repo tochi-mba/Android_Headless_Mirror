@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds AndroidHeadlessMirror-Setup-<version>.exe: publishes the app and the CLI, bundles the latest
+  Builds AndroidHeadlessMirror-Setup.exe: publishes the app and the CLI, bundles the latest
   verified scrcpy release and compiles the Inno Setup script. Used by CI and releases; works
   locally when the .NET 10 SDK and Inno Setup 6 are installed.
 
@@ -69,7 +69,7 @@ Write-Host "[installer] Compiling"
 & $iscc "/DAppVersion=$Version" "/DSource=$dist" "/O$dist" "/Q" (Join-Path $PSScriptRoot "AndroidHeadlessMirror.iss")
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed." }
 
-$setupName = "AndroidHeadlessMirror-Setup-$Version.exe"
+$setupName = "AndroidHeadlessMirror-Setup.exe"
 $setup = Join-Path $dist $setupName
 $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLowerInvariant()
 "$hash  $setupName" | Set-Content "$setup.sha256" -Encoding ASCII
