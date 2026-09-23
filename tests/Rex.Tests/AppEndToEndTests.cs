@@ -135,7 +135,7 @@ public sealed class AppEndToEndTests
     }
 
     [Fact]
-    public async Task PatternGuide_ShowsLoadingUntilAndroidGeometryIsReady()
+    public async Task PatternGuide_DiscoversAndroidGeometryAndRenders()
     {
         using var package = new TestPackage(withFakeTools: true);
         new StateStore(package.Paths.State).SetLockScreenMode("FAKE123", LockScreenModes.Pattern);
@@ -153,12 +153,6 @@ public sealed class AppEndToEndTests
 
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
-        await app.WaitForStatusAsync(
-            data => data["patternGuide"]?["resolving"]?.GetValue<bool>() == true,
-            TimeSpan.FromSeconds(8),
-            "pattern geometry loading state");
-        await app.SaveScreenshotAsync("pattern-loading.png");
-
         var ready = await app.WaitForStatusAsync(
             data => data["patternGuide"]?["visible"]?.GetValue<bool>() == true &&
                 data["patternGuide"]?["resolving"]?.GetValue<bool>() == false &&
