@@ -11,11 +11,10 @@ namespace Rex.Core;
 public static partial class ScrcpyArguments
 {
     /// <summary>
-    /// Modifier for scrcpy's own keyboard shortcuts. Right Ctrl + Right Alt is a combination
-    /// nobody presses by accident (AltGr is Left Ctrl + Right Alt), so typing into the phone
-    /// never triggers a scrcpy action, and the app can still send actions programmatically.
+    /// Modifier for scrcpy's own keyboard shortcuts. scrcpy 4.1 no longer accepts combined
+    /// modifiers, so use the rarely pressed Right Ctrl key and send that same key from the app.
     /// </summary>
-    public const string ShortcutModifier = "rctrl+ralt";
+    public const string ShortcutModifier = "rctrl";
 
     private static readonly string[] FixedFlags =
     [

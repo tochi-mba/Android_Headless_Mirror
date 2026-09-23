@@ -25,7 +25,7 @@ public sealed class AppEndToEndTests
         Assert.Equal("FAKE123", status["device"]!["serial"]!.GetValue<string>());
         Assert.Equal("Galaxy S21 Ultra", status["device"]!["name"]!.GetValue<string>());
         Assert.True(app.IsPerMonitorV2(), "The main window must run with PerMonitorV2 DPI awareness.");
-        Assert.Contains(package.ScrcpyLog(), line => line.Contains("--window-borderless", StringComparison.Ordinal) && line.Contains("--shortcut-mod=rctrl+ralt", StringComparison.Ordinal));
+        Assert.Contains(package.ScrcpyLog(), line => line.Contains("--window-borderless", StringComparison.Ordinal) && line.Contains("--shortcut-mod=rctrl", StringComparison.Ordinal));
         Assert.Contains(package.AdbCalls(), line => line.EndsWith("shell wm dismiss-keyguard", StringComparison.Ordinal));
 
         var zoomed = await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
@@ -44,7 +44,7 @@ public sealed class AppEndToEndTests
             "scrcpy shortcut key log");
         var keys = package.ScrcpyLog().Where(l => l.StartsWith("key ", StringComparison.Ordinal)).ToArray();
         Assert.Contains(keys, k => k.Contains("vk=163", StringComparison.Ordinal)); // Right Ctrl
-        Assert.Contains(keys, k => k.Contains("vk=165", StringComparison.Ordinal)); // Right Alt
+        Assert.DoesNotContain(keys, k => k.Contains("vk=165", StringComparison.Ordinal)); // Right Alt is not part of the scrcpy modifier.
         Assert.Contains(keys, k => k.Contains("vk=79", StringComparison.Ordinal));  // O
 
         var home = await app.SendAsync(new IpcRequest("action", new Dictionary<string, string> { ["name"] = "home" }));
@@ -103,6 +103,43 @@ public sealed class AppEndToEndTests
         using var second = new AppProcess(package);
         Assert.False((await second.WaitForPhaseAsync("waiting", StartupTimeout))["onboarding"]!.GetValue<bool>());
         await second.QuitAsync();
+    }
+
+    [Fact]
+    public async Task PatternGuide_ShowsLoadingUntilAndroidGeometryIsReady()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        new StateStore(package.Paths.State).SetLockScreenMode("FAKE123", LockScreenModes.Pattern);
+        package.WriteScenario(new
+        {
+            Devices = new[] { new { Serial = "FAKE123", State = "device", Model = "Fake Phone" } },
+            KeyguardLocked = true,
+            UiHierarchyDelayMs = 1500,
+            UiHierarchy = """
+                <hierarchy rotation="0"><node class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
+                  <node class="com.android.internal.widget.LockPatternView" bounds="[140,820][940,1620]" />
+                </node></hierarchy>
+                """,
+        });
+
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.WaitForStatusAsync(
+            data => data["patternGuide"]?["resolving"]?.GetValue<bool>() == true,
+            TimeSpan.FromSeconds(8),
+            "pattern geometry loading state");
+        await app.SaveScreenshotAsync("pattern-loading.png");
+
+        var ready = await app.WaitForStatusAsync(
+            data => data["patternGuide"]?["visible"]?.GetValue<bool>() == true &&
+                data["patternGuide"]?["resolving"]?.GetValue<bool>() == false &&
+                data["patternGuide"]?["source"]?.GetValue<string>() == PatternGeometry.SourceUiView,
+            TimeSpan.FromSeconds(8),
+            "discovered pattern geometry");
+        Assert.Equal(PatternGeometry.SourceUiView, ready["patternGuide"]!["source"]!.GetValue<string>());
+        await app.SaveScreenshotAsync("pattern-ready.png");
+        await app.DragPatternAndCaptureAsync("pattern-trace.png");
+        await app.QuitAsync();
     }
 
     [Fact]
@@ -344,6 +381,50 @@ public sealed class AppEndToEndTests
             mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
         }
 
+        public async Task DragPatternAndCaptureAsync(string name)
+        {
+            var executable = Path.Combine(_package.ToolsFolder, "scrcpy.exe");
+            using var mirror = Process.GetProcessesByName("scrcpy")
+                .Single(process => string.Equals(process.MainModule?.FileName, executable, StringComparison.OrdinalIgnoreCase));
+            var child = FindChildWindow(FindMainWindow(), mirror.Id);
+            Assert.NotEqual(IntPtr.Zero, child);
+            Assert.True(GetWindowRect(child, out var rect));
+
+            var width = rect.Right - rect.Left;
+            var height = rect.Bottom - rect.Top;
+            var points = new[]
+            {
+                (X: rect.Left + (int)(width * 0.253), Y: rect.Top + (int)(height * 0.397)),
+                (X: rect.Left + (int)(width * 0.747), Y: rect.Top + (int)(height * 0.397)),
+                (X: rect.Left + (int)(width * 0.747), Y: rect.Top + (int)(height * 0.618)),
+            };
+
+            SetPhysicalCursorPos(points[0].X, points[0].Y);
+            mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+            try
+            {
+                for (var target = 1; target < points.Length; target++)
+                {
+                    var start = points[target - 1];
+                    var end = points[target];
+                    for (var step = 1; step <= 12; step++)
+                    {
+                        SetPhysicalCursorPos(
+                            start.X + (end.X - start.X) * step / 12,
+                            start.Y + (end.Y - start.Y) * step / 12);
+                        await Task.Delay(25, TestContext.Current.CancellationToken);
+                    }
+                }
+
+                await Task.Delay(100, TestContext.Current.CancellationToken);
+                await SaveScreenshotAsync(name);
+            }
+            finally
+            {
+                mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+            }
+        }
+
         public async Task PressKeyAsync(byte key, bool repeat = false)
         {
             // Windows processes injected input asynchronously. Wait for the focus
@@ -493,7 +574,10 @@ public sealed class AppEndToEndTests
             JsonObject? last = null;
             while (DateTime.UtcNow < deadline)
             {
-                Assert.False(_process.HasExited, "The app exited early. Log:\n" + Log());
+                if (_process.HasExited)
+                {
+                    Assert.Fail("The app exited early. Log:\n" + Log());
+                }
                 var response = await _client.SendAsync(new IpcRequest("status"), TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
                 if (response is { Ok: true, Data: JsonObject data })
                 {
@@ -570,6 +654,23 @@ public sealed class AppEndToEndTests
             return true;
         }
 
+        private static IntPtr FindChildWindow(IntPtr parent, int processId)
+        {
+            var found = IntPtr.Zero;
+            EnumChildWindows(parent, (window, _) =>
+            {
+                GetWindowThreadProcessId(window, out var owner);
+                if (owner == processId)
+                {
+                    found = window;
+                    return false;
+                }
+
+                return true;
+            }, IntPtr.Zero);
+            return found;
+        }
+
         public async Task QuitAsync()
         {
             await _client.SendAsync(new IpcRequest("quit"), TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -579,7 +680,21 @@ public sealed class AppEndToEndTests
         private string Log()
         {
             var path = _package.Paths.LogFile;
-            return File.Exists(path) ? File.ReadAllText(path) : "(no log)";
+            if (!File.Exists(path))
+            {
+                return "(no log)";
+            }
+
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
+            catch (IOException ex)
+            {
+                return $"(log temporarily unavailable: {ex.Message})";
+            }
         }
 
         private IntPtr FindMainWindow()
@@ -662,6 +777,8 @@ public sealed class AppEndToEndTests
 
         [DllImport("user32.dll")]
         private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+        [DllImport("user32.dll")]
+        private static extern bool EnumChildWindows(IntPtr parent, EnumWindowsProc callback, IntPtr parameter);
         private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr parameter);
 
         [DllImport("user32.dll")]

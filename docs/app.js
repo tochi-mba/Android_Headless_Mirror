@@ -30,8 +30,14 @@ if (meta && 'fetch' in window) {
   fetch('https://api.github.com/repos/tochi-mba/Android_Headless_Mirror/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
     .then(response => (response.ok ? response.json() : null))
     .then(release => {
-      const asset = release?.assets?.find(a => a.name === 'AndroidHeadlessMirror-Setup.exe');
-      if (asset) meta.textContent = `${release.tag_name} · ${Math.round(asset.size / 1048576)} MB · Windows 10 or 11 · 64-bit`;
+      const asset = release?.assets?.find(a => /^AndroidHeadlessMirror-Setup-\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?\.exe$/.test(a.name));
+      if (asset) {
+        document.querySelectorAll('[data-latest-installer]').forEach(link => {
+          link.href = asset.browser_download_url;
+          link.setAttribute('download', asset.name);
+        });
+        meta.textContent = `${release.tag_name} · ${Math.round(asset.size / 1048576)} MB · Windows 10 or 11 · 64-bit`;
+      }
     })
     .catch(() => {});
 }

@@ -77,9 +77,24 @@ public sealed class RepositoryTests
     public void ScrcpyLaunchContractIsDocumentedForAgents()
     {
         var agents = File.ReadAllText(Path.Combine(RepoPaths.Root, "AGENTS.md"));
-        Assert.Contains("--shortcut-mod=rctrl+ralt", agents);
+        Assert.Contains("--shortcut-mod=rctrl", agents);
         Assert.Contains("protocolVersion", agents);
         Assert.Contains("REX.bat agent capabilities", agents);
+    }
+
+    [Fact]
+    public void Installer_IsVersionedAndKeepsAStableUpgradeIdentity()
+    {
+        var installer = File.ReadAllText(Path.Combine(RepoPaths.Root, "installer", "AndroidHeadlessMirror.iss"));
+        var build = File.ReadAllText(Path.Combine(RepoPaths.Root, "installer", "build.ps1"));
+        var release = File.ReadAllText(Path.Combine(RepoPaths.Root, ".github", "workflows", "release.yml"));
+
+        Assert.Contains("AppId={{6C1E7A2B-5D3F-4E8A-9B0C-7A2D4F6E8B10}", installer);
+        Assert.Contains("OutputBaseFilename=AndroidHeadlessMirror-Setup-{#AppVersion}", installer);
+        Assert.Contains("function PrepareToInstall", installer);
+        Assert.Contains("ignoreversion recursesubdirs", installer);
+        Assert.Contains("AndroidHeadlessMirror-Setup-$Version.exe", build);
+        Assert.Contains("AndroidHeadlessMirror-Setup-${RELEASE_VERSION}.exe", release);
     }
 
     [Fact]

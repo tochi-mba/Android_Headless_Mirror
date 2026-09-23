@@ -17,7 +17,7 @@ public sealed class ScrcpyTests
         foreach (var expected in new[]
         {
             "--serial=USB123", "--window-title=Android Headless Mirror [USB123]", "--window-borderless",
-            "--no-window-aspect-ratio-lock", "--mouse=sdk", "--keyboard=sdk", "--shortcut-mod=rctrl+ralt",
+            "--no-window-aspect-ratio-lock", "--mouse=sdk", "--keyboard=sdk", "--shortcut-mod=rctrl",
             "--window-x=10", "--window-y=20", "--window-width=300", "--window-height=600",
             "--turn-screen-off", "--stay-awake", "--keep-active", "--max-size=1920", "--max-fps=60",
             "--video-bit-rate=12M", "--video-codec=h264", "--audio-codec=opus", "--audio-buffer=50",
@@ -30,6 +30,7 @@ public sealed class ScrcpyTests
         Assert.DoesNotContain("--power-off-on-close", args);
         Assert.DoesNotContain("--audio-dup", args);
         Assert.DoesNotContain("--record=", args);
+        Assert.DoesNotContain(args, argument => argument.StartsWith("--shortcut-mod=", StringComparison.Ordinal) && argument.Contains('+', StringComparison.Ordinal));
     }
 
     [Fact]

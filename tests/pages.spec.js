@@ -99,12 +99,21 @@ test.describe('Android Headless Mirror site', () => {
   });
 
   test('the download button fetches the installer from the latest release', async ({ page }) => {
+    await page.route('https://api.github.com/repos/tochi-mba/Android_Headless_Mirror/releases/latest', route => route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ tag_name: 'v2.0.1', assets: [{
+        name: 'AndroidHeadlessMirror-Setup-2.0.1.exe',
+        browser_download_url: 'https://github.com/tochi-mba/Android_Headless_Mirror/releases/download/v2.0.1/AndroidHeadlessMirror-Setup-2.0.1.exe',
+        size: 58720256,
+      }] }),
+    }));
+    await page.reload();
     const button = page.locator('#download');
     await expect(button).toBeVisible();
-    await expect(button).toHaveAttribute('href', 'https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest/download/AndroidHeadlessMirror-Setup.exe');
-    await expect(button).toHaveAttribute('download', '');
-    await expect(page.locator('#download-meta')).toContainText(/Windows 10 or 11/);
-    await expect(page.locator('#install a[href$="AndroidHeadlessMirror-Setup.exe"]')).toHaveCount(1);
+    await expect(button).toHaveAttribute('href', /AndroidHeadlessMirror-Setup-2\.0\.1\.exe$/);
+    await expect(button).toHaveAttribute('download', 'AndroidHeadlessMirror-Setup-2.0.1.exe');
+    await expect(page.locator('#download-meta')).toContainText(/v2\.0\.1.*Windows 10 or 11/);
+    await expect(page.locator('a[data-latest-installer][href$="AndroidHeadlessMirror-Setup-2.0.1.exe"]')).toHaveCount(2);
   });
 
   test('install steps are ordered and the clone command copies', async ({ page, context, browserName }) => {

@@ -99,6 +99,12 @@ public static class CommandRouter
             ["hudVisible"] = host.Window?.HudVisible ?? false,
             ["onboarding"] = host.Window?.OnboardingVisible ?? false,
             ["zoom"] = host.Window is { } w ? Math.Round(w.Host.Zoom, 3) : 1.0,
+            ["patternGuide"] = host.Window is { } window ? new JsonObject
+            {
+                ["visible"] = window.PatternGuideVisible,
+                ["resolving"] = window.PatternGuideResolving,
+                ["source"] = window.PatternGuideSource,
+            } : null,
             ["device"] = session.ActiveDevice is null ? null : new JsonObject
             {
                 ["serial"] = session.ActiveDevice.Serial,

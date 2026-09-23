@@ -14,7 +14,7 @@ different encoder, settings or lock-screen behaviour.
 
 ## Install
 
-1. Download **AndroidHeadlessMirror-Setup.exe** from the website (or the
+1. Download the versioned **AndroidHeadlessMirror-Setup-x.y.z.exe** from the website (or the
    [latest release](https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest)) and run it.
    It installs for your user only, needs no administrator rights, and includes scrcpy. The
    installer is not code-signed yet: if SmartScreen appears, choose *More info → Run anyway*.
@@ -89,7 +89,7 @@ scripts and coding agents is documented in [AGENTS.md](AGENTS.md).
   scrcpy installer, state, geometry and the pipe protocol. The app and the CLI share it.
 - `src/Rex.Cli` is `rex.exe`. Commands that need the live mirror talk to the app over a per-user
   named pipe; everything else uses ADB directly.
-- `installer/` builds `AndroidHeadlessMirror-Setup.exe` (Inno Setup): the published app and CLI,
+- `installer/` builds a versioned `AndroidHeadlessMirror-Setup-x.y.z.exe` (Inno Setup): the published app and CLI,
   plus the latest scrcpy release, downloaded and SHA-256 verified by `rex setup`.
 - `tests/` contains the xUnit suite, a fake `adb.exe` and a fake `scrcpy.exe` that let the whole
   app run end to end in CI without a phone, plus the Playwright checks for the website.
@@ -115,7 +115,7 @@ REX.bat --build                           # rebuilds after a change
 dotnet build Rex.sln
 dotnet test --project tests/Rex.Tests/Rex.Tests.csproj
 npm ci; npm run test:pages
-./installer/build.ps1 -Version 2.0.0      # needs Inno Setup 6; writes dist/AndroidHeadlessMirror-Setup.exe
+./installer/build.ps1 -Version 2.0.1      # needs Inno Setup 6; writes dist/AndroidHeadlessMirror-Setup-2.0.1.exe
 ```
 
 The test suite runs the real app against the fake phone tooling and saves screenshots under

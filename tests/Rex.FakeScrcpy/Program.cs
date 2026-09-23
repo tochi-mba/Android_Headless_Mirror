@@ -34,6 +34,13 @@ internal static class Program
         Log("pid " + Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
         Log("args " + string.Join(' ', args));
 
+        var shortcutModifier = args.FirstOrDefault(a => a.StartsWith("--shortcut-mod=", StringComparison.Ordinal));
+        if (shortcutModifier?.Contains('+', StringComparison.Ordinal) == true)
+        {
+            Console.Error.WriteLine($"ERROR: Shortcut mod combination with '+' is not supported anymore: '{shortcutModifier[15..]}' (see #4741)");
+            return 1;
+        }
+
         if (args.Contains("--rex-spawn-child"))
         {
             var childStart = new ProcessStartInfo(Environment.ProcessPath!)

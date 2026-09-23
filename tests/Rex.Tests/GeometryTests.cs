@@ -109,6 +109,22 @@ public sealed class GeometryTests
         Assert.Equal(0.7, moved.Right, 6);
     }
 
+    [Fact]
+    public void PatternPath_SnapsToDotsAndAddsSkippedMiddleCells()
+    {
+        var points = Enumerable.Range(0, 9)
+            .Select(index => new PointD(index % 3 * 100, index / 3 * 100))
+            .ToArray();
+
+        Assert.Equal(4, PatternPath.HitTest(points, new PointD(104, 97), 12));
+        Assert.Null(PatternPath.HitTest(points, new PointD(150, 50), 12));
+        Assert.Equal([0, 1, 2], PatternPath.AddNode([0], 2));
+        Assert.Equal([0, 4, 8], PatternPath.AddNode([0], 8));
+        Assert.Equal([6, 4, 2], PatternPath.AddNode([6], 2));
+        Assert.Equal([0, 1, 2], PatternPath.AddNode([0, 1], 2));
+        Assert.Equal([0, 1], PatternPath.AddNode([0, 1], 0));
+    }
+
     [Theory]
     [InlineData("mKeyguardShowing=true", KeyguardState.Locked)]
     [InlineData("deviceLocked: 1", KeyguardState.Locked)]

@@ -35,6 +35,9 @@ public partial class MainWindow : Window
     public bool IsFullscreen => _fullscreen;
     public bool HudVisible => _overlay.HudVisible;
     public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
+    public bool PatternGuideVisible => _guide?.IsVisible == true;
+    public bool PatternGuideResolving => _guide?.IsResolving == true;
+    public string PatternGuideSource => _guide?.Source ?? PatternGeometry.SourceUnavailable;
 
     public MainWindow(AppHost host)
     {

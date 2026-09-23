@@ -56,8 +56,8 @@ jobs:
         with:
           name: installer-and-screens
           path: |
-            dist/AndroidHeadlessMirror-Setup.exe
-            dist/AndroidHeadlessMirror-Setup.exe.sha256
+            dist/AndroidHeadlessMirror-Setup-*.exe
+            dist/AndroidHeadlessMirror-Setup-*.exe.sha256
             artifacts/screens/
           if-no-files-found: ignore
           retention-days: 14
