@@ -40,6 +40,7 @@ public static class MachineMode
                 "status" => Success(command, await StatusAsync(context).ConfigureAwait(false)),
                 "devices" => Success(command, await DevicesAsync(context).ConfigureAwait(false)),
                 "diagnostics" => Success(command, (await Diagnostics.BuildAsync(context.Paths, context.Log, context.Runner).ConfigureAwait(false)).ToJson()),
+                "usb" => await UsbAsync(context, positional).ConfigureAwait(false),
                 "open" or "start" => await OpenAsync(context).ConfigureAwait(false),
                 "stop" => await ForwardAsync(context, "stop", new IpcRequest("session-stop")).ConfigureAwait(false),
                 "quit" => await ForwardAsync(context, "quit", new IpcRequest("quit")).ConfigureAwait(false),
@@ -65,9 +66,9 @@ public static class MachineMode
     {
         ["protocolVersion"] = ProtocolVersion,
         ["mode"] = "non-interactive-json",
-        ["commands"] = new JsonArray("capabilities", "status", "devices", "diagnostics", "open", "stop", "quit", "action", "zoom", "screenshot", "phone", "android", "config", "autostart", "lock-mode", "reset-lock"),
+        ["commands"] = new JsonArray("capabilities", "status", "devices", "diagnostics", "usb", "open", "stop", "quit", "action", "zoom", "screenshot", "phone", "android", "config", "autostart", "lock-mode", "reset-lock"),
         ["actions"] = new JsonArray(MirrorActions.All.Select(a => (JsonNode)new JsonObject { ["id"] = a.Id, ["label"] = a.Label, ["kind"] = a.Kind.ToString().ToLowerInvariant(), ["detail"] = a.Detail }).ToArray()),
-        ["phoneSettings"] = new JsonArray(FriendlySettings.Ids.Concat(["rotation"]).Select(x => (JsonNode)x).ToArray()),
+        ["phoneSettings"] = new JsonArray(PhoneSettings.Ids.Concat(["rotation"]).Select(x => (JsonNode)x).ToArray()),
         ["androidNamespaces"] = new JsonArray(AndroidSettings.Namespaces.Select(x => (JsonNode)x).ToArray()),
         ["configPaths"] = new JsonArray(context.Config.Flatten().Select(x => (JsonNode)x.Path).ToArray()),
         ["serialRule"] = "Omit --serial only when exactly one authorized phone is connected.",
@@ -165,20 +166,43 @@ public static class MachineMode
 
     private static async Task<MachineResult> PhoneAsync(CliContext context, string[] positional, string? serial)
     {
-        Arguments.Require(positional, 2, "phone <get|set> ...");
+        Arguments.Require(positional, 2, "phone <get|list|set|reset> ...");
         var adb = context.RequireAdb();
         var target = await context.ResolveSerialAsync(serial).ConfigureAwait(false);
 
-        if (positional[1] == "get")
+        if (positional[1] is "get" or "list")
         {
-            var state = await adb.GetFriendlyStateAsync(target).ConfigureAwait(false);
-            return Success("phone.get", new JsonObject(state.Select(p => KeyValuePair.Create<string, JsonNode?>(p.Key, p.Value))));
+            var values = await adb.ReadPhoneSettingsAsync(target).ConfigureAwait(false);
+            return Success("phone.get", new JsonArray(values.Select(v => (JsonNode)new JsonObject
+            {
+                ["id"] = v.Setting.Id,
+                ["group"] = v.Setting.Group,
+                ["label"] = v.Setting.Label,
+                ["kind"] = v.Setting.Kind.ToString().ToLowerInvariant(),
+                ["namespace"] = v.Setting.Namespace,
+                ["key"] = v.Setting.Key,
+                ["risk"] = v.Setting.Risk,
+                ["value"] = v.Value,
+                ["display"] = v.Display,
+                ["isDefault"] = v.IsDefault,
+                ["canReset"] = v.Setting.CanReset,
+                ["choices"] = new JsonArray(v.Setting.Choices.Select(c => (JsonNode)new JsonObject { ["value"] = c.Value, ["label"] = c.Label }).ToArray()),
+            }).ToArray()));
+        }
+
+        if (positional[1] == "reset")
+        {
+            Arguments.Require(positional, 3, "phone reset <setting> [--serial S]");
+            var reset = await adb.ResetPhoneSettingAsync(target, positional[2]).ConfigureAwait(false);
+            return reset.Ok
+                ? Success("phone.reset", new JsonObject { ["serial"] = target, ["setting"] = positional[2] })
+                : throw new InvalidOperationException(reset.Text);
         }
 
         Arguments.Require(positional, 4, "phone set <setting> <value> [--serial S]");
         var result = positional[2] == "rotation"
             ? await adb.SetRotationOverrideAsync(target, positional[3]).ConfigureAwait(false)
-            : await adb.ApplyFriendlySettingAsync(target, positional[2], positional[3]).ConfigureAwait(false);
+            : await adb.ApplyPhoneSettingAsync(target, positional[2], positional[3]).ConfigureAwait(false);
         return result.Ok
             ? Success("phone.set", new JsonObject { ["serial"] = target, ["setting"] = positional[2], ["value"] = positional[3], ["text"] = result.Text })
             : throw new InvalidOperationException(result.Text);
@@ -238,6 +262,31 @@ public static class MachineMode
             default:
                 throw new ArgumentException("android expects list, get, set or delete.");
         }
+    }
+
+    /// <summary>usb lists ADB interfaces; usb repair registers the unreachable ones and needs an elevated shell (no UAC prompt in machine mode).</summary>
+    private static async Task<MachineResult> UsbAsync(CliContext context, string[] positional)
+    {
+        if (positional.Length >= 2 && positional[1].Equals("repair", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!UsbAdbInterfaces.IsElevated)
+            {
+                throw new InvalidOperationException("usb repair needs an administrator shell in machine mode (it edits HKLM device registrations).");
+            }
+
+            var repaired = await UsbAdbInterfaces.RepairAsync(context.Runner).ConfigureAwait(false);
+            return Success("usb", new JsonObject { ["repaired"] = new JsonArray(repaired.Select(x => (JsonNode)x).ToArray()) });
+        }
+
+        return Success("usb", new JsonArray(UsbAdbInterfaces.Scan().Select(u => (JsonNode)new JsonObject
+        {
+            ["instanceId"] = u.InstanceId,
+            ["description"] = u.Description,
+            ["driver"] = u.Driver,
+            ["present"] = u.Present,
+            ["registered"] = u.Registered,
+            ["unreachable"] = u.Unreachable,
+        }).ToArray()));
     }
 
     private static MachineResult Config(CliContext context, string[] positional)

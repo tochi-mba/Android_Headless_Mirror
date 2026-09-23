@@ -53,6 +53,20 @@ public sealed class TestPackage : IDisposable
     public void WriteScenario(object scenario) =>
         File.WriteAllText(FakeAdbScenario, JsonSerializer.Serialize(scenario, new JsonSerializerOptions { WriteIndented = true }));
 
+    /// <summary>A colourful stand-in for a phone screen, served by both fakes as the capture and the video.</summary>
+    public static void WritePreviewImage(string path)
+    {
+        var bounds = new System.Drawing.Rectangle(0, 0, 360, 800);
+        using var bitmap = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
+        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+        using (var brush = new System.Drawing.Drawing2D.LinearGradientBrush(bounds, System.Drawing.Color.SteelBlue, System.Drawing.Color.DarkOrange, 60f))
+        {
+            graphics.FillRectangle(brush, bounds);
+        }
+
+        bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+    }
+
     private void InstallFakeTools()
     {
         Directory.CreateDirectory(ToolsFolder);
@@ -96,6 +110,7 @@ public static class RepoPaths
     public static string FakeScrcpyOutput => Output("tests", "Rex.FakeScrcpy");
     public static string MirrorOutput => Output("src", "Rex.Mirror");
     public static string MirrorExecutable => Path.Combine(MirrorOutput, "RexMirror.exe");
+    public static string CliExecutable => Path.Combine(Output("src", "Rex.Cli"), "rex.exe");
     public static string Screens => Path.Combine(Root, "artifacts", "screens");
 
     private static string Output(string area, string project) =>

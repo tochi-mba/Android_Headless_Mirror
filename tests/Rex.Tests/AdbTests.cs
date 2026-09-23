@@ -120,25 +120,67 @@ public sealed class AdbTests
     }
 
     [Fact]
-    public async Task FriendlySettings_ValidateAndMapToCommands()
+    public async Task PhoneSettings_ValidateBeforeWritingAndRouteToTheRightCommand()
     {
         var runner = new FakeProcessRunner();
         var adb = new AdbClient("adb.exe", runner);
 
-        Assert.False((await adb.ApplyFriendlySettingAsync("S", "brightness", "999", TestContext.Current.CancellationToken)).Ok);
+        // A value outside the setting's own range never reaches the phone.
+        Assert.False((await adb.ApplyPhoneSettingAsync("S", "brightness", "999", TestContext.Current.CancellationToken)).Ok);
+        Assert.False((await adb.ApplyPhoneSettingAsync("S", "screen-timeout", "7", TestContext.Current.CancellationToken)).Ok);
+        Assert.False((await adb.ApplyPhoneSettingAsync("S", "show-touches", "maybe", TestContext.Current.CancellationToken)).Ok);
+        Assert.False((await adb.ApplyPhoneSettingAsync("S", "display-size", "big", TestContext.Current.CancellationToken)).Ok);
+        Assert.False((await adb.ApplyPhoneSettingAsync("S", "nonsense", "1", TestContext.Current.CancellationToken)).Ok);
         Assert.Empty(runner.Calls);
 
-        Assert.True((await adb.ApplyFriendlySettingAsync("S", "brightness", "200", TestContext.Current.CancellationToken)).Ok);
+        Assert.True((await adb.ApplyPhoneSettingAsync("S", "brightness", "200", TestContext.Current.CancellationToken)).Ok);
         Assert.Equal("settings put system screen_brightness 200", runner.Calls[^1].Arguments[^1]);
 
-        Assert.True((await adb.ApplyFriendlySettingAsync("S", "wifi", "enable", TestContext.Current.CancellationToken)).Ok);
+        Assert.True((await adb.ApplyPhoneSettingAsync("S", "wifi", "1", TestContext.Current.CancellationToken)).Ok);
         Assert.Equal(["-s", "S", "shell", "svc", "wifi", "enable"], runner.Calls[^1].Arguments);
 
-        Assert.True((await adb.ApplyFriendlySettingAsync("S", "animation-scale", "0.5", TestContext.Current.CancellationToken)).Ok);
+        Assert.True((await adb.ApplyPhoneSettingAsync("S", "dark-mode", "yes", TestContext.Current.CancellationToken)).Ok);
+        Assert.Equal(["-s", "S", "shell", "cmd", "uimode", "night", "yes"], runner.Calls[^1].Arguments);
+
+        Assert.True((await adb.ApplyPhoneSettingAsync("S", "animation-scale", "0.5", TestContext.Current.CancellationToken)).Ok);
         Assert.Contains("animator_duration_scale 0.5", runner.Calls[^1].Arguments[^1]);
 
-        Assert.False((await adb.ApplyFriendlySettingAsync("S", "wm-size", "big", TestContext.Current.CancellationToken)).Ok);
-        Assert.True((await adb.ApplyFriendlySettingAsync("S", "wm-size", "reset", TestContext.Current.CancellationToken)).Ok);
+        Assert.True((await adb.ApplyPhoneSettingAsync("S", "display-size", "reset", TestContext.Current.CancellationToken)).Ok);
+        Assert.Equal(["-s", "S", "shell", "wm", "size", "reset"], runner.Calls[^1].Arguments);
+
+        // Reset deletes the stored key; settings without one say so instead of pretending.
+        Assert.True((await adb.ResetPhoneSettingAsync("S", "brightness", TestContext.Current.CancellationToken)).Ok);
+        Assert.Equal(["-s", "S", "shell", "settings", "delete", "system", "screen_brightness"], runner.Calls[^1].Arguments);
+        Assert.False((await adb.ResetPhoneSettingAsync("S", "dark-mode", TestContext.Current.CancellationToken)).Ok);
+    }
+
+    [Fact]
+    public async Task ReadPhoneSettings_ShowsOnlyWhatThePhoneHas()
+    {
+        var runner = new FakeProcessRunner
+        {
+            Respond = args => args switch
+            {
+                [.., "settings", "list", "system"] => new ProcessResult(0, "screen_brightness=120\nshow_touches=1\n", ""),
+                [.., "settings", "list", "secure"] => new ProcessResult(0, "high_text_contrast_enabled=1\n", ""),
+                [.., "settings", "list", "global"] => new ProcessResult(0, "low_power=0\n", ""),
+                [.., "cmd", "uimode", "night"] => new ProcessResult(0, "Night mode: yes\n", ""),
+                _ => new ProcessResult(0, "Physical size: 1440x3200\n", ""),
+            },
+        };
+
+        var values = await new AdbClient("adb.exe", runner).ReadPhoneSettingsAsync("S", TestContext.Current.CancellationToken);
+
+        Assert.Equal("120", values.Single(v => v.Setting.Id == "brightness").Value);
+        Assert.Equal("On", values.Single(v => v.Setting.Id == "show-touches").Display);
+        Assert.Equal("Off", values.Single(v => v.Setting.Id == "battery-saver").Display);
+        Assert.Equal("yes", values.Single(v => v.Setting.Id == "dark-mode").Value);
+        // Keys this phone never reported are absent rather than shown as empty rows.
+        Assert.DoesNotContain(values, v => v.Setting.Id == "night-light");
+        Assert.DoesNotContain(values, v => v.Setting.Id == "auto-rotate");
+        // Settings with their own writer are always offered.
+        Assert.Contains(values, v => v.Setting.Id == "wifi");
+        Assert.Equal("1440x3200", values.Single(v => v.Setting.Id == "display-size").Value);
     }
 
     [Fact]
@@ -203,6 +245,8 @@ public sealed class AdbTests
         Assert.Contains("Connect", DeviceStateText.Describe([]));
         Assert.Equal("Setup required", DeviceStateText.Header(setupRequired: true, []));
         Assert.Equal("No phone connected", DeviceStateText.Header(setupRequired: false, []));
+        Assert.Equal(DeviceStateText.UsbBlockedHeader, DeviceStateText.Header(setupRequired: false, [], usbBlocked: true));
+        Assert.Equal(DeviceStateText.UsbBlockedText, DeviceStateText.Describe([], usbBlocked: true));
         Assert.Contains("approve USB debugging", DeviceStateText.Header(
             setupRequired: false,
             [new AdbDevice("X", "unauthorized", false, "", "")]));

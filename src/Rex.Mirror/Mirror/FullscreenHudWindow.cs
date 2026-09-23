@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Interop;
+using Rex.Core;
 using Rex.Mirror.Native;
 
 namespace Rex.Mirror.Mirror;
@@ -54,15 +55,16 @@ public sealed class FullscreenHudWindow : Window
     public event Action<string>? ActionRequested;
 
     public bool HudVisible => IsVisible && _hud.IsShown;
-    public double HideSeconds { set => _hud.HideSeconds = value; }
 
     private IntPtr Handle => _source?.Handle ?? IntPtr.Zero;
 
     public void Reveal(string? message = null) => _hud.Reveal(message);
 
-    public void Update(bool enabled, bool pointerAtTop, double zoom, RECT mirrorPixels, double dpiScale)
+    public void Update(bool enabled, bool pointerInZone, double zoom, RECT mirrorPixels, double dpiScale, HudSettings settings)
     {
-        _hud.Update(enabled, pointerAtTop, zoom);
+        _hud.Apply(settings);
+        Opacity = settings.Opacity;
+        _hud.Update(enabled, pointerInZone, zoom);
 
         if (!enabled || mirrorPixels.Width <= 0 || mirrorPixels.Height <= 0)
         {
@@ -87,8 +89,9 @@ public sealed class FullscreenHudWindow : Window
 
         var widthPx = Math.Max(1, (int)Math.Ceiling(widthDip * scale));
         var heightPx = Math.Max(1, (int)Math.Ceiling(heightDip * scale));
-        var leftPx = mirrorPixels.Left + Math.Max(0, (mirrorPixels.Width - widthPx) / 2);
-        var topPx = mirrorPixels.Top + Math.Max(0, (int)Math.Round(TopMargin * scale));
+        var (left, top) = HudLayout.Anchor(settings.Position, widthPx, heightPx, mirrorPixels.Width, mirrorPixels.Height, TopMargin * scale);
+        var leftPx = mirrorPixels.Left + (int)Math.Round(left);
+        var topPx = mirrorPixels.Top + (int)Math.Round(top);
 
         NativeMethods.SetWindowPos(
             Handle,

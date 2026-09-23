@@ -40,23 +40,36 @@ public static class DeviceSelection
 /// <summary>Human wording for what ADB is reporting, so the UI never shows a bare state token.</summary>
 public static class DeviceStateText
 {
-    public static string Header(bool setupRequired, IReadOnlyList<AdbDevice> devices)
+    public const string UsbBlockedHeader = "Phone found · repair USB driver";
+    public const string UsbBlockedText =
+        "The phone is plugged in, but Windows attached a generic driver to its USB debugging interface, so ADB cannot see it. " +
+        "Repair the USB driver (Windows asks for administrator approval once).";
+
+    public static string Header(bool setupRequired, IReadOnlyList<AdbDevice> devices, bool usbBlocked = false)
     {
         if (setupRequired)
         {
             return "Setup required";
         }
 
-        return devices.Any(x => x.IsUnauthorized)
-            ? "Phone found · approve USB debugging"
-            : "No phone connected";
+        if (devices.Any(x => x.IsUnauthorized))
+        {
+            return "Phone found · approve USB debugging";
+        }
+
+        if (devices.Any(x => x.IsReady))
+        {
+            return "Phone ready";
+        }
+
+        return devices.Count == 0 && usbBlocked ? UsbBlockedHeader : "No phone connected";
     }
 
-    public static string Describe(IReadOnlyList<AdbDevice> devices)
+    public static string Describe(IReadOnlyList<AdbDevice> devices, bool usbBlocked = false)
     {
         if (devices.Count == 0)
         {
-            return "Connect an Android phone with USB debugging turned on.";
+            return usbBlocked ? UsbBlockedText : "Connect an Android phone with USB debugging turned on.";
         }
 
         if (devices.Any(x => x.IsReady))

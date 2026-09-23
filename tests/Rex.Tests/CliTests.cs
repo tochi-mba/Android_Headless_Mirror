@@ -124,14 +124,33 @@ public sealed class CliTests
     }
 
     [Fact]
-    public async Task Phone_GetReturnsFriendlyState()
+    public async Task Phone_ListsTheCatalogueAndWritesOneSetting()
     {
         using var package = new TestPackage(withFakeTools: true);
-        var result = await MachineMode.RunAsync(["phone", "get"], new CliContext(package.Paths));
+        var context = new CliContext(package.Paths);
 
-        var doc = JsonNode.Parse(result.Json)!.AsObject();
-        Assert.True(doc["ok"]!.GetValue<bool>(), result.Json);
-        Assert.Equal("128", doc["data"]!["Brightness"]!.GetValue<string>());
+        var listed = JsonNode.Parse((await MachineMode.RunAsync(["phone", "list"], context)).Json)!.AsObject();
+        Assert.True(listed["ok"]!.GetValue<bool>(), listed.ToJsonString());
+        var rows = listed["data"]!.AsArray();
+        var brightness = rows.Single(r => r!["id"]!.GetValue<string>() == "brightness")!;
+        Assert.Equal("128", brightness["value"]!.GetValue<string>());
+        Assert.Equal("Display", brightness["group"]!.GetValue<string>());
+        Assert.Equal("slider", brightness["kind"]!.GetValue<string>());
+        Assert.True(brightness["canReset"]!.GetValue<bool>());
+        // The fake phone never reported these keys, so the catalogue leaves them out.
+        Assert.DoesNotContain(rows, r => r!["id"]!.GetValue<string>() == "night-light");
+
+        var set = await MachineMode.RunAsync(["phone", "set", "show-touches", "1"], context);
+        Assert.Equal(0, set.ExitCode);
+        Assert.Contains(package.AdbCalls(), call => call.Contains("settings put system show_touches 1", StringComparison.Ordinal));
+
+        var reset = await MachineMode.RunAsync(["phone", "reset", "show-touches"], context);
+        Assert.Equal(0, reset.ExitCode);
+        Assert.Contains(package.AdbCalls(), call => call.Contains("settings delete system show_touches", StringComparison.Ordinal));
+
+        var rejected = await MachineMode.RunAsync(["phone", "set", "brightness", "900"], context);
+        Assert.Equal(1, rejected.ExitCode);
+        Assert.Contains("between", rejected.Json);
     }
 
     [Fact]
@@ -162,6 +181,33 @@ public sealed class CliTests
         Assert.Equal("FormatException", doc["error"]!["type"]!.GetValue<string>());
         Assert.Equal(string.Empty, context.Config.Get("Mirror.ExtraArgs").Value);
         Assert.DoesNotContain('\n', result.Json);
+    }
+
+    [Fact]
+    public async Task Usb_ListsWindowsAdbInterfacesAndRepairNeedsElevation()
+    {
+        using var package = new TestPackage();
+        var context = new CliContext(package.Paths);
+
+        var list = JsonNode.Parse((await MachineMode.RunAsync(["usb"], context)).Json)!.AsObject();
+        Assert.True(list["ok"]!.GetValue<bool>());
+        foreach (var entry in list["data"]!.AsArray())
+        {
+            Assert.StartsWith(@"USB\", entry!["instanceId"]!.GetValue<string>(), StringComparison.Ordinal);
+            Assert.Equal(entry["present"]!.GetValue<bool>() && !entry["registered"]!.GetValue<bool>(), entry["unreachable"]!.GetValue<bool>());
+        }
+
+        var repair = await MachineMode.RunAsync(["usb", "repair"], context);
+        var doc = JsonNode.Parse(repair.Json)!.AsObject();
+        if (UsbAdbInterfaces.IsElevated)
+        {
+            Assert.True(doc["ok"]!.GetValue<bool>(), repair.Json);
+        }
+        else
+        {
+            Assert.Equal(1, repair.ExitCode);
+            Assert.Contains("administrator", doc["error"]!["message"]!.GetValue<string>());
+        }
     }
 
     [Fact]

@@ -29,7 +29,7 @@ Discover the live contract first:
 REX.bat agent capabilities
 ```
 
-Commands: `capabilities`, `status`, `devices`, `diagnostics`, `open`, `stop`, `quit`, `action <id>`,
+Commands: `capabilities`, `status`, `devices`, `diagnostics`, `usb [list|repair]`, `open`, `stop`, `quit`, `action <id>`,
 `zoom <in|out|reset>`, `screenshot`, `phone get|set <setting> <value>`,
 `android list|get|set|delete <system|secure|global> [key] [value] [--filter text]`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
@@ -45,6 +45,8 @@ Rules:
   `development_settings_enabled`, `android_id`, `bluetooth_address`, `adb_wifi_enabled`).
 - `config set` keeps the type of the existing value and writes `config.json.rex-backup` first;
   `config restore` swaps them back.
+- `usb repair` edits HKLM device registrations, so in machine mode it requires an already
+  elevated shell and fails otherwise; the human CLI and the app go through the UAC prompt.
 
 ## Layout and paths
 
@@ -67,16 +69,19 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   RexConfig/ConfigFile  typed config.json (schema 2) with migration from the schema-1 keys
   ConfigStore           dotted-path access to config.json for the CLI
   AdbClient/AdbParsing  every ADB call, quoting, output parsing, friendly settings
+  UsbAdbInterfaces      Windows ADB interfaces adb cannot see, and their repair
   ScrcpyArguments       the scrcpy command line for an embedded session
   ScrcpyInstaller       verified download of the official scrcpy release; ToolLocator finds the newest copy
   StateStore            state.json: phones, lock-screen answers, calibration, UI state
   PatternGeometry       pattern-guide geometry (pure functions)
   ZoomMath              zoom/pan geometry (pure functions)
+  AmbientLayout         soft-background geometry: image size, margins, tint hue, navigator corner
   Ipc                   pipe protocol between rex.exe and the app
   MirrorActions         the single list of user actions and their scrcpy shortcuts
 src/Rex.Mirror          WPF app (RexMirror.exe)
   Mirror/MirrorHost     HwndHost that embeds scrcpy and scales it for zoom
-  Mirror/OverlayWindow  transparent layer: pattern guide, navigator, touchpad receiver
+  Mirror/OverlayWindow  transparent layer: soft background, pattern guide, navigator, touchpad receiver
+  Mirror/LiveCapture    one downscaled frame of the on-screen mirror surface for the soft background
   Mirror/FullscreenHud* the compact fullscreen HUD in its own non-activating window
   Mirror/TouchpadBridge Precision Touchpad contacts → phone touch (or Alt → host zoom/pan)
   Mirror/PatternGuide   keyguard polling, geometry discovery, calibration
@@ -84,7 +89,9 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Services/*            composition root, pipe server, command router, tray icon
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
 src/Rex.Cli             rex.exe: human commands and MachineMode
-tests/Rex.Tests         xUnit: unit, contract and end-to-end tests
+tests/Rex.Tests         xUnit: unit, contract, end-to-end and UI-automation tests
+  Support/AppProcess    drives a real RexMirror.exe: pipe, real input, screenshots, CLI
+  Support/AppAutomation UI Automation over the window (x:Name is the AutomationId)
 tests/Rex.FakeAdb       deterministic adb.exe stand-in (scenario JSON, call log)
 tests/Rex.FakeScrcpy    scrcpy.exe stand-in: a real window the app embeds
 docs/                   GitHub Pages site; its download button points at the latest release asset
@@ -101,9 +108,18 @@ docs/                   GitHub Pages site; its download button points at the lat
   `--window-borderless` and `--no-window-aspect-ratio-lock`; `Mirror.ExtraArgs` cannot override these
   and is validated wherever it is written (settings panel, `config set`, `Normalize`).
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
+- The soft background is a live copy of the on-screen mirror (`LiveCapture`), never a phone
+  screenshot: it must not add ADB traffic. Phone screenshots feed only the navigator thumbnail.
+- Every visual choice the user can make lives in `config.json` and previews instantly:
+  `AppHost.PreviewConfig` updates memory and debounces the write, `UpdateConfig` writes at once.
+  The app also watches config.json, so `rex config set` applies to the running window.
+- A phone that leaves ADB while mirroring is a disconnect, not a stop: return to Waiting and pick
+  it up when it returns. Only an explicit stop, or repeated crashes with the phone still present,
+  reach Stopped.
 - Plain two-finger touchpad gestures go to the phone as real touch. Alt is the only host modifier.
 - Any authorised phone can be used. A preferred serial is a preference, never a lock.
-- The app never calls `adb kill-server`, never stores or injects unlock credentials, never needs admin.
+- The app never calls `adb kill-server`, never stores or injects unlock credentials, and needs admin only
+  for the explicit USB driver repair (`UsbAdbInterfaces`), always via the Windows prompt.
 - Before upgrading, the installer stops processes whose executable paths are inside the installation
   directory, including its bundled ADB server. It never sends a global `adb kill-server` command.
 - Wireless ADB stays opt-in.
@@ -121,6 +137,10 @@ docs/                   GitHub Pages site; its download button points at the lat
   must observe and log their own unexpected exceptions.
 - Tests wait for observable state rather than fixed sleeps, except where elapsed time itself is the
   behaviour under test or Windows input/compositor APIs expose no better signal.
+- Every user-reachable control carries an `x:Name`, which WPF exposes as its AutomationId, so the
+  UI tests can reach it. Anything new in the window needs a test in `AppUiTests`.
+- WPF raises `ValueChanged` on sliders while XAML loads. Handlers that touch other controls must
+  return until the panel has its host.
 - No file over 1,000 lines. No dead code. Warnings are errors. Scripts are limited to `REX.bat`,
   `assets/make-icon.ps1`, `installer/build.ps1` and `installer/prepare-upgrade.ps1`.
 

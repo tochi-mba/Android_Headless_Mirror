@@ -18,6 +18,8 @@ public sealed record RexConfig
     public WirelessSettings Wireless { get; set; } = new();
     public TouchpadSettings Touchpad { get; set; } = new();
     public ZoomSettings Zoom { get; set; } = new();
+    public AmbientSettings Ambient { get; set; } = new();
+    public HudSettings Hud { get; set; } = new();
     public PatternGuideSettings PatternGuide { get; set; } = new();
     public AppSettings App { get; set; } = new();
     public LoggingSettings Logging { get; set; } = new();
@@ -31,6 +33,8 @@ public sealed record RexConfig
         Wireless.Normalize();
         Touchpad.Normalize();
         Zoom.Normalize();
+        Ambient.Normalize();
+        Hud.Normalize();
         PatternGuide.Normalize();
         App.Normalize();
         Logging.Normalize();
@@ -43,6 +47,8 @@ public sealed record RexConfig
         Wireless = Wireless.Copy(),
         Touchpad = Touchpad.Copy(),
         Zoom = Zoom.Copy(),
+        Ambient = Ambient.Copy(),
+        Hud = Hud.Copy(),
         PatternGuide = PatternGuide.Copy(),
         App = App.Copy(),
         Logging = Logging.Copy(),
@@ -198,6 +204,119 @@ public sealed record TouchpadSettings
     }
 }
 
+/// <summary>
+/// The floating controls in fullscreen: which buttons, where they sit, how big they are and how
+/// long they stay. The bar hides itself and comes back when the pointer reaches its own edge.
+/// </summary>
+public sealed record HudSettings
+{
+    public static readonly string[] Positions =
+        ["top", "bottom", "left", "right", "top-left", "top-right", "bottom-left", "bottom-right"];
+
+    /// <summary>What a new install starts with: the handful of controls that matter in fullscreen.</summary>
+    public static readonly string[] DefaultButtons =
+        ["back", "home", "recents", "rotation-portrait", "rotation-landscape", "rotation-auto", "zoom-reset", "screenshot", "fullscreen"];
+
+    public bool Enabled { get; set; } = true;
+
+    public string Position { get; set; } = "top";
+
+    /// <summary>Action ids from <c>MirrorActions</c>, in the order they appear.</summary>
+    public List<string> Buttons { get; set; } = [.. DefaultButtons];
+
+    /// <summary>Seconds the bar stays after the pointer leaves it.</summary>
+    public double HideSeconds { get; set; } = 3;
+
+    /// <summary>Size of the whole bar: 0.75 (compact) to 1.75 (large).</summary>
+    public double Scale { get; set; } = 1;
+
+    public double Opacity { get; set; } = 1;
+
+    /// <summary>Show the one-line status message under the buttons.</summary>
+    public bool ShowMessages { get; set; } = true;
+
+    public HudSettings Copy() => this with { Buttons = [.. Buttons] };
+
+    public void Normalize()
+    {
+        Position = Positions.Contains(Position?.ToLowerInvariant() ?? "", StringComparer.Ordinal) ? Position!.ToLowerInvariant() : "top";
+        HideSeconds = double.IsFinite(HideSeconds) ? Math.Clamp(HideSeconds, 1, 15) : 3;
+        Scale = double.IsFinite(Scale) ? Math.Clamp(Scale, 0.75, 1.75) : 1;
+        Opacity = double.IsFinite(Opacity) ? Math.Clamp(Opacity, 0.3, 1) : 1;
+        Buttons = Buttons
+            .Where(id => MirrorActions.Find(id) is not null)
+            .Select(id => MirrorActions.Find(id)!.Id)
+            .Distinct(StringComparer.Ordinal)
+            .Take(16)
+            .ToList();
+    }
+}
+
+/// <summary>
+/// The soft background: a blurred copy of the phone screen shown in the margins around the mirror.
+/// Everything about it is adjustable; the mirror surface itself is never covered.
+/// </summary>
+public sealed record AmbientSettings
+{
+    public static readonly string[] Placements = ["around", "left", "right", "top", "bottom"];
+    public static readonly string[] Scalings = ["cover", "fit", "stretch"];
+
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>0.05 (barely there) to 1 (solid).</summary>
+    public double Opacity { get; set; } = 0.42;
+
+    /// <summary>Blur radius in pixels; 0 shows the capture sharp.</summary>
+    public double Blur { get; set; } = 24;
+
+    /// <summary>Which margins show it: "around" the phone, or only "left", "right", "top" or "bottom" of it.</summary>
+    public string Placement { get; set; } = "around";
+
+    /// <summary>"cover" fills the window and crops, "fit" shows the whole screen, "stretch" ignores the aspect ratio.</summary>
+    public string Scaling { get; set; } = "cover";
+
+    /// <summary>Multiplier on top of the scaling: 0.5 (half) to 3 (three times).</summary>
+    public double Size { get; set; } = 1;
+
+    /// <summary>Horizontal shift as a fraction of half the window width: -1 (far left) to 1 (far right).</summary>
+    public double OffsetX { get; set; }
+
+    /// <summary>Vertical shift as a fraction of half the window height: -1 (top) to 1 (bottom).</summary>
+    public double OffsetY { get; set; }
+
+    /// <summary>Mirror the capture left-to-right.</summary>
+    public bool FlipHorizontal { get; set; }
+
+    /// <summary>Fade the background out towards the window edges: 0 (hard edges) to 1 (only the centre shows).</summary>
+    public double EdgeFade { get; set; }
+
+    /// <summary>Colour wash over the background: 0 (none) to 1 (solid colour).</summary>
+    public double TintStrength { get; set; }
+
+    /// <summary>Hue of the wash in degrees (0 red, 120 green, 240 blue).</summary>
+    public double TintHue { get; set; } = 75;
+
+    /// <summary>How many times per second the background follows the live video (1 to 30).</summary>
+    public double FrameRate { get; set; } = 15;
+
+    public AmbientSettings Copy() => this with { };
+
+    public void Normalize()
+    {
+        Opacity = double.IsFinite(Opacity) ? Math.Clamp(Opacity, 0.05, 1) : 0.42;
+        Blur = double.IsFinite(Blur) ? Math.Clamp(Blur, 0, 80) : 24;
+        Placement = Placements.Contains(Placement?.ToLowerInvariant() ?? "", StringComparer.Ordinal) ? Placement!.ToLowerInvariant() : "around";
+        Scaling = Scalings.Contains(Scaling?.ToLowerInvariant() ?? "", StringComparer.Ordinal) ? Scaling!.ToLowerInvariant() : "cover";
+        Size = double.IsFinite(Size) ? Math.Clamp(Size, 0.5, 3) : 1;
+        OffsetX = double.IsFinite(OffsetX) ? Math.Clamp(OffsetX, -1, 1) : 0;
+        OffsetY = double.IsFinite(OffsetY) ? Math.Clamp(OffsetY, -1, 1) : 0;
+        EdgeFade = double.IsFinite(EdgeFade) ? Math.Clamp(EdgeFade, 0, 1) : 0;
+        TintStrength = double.IsFinite(TintStrength) ? Math.Clamp(TintStrength, 0, 1) : 0;
+        TintHue = double.IsFinite(TintHue) ? Math.Clamp(TintHue, 0, 360) : 75;
+        FrameRate = double.IsFinite(FrameRate) ? Math.Clamp(FrameRate, 1, 30) : 15;
+    }
+}
+
 /// <summary>PC-only magnification of the mirror surface. Alt is the host modifier.</summary>
 public sealed record ZoomSettings
 {
@@ -215,12 +334,22 @@ public sealed record ZoomSettings
     /// <summary>Show the navigator (minimap) in the mirror corner while zoomed in.</summary>
     public bool ShowNavigator { get; set; } = true;
 
+    public static readonly string[] NavigatorCorners = ["bottom-right", "bottom-left", "top-right", "top-left"];
+
+    /// <summary>Which corner of the mirror holds the navigator.</summary>
+    public string NavigatorCorner { get; set; } = "bottom-right";
+
+    /// <summary>Navigator width in device-independent pixels.</summary>
+    public double NavigatorWidth { get; set; } = 150;
+
     public ZoomSettings Copy() => this with { };
 
     public void Normalize()
     {
         MaxZoom = double.IsFinite(MaxZoom) ? Math.Clamp(MaxZoom, 1.5, 8.0) : 4.0;
         WheelStep = double.IsFinite(WheelStep) ? Math.Clamp(WheelStep, 0.05, 0.5) : 0.1;
+        NavigatorCorner = NavigatorCorners.Contains(NavigatorCorner?.ToLowerInvariant() ?? "", StringComparer.Ordinal) ? NavigatorCorner!.ToLowerInvariant() : "bottom-right";
+        NavigatorWidth = double.IsFinite(NavigatorWidth) ? Math.Clamp(NavigatorWidth, 100, 360) : 150;
     }
 }
 
@@ -267,21 +396,15 @@ public sealed record AppSettings
     public bool ConfirmSensitiveWrites { get; set; } = true;
 
     public string ScreenshotDirectory { get; set; } = "captures/screenshots";
-    public bool AmbientBackground { get; set; } = true;
-    public double AmbientBlur { get; set; } = 24;
-    public double AmbientDim { get; set; } = 0.58;
-    /// <summary>Seconds between the phone screenshots that feed the ambient fill and the navigator thumbnail.</summary>
+
+    /// <summary>Seconds between the phone screenshots that feed the navigator thumbnail while zoomed.</summary>
     public double PreviewIntervalSeconds { get; set; } = 2;
-    public double HudHideSeconds { get; set; } = 3;
 
     public AppSettings Copy() => this with { };
 
     public void Normalize()
     {
-        AmbientBlur = double.IsFinite(AmbientBlur) ? Math.Clamp(AmbientBlur, 4, 60) : 24;
-        AmbientDim = double.IsFinite(AmbientDim) ? Math.Clamp(AmbientDim, 0.15, 0.9) : 0.58;
         PreviewIntervalSeconds = double.IsFinite(PreviewIntervalSeconds) ? Math.Clamp(PreviewIntervalSeconds, 1, 10) : 2;
-        HudHideSeconds = double.IsFinite(HudHideSeconds) ? Math.Clamp(HudHideSeconds, 1, 15) : 3;
         ScreenshotDirectory = !string.IsNullOrWhiteSpace(ScreenshotDirectory) &&
             (Path.IsPathFullyQualified(ScreenshotDirectory) || PathRules.IsSafeRelativePath(ScreenshotDirectory))
             ? ScreenshotDirectory.Trim() : "captures/screenshots";

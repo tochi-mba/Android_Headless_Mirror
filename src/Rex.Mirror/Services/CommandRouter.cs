@@ -94,6 +94,7 @@ public static class CommandRouter
             ["phase"] = session.Phase.ToString().ToLowerInvariant(),
             ["message"] = session.Message,
             ["mirroring"] = session.IsMirroring,
+            ["visibleDevices"] = session.Devices.Count,
             ["restartRequired"] = session.NeedsRestart,
             ["sidebarScrollOffset"] = host.Window?.SidebarScrollOffset ?? 0,
             ["previewAvailable"] = host.Window?.PreviewAvailable ?? false,
@@ -102,6 +103,10 @@ public static class CommandRouter
             ["fullscreen"] = host.Window?.IsFullscreen ?? false,
             ["hudVisible"] = host.Window?.HudVisible ?? false,
             ["onboarding"] = host.Window?.OnboardingVisible ?? false,
+            ["sidebarVisible"] = host.Window?.SidebarVisible ?? false,
+            ["ambientVisible"] = host.Window?.AmbientVisible ?? false,
+            ["navigatorVisible"] = host.Window?.NavigatorVisible ?? false,
+            ["lockQuestion"] = session.PendingLockQuestionSerial is not null,
             ["zoom"] = host.Window is { } w ? Math.Round(w.Host.Zoom, 3) : 1.0,
             ["patternGuide"] = host.Window is { } window ? new JsonObject
             {

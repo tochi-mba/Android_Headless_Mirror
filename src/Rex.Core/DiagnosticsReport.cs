@@ -13,6 +13,7 @@ public sealed record DiagnosticsReport(
     bool StartWithWindows,
     bool AppRunning,
     IReadOnlyList<DiagnosedDevice> Devices,
+    IReadOnlyList<AdbInterface> UsbInterfaces,
     IReadOnlyList<string> RecentLog)
 {
     public bool SetupComplete => ScrcpyPath is not null && AdbPath is not null;
@@ -37,6 +38,15 @@ public sealed record DiagnosticsReport(
             ["android"] = d.Identity?.AndroidVersion,
             ["advice"] = d.Advice,
         }).ToArray()),
+        ["usbInterfaces"] = new JsonArray(UsbInterfaces.Select(u => (JsonNode)new JsonObject
+        {
+            ["instanceId"] = u.InstanceId,
+            ["description"] = u.Description,
+            ["driver"] = u.Driver,
+            ["present"] = u.Present,
+            ["registered"] = u.Registered,
+            ["unreachable"] = u.Unreachable,
+        }).ToArray()),
         ["recentLog"] = new JsonArray(RecentLog.Select(x => (JsonNode)x).ToArray()),
     };
 
@@ -55,6 +65,12 @@ public sealed record DiagnosticsReport(
         if (Devices.Count == 0)
         {
             lines.Add("Devices:       none detected");
+        }
+
+        var unreachable = UsbInterfaces.Count(u => u.Unreachable);
+        if (unreachable > 0)
+        {
+            lines.Add($"USB:           {unreachable} ADB interface(s) plugged in but not registered for adb. Run 'rex usb repair' (asks for administrator approval).");
         }
 
         foreach (var d in Devices)
@@ -130,6 +146,7 @@ public static class Diagnostics
             StartupRegistration.IsEnabled(),
             running,
             devices,
+            UsbAdbInterfaces.Scan(),
             log.Tail(30));
     }
 

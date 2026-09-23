@@ -104,6 +104,7 @@
             <TextBlock x:Name="EmptyText" Text="Plug in an Android phone with USB debugging turned on. It appears here automatically." Style="{StaticResource MutedText}" FontSize="13" TextAlignment="Center" Margin="0,8,0,18" />
             <StackPanel x:Name="EmptyActions" Orientation="Horizontal" HorizontalAlignment="Center">
               <Button x:Name="EmptyPrimary" Content="Start mirror" Style="{StaticResource PrimaryButton}" Click="OnEmptyPrimary" Visibility="Collapsed" />
+              <Button x:Name="EmptyRepair" Content="Repair USB driver" Style="{StaticResource PrimaryButton}" Click="OnRepairUsb" Visibility="Collapsed" ToolTip="Registers the phone's USB debugging interface for ADB. Windows asks for administrator approval once." />
             </StackPanel>
           </StackPanel>
         </Grid>

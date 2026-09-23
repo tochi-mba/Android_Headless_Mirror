@@ -43,7 +43,43 @@
     "PinchZoom": true,
     "MaxZoom": 4,
     "WheelStep": 0.1,
-    "ShowNavigator": true
+    "ShowNavigator": true,
+    "NavigatorCorner": "bottom-right",
+    "NavigatorWidth": 150
+  },
+  "Ambient": {
+    "Enabled": true,
+    "Opacity": 0.42,
+    "Blur": 24,
+    "Placement": "around",
+    "Scaling": "cover",
+    "Size": 1,
+    "OffsetX": 0,
+    "OffsetY": 0,
+    "FlipHorizontal": false,
+    "EdgeFade": 0,
+    "TintStrength": 0,
+    "TintHue": 75,
+    "FrameRate": 15
+  },
+  "Hud": {
+    "Enabled": true,
+    "Position": "top",
+    "Buttons": [
+      "back",
+      "home",
+      "recents",
+      "rotation-portrait",
+      "rotation-landscape",
+      "rotation-auto",
+      "zoom-reset",
+      "screenshot",
+      "fullscreen"
+    ],
+    "HideSeconds": 3,
+    "Scale": 1,
+    "Opacity": 1,
+    "ShowMessages": true
   },
   "PatternGuide": {
     "Enabled": true,
@@ -59,11 +95,7 @@
     "OpenOnConnect": true,
     "ConfirmSensitiveWrites": true,
     "ScreenshotDirectory": "captures/screenshots",
-    "AmbientBackground": true,
-    "AmbientBlur": 24,
-    "AmbientDim": 0.58,
-    "PreviewIntervalSeconds": 2,
-    "HudHideSeconds": 3
+    "PreviewIntervalSeconds": 2
   },
   "Logging": {
     "Enabled": true,

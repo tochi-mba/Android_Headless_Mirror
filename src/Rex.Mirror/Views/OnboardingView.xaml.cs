@@ -54,6 +54,8 @@ public partial class OnboardingView : UserControl
 
         var unauthorized = session.Devices.Any(d => d.IsUnauthorized);
         var ready = session.Devices.Any(d => d.IsReady);
+        var usbBlocked = toolsReady && session.Devices.Count == 0 && session.UnreachableAdbInterfaces.Count > 0;
+        RepairButton.Visibility = usbBlocked ? Visibility.Visible : Visibility.Collapsed;
         MarkStep(Badge2, Badge2Text, "2", ready);
         MarkStep(Badge3, Badge3Text, "3", ready);
         SkipButton.Visibility = toolsReady ? Visibility.Visible : Visibility.Collapsed;
@@ -63,6 +65,7 @@ public partial class OnboardingView : UserControl
             : ready ? ("Phone found. Opening the mirror…", "Signal")
             : unauthorized ? ("Phone found. Tap Allow on the phone and tick “Always allow”.", "Live")
             : session.Devices.Count > 0 ? (DeviceStateText.Describe(session.Devices), "Live")
+            : usbBlocked ? ("Phone found, but Windows blocks ADB. Repair the USB driver; it asks for administrator approval once.", "Live")
             : ("Waiting for a phone…", "Muted");
         PhoneDot.Fill = (Brush)FindResource(dot);
     }
@@ -112,6 +115,14 @@ public partial class OnboardingView : UserControl
 
     private void OnStartWithWindows(object sender, RoutedEventArgs e) =>
         _window?.SetStartWithWindows(StartWithWindows.IsChecked == true);
+
+    private async void OnRepairUsb(object sender, RoutedEventArgs e)
+    {
+        if (_window is not null)
+        {
+            await _window.RepairUsbAsync();
+        }
+    }
 
     private void OnSkip(object sender, RoutedEventArgs e)
     {

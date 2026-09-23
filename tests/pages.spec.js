@@ -158,7 +158,7 @@ test.describe('Android Headless Mirror site', () => {
 
   test('FAQ disclosures open and expose their answers', async ({ page }) => {
     const items = page.locator('#faq details');
-    await expect(items).toHaveCount(6);
+    await expect(items).toHaveCount(7);
     await items.nth(1).locator('summary').click();
     await expect(items.nth(1)).toHaveAttribute('open', '');
     await expect(items.nth(1).locator('p')).toBeVisible();

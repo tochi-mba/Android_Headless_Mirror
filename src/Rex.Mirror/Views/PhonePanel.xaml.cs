@@ -2,14 +2,22 @@ using System.IO;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using Rex.Core;
 using Rex.Mirror.Services;
 
 namespace Rex.Mirror.Views;
 
-/// <summary>Friendly Android settings, applied over ADB the moment a control changes.</summary>
+/// <summary>
+/// The phone's own settings, grouped the way a phone groups them and applied over ADB the moment
+/// a control changes. Every row comes from <see cref="PhoneSettings"/>; a phone only shows the
+/// settings it actually has, so a missing OEM key never leaves a dead control behind.
+/// </summary>
 public partial class PhonePanel : UserControl
 {
+    private readonly List<SettingRow> _rows = [];
+    private readonly Dictionary<string, Expander> _groups = new(StringComparer.Ordinal);
     private MainWindow? _window;
     private AppHost? _host;
     private bool _loading;
@@ -19,7 +27,6 @@ public partial class PhonePanel : UserControl
     public PhonePanel()
     {
         InitializeComponent();
-        Brightness.ValueChanged += (_, _) => BrightnessValue.Text = ((int)Brightness.Value).ToString(CultureInfo.InvariantCulture);
     }
 
     public void Attach(MainWindow window, AppHost host)
@@ -63,214 +70,353 @@ public partial class PhonePanel : UserControl
         }
 
         _busy = true;
-        _loading = true;
+        LoadingText.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         try
         {
-            var state = await adb.GetFriendlyStateAsync(serial);
+            var values = await adb.ReadPhoneSettingsAsync(serial);
             _loadedSerial = serial;
-            Get(state, "Brightness", out var brightness);
-            if (int.TryParse(brightness, out var b))
-            {
-                Brightness.Value = Math.Clamp(b, 1, 255);
-            }
-
-            AutoBrightness.IsChecked = Get(state, "BrightnessMode", out var mode) && mode == "1";
-            SelectTag(Timeout, Get(state, "ScreenTimeoutMs", out var timeout) ? timeout : "60000");
-            var autoRotate = !Get(state, "AutoRotate", out var rotate) || rotate != "0";
-            var userRotation = Get(state, "UserRotation", out var ur) ? ur : "0";
-            SelectRotation(autoRotate ? "auto" : userRotation);
-            SelectTag(FontScale, NormalizeScale(Get(state, "FontScale", out var fs) ? fs : "1.0"));
-            SelectTag(Animation, NormalizeScale(Get(state, "WindowAnimation", out var anim) ? anim : "1"));
-            ShowTouches.IsChecked = Get(state, "ShowTouches", out var touches) && touches == "1";
-            StayAwake.IsChecked = Get(state, "StayAwake", out var awake) && awake != "0" && awake != "null";
-
-            var ui = Get(state, "UiMode", out var night) ? night : string.Empty;
-            SelectTag(DarkMode, ui.Contains("yes", StringComparison.OrdinalIgnoreCase) ? "yes" : ui.Contains("no", StringComparison.OrdinalIgnoreCase) ? "no" : "auto");
-
-            WmSize.Text = ExtractSize(Get(state, "WmSize", out var size) ? size : string.Empty);
-            WmDensity.Text = ExtractDensity(Get(state, "WmDensity", out var density) ? density : string.Empty);
+            Build(values);
             Status.Text = string.Empty;
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            Status.Text = "Could not read phone settings: " + ex.Message;
+            Status.Text = "Could not read the phone's settings: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            LoadingText.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>Rebuilds the visible rows for what this phone reported.</summary>
+    private void Build(IReadOnlyList<PhoneSettingValue> values)
+    {
+        _loading = true;
+        try
+        {
+            Groups.Children.Clear();
+            _groups.Clear();
+            _rows.Clear();
+
+            foreach (var group in PhoneSettings.Groups)
+            {
+                var inGroup = values.Where(v => v.Setting.Group == group).ToArray();
+                if (inGroup.Length == 0)
+                {
+                    continue;
+                }
+
+                var content = new StackPanel();
+                foreach (var value in inGroup)
+                {
+                    var row = new SettingRow(value, this);
+                    _rows.Add(row);
+                    content.Children.Add(row.Element);
+                }
+
+                var expander = new Expander
+                {
+                    Header = $"{group}  ({inGroup.Length})",
+                    IsExpanded = group == PhoneSettings.GroupDisplay,
+                    Margin = new Thickness(0, 6, 0, 0),
+                    Content = content,
+                };
+                // x:Name is not available for generated controls; give automation a stable id.
+                System.Windows.Automation.AutomationProperties.SetAutomationId(expander, "PhoneGroup " + group);
+                _groups[group] = expander;
+                Groups.Children.Add(expander);
+            }
+
+            ApplyFilter();
         }
         finally
         {
             _loading = false;
-            _busy = false;
         }
     }
 
-    private static bool Get(IReadOnlyDictionary<string, string> state, string key, out string value)
+    private void OnSearch(object sender, TextChangedEventArgs e)
     {
-        if (state.TryGetValue(key, out var raw) && raw != "null" && raw.Length > 0)
-        {
-            value = raw;
-            return true;
-        }
-
-        value = string.Empty;
-        return false;
+        SearchHint.Visibility = SettingsSearch.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ApplyFilter();
     }
 
-    private static string NormalizeScale(string value) =>
-        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
-            ? d switch { <= 0 => "0", < 0.75 => "0.5", < 0.9 => "0.85", < 1.05 => d < 1.0 ? "1.0" : "1", < 1.2 => "1.15", < 1.4 => "1.30", _ => "1.5" }
-            : value;
-
-    private static string ExtractSize(string text)
+    private void ApplyFilter()
     {
-        var over = System.Text.RegularExpressions.Regex.Match(text, @"Override size:\s*(\d+x\d+)");
-        if (over.Success)
+        var search = SettingsSearch.Text.Trim();
+        var matches = 0;
+        foreach (var group in _groups)
         {
-            return over.Groups[1].Value;
-        }
-
-        var physical = System.Text.RegularExpressions.Regex.Match(text, @"Physical size:\s*(\d+x\d+)");
-        return physical.Success ? physical.Groups[1].Value : string.Empty;
-    }
-
-    private static string ExtractDensity(string text)
-    {
-        var over = System.Text.RegularExpressions.Regex.Match(text, @"Override density:\s*(\d+)");
-        if (over.Success)
-        {
-            return over.Groups[1].Value;
-        }
-
-        var physical = System.Text.RegularExpressions.Regex.Match(text, @"Physical density:\s*(\d+)");
-        return physical.Success ? physical.Groups[1].Value : string.Empty;
-    }
-
-    private static void SelectTag(ComboBox combo, string tag)
-    {
-        foreach (ComboBoxItem item in combo.Items)
-        {
-            if (string.Equals((string)item.Tag, tag, StringComparison.Ordinal))
+            var visible = 0;
+            foreach (var row in _rows.Where(r => r.Value.Setting.Group == group.Key))
             {
-                combo.SelectedItem = item;
-                return;
+                var show = row.Matches(search);
+                row.Element.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+                visible += show ? 1 : 0;
             }
+
+            group.Value.Visibility = visible > 0 ? Visibility.Visible : Visibility.Collapsed;
+            group.Value.Header = $"{group.Key}  ({visible})";
+            if (search.Length > 0 && visible > 0)
+            {
+                group.Value.IsExpanded = true;
+            }
+
+            matches += visible;
         }
 
-        combo.SelectedIndex = -1;
+        EmptyText.Visibility = matches == 0 && _rows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private static string? SelectedTag(ComboBox combo) => (combo.SelectedItem as ComboBoxItem)?.Tag as string;
+    private void OnReload(object sender, RoutedEventArgs e) => Refresh(force: true);
 
-    private void SelectRotation(string tag)
-    {
-        foreach (var button in RotationButtons.Children.OfType<RadioButton>())
-        {
-            button.IsChecked = (string)button.Tag == tag;
-        }
-    }
-
-    private async Task<bool> ApplyAsync(string id, string value)
+    /// <summary>Writes one setting, then reloads so the row shows what the phone really took.</summary>
+    private async Task ApplyAsync(PhoneSetting setting, string value)
     {
         if (_loading || Target() is not { } target || _window is null)
         {
-            return false;
+            return;
         }
 
-        var result = await target.Adb.ApplyFriendlySettingAsync(target.Serial, id, value);
-        if (result.Ok)
+        if (!Confirm(setting, $"Change {setting.Label}?"))
         {
-            Status.Text = string.Empty;
-            _window.SetStatus($"Phone: {id} = {value}", false);
+            await LoadAsync(target.Adb, target.Serial);
+            return;
+        }
+
+        var result = await target.Adb.ApplyPhoneSettingAsync(target.Serial, setting.Id, value);
+        Status.Text = result.Ok ? string.Empty : result.Text;
+        _window.SetStatus(result.Ok ? $"{setting.Label}: {setting.Describe(value)}" : result.Text, !result.Ok);
+        await LoadAsync(target.Adb, target.Serial);
+    }
+
+    /// <summary>Deletes the key so Android falls back to its own default.</summary>
+    private async Task ResetAsync(PhoneSetting setting)
+    {
+        if (Target() is not { } target || _window is null)
+        {
+            return;
+        }
+
+        if (!Confirm(setting, $"Reset {setting.Label} to the phone's default?\n\nThe stored value is deleted."))
+        {
+            return;
+        }
+
+        var result = await target.Adb.ResetPhoneSettingAsync(target.Serial, setting.Id);
+        Status.Text = result.Ok ? string.Empty : result.Text;
+        _window.SetStatus(result.Ok ? $"{setting.Label} is back to the phone's default." : result.Text, !result.Ok);
+        await LoadAsync(target.Adb, target.Serial);
+    }
+
+    private bool Confirm(PhoneSetting setting, string question)
+    {
+        if (_host is null || !_host.Config.App.ConfirmSensitiveWrites || setting.Risk is AndroidSettings.RiskNormal or AndroidSettings.RiskAdvanced)
+        {
             return true;
         }
 
-        var error = result.Text;
-        _window.SetStatus(error, true);
-        await LoadAsync(target.Adb, target.Serial);
-        Status.Text = error;
-        return false;
+        return MessageBox.Show(
+            $"{question}\n\nRisk: {setting.Risk}. {setting.Description}",
+            "Android Headless Mirror",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
     }
 
-    private async void OnBrightnessCommit(object sender, RoutedEventArgs e) =>
-        await ApplyAsync("brightness", ((int)Brightness.Value).ToString(CultureInfo.InvariantCulture));
-
-    private async void OnAutoBrightness(object sender, RoutedEventArgs e) =>
-        await ApplyAsync("brightness-mode", AutoBrightness.IsChecked == true ? "1" : "0");
-
-    private async void OnTimeout(object sender, SelectionChangedEventArgs e)
+    /// <summary>One row: label, description, the control the setting deserves, and a reset button.</summary>
+    private sealed class SettingRow
     {
-        if (SelectedTag(Timeout) is { } tag)
+        private readonly PhonePanel _panel;
+        private readonly Button _reset;
+
+        public SettingRow(PhoneSettingValue value, PhonePanel panel)
         {
-            await ApplyAsync("screen-timeout-ms", tag);
-        }
-    }
+            Value = value;
+            _panel = panel;
 
-    private async void OnRotation(object sender, RoutedEventArgs e)
-    {
-        if (_loading || sender is not RadioButton { Tag: string mode } || Target() is not { } target || _window is null)
-        {
-            return;
-        }
+            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            text.Children.Add(new TextBlock { Text = value.Setting.Label, TextWrapping = TextWrapping.Wrap });
+            text.Children.Add(new TextBlock
+            {
+                Text = value.Setting.Description,
+                Style = (Style)panel.FindResource("MutedText"),
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 2, 0, 0),
+            });
 
-        var result = await target.Adb.SetRotationOverrideAsync(target.Serial, mode);
-        _window.SetStatus(result.Text, !result.Ok);
-        if (!result.Ok)
-        {
-            var error = result.Text;
-            await LoadAsync(target.Adb, target.Serial);
-            Status.Text = error;
-        }
-    }
+            _reset = new Button
+            {
+                Content = "Default",
+                Style = (Style)panel.FindResource("GhostButton"),
+                MinHeight = 26,
+                Padding = new Thickness(8, 2, 8, 2),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Opacity = 0,
+                Focusable = true,
+                ToolTip = $"Delete {value.Setting.Namespace}/{value.Setting.Key} so Android uses its own default",
+                Visibility = value.Setting.CanReset && !value.IsDefault ? Visibility.Visible : Visibility.Hidden,
+            };
+            System.Windows.Automation.AutomationProperties.SetAutomationId(_reset, "Reset " + value.Setting.Id);
+            _reset.Click += async (_, _) => await panel.ResetAsync(value.Setting);
 
-    private async void OnDarkMode(object sender, SelectionChangedEventArgs e)
-    {
-        if (SelectedTag(DarkMode) is { } tag)
-        {
-            await ApplyAsync("dark-mode", tag);
-        }
-    }
+            var control = Build(value);
+            control.VerticalAlignment = VerticalAlignment.Center;
+            control.ToolTip = $"{value.Setting.Namespace}/{value.Setting.Key}";
 
-    private async void OnFontScale(object sender, SelectionChangedEventArgs e)
-    {
-        if (SelectedTag(FontScale) is { } tag)
-        {
-            await ApplyAsync("font-scale", tag);
-        }
-    }
+            var editor = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            editor.Children.Add(_reset);
+            editor.Children.Add(control);
 
-    private async void OnAnimation(object sender, SelectionChangedEventArgs e)
-    {
-        if (SelectedTag(Animation) is { } tag)
-        {
-            await ApplyAsync("animation-scale", tag);
-        }
-    }
-
-    private async void OnShowTouches(object sender, RoutedEventArgs e) =>
-        await ApplyAsync("show-touches", ShowTouches.IsChecked == true ? "1" : "0");
-
-    private async void OnStayAwake(object sender, RoutedEventArgs e) =>
-        await ApplyAsync("stay-awake", StayAwake.IsChecked == true ? "7" : "0");
-
-    private async void OnConnectivity(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: string spec })
-        {
-            var parts = spec.Split(':');
-            await ApplyAsync(parts[0], parts[1]);
-        }
-    }
-
-    private async void OnOverrideApply(object sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: string spec })
-        {
-            return;
+            var row = new HeaderedContentControl
+            {
+                Style = (Style)panel.FindResource("SettingRow"),
+                Header = text,
+                Content = editor,
+            };
+            // The reset button stays out of the way until the pointer is on its row.
+            row.MouseEnter += (_, _) => _reset.Opacity = 1;
+            row.MouseLeave += (_, _) => _reset.Opacity = _reset.IsKeyboardFocusWithin ? 1 : 0;
+            _reset.GotKeyboardFocus += (_, _) => _reset.Opacity = 1;
+            _reset.LostKeyboardFocus += (_, _) => _reset.Opacity = row.IsMouseOver ? 1 : 0;
+            Element = row;
         }
 
-        var parts = spec.Split(':');
-        var value = parts.Length > 1 ? parts[1] : parts[0] == "wm-size" ? WmSize.Text.Trim() : WmDensity.Text.Trim();
-        if (await ApplyAsync(parts[0], value))
+        public PhoneSettingValue Value { get; }
+
+        public FrameworkElement Element { get; }
+
+        public bool Matches(string search) =>
+            search.Length == 0 ||
+            Value.Setting.Label.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            Value.Setting.Description.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            Value.Setting.Id.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            Value.Setting.Key.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            Value.Setting.Group.Contains(search, StringComparison.OrdinalIgnoreCase);
+
+        private FrameworkElement Build(PhoneSettingValue value) => value.Setting.Kind switch
         {
-            Refresh(force: true);
+            PhoneSettingKind.Toggle => Toggle(value),
+            PhoneSettingKind.Choice => Choice(value),
+            PhoneSettingKind.Slider => Slider(value),
+            _ => Text(value),
+        };
+
+        private FrameworkElement Toggle(PhoneSettingValue value)
+        {
+            var box = Identify(new CheckBox { IsChecked = value.Value == value.Setting.OnValue }, value);
+            // Checked and Unchecked also fire for assistive technology, which Click does not.
+            RoutedEventHandler apply = async (_, _) => await _panel.ApplyAsync(value.Setting,
+                box.IsChecked == true ? value.Setting.OnValue : value.Setting.OffValue);
+            box.Checked += apply;
+            box.Unchecked += apply;
+            return box;
+        }
+
+        private static T Identify<T>(T control, PhoneSettingValue value) where T : FrameworkElement
+        {
+            System.Windows.Automation.AutomationProperties.SetAutomationId(control, value.Setting.Id);
+            System.Windows.Automation.AutomationProperties.SetName(control, value.Setting.Label);
+            return control;
+        }
+
+        private FrameworkElement Choice(PhoneSettingValue value)
+        {
+            var combo = Identify(new ComboBox { MinWidth = 150 }, value);
+            foreach (var choice in value.Setting.Choices)
+            {
+                combo.Items.Add(new ComboBoxItem { Content = choice.Label, Tag = choice.Value });
+            }
+
+            if (!value.IsDefault && combo.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == value.Value) is { } match)
+            {
+                combo.SelectedItem = match;
+            }
+            else if (!value.IsDefault)
+            {
+                // The phone holds a value outside the catalogue; show it rather than silently retagging.
+                var extra = new ComboBoxItem { Content = value.Value, Tag = value.Value };
+                combo.Items.Add(extra);
+                combo.SelectedItem = extra;
+            }
+
+            combo.SelectionChanged += async (_, _) =>
+            {
+                if (combo.SelectedItem is ComboBoxItem { Tag: string tag } && tag != value.Value)
+                {
+                    await _panel.ApplyAsync(value.Setting, tag);
+                }
+            };
+            return combo;
+        }
+
+        private FrameworkElement Slider(PhoneSettingValue value)
+        {
+            var panel = new StackPanel { Orientation = Orientation.Horizontal, Width = 210 };
+            var readout = new TextBlock
+            {
+                Style = (Style)_panel.FindResource("MutedText"),
+                MinWidth = 52,
+                TextAlignment = TextAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 0, 0),
+            };
+            var slider = Identify(new System.Windows.Controls.Slider
+            {
+                Minimum = value.Setting.Minimum,
+                Maximum = value.Setting.Maximum,
+                Width = 140,
+                IsSnapToTickEnabled = value.Setting.Step >= 1,
+                TickFrequency = value.Setting.Step,
+                VerticalAlignment = VerticalAlignment.Center,
+            }, value);
+            slider.Value = double.TryParse(value.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var current)
+                ? Math.Clamp(current, slider.Minimum, slider.Maximum)
+                : slider.Minimum;
+            readout.Text = Format(slider.Value, value.Setting);
+            slider.ValueChanged += (_, _) => readout.Text = Format(slider.Value, value.Setting);
+            // Writing on every pixel of a drag would flood ADB; commit when the drag ends.
+            slider.PreviewMouseUp += async (_, _) => await _panel.ApplyAsync(value.Setting, Text(slider.Value, value.Setting));
+            slider.KeyUp += async (_, e) =>
+            {
+                if (e.Key is Key.Left or Key.Right or Key.Home or Key.End)
+                {
+                    await _panel.ApplyAsync(value.Setting, Text(slider.Value, value.Setting));
+                }
+            };
+
+            panel.Children.Add(slider);
+            panel.Children.Add(readout);
+            return panel;
+
+            static string Text(double number, PhoneSetting setting) => setting.Step >= 1
+                ? ((long)Math.Round(number)).ToString(CultureInfo.InvariantCulture)
+                : number.ToString("0.##", CultureInfo.InvariantCulture);
+
+            static string Format(double number, PhoneSetting setting) =>
+                Text(number, setting) + (setting.Unit.Length > 0 ? " " + setting.Unit : string.Empty);
+        }
+
+        private FrameworkElement Text(PhoneSettingValue value)
+        {
+            var box = Identify(new TextBox { Text = value.Value, MinWidth = 150 }, value);
+            box.KeyUp += async (_, e) =>
+            {
+                if (e.Key == Key.Enter && box.Text.Trim() != value.Value)
+                {
+                    await _panel.ApplyAsync(value.Setting, box.Text.Trim());
+                }
+            };
+            box.LostFocus += async (_, _) =>
+            {
+                if (box.Text.Trim() != value.Value)
+                {
+                    await _panel.ApplyAsync(value.Setting, box.Text.Trim());
+                }
+            };
+            return box;
         }
     }
 }
