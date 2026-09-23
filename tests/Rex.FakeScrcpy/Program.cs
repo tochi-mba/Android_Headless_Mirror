@@ -102,6 +102,59 @@ internal sealed class MirrorForm : Form
         DoubleBuffered = true;
         BackColor = Color.Black;
         KeyPreview = true;
+
+        // The window starts in the shape it was asked for. Anything a previous run left behind
+        // would otherwise turn it before the test that owns it has begun.
+        try
+        {
+            File.Delete(RotationFile);
+        }
+        catch (IOException)
+        {
+            // Another process has it open; the value below is read as the starting point instead.
+        }
+
+        _rotationWatch = new System.Windows.Forms.Timer { Interval = 100 };
+        _rotationWatch.Tick += (_, _) => FollowRotation();
+        _rotationWatch.Start();
+    }
+
+    private readonly System.Windows.Forms.Timer _rotationWatch;
+    private bool _landscape;
+
+    /// <summary>
+    /// Turns the window when the phone turns, the way scrcpy does. The desktop app has no other way
+    /// to learn that the picture changed shape, so without this the reflow cannot be tested.
+    /// </summary>
+    private static string RotationFile => Path.Combine(AppContext.BaseDirectory, "fake-rotation.txt");
+
+    private void FollowRotation()
+    {
+        if (!File.Exists(RotationFile))
+        {
+            return;
+        }
+
+        string value;
+        try
+        {
+            value = File.ReadAllText(RotationFile).Trim();
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        var landscape = value is "1" or "3";
+        if (landscape == _landscape)
+        {
+            return;
+        }
+
+        _landscape = landscape;
+        ClientSize = new Size(ClientSize.Height, ClientSize.Width);
+        Program.Log($"rotation {value} {ClientSize.Width}x{ClientSize.Height}");
+        Invalidate();
     }
 
     private string? Option(string name)

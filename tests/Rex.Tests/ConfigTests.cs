@@ -251,6 +251,57 @@ public sealed class ConfigTests
     }
 
     [Fact]
+    public void HudLayout_HonoursADraggedPositionAndBringsItBackIntoView()
+    {
+        // With nothing dragged the bar sits where it is pinned.
+        Assert.Equal((440, 12), HudLayout.Place("top", null, null, 120, 40, 1000, 800, 12));
+        Assert.Equal((12, 380), HudLayout.Place("left", null, null, 120, 40, 1000, 800, 12));
+
+        // A dragged position is kept as a fraction, so the bar lands in the same relative spot on
+        // any window size, and it is always measured to the middle of the bar.
+        Assert.Equal((190, 140), HudLayout.Place("top", 0.25, 0.2, 120, 40, 1000, 800, 12));
+        Assert.Equal((380, 280), HudLayout.Place("top", 0.25, 0.2, 240, 80, 2000, 1600, 12));
+
+        // A bar dragged to the very edge, or one too big for the window, still shows.
+        Assert.Equal((880, 760), HudLayout.Place("top", 1, 1, 120, 40, 1000, 800, 12));
+        Assert.Equal((0, 0), HudLayout.Place("top", 0, 0, 120, 40, 1000, 800, 12));
+        Assert.Equal((0, 380), HudLayout.Place("top", 0.5, 0.5, 4000, 40, 1000, 800, 12));
+
+        Assert.Equal((0.25, 0.2), HudLayout.Fraction(250, 160, 1000, 800));
+        Assert.Equal((1.0, 0.0), HudLayout.Fraction(9000, -50, 1000, 800));
+        Assert.Equal((0.5, 0.5), HudLayout.Fraction(10, 10, 0, 800));
+
+        // Where the bar was dropped is where reaching for it brings it back.
+        var zone = HudLayout.HoverZone(0.25, 0.2, 120, 40, 1000, 800, "top", 12);
+        Assert.True(HudLayout.Contains(zone, 250, 160));
+        Assert.False(HudLayout.Contains(zone, 700, 600));
+
+        // With nothing dragged it falls back to the strip along the pinned edge.
+        Assert.Equal(HudLayout.HoverZone("bottom", 1000, 800), HudLayout.HoverZone(null, null, 120, 40, 1000, 800, "bottom", 12));
+    }
+
+    [Fact]
+    public void HudSettings_KeepADraggedPositionOnlyWhenItMakesSense()
+    {
+        var hud = new HudSettings { X = 0.4, Y = 0.9 };
+        hud.Normalize();
+        Assert.True(hud.IsPlaced);
+        Assert.Equal(0.4, hud.X);
+
+        var offscreen = new HudSettings { X = 4, Y = -2 };
+        offscreen.Normalize();
+        Assert.Equal(1, offscreen.X);
+        Assert.Equal(0, offscreen.Y);
+
+        var broken = new HudSettings { X = double.NaN, Y = 0.5 };
+        broken.Normalize();
+        Assert.False(broken.IsPlaced);
+        Assert.Null(broken.X);
+
+        Assert.False(new HudSettings().IsPlaced);
+    }
+
+    [Fact]
     public void AmbientLayout_PlacesTheCaptureAndPicksTheMargins()
     {
         var cover = new AmbientSettings();
@@ -273,6 +324,65 @@ public sealed class ConfigTests
         Assert.Equal((738, 488), AmbientLayout.NavigatorPosition("bottom-right", 150, 100, 900, 600, 12));
         // A navigator wider than the window still starts inside it.
         Assert.Equal((0, 488), AmbientLayout.NavigatorPosition("bottom-right", 2000, 100, 900, 600, 12));
+    }
+
+    [Fact]
+    public void AmbientBlur_CapturesSmallAndSoftensWithoutShiftingTheColour()
+    {
+        // A soft background has no detail to lose, so a sharper look is the only reason to carry
+        // more pixels. The captured copy stays small whatever the window is doing.
+        Assert.Equal(480, AmbientBlur.CaptureWidth(0));
+        Assert.Equal(256, AmbientBlur.CaptureWidth(20));
+        Assert.Equal(160, AmbientBlur.CaptureWidth(80));
+
+        // The radius is expressed against the window, so it has to shrink with the copy.
+        Assert.Equal(0, AmbientBlur.SmallRadius(0, 256, 1920));
+        Assert.Equal(4, AmbientBlur.SmallRadius(30, 256, 1920));
+        Assert.Equal(16, AmbientBlur.SmallRadius(400, 256, 1920));
+        Assert.Equal(1, AmbientBlur.SmallRadius(2, 256, 1920));
+        Assert.Equal(0, AmbientBlur.SmallRadius(30, 256, 0));
+
+        // One bright pixel in a black field spreads outwards and keeps its total brightness.
+        const int width = 32, height = 32;
+        var pixels = new byte[width * height * 4];
+        var centre = ((height / 2) * width + (width / 2)) * 4;
+        pixels[centre] = pixels[centre + 1] = pixels[centre + 2] = pixels[centre + 3] = 255;
+        AmbientBlur.Apply(pixels, width, height, radius: 4);
+
+        Assert.True(pixels[centre] < 255, "The bright pixel must be spread, not left alone.");
+        var neighbour = ((height / 2) * width + (width / 2) + 2) * 4;
+        Assert.True(pixels[neighbour] > 0, "Light must reach the pixels around it.");
+        Assert.All(pixels, value => Assert.InRange(value, (byte)0, (byte)255));
+        Assert.Equal(0, pixels[0]);
+
+        // A radius of zero, or a buffer too small to describe the picture, is left untouched.
+        var untouched = new byte[width * height * 4];
+        untouched[centre] = 255;
+        AmbientBlur.Apply(untouched, width, height, radius: 0);
+        Assert.Equal(255, untouched[centre]);
+        AmbientBlur.Apply(untouched, width * 4, height, radius: 3);
+        Assert.Equal(255, untouched[centre]);
+    }
+
+    [Fact]
+    public void ZoomMath_Refit_FillsTheViewportWhenThePhoneRotates()
+    {
+        // Rotating the phone changes the picture's shape. Carrying the old view forward would keep
+        // a landscape picture inside the tall rectangle the portrait one left behind.
+        var portrait = ZoomMath.Refit(1000, 800, 0.45, 1.0);
+        Assert.Equal(800, portrait.SurfaceHeight, 3);
+        Assert.Equal(360, portrait.SurfaceWidth, 3);
+
+        var landscape = ZoomMath.Refit(1000, 800, 1000 / 450.0, 1.0);
+        Assert.Equal(1000, landscape.SurfaceWidth, 3);
+        Assert.Equal(450, landscape.SurfaceHeight, 3);
+        Assert.Equal(0, landscape.OffsetX, 3);
+        Assert.Equal(175, landscape.OffsetY, 3);
+
+        // Zoom survives the rotation, centred on the middle of the new picture.
+        var zoomed = ZoomMath.Refit(1000, 800, 1000 / 450.0, 2.0);
+        Assert.Equal(2000, zoomed.SurfaceWidth, 3);
+        Assert.Equal(-500, zoomed.OffsetX, 3);
     }
 
     [Fact]

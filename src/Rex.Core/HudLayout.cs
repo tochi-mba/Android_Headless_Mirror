@@ -38,6 +38,57 @@ public static class HudLayout
         return (Math.Max(0, left), Math.Max(0, top));
     }
 
+    /// <summary>
+    /// The HUD's top-left corner, honouring a bar the user has dragged somewhere. The dragged
+    /// position is kept as a fraction of the viewport so it survives a resize, a different monitor
+    /// and a rotation, and the bar is always pulled back inside the picture.
+    /// </summary>
+    public static (double Left, double Top) Place(
+        string position, double? x, double? y,
+        double hudWidth, double hudHeight, double viewportWidth, double viewportHeight, double margin)
+    {
+        if (x is not { } fractionX || y is not { } fractionY)
+        {
+            return Anchor(position, hudWidth, hudHeight, viewportWidth, viewportHeight, margin);
+        }
+
+        var left = (fractionX * viewportWidth) - (hudWidth / 2);
+        var top = (fractionY * viewportHeight) - (hudHeight / 2);
+        return (
+            Math.Clamp(left, 0, Math.Max(0, viewportWidth - hudWidth)),
+            Math.Clamp(top, 0, Math.Max(0, viewportHeight - hudHeight)));
+    }
+
+    /// <summary>Where a bar whose middle is at this point sits, as a fraction of the viewport.</summary>
+    public static (double X, double Y) Fraction(double centreX, double centreY, double viewportWidth, double viewportHeight) =>
+        viewportWidth <= 0 || viewportHeight <= 0
+            ? (0.5, 0.5)
+            : (Math.Clamp(centreX / viewportWidth, 0, 1), Math.Clamp(centreY / viewportHeight, 0, 1));
+
+    /// <summary>
+    /// The area that reveals a dragged HUD: the space it occupies, with room around it so the
+    /// pointer finds it without having to land on the hidden bar exactly.
+    /// </summary>
+    public static RectD HoverZone(
+        double? x, double? y, double hudWidth, double hudHeight,
+        double viewportWidth, double viewportHeight, string position, double margin)
+    {
+        if (x is null || y is null)
+        {
+            return HoverZone(position, viewportWidth, viewportHeight);
+        }
+
+        var (left, top) = Place(position, x, y, hudWidth, hudHeight, viewportWidth, viewportHeight, margin);
+        const double reach = 24;
+        var zoneLeft = Math.Max(0, left - reach);
+        var zoneTop = Math.Max(0, top - reach);
+        return new RectD(
+            zoneLeft,
+            zoneTop,
+            Math.Min(viewportWidth - zoneLeft, hudWidth + (reach * 2)),
+            Math.Min(viewportHeight - zoneTop, hudHeight + (reach * 2)));
+    }
+
     /// <summary>The area that reveals the HUD when the pointer enters it.</summary>
     public static RectD HoverZone(string position, double viewportWidth, double viewportHeight)
     {

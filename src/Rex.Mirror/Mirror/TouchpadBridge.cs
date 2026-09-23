@@ -10,7 +10,7 @@ namespace Rex.Mirror.Mirror;
 /// </summary>
 public sealed class TouchpadBridge
 {
-    private enum GestureKind { None, Android, Host }
+    internal enum GestureKind { None, Android, Host, Panel }
 
     private const double PixelsPerMillimetre = 6.0;
     private const double HostZoomSensitivity = 0.7;
@@ -40,6 +40,15 @@ public sealed class TouchpadBridge
     }
 
     public bool IsGestureActive => _kind != GestureKind.None;
+
+    /// <summary>
+    /// Whether this screen point is a panel of the app's own that scrolls, and by how much to
+    /// scroll it. Two fingers over the settings list belong to the list, not to the phone: the
+    /// mirror is a child window that would otherwise swallow the gesture whole.
+    /// </summary>
+    public Func<int, int, bool>? PanelAt { get; set; }
+
+    public Action<double>? ScrollPanel { get; set; }
 
     /// <summary>Handles a WM_POINTER* message. Returns true when the message was consumed.</summary>
     public bool HandlePointerMessage(int msg, IntPtr wParam)
@@ -99,21 +108,23 @@ public sealed class TouchpadBridge
             _startDistance = distance;
             _startZoom = _host.Zoom;
 
-            var altDown = NativeMethods.IsKeyDown(NativeMethods.VK_MENU);
-            if (altDown && config.Zoom.Enabled && config.Zoom.PinchZoom)
+            var overPanel = NativeMethods.GetCursorPos(out var pointer) && PanelAt?.Invoke(pointer.X, pointer.Y) == true;
+            _kind = Decide(overPanel, NativeMethods.IsKeyDown(NativeMethods.VK_MENU), config, _injector.IsAvailable);
+            if (_kind == GestureKind.Android)
             {
-                _kind = GestureKind.Host;
-                return true;
-            }
-
-            if (!altDown && config.Touchpad.TwoFingerToAndroid && _injector.IsAvailable)
-            {
-                _kind = GestureKind.Android;
                 BeginAndroid();
-                return true;
             }
 
-            return false;
+            return _kind != GestureKind.None;
+        }
+
+        if (_kind == GestureKind.Panel)
+        {
+            // The list follows the fingers, exactly as the phone's screen does under them.
+            var move = ToPixels(centroid.Item1 - _lastCentroid.X, centroid.Item2 - _lastCentroid.Y, config.Touchpad.Sensitivity);
+            ScrollPanel?.Invoke(move.Y);
+            _lastCentroid = centroid;
+            return true;
         }
 
         if (_kind == GestureKind.Host)
@@ -147,6 +158,26 @@ public sealed class TouchpadBridge
         _firstScreen = firstScreen;
         _secondScreen = secondScreen;
         return true;
+    }
+
+    /// <summary>
+    /// What two fingers mean right now. The pointer's whereabouts decide first: a gesture over one
+    /// of the app's own lists scrolls that list, because the mirror is a child window that would
+    /// otherwise take the whole gesture and send it to the phone.
+    /// </summary>
+    internal static GestureKind Decide(bool overPanel, bool altDown, RexConfig config, bool injectorAvailable)
+    {
+        if (overPanel)
+        {
+            return GestureKind.Panel;
+        }
+
+        if (altDown)
+        {
+            return config.Zoom.Enabled && config.Zoom.PinchZoom ? GestureKind.Host : GestureKind.None;
+        }
+
+        return config.Touchpad.TwoFingerToAndroid && injectorAvailable ? GestureKind.Android : GestureKind.None;
     }
 
     private void BeginAndroid()

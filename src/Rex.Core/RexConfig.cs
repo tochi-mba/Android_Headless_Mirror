@@ -221,6 +221,19 @@ public sealed record HudSettings
 
     public string Position { get; set; } = "top";
 
+    /// <summary>
+    /// Where the bar was dragged to, as a fraction of the mirror area measured to the middle of the
+    /// bar. Null means it sits wherever <see cref="Position"/> puts it, which is what choosing a
+    /// position in settings goes back to.
+    /// </summary>
+    public double? X { get; set; }
+
+    public double? Y { get; set; }
+
+    /// <summary>True once the bar has been dragged somewhere of its own.</summary>
+    [JsonIgnore]
+    public bool IsPlaced => X is not null && Y is not null;
+
     /// <summary>Action ids from <c>MirrorActions</c>, in the order they appear.</summary>
     public List<string> Buttons { get; set; } = [.. DefaultButtons];
 
@@ -240,6 +253,8 @@ public sealed record HudSettings
     public void Normalize()
     {
         Position = Positions.Contains(Position?.ToLowerInvariant() ?? "", StringComparer.Ordinal) ? Position!.ToLowerInvariant() : "top";
+        X = X is { } x && double.IsFinite(x) ? Math.Clamp(x, 0, 1) : null;
+        Y = Y is { } y && double.IsFinite(y) ? Math.Clamp(y, 0, 1) : null;
         HideSeconds = double.IsFinite(HideSeconds) ? Math.Clamp(HideSeconds, 1, 15) : 3;
         Scale = double.IsFinite(Scale) ? Math.Clamp(Scale, 0.75, 1.75) : 1;
         Opacity = double.IsFinite(Opacity) ? Math.Clamp(Opacity, 0.3, 1) : 1;
@@ -397,14 +412,10 @@ public sealed record AppSettings
 
     public string ScreenshotDirectory { get; set; } = "captures/screenshots";
 
-    /// <summary>Seconds between the phone screenshots that feed the navigator thumbnail while zoomed.</summary>
-    public double PreviewIntervalSeconds { get; set; } = 2;
-
     public AppSettings Copy() => this with { };
 
     public void Normalize()
     {
-        PreviewIntervalSeconds = double.IsFinite(PreviewIntervalSeconds) ? Math.Clamp(PreviewIntervalSeconds, 1, 10) : 2;
         ScreenshotDirectory = !string.IsNullOrWhiteSpace(ScreenshotDirectory) &&
             (Path.IsPathFullyQualified(ScreenshotDirectory) || PathRules.IsSafeRelativePath(ScreenshotDirectory))
             ? ScreenshotDirectory.Trim() : "captures/screenshots";

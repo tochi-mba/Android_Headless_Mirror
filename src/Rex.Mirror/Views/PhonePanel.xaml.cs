@@ -18,6 +18,7 @@ public partial class PhonePanel : UserControl
 {
     private readonly List<SettingRow> _rows = [];
     private readonly Dictionary<string, Expander> _groups = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _openGroups = new(StringComparer.Ordinal) { PhoneSettings.GroupDisplay };
     private MainWindow? _window;
     private AppHost? _host;
     private bool _loading;
@@ -118,10 +119,14 @@ public partial class PhonePanel : UserControl
                 var expander = new Expander
                 {
                     Header = $"{group}  ({inGroup.Length})",
-                    IsExpanded = group == PhoneSettings.GroupDisplay,
+                    IsExpanded = _openGroups.Contains(group),
                     Margin = new Thickness(0, 6, 0, 0),
                     Content = content,
                 };
+                // Applying a setting rebuilds these rows; remember what the user had open.
+                var name = group;
+                expander.Expanded += (_, _) => _openGroups.Add(name);
+                expander.Collapsed += (_, _) => _openGroups.Remove(name);
                 // x:Name is not available for generated controls; give automation a stable id.
                 System.Windows.Automation.AutomationProperties.SetAutomationId(expander, "PhoneGroup " + group);
                 _groups[group] = expander;

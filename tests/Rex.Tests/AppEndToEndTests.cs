@@ -16,20 +16,220 @@ public sealed class AppEndToEndTests
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(45);
 
     [Fact]
-    public async Task AmbientAndNavigatorPreview_RenderThePhoneCapture()
+    public async Task AmbientBackgroundAndNavigator_FollowTheLiveMirror()
     {
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        // The soft background is a live copy of the on-screen mirror, captured small and blurred
+        // before it ever reaches the window; nothing is fetched from the phone for it.
+        await app.WaitForStatusAsync(
+            s => s["ambientVisible"]!.GetValue<bool>() && s["ambientFrame"]!.GetValue<bool>(),
+            StartupTimeout,
+            "live soft background");
+        await app.FocusAsync();
+        await app.SaveScreenshotAsync("ambient-live.png");
+        await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
+        await app.WaitForStatusAsync(s => s["navigatorVisible"]!.GetValue<bool>(), StartupTimeout, "navigator");
+        await app.SaveScreenshotAsync("navigator.png");
+
+        // The navigator is a frame and a draggable viewport box, so it costs nothing to keep open:
+        // zooming must not send a screenshot request to the phone.
+        Assert.DoesNotContain(package.AdbCalls(), line => line.Contains("screencap", StringComparison.Ordinal));
+        await app.QuitAsync();
+    }
+
+    [Fact]
+    public async Task SoftBackground_PaintsTheSpaceAroundThePhone()
+    {
+        // The soft background is meant to be seen. Checking that a picture is attached proves
+        // nothing: a copy taken from the screen carries no transparency, so a frame can be present
+        // and still draw as nothing at all. This compares what the window actually looks like with
+        // the background on and off, and the phone itself is identical in both.
         using var package = new TestPackage(withFakeTools: true);
         TestPackage.WritePreviewImage(Path.Combine(package.ToolsFolder, "preview.png"));
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
-        // The soft background is a live copy of the on-screen mirror; the navigator thumbnail is a phone screenshot.
-        await app.WaitForStatusAsync(s => s["ambientVisible"]!.GetValue<bool>(), StartupTimeout, "live soft background");
+        await app.WaitForStatusAsync(
+            s => s["ambientVisible"]!.GetValue<bool>() && s["ambientFrame"]!.GetValue<bool>(),
+            StartupTimeout,
+            "soft background");
         await app.FocusAsync();
-        await app.SaveScreenshotAsync("ambient-live.png");
-        await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
-        await app.WaitForStatusAsync(s => s["previewAvailable"]!.GetValue<bool>() && s["navigatorVisible"]!.GetValue<bool>(), StartupTimeout, "navigator thumbnail");
-        await app.SaveScreenshotAsync("navigator-thumbnail.png");
+        using var lit = await app.CaptureWindowAsync();
+
+        // Turning it off in the config file also exercises the live reload the settings panel uses.
+        var config = ConfigFile.Load(package.Paths.Config);
+        config.Ambient.Enabled = false;
+        ConfigFile.Save(package.Paths.Config, config);
+        await app.WaitForStatusAsync(s => !s["ambientVisible"]!.GetValue<bool>(), StartupTimeout, "soft background off");
+        using var dark = await app.CaptureWindowAsync();
+
+        var painted = PaintedFraction(lit, dark);
+        Assert.True(painted > 0.15,
+            $"The soft background must fill the space around the phone; only {painted:P0} of the window changed when it was switched off.");
         await app.QuitAsync();
+    }
+
+    /// <summary>
+    /// How much of the window two captures disagree about, sampled coarsely because a blurred
+    /// background covers broad areas and has no fine detail to miss.
+    /// </summary>
+    private static double PaintedFraction(System.Drawing.Bitmap lit, System.Drawing.Bitmap dark)
+    {
+        Assert.Equal(lit.Size, dark.Size);
+        var changed = 0;
+        var count = 0;
+        for (var y = 0; y < lit.Height; y += 4)
+        {
+            for (var x = 0; x < lit.Width; x += 4)
+            {
+                var a = lit.GetPixel(x, y);
+                var b = dark.GetPixel(x, y);
+                var difference = Math.Abs(a.R - b.R) + Math.Abs(a.G - b.G) + Math.Abs(a.B - b.B);
+                if (difference > 12)
+                {
+                    changed++;
+                }
+
+                count++;
+            }
+        }
+
+        return count == 0 ? 0 : (double)changed / count;
+    }
+
+    [Fact]
+    public async Task Landscape_RefitsThePictureAndTheSoftBackgroundAroundIt()
+    {
+        // Turning the phone changes the picture's shape. Keeping the old view would leave a wide
+        // picture inside the tall rectangle the portrait one left behind: letterboxed on every
+        // side, with the soft background still masked around a phone that is no longer there.
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.WaitForStatusAsync(s => s["ambientVisible"]!.GetValue<bool>(), StartupTimeout, "soft background");
+
+        var portrait = await Surface(app);
+        Assert.True(portrait.Width < portrait.Height, "The phone starts upright.");
+        Assert.InRange(portrait.Height, portrait.ViewportHeight - 2, portrait.ViewportHeight + 2);
+
+        await app.ActionAsync("rotation-landscape");
+        await app.WaitForStatusAsync(
+            s => s["surface"]!["width"]!.GetValue<double>() > s["surface"]!["height"]!.GetValue<double>(),
+            StartupTimeout,
+            "the picture to turn");
+
+        var landscape = await Surface(app);
+        Assert.InRange(landscape.Width, landscape.ViewportWidth - 2, landscape.ViewportWidth + 2);
+        Assert.True(landscape.Height <= landscape.ViewportHeight + 2, "The picture must still fit inside the mirror area.");
+        await app.SaveScreenshotAsync("landscape-refit.png");
+        await app.QuitAsync();
+    }
+
+    private static async Task<(double Width, double Height, double ViewportWidth, double ViewportHeight)> Surface(AppProcess app)
+    {
+        var status = await app.SendAsync(new IpcRequest("status"));
+        var surface = status.Data!["surface"]!;
+        return (
+            surface["width"]!.GetValue<double>(),
+            surface["height"]!.GetValue<double>(),
+            surface["viewportWidth"]!.GetValue<double>(),
+            surface["viewportHeight"]!.GetValue<double>());
+    }
+
+    [Fact]
+    public async Task FullscreenControls_CanBeDraggedAnywhereAndPinnedBack()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.PressKeyAsync(0x7A); // F11
+        await app.WaitForStatusAsync(
+            data => data["fullscreen"]!.GetValue<bool>() && data["hudVisible"]!.GetValue<bool>(),
+            TimeSpan.FromSeconds(15),
+            "fullscreen controls");
+        var monitor = app.MonitorBounds();
+
+        // Dragging the bar itself puts it wherever it is dropped, and that is remembered. The press
+        // lands just inside its leading edge, which is bar rather than button.
+        app.MovePointerToTop();
+        var bar = await SettledBar(app);
+        var grabX = (int)(bar.Left + 4);
+        var grabY = (int)(bar.Top + (bar.Height * 0.25));
+        var dropX = monitor.Left + (int)(monitor.Width * 0.45);
+        var dropY = monitor.Top + (int)(monitor.Height * 0.7);
+        await app.DragAsync(grabX, grabY, dropX, dropY);
+
+        await app.WaitUntilAsync(
+            () => ConfigFile.Load(package.Paths.Config).Hud.IsPlaced,
+            TimeSpan.FromSeconds(10),
+            "the dragged position to be saved");
+
+        // The bar follows the pointer: it keeps the place it was grabbed by, rather than jumping
+        // its middle under the cursor.
+        var placed = ConfigFile.Load(package.Paths.Config).Hud;
+        var expectedX = (bar.Left + (bar.Width / 2) + (dropX - grabX)) / monitor.Width;
+        var expectedY = (bar.Top + (bar.Height / 2) + (dropY - grabY)) / monitor.Height;
+        Assert.Equal(expectedX, placed.X!.Value, 1);
+        Assert.Equal(expectedY, placed.Y!.Value, 1);
+
+        var moved = await SettledBar(app);
+        Assert.True(moved.Top > monitor.Top + (monitor.Height / 2),
+            "The controls must sit where they were dropped.");
+        await app.SaveScreenshotAsync("fullscreen-hud-dragged.png");
+
+        // Pressing a control is a click, never a drag: the bar must not run away with the pointer.
+        var buttonX = (int)(moved.Left + (moved.Width * 0.17));
+        var buttonY = (int)(moved.Top + (moved.Height * 0.25));
+        await app.DragAsync(buttonX, buttonY, buttonX, buttonY);
+        Assert.Contains(package.AdbCalls(), line => line.Contains("keyevent", StringComparison.Ordinal));
+        var after = ConfigFile.Load(package.Paths.Config).Hud;
+        Assert.Equal(placed.X, after.X);
+        Assert.Equal(placed.Y, after.Y);
+
+        // Choosing a position again pins them back, wherever they were dragged to.
+        var config = ConfigFile.Load(package.Paths.Config);
+        config.Hud.Position = "bottom";
+        config.Hud.X = null;
+        config.Hud.Y = null;
+        ConfigFile.Save(package.Paths.Config, config);
+        await app.WaitForStatusAsync(
+            data => data["hudBar"]!["top"]!.GetValue<double>() > monitor.Top + (monitor.Height * 0.8),
+            TimeSpan.FromSeconds(15),
+            "the controls to go back to the bottom");
+
+        await app.PressKeyAsync(0x1B); // Esc leaves fullscreen.
+        await app.WaitForStatusAsync(data => !data["fullscreen"]!.GetValue<bool>(), TimeSpan.FromSeconds(10), "windowed again");
+        await app.QuitAsync();
+    }
+
+    /// <summary>
+    /// The bar once it has stopped moving. It is centred on whatever it is pinned to and its status
+    /// line changes width as it reports things, so a position read a moment too early is no longer
+    /// where the bar is when a press arrives.
+    /// </summary>
+    private static async Task<(double Left, double Top, double Width, double Height)> SettledBar(AppProcess app)
+    {
+        var previous = (Left: double.NaN, Top: double.NaN, Width: double.NaN, Height: double.NaN);
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            var status = await app.SendAsync(new IpcRequest("status"));
+            var bar = status.Data!["hudBar"]!;
+            var current = (
+                bar["left"]!.GetValue<double>(),
+                bar["top"]!.GetValue<double>(),
+                bar["width"]!.GetValue<double>(),
+                bar["height"]!.GetValue<double>());
+            if (current == previous && current.Item3 > 0)
+            {
+                return current;
+            }
+
+            previous = current;
+            await Task.Delay(250, TestContext.Current.CancellationToken);
+        }
+
+        throw new TimeoutException("The fullscreen controls never settled in one place.");
     }
 
     [Fact]

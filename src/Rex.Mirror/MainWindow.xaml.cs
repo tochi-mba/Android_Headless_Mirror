@@ -34,16 +34,15 @@ public partial class MainWindow : Window
     private bool _quitting;
     private bool _trayHintShown;
     private double _navigatorStartZoom;
-    private bool _previewBusy;
-    private DateTime _nextPreview;
     private WindowState _restoreState = WindowState.Normal;
     private Rect _windowedBounds;
     public bool IsFullscreen => _fullscreen;
     public double SidebarScrollOffset => SidebarScroll.VerticalOffset;
-    public bool PreviewAvailable => _overlay.PreviewAvailable;
+    public bool AmbientFrameAvailable => _overlay.AmbientFrameAvailable;
     public string SidebarTab => CurrentTab();
     private Rect _sidebarWheelBounds = Rect.Empty;
     public bool HudVisible => _overlay.HudVisible;
+    public RectD HudBarRect => _overlay.HudBarRect;
     public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
     public bool SidebarVisible => Sidebar.Visibility == Visibility.Visible;
     public bool AmbientVisible => _overlay.AmbientVisible;
@@ -61,6 +60,13 @@ public partial class MainWindow : Window
         _overlay = new OverlayWindow(this);
         _overlay.HudActionRequested += async id => await RunActionAsync(id);
         _overlay.PointerMessage += OnOverlayPointer;
+        // Dragging moves the bar as it happens; the drop is what gets written to disk.
+        _overlay.HudMovedTo += (x, y) => _host.PreviewConfig(c => { c.Hud.X = x; c.Hud.Y = y; });
+        _overlay.HudMoveFinished += () =>
+        {
+            var (x, y) = (_host.Config.Hud.X, _host.Config.Hud.Y);
+            _host.UpdateConfig(c => { c.Hud.X = x; c.Hud.Y = y; });
+        };
         _overlay.PanDelta += (dx, dy) => Host.Pan(dx, dy);
         _overlay.NavigatorTarget += (fx, fy) => Host.CenterOn(fx, fy);
         _overlay.NavigatorDragStarted += () =>
@@ -76,7 +82,11 @@ public partial class MainWindow : Window
             Host.CenterOn(x, y);
         };
         _overlay.PanAllowed = () => _host.Config.Zoom.Enabled && Host.View.IsZoomed && NativeMethods.IsKeyDown(NativeMethods.VK_MENU);
-        _touchpad = new TouchpadBridge(Host, _injector, () => _host.Config, host.Log.Warn);
+        _touchpad = new TouchpadBridge(Host, _injector, () => _host.Config, host.Log.Warn)
+        {
+            PanelAt = (x, y) => SidebarScroll.IsVisible && _sidebarWheelBounds.Contains(x, y),
+            ScrollPanel = delta => SidebarScroll.ScrollToVerticalOffset(SidebarScroll.VerticalOffset - delta),
+        };
 
         _overlayTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
         _overlayTimer.Tick += (_, _) => TrackOverlay();
@@ -467,14 +477,13 @@ public partial class MainWindow : Window
             _ambientTimer.Stop();
             _overlay.SetAmbientFrame(null);
         }
-
-        if (show && IsVisible && WindowState != WindowState.Minimized && !_previewBusy && DateTime.UtcNow >= _nextPreview)
-            _ = RefreshNavigatorPreviewAsync();
-        if (!show) _overlay.SetNavigatorPreview(null);
     }
 
-    /// <summary>One frame of the visible mirror surface for the soft background (no phone round trip).</summary>
-    private void CaptureAmbientFrame()
+    /// <summary>
+    /// One frame of the visible mirror surface for the soft background, taken on a worker thread so
+    /// the window stays responsive, and never from the phone.
+    /// </summary>
+    private async void CaptureAmbientFrame()
     {
         if (!Host.HasChild || !_host.Session.IsMirroring)
         {
@@ -490,35 +499,12 @@ public partial class MainWindow : Window
             Right = Math.Min(surface.Right, viewport.Right),
             Bottom = Math.Min(surface.Bottom, viewport.Bottom),
         };
-        _overlay.SetAmbientFrame(_liveCapture.Capture(visible));
-    }
 
-    private async Task RefreshNavigatorPreviewAsync()
-    {
-        var device = _host.Session.ActiveDevice;
-        var adb = _host.Session.Adb;
-        if (device is null || adb is null) return;
-        _previewBusy = true;
-        try
+        var frame = await _liveCapture.CaptureAsync(visible, _host.Config.Ambient.Blur);
+        if (frame is not null && !_quitting && _ambientTimer.IsEnabled)
         {
-            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            var bytes = await adb.ScreencapAsync(device.Serial, deadline.Token);
-            if (bytes is null || _quitting || !_host.Session.IsMirroring || _host.Session.ActiveDevice?.Serial != device.Serial) return;
-            using var stream = new MemoryStream(bytes);
-            var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            bitmap.DecodePixelWidth = 180;
-            bitmap.StreamSource = stream;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            _overlay.SetNavigatorPreview(bitmap);
+            _overlay.SetAmbientFrame(frame);
         }
-        catch (Exception ex) when (ex is IOException or InvalidOperationException or NotSupportedException or ArgumentException or OperationCanceledException)
-        {
-            _overlay.SetNavigatorPreview(null);
-        }
-        finally { _previewBusy = false; _nextPreview = DateTime.UtcNow.AddSeconds(_host.Config.App.PreviewIntervalSeconds); }
     }
 
     private bool OnPanelWheel(int delta, int screenX, int screenY)

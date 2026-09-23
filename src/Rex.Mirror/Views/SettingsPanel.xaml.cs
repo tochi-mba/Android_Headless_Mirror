@@ -73,11 +73,11 @@ public partial class SettingsPanel : UserControl
             AmbientFrameRate.Value = c.Ambient.FrameRate;
             SelectTag(NavigatorCorner, c.Zoom.NavigatorCorner);
             NavigatorWidth.Value = c.Zoom.NavigatorWidth;
-            PreviewInterval.Value = c.App.PreviewIntervalSeconds;
             HudEnabled.IsChecked = c.Hud.Enabled;
             HudOptions.IsEnabled = c.Hud.Enabled;
             HudMessages.IsChecked = c.Hud.ShowMessages;
             SelectTag(HudPosition, c.Hud.Position);
+            HudDraggedRow.Visibility = c.Hud.IsPlaced ? Visibility.Visible : Visibility.Collapsed;
             HudScale.Value = c.Hud.Scale;
             HudOpacity.Value = c.Hud.Opacity;
             HudDelay.Value = c.Hud.HideSeconds;
@@ -271,15 +271,12 @@ public partial class SettingsPanel : UserControl
         // labels do not exist yet and Refresh() writes them once the host is attached.
         if (_host is null) return;
         NavigatorWidthValue.Text = $"{NavigatorWidth.Value:0} px";
-        PreviewIntervalValue.Text = $"{PreviewInterval.Value:0} s";
         if (_loading) return;
-        var interval = PreviewInterval.Value;
         var maxZoom = MaximumZoom.Value;
         var wheelStep = Math.Round(WheelSpeed.Value, 2);
         var navigatorWidth = Math.Round(NavigatorWidth.Value);
         _host.PreviewConfig(c =>
         {
-            c.App.PreviewIntervalSeconds = interval;
             c.Zoom.MaxZoom = maxZoom;
             c.Zoom.WheelStep = wheelStep;
             c.Zoom.NavigatorWidth = navigatorWidth;
@@ -327,7 +324,6 @@ public partial class SettingsPanel : UserControl
         AmbientEdgeFadeValue.Text = c.Ambient.EdgeFade < 0.005 ? "off" : $"{c.Ambient.EdgeFade * 100:0}%";
         AmbientTintValue.Text = c.Ambient.TintStrength < 0.005 ? "off" : $"{c.Ambient.TintStrength * 100:0}% at {c.Ambient.TintHue:0}°";
         AmbientFrameRateValue.Text = $"{c.Ambient.FrameRate:0} fps";
-        PreviewIntervalValue.Text = $"{c.App.PreviewIntervalSeconds:0} s";
 
         static string Offset(double value, string negative, string positive) =>
             Math.Abs(value) < 0.005 ? "centred" : $"{Math.Abs(value) * 100:0}% {(value < 0 ? negative : positive)}";
@@ -339,7 +335,23 @@ public partial class SettingsPanel : UserControl
     {
         c.Hud.Enabled = HudEnabled.IsChecked == true;
         c.Hud.ShowMessages = HudMessages.IsChecked == true;
+    });
+
+    /// <summary>
+    /// Choosing a position is how the bar gets pinned back: it overrides wherever it was dragged to,
+    /// which the other HUD settings must leave alone.
+    /// </summary>
+    private void OnHudPosition(object sender, SelectionChangedEventArgs e) => Save(c =>
+    {
         c.Hud.Position = SelectedTag(HudPosition, "top");
+        c.Hud.X = null;
+        c.Hud.Y = null;
+    });
+
+    private void OnHudPinBack(object sender, RoutedEventArgs e) => Save(c =>
+    {
+        c.Hud.X = null;
+        c.Hud.Y = null;
     });
 
     private void OnHudSlider(object sender, RoutedPropertyChangedEventArgs<double> e)

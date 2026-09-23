@@ -137,6 +137,8 @@ internal static partial class NativeMethods
     public const int WM_MOUSEACTIVATE = 0x0021;
     public const int WM_PARENTNOTIFY = 0x0210;
     public const int WM_LBUTTONDOWN = 0x0201;
+    public const int WM_LBUTTONUP = 0x0202;
+    public const int WM_MOUSEMOVE = 0x0200;
     public const int WM_RBUTTONDOWN = 0x0204;
     public const int WM_MBUTTONDOWN = 0x0207;
     public const int WM_POINTERUPDATE = 0x0245;
@@ -330,6 +332,39 @@ internal static partial class NativeMethods
 
     [LibraryImport("gdi32.dll")]
     public static partial IntPtr CreateSolidBrush(uint color);
+
+    // Screen capture. StretchBlt copies and shrinks in one pass, so the cost is the size of the
+    // small copy rather than the size of the window being captured.
+    public const int SRCCOPY = 0x00CC0020;
+    public const int HALFTONE = 4;
+
+    public const int WM_LBUTTONDBLCLK = 0x0203;
+
+    [LibraryImport("user32.dll")]
+    public static partial IntPtr SetCapture(IntPtr hWnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ReleaseCapture();
+
+    [LibraryImport("user32.dll")]
+    public static partial IntPtr GetDC(IntPtr hWnd);
+
+    [LibraryImport("user32.dll")]
+    public static partial int ReleaseDC(IntPtr hWnd, IntPtr hdc);
+
+    [LibraryImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool StretchBlt(
+        IntPtr destination, int x, int y, int width, int height,
+        IntPtr source, int sourceX, int sourceY, int sourceWidth, int sourceHeight, int rop);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial int SetStretchBltMode(IntPtr hdc, int mode);
+
+    [LibraryImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetBrushOrgEx(IntPtr hdc, int x, int y, IntPtr point);
 
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);

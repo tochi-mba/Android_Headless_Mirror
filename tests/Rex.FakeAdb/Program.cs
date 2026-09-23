@@ -247,6 +247,13 @@ int Settings(string[] parts)
             var value = string.Join(' ', parts.Skip(4)).Trim('\'');
             scenario.SettingsFor(ns)[parts[3]] = value;
             scenario.Save();
+            if (parts[3] == "user_rotation")
+            {
+                // A real phone turns and scrcpy's window changes shape with it. The fake mirror
+                // window watches this file so the desktop app sees the same thing happen.
+                File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "fake-rotation.txt"), value);
+            }
+
             return 0;
         }
         case "delete":

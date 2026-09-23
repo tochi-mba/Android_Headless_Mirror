@@ -16,11 +16,50 @@ public sealed class AppProcess : IDisposable
     private readonly Process _process;
     private readonly IpcClient _client;
 
+    /// <summary>Every window these tests have started, so none can outlive the test that owns it.</summary>
+    private static readonly List<Process> Started = [];
+
     public AppProcess(TestPackage package)
     {
+        KillStrays();
         _package = package;
         _client = new IpcClient(_pipe);
         _process = Start();
+    }
+
+    /// <summary>
+    /// Closes anything an earlier test left running. A test that overruns its timeout is abandoned
+    /// where it stands, so its window is never disposed; desktop tests run one at a time, which
+    /// makes any window still alive here a leak that would leave the next test driving two windows.
+    /// </summary>
+    private static void KillStrays()
+    {
+        lock (Started)
+        {
+            foreach (var process in Started)
+            {
+                Kill(process);
+            }
+
+            Started.Clear();
+        }
+    }
+
+    private static void Kill(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+
+            process.Dispose();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or SystemException)
+        {
+            // Already gone, or already disposed by the test that owned it.
+        }
     }
 
     private Process Start()
@@ -36,7 +75,13 @@ public sealed class AppProcess : IDisposable
         start.Environment[Ipc.PipeNameOverride] = _pipe;
         start.Environment.Remove(ToolLocator.AdbOverride);
         start.Environment.Remove(ToolLocator.ScrcpyOverride);
-        return Process.Start(start) ?? throw new InvalidOperationException("Could not start RexMirror.exe.");
+        var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start RexMirror.exe.");
+        lock (Started)
+        {
+            Started.Add(process);
+        }
+
+        return process;
     }
 
     public Process StartAnother() => Start();
@@ -139,6 +184,56 @@ public sealed class AppProcess : IDisposable
         }
     }
 
+    /// <summary>
+    /// Presses at one screen point, moves to another and lets go, in steps, the way a hand does.
+    /// A single jump would not look like a drag to anything watching the pointer.
+    /// </summary>
+    public async Task DragAsync(int fromX, int fromY, int toX, int toY)
+    {
+        MovePointer(fromX, fromY);
+        await Task.Delay(80, TestContext.Current.CancellationToken);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+        try
+        {
+            const int steps = 14;
+            for (var step = 1; step <= steps; step++)
+            {
+                MovePointer(
+                    fromX + ((toX - fromX) * step / steps),
+                    fromY + ((toY - fromY) * step / steps));
+                await Task.Delay(25, TestContext.Current.CancellationToken);
+            }
+
+            await Task.Delay(120, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+        }
+
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Puts the pointer at a point in physical pixels, which is what the app reports.
+    ///
+    /// The awareness has to be set for this one call. It belongs to the thread, and an await in the
+    /// middle of a drag can come back on a different one, which would silently scale every point
+    /// after it and land the press somewhere else entirely.
+    /// </summary>
+    private static void MovePointer(int x, int y)
+    {
+        var previous = SetThreadDpiAwarenessContext(new IntPtr(-4));
+        try
+        {
+            SetPhysicalCursorPos(x, y);
+        }
+        finally
+        {
+            SetThreadDpiAwarenessContext(previous);
+        }
+    }
+
     public async Task PressKeyAsync(byte key, bool repeat = false)
     {
         // Never send F11 into an unrelated foreground app: wait for the focus handover first.
@@ -216,7 +311,7 @@ public sealed class AppProcess : IDisposable
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }
 
-        throw new TimeoutException($"Timed out waiting for {description}. Last status: {last?.ToJsonString()}");
+        throw new TimeoutException($"Timed out waiting for {description}. Last status: {last?.ToJsonString()}{Environment.NewLine}Log:{Environment.NewLine}{Log()}");
     }
 
     public async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout, string description)
@@ -232,7 +327,7 @@ public sealed class AppProcess : IDisposable
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }
 
-        throw new TimeoutException($"Timed out waiting for {description}.");
+        throw new TimeoutException($"Timed out waiting for {description}.{Environment.NewLine}Log:{Environment.NewLine}{Log()}");
     }
 
     public async Task KillAppOnlyAsync()
@@ -303,6 +398,14 @@ public sealed class AppProcess : IDisposable
 
     public async Task SaveScreenshotAsync(string name)
     {
+        using var bitmap = await CaptureWindowAsync();
+        Directory.CreateDirectory(RepoPaths.Screens);
+        bitmap.Save(Path.Combine(RepoPaths.Screens, name), System.Drawing.Imaging.ImageFormat.Png);
+    }
+
+    /// <summary>The window exactly as it appears on screen, for tests that judge what is drawn.</summary>
+    public async Task<System.Drawing.Bitmap> CaptureWindowAsync()
+    {
         await Task.Yield();
         _ = DwmFlush();
         // GetWindowRect and CopyFromScreen must both use physical pixels on scaled displays.
@@ -315,8 +418,7 @@ public sealed class AppProcess : IDisposable
             Assert.True(rect.Right - rect.Left >= 720 && rect.Bottom - rect.Top >= 480,
                 "The capture must contain the app window, not a tooltip or tray window.");
 
-            Directory.CreateDirectory(RepoPaths.Screens);
-            using var bitmap = new System.Drawing.Bitmap(rect.Right - rect.Left, rect.Bottom - rect.Top);
+            var bitmap = new System.Drawing.Bitmap(rect.Right - rect.Left, rect.Bottom - rect.Top);
             for (var attempt = 0; ; attempt++)
             {
                 using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
@@ -333,7 +435,7 @@ public sealed class AppProcess : IDisposable
                 await Task.Delay(150, TestContext.Current.CancellationToken);
             }
 
-            bitmap.Save(Path.Combine(RepoPaths.Screens, name), System.Drawing.Imaging.ImageFormat.Png);
+            return bitmap;
         }
         finally
         {
@@ -424,19 +526,12 @@ public sealed class AppProcess : IDisposable
 
     public void Dispose()
     {
-        try
+        lock (Started)
         {
-            if (!_process.HasExited)
-            {
-                _process.Kill(entireProcessTree: true);
-            }
-        }
-        catch (InvalidOperationException)
-        {
-            // Already gone.
+            Started.Remove(_process);
         }
 
-        _process.Dispose();
+        Kill(_process);
     }
 
     [StructLayout(LayoutKind.Sequential)]

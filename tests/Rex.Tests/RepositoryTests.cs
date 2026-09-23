@@ -105,7 +105,11 @@ public sealed class RepositoryTests
 
         Assert.Contains("if: github.event_name == 'push' && github.ref == 'refs/heads/main'", ci);
         Assert.Contains("$props.Project.PropertyGroup.Version", ci);
-        Assert.Contains("needs: [windows, desktop-e2e, pages]", ci);
+        // Every suite that can block a release is a gate on it, the desktop UI automation included.
+        Assert.Contains("needs: [windows, desktop-e2e, desktop-ui, pages]", ci);
+        Assert.Contains("--filter-class Rex.Tests.AppUiTests", ci);
+        Assert.False(File.Exists(Path.Combine(RepoPaths.Root, "URGENT.md")),
+            "URGENT.md tracked a release exception that no longer exists.");
         Assert.Contains("gh release view \"$tag\"", ci);
         Assert.Contains("gh release create \"$tag\"", ci);
         Assert.Contains("--target \"$GITHUB_SHA\"", ci);

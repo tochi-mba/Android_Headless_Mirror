@@ -106,13 +106,13 @@
 
     <Expander x:Name="GroupHud" Header="Fullscreen HUD" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
-               Text="In fullscreen the controls hide themselves. Move the pointer to the edge you pin them to and they come back." />
+               Text="In fullscreen the controls hide themselves. Move the pointer to where you put them and they come back. Drag them anywhere by the dotted grip on their left." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the floating controls">
       <CheckBox x:Name="HudEnabled" Checked="OnHudChanged" Unchecked="OnHudChanged" />
     </HeaderedContentControl>
     <StackPanel x:Name="HudOptions">
       <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Where they sit">
-        <ComboBox x:Name="HudPosition" SelectionChanged="OnHudChanged">
+        <ComboBox x:Name="HudPosition" SelectionChanged="OnHudPosition">
           <ComboBoxItem Content="Top" Tag="top" />
           <ComboBoxItem Content="Bottom" Tag="bottom" />
           <ComboBoxItem Content="Left" Tag="left" />
@@ -123,6 +123,13 @@
           <ComboBoxItem Content="Bottom right" Tag="bottom-right" />
         </ComboBox>
       </HeaderedContentControl>
+      <Grid x:Name="HudDraggedRow" Margin="0,2,0,0" Visibility="Collapsed">
+        <TextBlock Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center"
+                   Text="Dragged to a spot of their own." />
+        <Button x:Name="HudPinBack" Content="Pin it back" Style="{StaticResource GhostButton}"
+                HorizontalAlignment="Right" Click="OnHudPinBack"
+                ToolTip="Put the controls back where the position above says." />
+      </Grid>
       <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the status line under them">
         <CheckBox x:Name="HudMessages" Checked="OnHudChanged" Unchecked="OnHudChanged" />
       </HeaderedContentControl>
@@ -210,8 +217,6 @@
     </HeaderedContentControl>
     <Grid Margin="0,8,0,0"><TextBlock Text="Navigator size" /><TextBlock x:Name="NavigatorWidthValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="NavigatorWidth" Minimum="100" Maximum="360" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
-    <Grid Margin="0,8,0,0"><TextBlock Text="Navigator thumbnail refresh" /><TextBlock x:Name="PreviewIntervalValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-    <Slider x:Name="PreviewInterval" Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" ToolTip="The thumbnail is a phone screenshot; slower refresh uses less power." />
     <TextBlock Text="Maximum zoom" Margin="0,8,0,0" />
     <Slider x:Name="MaximumZoom" Minimum="1.5" Maximum="8" TickFrequency="0.5" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" />
     <TextBlock Text="Wheel zoom speed" Margin="0,8,0,0" />

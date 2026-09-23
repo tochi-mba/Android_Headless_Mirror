@@ -97,17 +97,34 @@ public static class CommandRouter
             ["visibleDevices"] = session.Devices.Count,
             ["restartRequired"] = session.NeedsRestart,
             ["sidebarScrollOffset"] = host.Window?.SidebarScrollOffset ?? 0,
-            ["previewAvailable"] = host.Window?.PreviewAvailable ?? false,
+            ["ambientFrame"] = host.Window?.AmbientFrameAvailable ?? false,
             ["sidebarTab"] = host.Window?.SidebarTab,
             ["windowVisible"] = host.Window?.IsVisible ?? false,
             ["fullscreen"] = host.Window?.IsFullscreen ?? false,
             ["hudVisible"] = host.Window?.HudVisible ?? false,
+            // Where the fullscreen controls are on screen, so a caller can reach for them.
+            ["hudBar"] = host.Window is { } hud ? new JsonObject
+            {
+                ["left"] = Math.Round(hud.HudBarRect.X),
+                ["top"] = Math.Round(hud.HudBarRect.Y),
+                ["width"] = Math.Round(hud.HudBarRect.Width),
+                ["height"] = Math.Round(hud.HudBarRect.Height),
+            } : null,
             ["onboarding"] = host.Window?.OnboardingVisible ?? false,
             ["sidebarVisible"] = host.Window?.SidebarVisible ?? false,
             ["ambientVisible"] = host.Window?.AmbientVisible ?? false,
             ["navigatorVisible"] = host.Window?.NavigatorVisible ?? false,
             ["lockQuestion"] = session.PendingLockQuestionSerial is not null,
             ["zoom"] = host.Window is { } w ? Math.Round(w.Host.Zoom, 3) : 1.0,
+            // Where the picture sits inside the mirror area, so a caller can tell whether it fills
+            // the space it is given: after the phone turns, a landscape picture should.
+            ["surface"] = host.Window is { } mirror ? new JsonObject
+            {
+                ["width"] = Math.Round(mirror.Host.SurfaceRect.Width),
+                ["height"] = Math.Round(mirror.Host.SurfaceRect.Height),
+                ["viewportWidth"] = mirror.Host.ViewportPixels.Width,
+                ["viewportHeight"] = mirror.Host.ViewportPixels.Height,
+            } : null,
             ["patternGuide"] = host.Window is { } window ? new JsonObject
             {
                 ["visible"] = window.PatternGuideVisible,
