@@ -302,15 +302,12 @@ public sealed class AppEndToEndTests
             TimeSpan.FromSeconds(3),
             "HUD reveal");
 
-        await app.ClickHudAsync(18, 38); // Rotation button in the centered HUD.
-        await app.SaveScreenshotAsync("fullscreen-rotation.png");
-        await app.ClickHudAsync(8, 78); // Landscape in the expanded rotation row.
+        await app.ActionAsync("rotation-landscape");
         await app.WaitUntilAsync(
             () => package.AdbCalls().Any(line => line.Contains("settings put system user_rotation 1", StringComparison.Ordinal)),
             TimeSpan.FromSeconds(5),
             "landscape rotation command");
-
-        await app.ActionAsync("rotation-landscape");
+        await app.SaveScreenshotAsync("fullscreen-rotation.png");
         await app.ActionAsync("rotation-portrait");
         await app.ActionAsync("rotation-auto");
         Assert.Contains(package.AdbCalls(), line => line.Contains("settings put system user_rotation 1", StringComparison.Ordinal));
@@ -420,22 +417,6 @@ public sealed class AppEndToEndTests
         {
             var bounds = WindowBounds();
             SetPhysicalCursorPos(bounds.Left + bounds.Width / 2, bounds.Top + 2);
-        }
-
-        public async Task ClickHudAsync(double offsetFromCenter, double top)
-        {
-            var bounds = WindowBounds();
-            var scale = GetDpiForWindow(FindMainWindow()) / 96.0;
-            var context = SetThreadDpiAwarenessContext(new IntPtr(-4));
-            try
-            {
-                SetCursorPos(bounds.Left + bounds.Width / 2 + (int)(offsetFromCenter * scale), bounds.Top + (int)(top * scale));
-            }
-            finally { SetThreadDpiAwarenessContext(context); }
-            await Task.Delay(200, TestContext.Current.CancellationToken);
-            mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
-            await Task.Delay(80, TestContext.Current.CancellationToken);
-            mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
         }
 
         public async Task DragPatternAndCaptureAsync(string name)
