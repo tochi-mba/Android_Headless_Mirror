@@ -51,7 +51,7 @@ public sealed class RepositoryTests
             .OrderBy(x => x, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["REX.bat", "assets/make-icon.ps1", "installer/build.ps1"], scripts);
+        Assert.Equal(["REX.bat", "assets/make-icon.ps1", "installer/build.ps1", "installer/prepare-upgrade.ps1"], scripts);
     }
 
     [Fact]

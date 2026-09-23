@@ -53,6 +53,7 @@ Name: "autostart"; Description: "Start with Windows and wait for the phone in th
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "After installing:"; Flags: checkedonce
 
 [Files]
+Source: "prepare-upgrade.ps1"; Flags: dontcopy
 Source: "{#Source}\rex\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#Source}\scrcpy\*"; DestDir: "{app}\scrcpy"; Flags: ignoreversion recursesubdirs createallsubdirs
 
@@ -78,16 +79,17 @@ const
 // The app hides to the tray on WM_CLOSE, so ask it to quit properly before files are replaced.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Cli: String;
+  Arguments: String;
   ResultCode: Integer;
 begin
   Result := '';
-  Cli := ExpandConstant('{app}\{#CliExe}');
-  if FileExists(Cli) then
-  begin
-    Exec(Cli, 'quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    Sleep(1500);
-  end;
+  ExtractTemporaryFile('prepare-upgrade.ps1');
+  Arguments := ExpandConstant('-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{tmp}\prepare-upgrade.ps1" -InstallDirectory "{app}"');
+  if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    Arguments, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Result := 'Could not start upgrade preparation. Close REX and retry.';
+  if (Result = '') and (ResultCode <> 0) then
+    Result := 'Could not stop the installed REX or Android tools. Close them and retry. No files have been replaced.';
 end;
 
 // Put the install folder on the user's PATH so "rex" works in any terminal.

@@ -104,6 +104,8 @@ docs/                   GitHub Pages site; its download button points at the lat
 - Plain two-finger touchpad gestures go to the phone as real touch. Alt is the only host modifier.
 - Any authorised phone can be used. A preferred serial is a preference, never a lock.
 - The app never calls `adb kill-server`, never stores or injects unlock credentials, never needs admin.
+- Before upgrading, the installer stops processes whose executable paths are inside the installation
+  directory, including its bundled ADB server. It never sends a global `adb kill-server` command.
 - Wireless ADB stays opt-in.
 - scrcpy installs are never deleted while a copy may be running; a new version goes into a new folder
   and discovery picks the newest complete one.
@@ -120,7 +122,7 @@ docs/                   GitHub Pages site; its download button points at the lat
 - Tests wait for observable state rather than fixed sleeps, except where elapsed time itself is the
   behaviour under test or Windows input/compositor APIs expose no better signal.
 - No file over 1,000 lines. No dead code. Warnings are errors. Scripts are limited to `REX.bat`,
-  `assets/make-icon.ps1` and `installer/build.ps1`.
+  `assets/make-icon.ps1`, `installer/build.ps1` and `installer/prepare-upgrade.ps1`.
 
 ## Testing
 
