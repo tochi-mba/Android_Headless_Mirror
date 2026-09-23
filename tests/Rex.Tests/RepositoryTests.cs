@@ -105,7 +105,7 @@ public sealed class RepositoryTests
 
         Assert.Contains("if: github.event_name == 'push' && github.ref == 'refs/heads/main'", ci);
         Assert.Contains("$props.Project.PropertyGroup.Version", ci);
-        Assert.Contains("needs: [windows, pages]", ci);
+        Assert.Contains("needs: [windows, desktop-e2e, desktop-ui, pages]", ci);
         Assert.Contains("gh release view \"$tag\"", ci);
         Assert.Contains("gh release create \"$tag\"", ci);
         Assert.Contains("--target \"$GITHUB_SHA\"", ci);
