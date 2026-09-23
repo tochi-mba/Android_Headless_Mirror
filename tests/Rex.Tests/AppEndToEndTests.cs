@@ -317,6 +317,14 @@ public sealed class AppEndToEndTests
         Assert.Contains(package.AdbCalls(), line => line.Contains("settings put system user_rotation 0", StringComparison.Ordinal));
         Assert.Contains(package.AdbCalls(), line => line.Contains("settings put system accelerometer_rotation 1", StringComparison.Ordinal));
         await app.PressKeyAsync(0x1B); // Escape returns to the previous window bounds.
+        await app.WaitForStatusAsync(
+            data => !data["fullscreen"]!.GetValue<bool>(),
+            TimeSpan.FromSeconds(5),
+            "windowed mode after Escape");
+        await app.WaitUntilAsync(
+            () => app.WindowBounds() == windowed,
+            TimeSpan.FromSeconds(5),
+            "window bounds to restore after leaving fullscreen");
         Assert.Equal(windowed, app.WindowBounds());
 
         await app.ActionAsync("fullscreen");
