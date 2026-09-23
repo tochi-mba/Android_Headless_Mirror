@@ -10,9 +10,9 @@ public sealed record AmbientFrame(byte[] Pixels, int Width, int Height);
 /// <summary>
 /// Takes the soft background straight off the screen, small and already blurred.
 ///
-/// The work is deliberately tiny: one stretched copy straight into a bitmap a couple of hundred
-/// pixels wide, and a box blur over that. Nothing scales with the window size, so raising the
-/// frame rate costs almost nothing, and the UI thread only ever copies finished pixels.
+/// The blur is the expensive part, and it happens on a copy a couple of hundred pixels wide rather
+/// than at display size, so raising the frame rate costs almost nothing and the UI thread only ever
+/// copies finished pixels.
 /// </summary>
 public sealed class LiveCapture : IDisposable
 {
@@ -23,6 +23,7 @@ public sealed class LiveCapture : IDisposable
     // while the next one is being taken, and one buffer would be rewritten underneath it.
     private readonly byte[][] _buffers = [[], []];
     private byte[] _scratch = [];
+    private Drawing.Bitmap? _full;
     private int _next;
     private bool _disposed;
 
@@ -55,7 +56,7 @@ public sealed class LiveCapture : IDisposable
         if (_small is null || _small.Width != captureWidth || _small.Height != captureHeight)
         {
             _small?.Dispose();
-            _small = new Drawing.Bitmap(captureWidth, captureHeight, Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            _small = new Drawing.Bitmap(captureWidth, captureHeight, Drawing.Imaging.PixelFormat.Format32bppRgb);
             _buffers[0] = new byte[captureWidth * captureHeight * 4];
             _buffers[1] = new byte[captureWidth * captureHeight * 4];
             _scratch = new byte[captureWidth * captureHeight * 4];
@@ -72,7 +73,7 @@ public sealed class LiveCapture : IDisposable
         var bits = _small.LockBits(
             new Drawing.Rectangle(0, 0, captureWidth, captureHeight),
             Drawing.Imaging.ImageLockMode.ReadOnly,
-            Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            Drawing.Imaging.PixelFormat.Format32bppRgb);
         try
         {
             for (var y = 0; y < captureHeight; y++)
@@ -81,9 +82,9 @@ public sealed class LiveCapture : IDisposable
                     bits.Scan0 + y * bits.Stride, pixels, y * captureWidth * 4, captureWidth * 4);
             }
 
-            // A copy from the screen carries colour but no transparency, so every pixel arrives
-            // fully transparent. The background is drawn at its own opacity, and an image whose
-            // pixels are all see-through would simply never appear.
+            // The screen has no transparency to copy, so the fourth byte of each pixel is not a
+            // meaningful alpha. The window draws the picture at its own opacity, so every pixel is
+            // made opaque here; left as it comes, the whole thing is invisible.
             for (var i = 3; i < pixels.Length; i += 4)
             {
                 pixels[i] = 255;
@@ -104,54 +105,48 @@ public sealed class LiveCapture : IDisposable
     }
 
     /// <summary>
-    /// Copies the screen rectangle straight into the small bitmap, shrinking it on the way.
+    /// Copies the screen rectangle, then shrinks the copy.
     ///
-    /// Copying the rectangle at full size and shrinking it afterwards makes the work grow with the
-    /// window: on a large display that is tens of megabytes moved per frame. One stretched copy
-    /// does both steps at the size of the result, which is a few hundred pixels wide whatever the
-    /// window is doing, so the frame rate can go up without the cost following it.
+    /// Stretching straight from the screen in one call is cheaper, and was tried: some machines
+    /// hand back a black rectangle for it, and a soft background of pure black is the same as none
+    /// at all. This way is a few megabytes of blit per frame more, at a frame rate measured in the
+    /// teens, and it is the same picture on every machine.
     /// </summary>
-    private static bool CopyScreen(Drawing.Bitmap target, RECT screenRect, int width, int height)
+    private bool CopyScreen(Drawing.Bitmap target, RECT screenRect, int width, int height)
     {
-        var screen = NativeMethods.GetDC(IntPtr.Zero);
-        if (screen == IntPtr.Zero)
+        if (_full is null || _full.Width != screenRect.Width || _full.Height != screenRect.Height)
         {
-            return false;
+            _full?.Dispose();
+            _full = new Drawing.Bitmap(screenRect.Width, screenRect.Height, Drawing.Imaging.PixelFormat.Format32bppRgb);
         }
 
-        Drawing.Graphics? graphics = null;
-        var destination = IntPtr.Zero;
         try
         {
-            graphics = Drawing.Graphics.FromImage(target);
-            destination = graphics.GetHdc();
-            NativeMethods.SetStretchBltMode(destination, NativeMethods.HALFTONE);
-            NativeMethods.SetBrushOrgEx(destination, 0, 0, IntPtr.Zero);
-            return NativeMethods.StretchBlt(
-                destination, 0, 0, width, height,
-                screen, screenRect.Left, screenRect.Top, screenRect.Width, screenRect.Height,
-                NativeMethods.SRCCOPY);
+            using (var graphics = Drawing.Graphics.FromImage(_full))
+            {
+                graphics.CopyFromScreen(screenRect.Left, screenRect.Top, 0, 0, _full.Size);
+            }
+
+            using (var graphics = Drawing.Graphics.FromImage(target))
+            {
+                graphics.InterpolationMode = Drawing.Drawing2D.InterpolationMode.Bilinear;
+                graphics.PixelOffsetMode = Drawing.Drawing2D.PixelOffsetMode.Half;
+                graphics.DrawImage(_full, new Drawing.Rectangle(0, 0, width, height));
+            }
+
+            return true;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or ArgumentException or InvalidOperationException)
         {
             // The desktop refuses a copy while it is locked or switching sessions; skip the frame.
             return false;
         }
-        finally
-        {
-            if (destination != IntPtr.Zero)
-            {
-                graphics!.ReleaseHdc(destination);
-            }
-
-            graphics?.Dispose();
-            NativeMethods.ReleaseDC(IntPtr.Zero, screen);
-        }
     }
 
     public void Dispose()
     {
         _disposed = true;
+        _full?.Dispose();
         _small?.Dispose();
         _oneAtATime.Dispose();
     }
