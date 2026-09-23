@@ -16,11 +16,10 @@ public sealed class AppEndToEndTests
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(45);
 
     [Fact]
-    public async Task AmbientAndNavigatorPreview_RenderStockFixture()
+    public async Task AmbientAndNavigatorPreview_RenderThePhoneCapture()
     {
         using var package = new TestPackage(withFakeTools: true);
-        using (var stock = System.Drawing.Image.FromFile(Path.Combine(RepoPaths.Root, "tests", "fixtures", "mountain-lake.jpg")))
-            stock.Save(Path.Combine(package.ToolsFolder, "preview.png"), System.Drawing.Imaging.ImageFormat.Png);
+        WritePreviewImage(Path.Combine(package.ToolsFolder, "preview.png"));
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
         await app.WaitForStatusAsync(s => s["previewAvailable"]!.GetValue<bool>(), StartupTimeout, "stock preview");
@@ -323,6 +322,20 @@ public sealed class AppEndToEndTests
         await app.WaitForPhaseAsync("stopped", StartupTimeout);
         Assert.False((await app.SendAsync(new IpcRequest("status"))).Data!["fullscreen"]!.GetValue<bool>());
         await app.QuitAsync();
+    }
+
+    /// <summary>A colourful stand-in for a phone screen, served by both fakes as the capture and the video.</summary>
+    private static void WritePreviewImage(string path)
+    {
+        var bounds = new System.Drawing.Rectangle(0, 0, 360, 800);
+        using var bitmap = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
+        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+        using (var brush = new System.Drawing.Drawing2D.LinearGradientBrush(bounds, System.Drawing.Color.SteelBlue, System.Drawing.Color.DarkOrange, 60f))
+        {
+            graphics.FillRectangle(brush, bounds);
+        }
+
+        bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
     }
 
     private sealed class AppProcess : IDisposable

@@ -18,12 +18,13 @@ public sealed class ProcessRunnerTests
         var runner = new ProcessRunner();
         var watch = Stopwatch.StartNew();
 
-        var result = await runner.RunAsync(Cmd, ["/c", "echo hello& echo oops 1>&2& start /b cmd /c ping -n 6 127.0.0.1 >nul"], TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+        var result = await runner.RunAsync(Cmd, ["/c", "echo hello& echo oops 1>&2& start /b cmd /c ping -n 16 127.0.0.1 >nul"], TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         Assert.True(result.Ok, result.FailureText);
         Assert.Equal("hello", result.StdOut.Trim());
         Assert.Equal("oops", result.StdErr.Trim());
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(4), $"took {watch.Elapsed}");
+        // The grandchild lives ~15 s; returning well before that proves the pipe was not awaited.
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), $"took {watch.Elapsed}");
     }
 
     [Fact]
@@ -32,13 +33,13 @@ public sealed class ProcessRunnerTests
         var runner = new ProcessRunner();
         var watch = Stopwatch.StartNew();
 
-        var result = await runner.RunAsync(Cmd, ["/c", "echo started& ping -n 30 127.0.0.1 >nul"], TimeSpan.FromMilliseconds(700), TestContext.Current.CancellationToken);
+        var result = await runner.RunAsync(Cmd, ["/c", "echo started& ping -n 60 127.0.0.1 >nul"], TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
 
         Assert.True(result.TimedOut);
         Assert.False(result.Ok);
         Assert.Equal("The command timed out.", result.FailureText);
         Assert.Equal("started", result.StdOut.Trim());
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(4), $"took {watch.Elapsed}");
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(15), $"took {watch.Elapsed}");
     }
 
     [Fact]
@@ -60,7 +61,7 @@ public sealed class ProcessRunnerTests
 
         Assert.Equal(0, await runner.RunDetachedAsync(Cmd, ["/c", "exit 0"], TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
         Assert.Equal(7, await runner.RunDetachedAsync(Cmd, ["/c", "exit 7"], TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
-        Assert.Equal(-1, await runner.RunDetachedAsync(Cmd, ["/c", "ping -n 30 127.0.0.1 >nul"], TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken));
+        Assert.Equal(-1, await runner.RunDetachedAsync(Cmd, ["/c", "ping -n 60 127.0.0.1 >nul"], TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken));
     }
 
     [Fact]

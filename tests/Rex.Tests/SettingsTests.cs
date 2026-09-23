@@ -3,7 +3,7 @@ using Rex.Tests.Support;
 
 namespace Rex.Tests;
 
-public sealed class SettingsRegressionTests
+public sealed class SettingsTests
 {
     [Theory]
     [InlineData(0, -0.1, -0.1)]

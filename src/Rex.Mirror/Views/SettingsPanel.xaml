@@ -59,7 +59,7 @@
       <Slider x:Name="AmbientDim" Minimum="0.15" Maximum="0.9" ValueChanged="OnAppearanceChanged" ToolTip="Lower is brighter" />
     </StackPanel>
     <TextBlock Text="Preview refresh (seconds)" Margin="0,8,0,0" />
-    <Slider x:Name="PreviewInterval" Minimum="0.5" Maximum="5" TickFrequency="0.5" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" ToolTip="Applies to ambient fill and minimap. Slower refresh uses less power." />
+    <Slider x:Name="PreviewInterval" Minimum="1" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" ToolTip="Applies to ambient fill and minimap. Slower refresh uses less power." />
     <TextBlock Text="Fullscreen HUD hide delay (seconds)" Margin="0,8,0,0" />
     <Slider x:Name="HudDelay" Minimum="1" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="OnAppearanceChanged" />
     </StackPanel></Expander>
