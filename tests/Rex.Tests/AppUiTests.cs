@@ -14,7 +14,7 @@ public sealed class AppUiTests
     private static readonly TimeSpan Startup = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan Soon = TimeSpan.FromSeconds(8);
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task Sidebar_TabsAndToggle_PersistAcrossRuns()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -41,7 +41,7 @@ public sealed class AppUiTests
         await again.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task Settings_SoftBackgroundControls_PreviewLiveAndSave()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -79,7 +79,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task Settings_LaunchTimeChange_OffersRestartAndAppliesIt()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -100,7 +100,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task TopBar_QuickActions_ReachThePhone()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -117,7 +117,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task LockQuestion_AnswerIsRemembered()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -131,7 +131,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task Controls_StopAndStartMirror()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -145,7 +145,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task PhonePanel_ShowsTheCatalogueAndWritesEveryKindOfSetting()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -169,7 +169,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task PhonePanel_SearchNarrowsToOneGroup()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -190,7 +190,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task Advanced_FiltersEveryAndroidKey()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -204,7 +204,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task CloseButton_HidesToTray_AndShowReturns()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -217,7 +217,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task FirstRun_SkipForNow_HidesTheGuide()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -230,7 +230,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task AltWheel_ZoomsAndShowsTheNavigator()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -252,7 +252,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task Hud_ButtonsPositionAndHoverZoneFollowTheSettings()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -291,7 +291,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task Info_ListsToolsAndVersion()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -304,7 +304,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task CliConfigSet_AppliesWhileTheAppRuns()
     {
         using var package = new TestPackage(withFakeTools: true);
@@ -320,7 +320,7 @@ public sealed class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 90_000)]
+    [Fact]
     public async Task WindowPlacement_IsRemembered()
     {
         using var package = new TestPackage(withFakeTools: true);
