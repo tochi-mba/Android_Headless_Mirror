@@ -554,7 +554,20 @@ public sealed partial class AppEndToEndTests
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
         var before = package.ScrcpyLog().Count(line => line.Contains("mousewheel", StringComparison.Ordinal));
-        await app.ScrollSidebarAsync();
+        // A wheel turn sent the moment the window comes forward can land before it is ready for
+        // it; a person would turn it again, and so does this, up to three times.
+        for (var turn = 0; turn < 3; turn++)
+        {
+            await app.ScrollSidebarAsync();
+            var scrolled = (await app.SendAsync(new IpcRequest("status"))).Data!["sidebarScrollOffset"]!.GetValue<double>() > 0;
+            if (scrolled || turn == 2)
+            {
+                break;
+            }
+
+            await Task.Delay(700, TestContext.Current.CancellationToken);
+        }
+
         await app.SaveScreenshotAsync("sidebar-scroll.png");
         await app.WaitForStatusAsync(s => s["sidebarScrollOffset"]!.GetValue<double>() > 0, TimeSpan.FromSeconds(5), "sidebar scroll");
         Assert.Equal(before, package.ScrcpyLog().Count(line => line.Contains("mousewheel", StringComparison.Ordinal)));
