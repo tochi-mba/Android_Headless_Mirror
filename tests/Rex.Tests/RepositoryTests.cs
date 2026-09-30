@@ -134,6 +134,63 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public void NoControlIsLeftLookingLikeStockWindows()
+    {
+        // Every kind of control the app puts on screen has a style of the app's own. The phone
+        // picker once came up as a light, square Windows menu in the middle of a dark window,
+        // because nothing styled menus; this catches the next control that nobody styled.
+        var theme = File.ReadAllText(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "Theme.xaml"));
+        var styled = Regex.Matches(theme, "TargetType=\"([A-Za-z]+)\"").Select(m => m.Groups[1].Value).ToHashSet(StringComparer.Ordinal);
+        var source = Directory.EnumerateFiles(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror"), "*.*", SearchOption.AllDirectories)
+            .Where(f => (f.EndsWith(".xaml", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal)) &&
+                        !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+                        !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+            .Select(File.ReadAllText)
+            .Aggregate(string.Empty, (all, text) => all + text);
+        string[] stock =
+        [
+            "Button", "CheckBox", "ComboBox", "ComboBoxItem", "Expander", "ScrollBar", "Slider", "TextBox", "ToolTip",
+            "ContextMenu", "MenuItem", "ProgressBar", "GridSplitter", "ListBox", "ListBoxItem", "PasswordBox", "Menu",
+            "TabControl", "ListView", "DataGrid", "TreeView", "Calendar", "DatePicker", "RichTextBox", "StatusBar", "ToolBar",
+        ];
+        foreach (var control in stock)
+        {
+            var used = Regex.IsMatch(source, $"<{control}[\\s>]") || Regex.IsMatch(source, $"new {control}\\b");
+            var styledHere = styled.Contains(control) ||
+                (control == "GridSplitter" && theme.Contains("TargetType=\"GridSplitter\"", StringComparison.Ordinal)) ||
+                (control is "ListBox" or "ListBoxItem" && source.Contains("<Style TargetType=\"ListBoxItem\">", StringComparison.Ordinal));
+            Assert.True(!used || styledHere, $"{control} is used but has no style of the app's own, so it will look like stock Windows.");
+        }
+
+        // The splitter's style is keyed, so it has to be asked for where the splitter is.
+        Assert.Contains("Style=\"{StaticResource PanelSplitter}\"", File.ReadAllText(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "MainWindow.xaml")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScrcpysLetterboxIsTheWindowsInk()
+    {
+        // Anything scrcpy paints around the picture must be the colour of the mirror area itself,
+        // or a letterboxed moment shows as bars.
+        var theme = File.ReadAllText(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "Theme.xaml"));
+        var ink = Regex.Match(theme, "<Color x:Key=\"InkColor\">(#[0-9A-Fa-f]{6})</Color>").Groups[1].Value;
+        Assert.Equal(ink.ToUpperInvariant(), ScrcpyArguments.LetterboxColour.ToUpperInvariant());
+    }
+
+    [Fact]
+    public void TheTrayMenuUsesThePalette()
+    {
+        var theme = File.ReadAllText(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "Theme.xaml"));
+        string Colour(string key) => Regex.Match(theme, $"<Color x:Key=\"{key}\">#([0-9A-Fa-f]{{6}})</Color>").Groups[1].Value.ToUpperInvariant();
+        string Hex(System.Drawing.Color c) => $"{c.R:X2}{c.G:X2}{c.B:X2}";
+        Assert.Equal(Colour("PanelColor"), Hex(Rex.Mirror.Services.TrayMenuRenderer.Panel));
+        Assert.Equal(Colour("LineColor"), Hex(Rex.Mirror.Services.TrayMenuRenderer.Line));
+        Assert.Equal(Colour("TextColor"), Hex(Rex.Mirror.Services.TrayMenuRenderer.Text));
+        Assert.Equal(Colour("MutedColor"), Hex(Rex.Mirror.Services.TrayMenuRenderer.Muted));
+        Assert.Equal(Colour("SignalColor"), Hex(Rex.Mirror.Services.TrayMenuRenderer.Signal));
+        Assert.Equal(Regex.Match(theme, "<SolidColorBrush x:Key=\"Hover\" Color=\"#([0-9A-Fa-f]{6})\"").Groups[1].Value.ToUpperInvariant(), Hex(Rex.Mirror.Services.TrayMenuRenderer.Hover));
+    }
+
+    [Fact]
     public void EveryPaletteKeyHasAHighContrastAnswer()
     {
         var theme = Keys(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "Theme.xaml"));

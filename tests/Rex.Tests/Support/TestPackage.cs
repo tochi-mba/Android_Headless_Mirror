@@ -42,6 +42,8 @@ public sealed class TestPackage : IDisposable
     public string FakeAdbLog => Path.Combine(ToolsFolder, "fake-adb.log");
     public string FakeScrcpyLog => Path.Combine(ToolsFolder, "fake-scrcpy.log");
     public string DenyUhidMarker => Path.Combine(ToolsFolder, "deny-uhid");
+    public string AnimateMarker => Path.Combine(ToolsFolder, "animate");
+    public string KeepWindowMarker => Path.Combine(ToolsFolder, "keep-window");
     public string FakeAdbScenario => Path.Combine(ToolsFolder, "fake-adb.json");
 
     public string[] AdbCalls() => ReadLiveLog(FakeAdbLog);

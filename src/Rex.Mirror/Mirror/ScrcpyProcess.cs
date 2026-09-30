@@ -39,6 +39,14 @@ public sealed class ScrcpyProcess : IDisposable
                 }
             }
         };
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (ScrcpyArguments.ParseTextureSize(e.Data) is { } size)
+            {
+                VideoSize = size;
+                VideoSizeChanged?.Invoke(size.Width, size.Height);
+            }
+        };
         process.BeginErrorReadLine();
         process.BeginOutputReadLine();
     }
@@ -46,6 +54,12 @@ public sealed class ScrcpyProcess : IDisposable
     public string Serial { get; }
     public string WindowTitle { get; }
     public string KeyboardMode { get; }
+
+    /// <summary>The video size scrcpy last reported, or null before its first frame.</summary>
+    public (int Width, int Height)? VideoSize { get; private set; }
+
+    /// <summary>Raised on a worker thread whenever scrcpy reports a new video size (the phone turned).</summary>
+    public event Action<int, int>? VideoSizeChanged;
     public int ProcessId => _process.Id;
     public IntPtr Hwnd { get; private set; }
     public uint ThreadId { get; private set; }

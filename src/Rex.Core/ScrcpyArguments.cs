@@ -10,6 +10,13 @@ namespace Rex.Core;
 /// </summary>
 public static partial class ScrcpyArguments
 {
+    /// <summary>
+    /// What scrcpy paints around a picture that does not fill its window: the app's own ink. scrcpy's
+    /// default is a mid grey (#222), which showed as grey bars whenever the picture was letterboxed,
+    /// even for the moment it takes the window to follow the phone turning.
+    /// </summary>
+    public const string LetterboxColour = "#080A09";
+
     public const string FullKeyboardMode = "uhid";
     public const string CompatibilityKeyboardMode = "sdk";
 
@@ -59,6 +66,7 @@ public static partial class ScrcpyArguments
             "--serial=" + serial,
             "--window-title=" + windowTitle,
             "--window-borderless",
+            "--background-color=" + LetterboxColour,
             "--no-window-aspect-ratio-lock",
             "--mouse=sdk",
             "--keyboard=" + keyboardMode,
@@ -151,6 +159,32 @@ public static partial class ScrcpyArguments
     /// Android builds deny access to /dev/uhid. Recognize that narrow failure so the session may
     /// retry once with SDK raw-key compatibility without hiding unrelated startup failures.
     /// </summary>
+    [GeneratedRegex(@"\bTexture:\s*(\d{1,5})x(\d{1,5})\b")]
+    private static partial Regex TexturePattern();
+
+    /// <summary>
+    /// The video size scrcpy reports each time the picture changes shape ("INFO: Texture: 1600x720"),
+    /// or null for any other line. It is printed at the first frame and again whenever the phone
+    /// turns, so it says what shape the picture is without depending on scrcpy resizing its window.
+    /// </summary>
+    public static (int Width, int Height)? ParseTextureSize(string? line)
+    {
+        if (string.IsNullOrEmpty(line))
+        {
+            return null;
+        }
+
+        var match = TexturePattern().Match(line);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var width = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+        var height = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+        return width > 0 && height > 0 ? (width, height) : null;
+    }
+
     public static bool IsUhidPermissionFailure(IEnumerable<string> stderr)
     {
         var text = string.Join('\n', stderr);
@@ -246,7 +280,7 @@ public static partial class ScrcpyArguments
 
     public static bool IsForbiddenExtra(string token) =>
         Regex.IsMatch(token, @"^(-s|-S|-n|-f|-r)$") ||
-        Regex.IsMatch(token, @"^--(serial|window-title|window-borderless|window-x|window-y|window-width|window-height|mouse|keyboard|shortcut-mod|fullscreen|record|no-window-aspect-ratio-lock)(=|$)") ||
+        Regex.IsMatch(token, @"^--(serial|window-title|window-borderless|window-x|window-y|window-width|window-height|mouse|keyboard|shortcut-mod|fullscreen|record|no-window-aspect-ratio-lock|background-color)(=|$)") ||
         token is "--no-control" or "--no-window" or "--no-video" or "--otg" or "--no-video-playback";
 
     private static void Flush(List<string> tokens, StringBuilder builder)

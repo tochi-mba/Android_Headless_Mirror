@@ -41,11 +41,12 @@ until you delete that folder.
 - **Real gestures.** Two fingers on a Windows Precision Touchpad become two fingers on the phone:
   pinch, rotate and pan exactly like on the glass. Hold **Alt** to zoom or pan the PC view instead;
   **Alt + wheel** and **Alt + drag** do the same with a mouse. Zoom scales the real video surface,
-  so clicks always land where you see them. A small navigator shows where you are: drag it to
-  pan, drag a corner to zoom.
+  so clicks always land where you see them. A small navigator shows a live picture of the whole
+  phone with the part you are looking at framed: drag it to pan, drag a corner to zoom. Settings
+  sets its size, corner, opacity and frame rate, and can keep it on screen at 100% as a preview.
 - **Soft background.** The empty space around the phone shows a blurred, live copy of the mirror
-  instead of black, taken from the pixels already on screen (no phone round trip) at up to 30
-  frames per second. Every part of it is yours to set in Settings: opacity, blur (down to sharp),
+  instead of black, taken from the pixels already on screen (no phone round trip) through the
+  graphics card, at up to 60 frames per second. Every part of it is yours to set in Settings: opacity, blur (down to sharp),
   which margins show it, how it scales, size, position, edge fade, a colour wash, mirroring and
   frame rate. Changes preview instantly.
 - **Phone controls.** Home, back, recents, power, screen off/on, volume, notifications, quick
@@ -113,8 +114,8 @@ scripts and coding agents is documented in [AGENTS.md](AGENTS.md).
 ## How it works
 
 - `src/Rex.Mirror` is the WPF desktop app. It embeds scrcpy's window as a child of its own viewport,
-  scales that surface for zoom, and draws the pattern guide, navigator and fullscreen HUD on owned
-  transparent windows.
+  scales that surface for zoom, draws the soft background behind it, and draws the pattern guide,
+  navigator and fullscreen HUD on owned transparent windows.
 - `src/Rex.Core` holds everything without a UI: configuration, ADB client, scrcpy arguments, the
   scrcpy installer, state, geometry and the pipe protocol. The app and the CLI share it.
 - `src/Rex.Cli` is `rex.exe`. Commands that need the live mirror talk to the app over a per-user

@@ -106,6 +106,7 @@
       </Grid.ColumnDefinitions>
 
       <Grid x:Name="MirrorArea" Background="{StaticResource Ink}">
+        <mirror:AmbientView x:Name="Ambient" />
         <mirror:MirrorHost x:Name="Host" />
         <Grid x:Name="EmptyState" Background="{StaticResource Ink}">
           <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420" Margin="24">
@@ -124,7 +125,7 @@
       </Grid>
 
       <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                    Background="Transparent" Cursor="SizeWE" ShowsPreview="False" DragCompleted="OnSidebarResized"
+                    Style="{StaticResource PanelSplitter}" Cursor="SizeWE" ShowsPreview="False" DragCompleted="OnSidebarResized"
                     MouseDoubleClick="OnSidebarSplitterDoubleClick" AutomationProperties.Name="Resize the side panel"
                     ToolTip="Drag to resize · double-click to reset" />
 

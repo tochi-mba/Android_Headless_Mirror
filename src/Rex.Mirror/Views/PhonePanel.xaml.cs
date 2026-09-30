@@ -77,17 +77,24 @@ public partial class PhonePanel : UserControl
             var values = await adb.ReadPhoneSettingsAsync(serial);
             _loadedSerial = serial;
             Build(values);
-            Status.Text = string.Empty;
+            ShowStatus(string.Empty);
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            Status.Text = "Could not read the phone's settings: " + ex.Message;
+            ShowStatus("Could not read the phone's settings: " + ex.Message);
         }
         finally
         {
             _busy = false;
             LoadingText.Visibility = Visibility.Collapsed;
         }
+    }
+
+    /// <summary>Shows a result line, or nothing at all: an empty line would still keep its margins.</summary>
+    private void ShowStatus(string text)
+    {
+        Status.Text = text;
+        Status.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>Rebuilds the visible rows for what this phone reported.</summary>
@@ -196,7 +203,7 @@ public partial class PhonePanel : UserControl
         }
 
         var result = await target.Adb.ApplyPhoneSettingAsync(target.Serial, setting.Id, value);
-        Status.Text = result.Ok ? string.Empty : result.Text;
+        ShowStatus(result.Ok ? string.Empty : result.Text);
         _window.SetStatus(result.Ok ? $"{setting.Label}: {setting.Describe(value)}" : result.Text, !result.Ok);
         await LoadAsync(target.Adb, target.Serial);
     }
@@ -219,7 +226,7 @@ public partial class PhonePanel : UserControl
         }
 
         var result = await target.Adb.ResetPhoneSettingAsync(target.Serial, setting.Id);
-        Status.Text = result.Ok ? string.Empty : result.Text;
+        ShowStatus(result.Ok ? string.Empty : result.Text);
         _window.SetStatus(result.Ok ? $"{setting.Label} is back to the phone's default." : result.Text, !result.Ok);
         await LoadAsync(target.Adb, target.Serial);
     }
@@ -283,16 +290,48 @@ public partial class PhonePanel : UserControl
             control.VerticalAlignment = VerticalAlignment.Center;
             control.ToolTip = $"{value.Setting.Namespace}/{value.Setting.Key}";
 
-            var editor = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            editor.Children.Add(_reset);
-            editor.Children.Add(control);
-
-            var row = new HeaderedContentControl
+            // A switch fits beside its label. Anything wider (a slider, a list, a text box) goes
+            // under it at the panel's full width: side by side, the control took the whole row
+            // and squeezed the label to nothing, which left a slider floating in empty space.
+            FrameworkElement row;
+            if (IsInline(value.Setting.Kind))
             {
-                Style = (Style)panel.FindResource("SettingRow"),
-                Header = text,
-                Content = editor,
-            };
+                var editor = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+                editor.Children.Add(_reset);
+                editor.Children.Add(control);
+                row = new HeaderedContentControl
+                {
+                    Style = (Style)panel.FindResource("SettingRow"),
+                    Header = text,
+                    Content = editor,
+                };
+            }
+            else
+            {
+                _reset.Margin = new Thickness(8, 0, 0, 0);
+                _reset.VerticalAlignment = VerticalAlignment.Top;
+                var top = new Grid();
+                top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                top.Children.Add(text);
+                Grid.SetColumn(_reset, 1);
+                top.Children.Add(_reset);
+
+                control.Margin = new Thickness(0, 8, 0, 0);
+                control.HorizontalAlignment = HorizontalAlignment.Stretch;
+                var stack = new StackPanel();
+                stack.Children.Add(top);
+                stack.Children.Add(control);
+                row = new Border
+                {
+                    BorderBrush = (Brush)panel.FindResource("Line"),
+                    BorderThickness = new Thickness(0, 0, 0, 1),
+                    Padding = new Thickness(0, 10, 0, 10),
+                    Margin = new Thickness(0, 0, 0, 2),
+                    Background = Brushes.Transparent,
+                    Child = stack,
+                };
+            }
             // The reset button stays out of the way until the pointer is on its row.
             row.MouseEnter += (_, _) => _reset.Opacity = 1;
             row.MouseLeave += (_, _) => _reset.Opacity = _reset.IsKeyboardFocusWithin ? 1 : 0;
@@ -300,6 +339,9 @@ public partial class PhonePanel : UserControl
             _reset.LostKeyboardFocus += (_, _) => _reset.Opacity = row.IsMouseOver ? 1 : 0;
             Element = row;
         }
+
+        /// <summary>Only switches sit beside their label; every other control gets a line of its own.</summary>
+        internal static bool IsInline(PhoneSettingKind kind) => kind == PhoneSettingKind.Toggle;
 
         public PhoneSettingValue Value { get; }
 
@@ -341,7 +383,7 @@ public partial class PhonePanel : UserControl
 
         private FrameworkElement Choice(PhoneSettingValue value)
         {
-            var combo = Identify(new ComboBox { MinWidth = 150 }, value);
+            var combo = Identify(new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch }, value);
             foreach (var choice in value.Setting.Choices)
             {
                 combo.Items.Add(new ComboBoxItem { Content = choice.Label, Tag = choice.Value });
@@ -371,20 +413,25 @@ public partial class PhonePanel : UserControl
 
         private FrameworkElement Slider(PhoneSettingValue value)
         {
-            var panel = new StackPanel { Orientation = Orientation.Horizontal, Width = 210 };
+            // The slider takes the width it is given; the readout keeps enough room for the widest
+            // value so the thumb does not jump as the number grows a digit.
+            var panel = new Grid();
+            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var readout = new TextBlock
             {
                 Style = (Style)_panel.FindResource("MutedText"),
-                MinWidth = 52,
+                MinWidth = 56,
                 TextAlignment = TextAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(8, 0, 0, 0),
+                Margin = new Thickness(10, 0, 0, 0),
+                FontFamily = (FontFamily)_panel.FindResource("Mono"),
             };
+            Grid.SetColumn(readout, 1);
             var slider = Identify(new System.Windows.Controls.Slider
             {
                 Minimum = value.Setting.Minimum,
                 Maximum = value.Setting.Maximum,
-                Width = 140,
                 IsSnapToTickEnabled = value.Setting.Step >= 1,
                 TickFrequency = value.Setting.Step,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -418,7 +465,7 @@ public partial class PhonePanel : UserControl
 
         private FrameworkElement Text(PhoneSettingValue value)
         {
-            var box = Identify(new TextBox { Text = value.Value, MinWidth = 150 }, value);
+            var box = Identify(new TextBox { Text = value.Value, HorizontalAlignment = HorizontalAlignment.Stretch }, value);
             box.KeyUp += async (_, e) =>
             {
                 if (e.Key == Key.Enter && box.Text.Trim() != value.Value)

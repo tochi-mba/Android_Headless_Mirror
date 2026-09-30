@@ -47,21 +47,34 @@
               ToolTip="Offer the one-time hints again the next time each one applies" />
     </UniformGrid>
 
-    <TextBlock Text="SHORTCUTS" Style="{StaticResource Eyebrow}" />
-    <ItemsControl x:Name="ShortcutRows">
-      <ItemsControl.ItemTemplate>
-        <DataTemplate>
+    <!-- Three short lists instead of one long one: the app's own keys, the plain keys browse mode
+         takes over, and the pointer gestures. The keys are drawn as keycaps in one shared column,
+         so every description starts at the same place whatever the key's length. -->
+    <StackPanel Grid.IsSharedSizeScope="True">
+      <StackPanel.Resources>
+        <DataTemplate x:Key="ShortcutRow">
           <Grid Margin="0,3">
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="110" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="ShortcutKey" />
               <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Key}" FontFamily="{StaticResource Mono}" FontSize="12" />
-            <TextBlock Grid.Column="1" Text="{Binding Value}" Style="{StaticResource MutedText}" />
+            <Border Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="5"
+                    Padding="6,1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,0,10,0">
+              <TextBlock Text="{Binding Key}" FontFamily="{StaticResource Mono}" FontSize="11.5" Foreground="{StaticResource Text}" />
+            </Border>
+            <TextBlock Grid.Column="1" Text="{Binding Value}" Style="{StaticResource MutedText}" TextWrapping="Wrap" VerticalAlignment="Center" />
           </Grid>
         </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+      </StackPanel.Resources>
+      <TextBlock Text="SHORTCUTS" Style="{StaticResource Eyebrow}" />
+      <ItemsControl x:Name="ShortcutKeys" ItemTemplate="{StaticResource ShortcutRow}" Focusable="False" />
+      <TextBlock x:Name="BrowseHeading" Style="{StaticResource Eyebrow}" />
+      <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"
+                 Text="While browse mode is on, these keys act on the phone. Letters still type, and Esc goes back to typing." />
+      <ItemsControl x:Name="ShortcutBrowse" ItemTemplate="{StaticResource ShortcutRow}" Focusable="False" />
+      <TextBlock Text="GESTURES" Style="{StaticResource Eyebrow}" />
+      <ItemsControl x:Name="ShortcutGestures" ItemTemplate="{StaticResource ShortcutRow}" Focusable="False" />
+    </StackPanel>
 
     <TextBlock Text="RECENT LOG" Style="{StaticResource Eyebrow}" />
     <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Background="{StaticResource Ink}" Padding="8">

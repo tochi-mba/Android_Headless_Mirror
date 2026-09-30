@@ -193,11 +193,17 @@ public sealed class ConfigTests
         config.Ambient.FrameRate = 500;
         config.Zoom.NavigatorCorner = "middle";
         config.Zoom.NavigatorWidth = 5;
+        config.Zoom.NavigatorOpacity = 5;
+        config.Zoom.NavigatorFrameRate = 500;
         config.Normalize();
         Assert.Equal(360, config.Ambient.TintHue);
-        Assert.Equal(30, config.Ambient.FrameRate);
+        Assert.Equal(60, config.Ambient.FrameRate);
         Assert.Equal("bottom-right", config.Zoom.NavigatorCorner);
         Assert.Equal(100, config.Zoom.NavigatorWidth);
+        Assert.Equal(1, config.Zoom.NavigatorOpacity);
+        Assert.Equal(60, config.Zoom.NavigatorFrameRate);
+        Assert.True(new ZoomSettings().NavigatorPicture);
+        Assert.False(new ZoomSettings().NavigatorAlways);
 
         using var package = new TestPackage();
         var store = new ConfigStore(package.Paths.Config);
@@ -294,6 +300,27 @@ public sealed class ConfigTests
     }
 
     [Fact]
+    public void NavigatorPicture_FitsItsFrameWhateverTheShape()
+    {
+        // Landscape: the width is the limit, less the frame on both sides, which used to be
+        // forgotten on one side and cut two pixels off the picture.
+        var (wide, wideHeight) = NavigatorMath.PictureSize(150, 2400.0 / 1080, 7);
+        Assert.Equal(136, wide, 3);
+        Assert.Equal(136 / (2400.0 / 1080), wideHeight, 3);
+
+        // Portrait: the height is the limit, so the picture is narrower than the navigator width
+        // and the frame wraps it rather than leaving dark gutters beside it.
+        var (tall, tallHeight) = NavigatorMath.PictureSize(150, 1080.0 / 2400, 7);
+        Assert.Equal(220 * 0.45, tall, 3);
+        Assert.Equal(220, tallHeight, 3);
+        Assert.True(tall + 14 < 150);
+
+        // Nothing silly for a broken aspect.
+        var (width, height) = NavigatorMath.PictureSize(100, 0, 7);
+        Assert.True(width >= 1 && height >= 1);
+    }
+
+    [Fact]
     public void Shortcuts_AreOneListWithNothingSaidTwice()
     {
         Assert.NotEmpty(Shortcuts.All);
@@ -308,8 +335,8 @@ public sealed class ConfigTests
             s => Assert.StartsWith("Ctrl+Alt+", s.Gesture, StringComparison.Ordinal));
         Assert.All(Shortcuts.BrowseKeys, s => Assert.DoesNotContain("+", s.Gesture, StringComparison.Ordinal));
         Assert.NotEmpty(Shortcuts.BrowseKeys);
-        Assert.Equal("Browse · Down", Shortcuts.Label(Shortcuts.Find("browse-next")!));
-        Assert.Equal("Ctrl+Alt+K", Shortcuts.Label(Shortcuts.Find("browse")!));
+        Assert.Equal("Down", Shortcuts.Gesture("browse-next"));
+        Assert.Equal("Ctrl+Alt+K", Shortcuts.Gesture("browse"));
 
         // A shortcut named after an action reaches that action.
         foreach (var shortcut in Shortcuts.All.Where(s => s.IsKey && !s.Browse))
@@ -511,9 +538,9 @@ public sealed class ConfigTests
         using var package = new TestPackage();
         var store = new ConfigStore(package.Paths.Config);
 
-        var leaf = store.Set("Mirror.ExtraArgs", "--render-fit=letterbox \"--background-color=#123456\"");
+        var leaf = store.Set("Mirror.ExtraArgs", "--render-fit=letterbox \"--push-target=/sdcard/Download/\"");
 
-        Assert.Equal("--render-fit=letterbox \"--background-color=#123456\"", leaf.Value);
+        Assert.Equal("--render-fit=letterbox \"--push-target=/sdcard/Download/\"", leaf.Value);
     }
 
     [Theory]

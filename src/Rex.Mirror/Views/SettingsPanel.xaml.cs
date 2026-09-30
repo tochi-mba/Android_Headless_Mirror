@@ -57,6 +57,8 @@ public partial class SettingsPanel : UserControl
             SensitivityValue.Text = c.Touchpad.Sensitivity.ToString("0.0", CultureInfo.InvariantCulture) + "×";
             HostZoom.IsChecked = c.Zoom.Enabled;
             Navigator.IsChecked = c.Zoom.ShowNavigator;
+            NavigatorPicture.IsChecked = c.Zoom.NavigatorPicture;
+            NavigatorAlways.IsChecked = c.Zoom.NavigatorAlways;
             AmbientEnabled.IsChecked = c.Ambient.Enabled;
             AmbientOptions.IsEnabled = c.Ambient.Enabled;
             SelectTag(AmbientPlacement, c.Ambient.Placement);
@@ -73,6 +75,8 @@ public partial class SettingsPanel : UserControl
             AmbientFrameRate.Value = c.Ambient.FrameRate;
             SelectTag(NavigatorCorner, c.Zoom.NavigatorCorner);
             NavigatorWidth.Value = c.Zoom.NavigatorWidth;
+            NavigatorOpacity.Value = c.Zoom.NavigatorOpacity;
+            NavigatorFrameRate.Value = c.Zoom.NavigatorFrameRate;
             HudEnabled.IsChecked = c.Hud.Enabled;
             HudOptions.IsEnabled = c.Hud.Enabled;
             HudMessages.IsChecked = c.Hud.ShowMessages;
@@ -163,6 +167,8 @@ public partial class SettingsPanel : UserControl
         c.Zoom.WheelZoom = c.Zoom.Enabled;
         c.Zoom.PinchZoom = c.Zoom.Enabled;
         c.Zoom.ShowNavigator = Navigator.IsChecked == true;
+        c.Zoom.NavigatorPicture = NavigatorPicture.IsChecked == true;
+        c.Zoom.NavigatorAlways = NavigatorAlways.IsChecked == true;
         c.Ambient.Enabled = AmbientEnabled.IsChecked == true;
         c.Ambient.Placement = SelectedTag(AmbientPlacement, "around");
         c.Ambient.Scaling = SelectedTag(AmbientScaling, "cover");
@@ -273,17 +279,23 @@ public partial class SettingsPanel : UserControl
         // labels do not exist yet and Refresh() writes them once the host is attached.
         if (_host is null) return;
         NavigatorWidthValue.Text = $"{NavigatorWidth.Value:0} px";
+        NavigatorOpacityValue.Text = $"{NavigatorOpacity.Value * 100:0}%";
+        NavigatorFrameRateValue.Text = $"{NavigatorFrameRate.Value:0} fps";
         MaximumZoomValue.Text = $"{MaximumZoom.Value:0.#}×";
         WheelSpeedValue.Text = $"{WheelSpeed.Value * 100:0}% per notch";
         if (_loading) return;
         var maxZoom = MaximumZoom.Value;
         var wheelStep = Math.Round(WheelSpeed.Value, 2);
         var navigatorWidth = Math.Round(NavigatorWidth.Value);
+        var navigatorOpacity = Math.Round(NavigatorOpacity.Value, 2);
+        var navigatorFrameRate = Math.Round(NavigatorFrameRate.Value);
         _host.PreviewConfig(c =>
         {
             c.Zoom.MaxZoom = maxZoom;
             c.Zoom.WheelStep = wheelStep;
             c.Zoom.NavigatorWidth = navigatorWidth;
+            c.Zoom.NavigatorOpacity = navigatorOpacity;
+            c.Zoom.NavigatorFrameRate = navigatorFrameRate;
         });
     }
 

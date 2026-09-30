@@ -10,18 +10,18 @@ public sealed class ScrcpyTests
     public void Build_ProducesEmbeddedSessionArguments()
     {
         var config = new RexConfig();
-        config.Mirror.ExtraArgs = "--render-fit=letterbox \"--background-color=#123456\"";
+        config.Mirror.ExtraArgs = "--render-fit=letterbox \"--push-target=/sdcard/Download/\"";
 
         var args = ScrcpyArguments.Build(config, "USB123", isTcp: false, "Android Headless Mirror [USB123]", (10, 20, 300, 600), null);
 
         foreach (var expected in new[]
         {
-            "--serial=USB123", "--window-title=Android Headless Mirror [USB123]", "--window-borderless",
+            "--serial=USB123", "--window-title=Android Headless Mirror [USB123]", "--window-borderless", "--background-color=#080A09",
             "--no-window-aspect-ratio-lock", "--mouse=sdk", "--keyboard=uhid", "--shortcut-mod=rctrl",
             "--window-x=10", "--window-y=20", "--window-width=300", "--window-height=600",
             "--turn-screen-off", "--stay-awake", "--keep-active", "--max-size=1920", "--max-fps=60",
             "--video-bit-rate=12M", "--video-codec=h264", "--audio-codec=opus", "--audio-buffer=50",
-            "--render-fit=letterbox", "--background-color=#123456",
+            "--render-fit=letterbox", "--push-target=/sdcard/Download/",
         })
         {
             Assert.Contains(expected, args);
@@ -64,6 +64,22 @@ public sealed class ScrcpyTests
     }
 
     [Theory]
+    [InlineData("INFO: Texture: 1080x2400", 1080, 2400)]
+    [InlineData("INFO: Texture: 1600x720", 1600, 720)]
+    [InlineData("[scrcpy] INFO: Texture: 2400x1080  ", 2400, 1080)]
+    public void TextureReport_GivesTheVideoSize(string line, int width, int height) =>
+        Assert.Equal((width, height), ScrcpyArguments.ParseTextureSize(line));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("INFO: Renderer: direct3d")]
+    [InlineData("INFO: Texture: 0x2400")]
+    [InlineData("Texture: axb")]
+    public void TextureReport_IgnoresEverythingElse(string? line) =>
+        Assert.Null(ScrcpyArguments.ParseTextureSize(line));
+
+    [Theory]
     [InlineData("at com.genymobile.scrcpy.control.UhidManager.open\nopen failed: EACCES (Permission denied)", true)]
     [InlineData("ERROR: Failed to enable UHID: operation not permitted", true)]
     [InlineData("ERROR: Demuxer error", false)]
@@ -103,6 +119,7 @@ public sealed class ScrcpyTests
     [InlineData("--no-control")]
     [InlineData("--no-window")]
     [InlineData("--otg")]
+    [InlineData("--background-color=#FF0000")]
     [InlineData("-S")]
     [InlineData("--fullscreen")]
     public void SplitExtraArgs_RejectsManagedOptions(string forbidden) =>

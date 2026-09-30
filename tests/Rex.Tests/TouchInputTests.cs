@@ -1,5 +1,7 @@
 using Rex.Core;
+using Rex.Mirror;
 using Rex.Mirror.Mirror;
+using Rex.Mirror.Services;
 using Rex.Mirror.Native;
 
 namespace Rex.Tests;
@@ -11,6 +13,20 @@ public sealed class TouchInputTests
     {
         Assert.True(InputHooks.CanOfferHotkey(rightAltDown: false));
         Assert.False(InputHooks.CanOfferHotkey(rightAltDown: true));
+    }
+
+    [Fact]
+    public void OnlyALoneLeftAltIsTakenForThePcView()
+    {
+        Assert.True(InputHooks.IsPcAlt(NativeMethods.VK_LMENU, ctrl: false, shift: false, win: false));
+
+        // Right Alt is AltGr on many layouts, and a chord with another modifier is a shortcut meant
+        // for somebody: the app when it is Ctrl+Alt, the phone otherwise.
+        Assert.False(InputHooks.IsPcAlt(NativeMethods.VK_RMENU, ctrl: false, shift: false, win: false));
+        Assert.False(InputHooks.IsPcAlt(NativeMethods.VK_LMENU, ctrl: true, shift: false, win: false));
+        Assert.False(InputHooks.IsPcAlt(NativeMethods.VK_LMENU, ctrl: false, shift: true, win: false));
+        Assert.False(InputHooks.IsPcAlt(NativeMethods.VK_LMENU, ctrl: false, shift: false, win: true));
+        Assert.False(InputHooks.IsPcAlt('A', ctrl: false, shift: false, win: false));
     }
 
     [Fact]
@@ -160,6 +176,76 @@ public sealed class TouchInputTests
         Assert.Empty(KeyboardTouch.Strokes("unknown", surface));
         Assert.Empty(KeyboardTouch.Strokes("swipe-up", new RECT()));
         Assert.Equal("Liked", KeyboardTouch.Outcome("like"));
+    }
+
+    [Fact]
+    public void TheViewportIsCutToThePictureSoTheSoftBackgroundShowsAroundIt()
+    {
+        // No picture, or one that fills the viewport: the viewport keeps all of itself.
+        Assert.Null(MirrorHost.ClipFor(1000, 760, new ZoomView(1, 329, 0, 342, 760), hasChild: false));
+        Assert.Null(MirrorHost.ClipFor(1000, 760, new ZoomView(1, 0, 0, 1000, 760), hasChild: true));
+        Assert.Null(MirrorHost.ClipFor(0, 0, new ZoomView(1, 0, 0, 342, 760), hasChild: true));
+
+        // A portrait phone in the middle: only the phone's own rectangle, rounded outwards so no
+        // sliver of picture is lost to the margin.
+        var portrait = MirrorHost.ClipFor(1000, 760, new ZoomView(1, 328.6, 0, 342.8, 760), hasChild: true)!.Value;
+        Assert.Equal((328, 0, 672, 760), (portrait.Left, portrait.Top, portrait.Right, portrait.Bottom));
+
+        // A landscape picture letterboxed top and bottom.
+        var landscape = MirrorHost.ClipFor(1000, 760, new ZoomView(1, 0, 99, 1000, 562), hasChild: true)!.Value;
+        Assert.Equal((0, 99, 1000, 661), (landscape.Left, landscape.Top, landscape.Right, landscape.Bottom));
+
+        // Zoomed and panned beyond the viewport: clamped to it, which is the whole viewport.
+        Assert.Null(MirrorHost.ClipFor(1000, 760, new ZoomView(2, -400, -300, 2000, 1520), hasChild: true));
+    }
+
+    [Fact]
+    public void ThePhonePickerSaysWhichPhoneAndWhetherItCanBeUsed()
+    {
+        var usb = new AdbDevice("R3CRB04F7PP", "device", false, "p3s", "SM-G998B");
+        var identity = new DeviceIdentity("R3CRB04F7PP", "samsung", "SM-G998B", "Galaxy S21 Ultra", "15", "35", 1440, 3200);
+        Assert.Equal(("Galaxy S21 Ultra", "USB · mirroring now"), MainWindow.PhoneLabel(usb, null, identity));
+        Assert.Equal(("Galaxy S21 Ultra", "USB · ready"), MainWindow.PhoneLabel(usb, new DeviceProfile { Name = "Galaxy S21 Ultra" }, null));
+
+        // A profile named after the serial says nothing; the model is better than that.
+        Assert.Equal(("SM-G998B", "USB · ready"), MainWindow.PhoneLabel(usb, new DeviceProfile { Name = "R3CRB04F7PP", Model = "SM-G998B" }, null));
+        Assert.Equal(("SM-S908E", "Wireless · offline"),
+            MainWindow.PhoneLabel(new AdbDevice("127.0.0.1:5555", "offline", true, "b0q", "SM-S908E"), null, null));
+        // A phone that reports no name at all shows its serial as its display name; the saved model reads better.
+        var nameless = new DeviceIdentity("R3CRB04F7PP", "", "", "", "15", "35", 1440, 3200);
+        Assert.Equal("R3CRB04F7PP", nameless.DisplayName);
+        Assert.Equal(("SM-G998B", "USB · mirroring now"), MainWindow.PhoneLabel(usb, new DeviceProfile { Model = "SM-G998B" }, nameless));
+
+        Assert.Equal(("ABC", "USB · tap Allow on the phone"),
+            MainWindow.PhoneLabel(new AdbDevice("ABC", "unauthorized", false, "", ""), null, null));
+    }
+
+    [Fact]
+    public void TheTrayMenuIsPaintedInTheAppsColours()
+    {
+        using var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("Open");
+        TrayMenuRenderer.Apply(menu);
+        if (System.Windows.SystemParameters.HighContrast)
+        {
+            Assert.Equal(System.Windows.Forms.ToolStripRenderMode.System, menu.RenderMode);
+            return;
+        }
+
+        Assert.IsType<TrayMenuRenderer>(menu.Renderer);
+        Assert.Equal(TrayMenuRenderer.Panel, menu.BackColor);
+        Assert.Equal(TrayMenuRenderer.Text, menu.Items[0].ForeColor);
+    }
+
+    [Fact]
+    public void GpuCaptureNeverHandsBackAPictureSmallerThanAsked()
+    {
+        // A 1000-wide region asked for 256: level 1 is 500, level 2 is 250 (too small), so level 1.
+        Assert.Equal((1, 500, 1100), GpuCapture.LevelFor(1000, 2200, 256));
+        Assert.Equal((2, 250, 550), GpuCapture.LevelFor(1000, 2200, 250));
+        Assert.Equal((0, 371, 825), GpuCapture.LevelFor(371, 825, 480));
+        Assert.Equal((4, 160, 90), GpuCapture.LevelFor(2560, 1440, 160));
+        Assert.Equal((0, 8, 8), GpuCapture.LevelFor(8, 8, 0));
     }
 
     [Fact]

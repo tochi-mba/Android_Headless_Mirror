@@ -3,6 +3,18 @@ namespace Rex.Core;
 public static class NavigatorMath
 {
     /// <summary>
+    /// The size of the navigator's picture for a phone of the given shape: as wide as the navigator
+    /// width allows inside its frame, and for a tall phone no taller than the width plus 70, so a
+    /// portrait navigator stays a sensible height. The frame then wraps this exactly.
+    /// </summary>
+    public static (double Width, double Height) PictureSize(double navigatorWidth, double aspect, double frame)
+    {
+        var shape = Math.Max(0.1, aspect);
+        var width = Math.Max(1, Math.Min(navigatorWidth - 2 * frame, (navigatorWidth + 70) * shape));
+        return (width, width / shape);
+    }
+
+    /// <summary>
     /// Whether a drag of the view should still be following the pointer.
     ///
     /// The view moves only while the left button is genuinely held, and both the event and the

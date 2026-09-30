@@ -28,7 +28,9 @@ public partial class MainWindow : Window
     private readonly InputHooks _hooks = new();
     private readonly DispatcherTimer _overlayTimer;
     private readonly DispatcherTimer _ambientTimer;
-    private readonly LiveCapture _liveCapture = new();
+    private readonly LiveCapture _liveCapture;
+    private bool _ambientWanted;
+    private bool _previewWanted;
     private PatternGuide? _guide;
     private HwndSource? _source;
     private bool _fullscreen;
@@ -41,7 +43,7 @@ public partial class MainWindow : Window
     private Rect _windowedBounds;
     public bool IsFullscreen => _fullscreen;
     public double SidebarScrollOffset => SidebarScroll.VerticalOffset;
-    public bool AmbientFrameAvailable => _overlay.AmbientFrameAvailable;
+    public bool AmbientFrameAvailable => Ambient.FrameAvailable;
     public string SidebarTab => CurrentTab();
     private Rect _sidebarWheelBounds = Rect.Empty;
     public bool HudVisible => _overlay.HudVisible;
@@ -49,7 +51,9 @@ public partial class MainWindow : Window
     public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
     public bool SidebarVisible => Sidebar.Visibility == Visibility.Visible;
     public double SidebarWidthDip => Math.Round(SidebarColumn.ActualWidth);
-    public bool AmbientVisible => _overlay.AmbientVisible;
+    public bool AmbientVisible => Ambient.IsShowing;
+    public bool NavigatorPictureVisible => _overlay.NavigatorPictureAvailable;
+    public string CapturePath => _liveCapture.Path;
     public bool NavigatorVisible => _overlay.NavigatorVisible;
     public bool NavigatorDragging => _overlay.NavigatorDragging;
     public RectD NavigatorRect => _overlay.NavigatorScreenRect;
@@ -60,6 +64,7 @@ public partial class MainWindow : Window
     public bool PatternGuideVisible => _guide?.IsVisible == true;
     public bool PatternGuideResolving => _guide?.IsResolving == true;
     public string PatternGuideSource => _guide?.Source ?? PatternGeometry.SourceUnavailable;
+    public bool PatternSpinnerRunning => _overlay.PatternSpinnerRunning;
     public PatternBounds? PatternGuideBounds => _guide?.NormalizedBounds;
 
     /// <summary>True while plain keys drive the phone instead of typing into it.</summary>
@@ -68,6 +73,7 @@ public partial class MainWindow : Window
     public MainWindow(AppHost host)
     {
         _host = host;
+        _liveCapture = new LiveCapture(host.Log.Info);
         InitializeComponent();
         Host.MaxZoom = host.Config.Zoom.MaxZoom;
 
@@ -122,6 +128,17 @@ public partial class MainWindow : Window
         _hooks.AltWheel = OnAltWheel;
         _hooks.PanelWheel = OnPanelWheel;
         _hooks.KeyDown = OnHotkey;
+        _hooks.PcAlt = down =>
+        {
+            if (down)
+            {
+                Host.HoldKeyboard();
+            }
+            else
+            {
+                Host.ReleaseKeyboard();
+            }
+        };
 
         ControlsPanel.Attach(this, host);
         PhonePanel.Attach(this, host);
@@ -362,6 +379,22 @@ public partial class MainWindow : Window
 
         Host.SetShown(true);
         Host.Attach(scrcpy.Hwnd, scrcpy.ThreadId, (uint)scrcpy.ProcessId);
+
+        // scrcpy says what shape the video is every time it changes. Its own window resize is the
+        // other signal, but it is sent once and can be lost to a layout pass that lands first,
+        // which left a landscape picture boxed at portrait width; this report cannot be lost.
+        scrcpy.VideoSizeChanged += (width, height) => Dispatcher.BeginInvoke(() =>
+        {
+            if (ReferenceEquals(scrcpy, _host.Session.Scrcpy) && Host.HasChild)
+            {
+                _host.Log.Info($"The picture is now {width}x{height}.");
+                Host.SetVideoSize(width, height);
+            }
+        });
+        if (scrcpy.VideoSize is { } size)
+        {
+            Host.SetVideoSize(size.Width, size.Height);
+        }
         _hooks.Install();
         _overlayTimer.Start();
 
@@ -389,7 +422,7 @@ public partial class MainWindow : Window
     {
         _touchpad.Cancel();
         _ambientTimer.Stop();
-        _overlay.SetAmbientFrame(null);
+        Ambient.SetFrame(null);
         _guide?.Dispose();
         _guide = null;
         Host.Detach();
@@ -401,38 +434,6 @@ public partial class MainWindow : Window
         _browse = false;
         OnSessionChanged();
     }
-
-    /// <summary>Turns browse mode on or off: plain keys swipe and tap the phone while it is on.</summary>
-    public void SetBrowse(bool on)
-    {
-        if (_browse == on)
-        {
-            return;
-        }
-
-        _browse = on;
-        if (on)
-        {
-            ShowTipSoon(Tips.FirstBrowse);
-        }
-
-        // The session refresh rewrites the status line from the session, so it goes first.
-        OnSessionChanged();
-        SetStatus(on ? "Browse mode on: plain keys drive the phone. Esc leaves." : "Browse mode off: keys type into the phone again.");
-        if (Host.HasChild)
-        {
-            Host.FocusChild();
-        }
-    }
-
-    /// <summary>
-    /// Whether keyboard focus sits in one of the app's own controls, where a plain key belongs to
-    /// that control rather than to browse mode. Focus in the mirror itself reads as nothing.
-    /// </summary>
-    private static bool FocusInsideControl() =>
-        System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase
-            or PasswordBox or ComboBox or System.Windows.Controls.Primitives.ButtonBase
-            or System.Windows.Controls.Primitives.RangeBase or System.Windows.Controls.Primitives.Selector;
 
     public void StartPatternGuideIfNeeded()
     {
@@ -502,6 +503,11 @@ public partial class MainWindow : Window
         }
         else _sidebarWheelBounds = Rect.Empty;
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
+        if (visible)
+        {
+            Host.SyncChildShape();
+        }
+
         _overlay.ReleaseStuckDrags();
         _overlay.Track(visible ? Host.ViewportScreenRect : default, visible);
         _overlay.UpdateHud(_fullscreen && visible, Host.Zoom, _host.Config.Hud);
@@ -528,22 +534,37 @@ public partial class MainWindow : Window
     private void UpdateNavigator()
     {
         var view = Host.View;
-        var show = view.IsZoomed && _host.Config.Zoom.ShowNavigator && Host.HasChild;
+        var zoom = _host.Config.Zoom;
+        var show = (view.IsZoomed || zoom.NavigatorAlways) && zoom.ShowNavigator && Host.HasChild;
         var aspect = view.SurfaceHeight > 0 ? view.SurfaceWidth / view.SurfaceHeight : 0.45;
-        _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction(), _host.Config.Zoom);
+        _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction(), zoom);
         // A blurred wash is the opposite of what High Contrast is for, so it stands down there.
         var ambient = _host.Config.Ambient.Enabled && Host.HasChild && !SystemParameters.HighContrast;
-        _overlay.UpdateAmbient(ambient, Host.SurfaceRect, _host.Config.Ambient);
-        var interval = TimeSpan.FromMilliseconds(1000 / _host.Config.Ambient.FrameRate);
+        Ambient.Update(ambient, Host.SurfaceRect, _host.Config.Ambient);
+        _ambientWanted = ambient;
+        _previewWanted = show && zoom.NavigatorPicture;
+
+        // One capture feeds both pictures, at the faster of the two rates that are in use.
+        var rate = Math.Max(_ambientWanted ? _host.Config.Ambient.FrameRate : 0, _previewWanted ? zoom.NavigatorFrameRate : 0);
+        var interval = TimeSpan.FromMilliseconds(1000 / Math.Max(1, rate));
         if (_ambientTimer.Interval != interval) _ambientTimer.Interval = interval;
-        if (ambient && IsVisible && WindowState != WindowState.Minimized && !_fullscreenTransition)
+        if ((_ambientWanted || _previewWanted) && IsVisible && WindowState != WindowState.Minimized && !_fullscreenTransition)
         {
             if (!_ambientTimer.IsEnabled) _ambientTimer.Start();
         }
         else
         {
             _ambientTimer.Stop();
-            _overlay.SetAmbientFrame(null);
+        }
+
+        if (!_ambientWanted || !_ambientTimer.IsEnabled)
+        {
+            Ambient.SetFrame(null);
+        }
+
+        if (!_previewWanted || !_ambientTimer.IsEnabled)
+        {
+            _overlay.SetNavigatorFrame(null);
         }
     }
 
@@ -568,178 +589,22 @@ public partial class MainWindow : Window
             Bottom = Math.Min(surface.Bottom, viewport.Bottom),
         };
 
-        var frame = await _liveCapture.CaptureAsync(visible, _host.Config.Ambient.Blur);
-        if (frame is not null && !_quitting && _ambientTimer.IsEnabled)
+        var previewWidth = _previewWanted ? _overlay.NavigatorPreviewPixelWidth : 0;
+        var result = await _liveCapture.CaptureAsync(visible, _host.Config.Ambient.Blur, _ambientWanted, previewWidth);
+        if (result is null || _quitting || !_ambientTimer.IsEnabled)
         {
-            _overlay.SetAmbientFrame(frame);
-        }
-    }
-
-    private bool OnPanelWheel(int delta, int screenX, int screenY)
-    {
-        if (!SidebarScroll.IsVisible) return false;
-        if (!_sidebarWheelBounds.Contains(screenX, screenY))
-            return false;
-        // scrcpy can retain native keyboard focus even when the pointer is over WPF.
-        // Consume this event before Windows delivers it to the focused child HWND.
-        Dispatcher.BeginInvoke(() =>
-        {
-            var distance = SystemParameters.WheelScrollLines < 0
-                ? SidebarScroll.ViewportHeight : SystemParameters.WheelScrollLines * 16;
-            SidebarScroll.ScrollToVerticalOffset(SidebarScroll.VerticalOffset - delta / 120.0 * distance);
-        });
-        return true;
-    }
-
-    private bool OnAltWheel(int delta, int screenX, int screenY)
-    {
-        if (!_host.Config.Zoom.Enabled || !_host.Config.Zoom.WheelZoom || !Host.HasChild)
-        {
-            return false;
+            return;
         }
 
-        var viewport = Host.ViewportScreenRect;
-        if (screenX < viewport.Left || screenX >= viewport.Right || screenY < viewport.Top || screenY >= viewport.Bottom)
+        if (result.Ambient is { } ambient && _ambientWanted)
         {
-            return false;
+            Ambient.SetFrame(ambient);
         }
 
-        var direction = delta > 0 ? 1 : -1;
-        var anchorX = screenX - viewport.Left;
-        var anchorY = screenY - viewport.Top;
-        var step = _host.Config.Zoom.WheelStep;
-        Dispatcher.BeginInvoke(() => Host.ZoomStep(direction, anchorX, anchorY, step));
-        return true;
-    }
-
-    private bool OnHotkey(int virtualKey, bool ctrl, bool alt, bool shift)
-    {
-        var guide = _guide;
-        if (guide is { IsCalibrating: true } && !alt && guide.CanHandleCalibrationKey(virtualKey))
+        if (result.Preview is { } preview && _previewWanted)
         {
-            var plainCalibrationKey = !ctrl;
-            var fineArrowKey = ctrl && virtualKey is NativeMethods.VK_LEFT or NativeMethods.VK_UP or NativeMethods.VK_RIGHT or NativeMethods.VK_DOWN;
-            if (plainCalibrationKey || fineArrowKey)
-            {
-                Dispatcher.BeginInvoke(() => guide.HandleCalibrationKey(virtualKey, ctrl, shift));
-                return true;
-            }
+            _overlay.SetNavigatorFrame(preview);
         }
-
-        if (_browse && !ctrl && !alt)
-        {
-            if (virtualKey == NativeMethods.VK_ESCAPE)
-            {
-                Dispatcher.BeginInvoke(() => SetBrowse(false));
-                return true;
-            }
-
-            if (KeyboardBrowse.ActionFor(virtualKey) is { } browseAction &&
-                KeyboardBrowse.Applies(_browse, ctrl, alt, FocusInsideControl()))
-            {
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync(browseAction));
-                return true;
-            }
-        }
-
-        switch (virtualKey)
-        {
-            case NativeMethods.VK_F11:
-                Dispatcher.BeginInvoke(ToggleFullscreen);
-                return true;
-            case NativeMethods.VK_ESCAPE when _fullscreen:
-                Dispatcher.BeginInvoke(ToggleFullscreen);
-                return true;
-            case 'L' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-landscape"));
-                return true;
-            case 'U' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-portrait"));
-                return true;
-            case 'A' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-auto"));
-                return true;
-            case NativeMethods.VK_LEFT when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotate-left"));
-                return true;
-            case NativeMethods.VK_RIGHT when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotate-right"));
-                return true;
-            case NativeMethods.VK_UP when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("swipe-down"));
-                return true;
-            case NativeMethods.VK_DOWN when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("swipe-up"));
-                return true;
-            case NativeMethods.VK_RETURN when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("tap"));
-                return true;
-            case 'K' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("browse"));
-                return true;
-            case NativeMethods.VK_BACK when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("back"));
-                return true;
-            case 'R' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("recents"));
-                return true;
-            case 'P' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _guide?.Toggle());
-                return true;
-            case 'C' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _guide?.StartCalibration());
-                return true;
-            case NativeMethods.VK_F1:
-                Dispatcher.BeginInvoke(StartTour);
-                return true;
-            case 'S' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("screenshot"));
-                return true;
-            case 'H' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("home"));
-                return true;
-            case 'B' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => SetSidebarVisible(!_sidebarWanted));
-                return true;
-            case >= '1' and <= '4' when ctrl && alt:
-                var tab = virtualKey - '1';
-                Dispatcher.BeginInvoke(() =>
-                {
-                    if (!_sidebarWanted)
-                    {
-                        SetSidebarVisible(true);
-                    }
-
-                    SelectTab(TabOrder[tab]);
-                });
-                return true;
-            case '0' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-reset"));
-                return true;
-            case NativeMethods.VK_OEM_PLUS when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-in"));
-                return true;
-            case NativeMethods.VK_OEM_MINUS when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-out"));
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private bool OnOverlayPointer(int msg, IntPtr wParam) => _touchpad.HandlePointerMessage(msg, wParam);
-
-    private IntPtr WindowHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-    {
-        if (msg is NativeMethods.WM_POINTERDOWN or NativeMethods.WM_POINTERUPDATE or NativeMethods.WM_POINTERUP or NativeMethods.WM_POINTERCAPTURECHANGED)
-        {
-            if (_touchpad.HandlePointerMessage(msg, wParam))
-            {
-                handled = true;
-            }
-        }
-
-        return IntPtr.Zero;
     }
 
     // ----- Actions -----
@@ -938,6 +803,16 @@ public partial class MainWindow : Window
         }
 
         var tab = CurrentTab();
+
+        // The four tabs share one scroll bar. Each keeps its own place, so a long scroll through
+        // Settings no longer opens Info at its bottom, and coming back finds Settings where it was.
+        if (_shownTab is { } previous && previous != tab)
+        {
+            _tabOffsets[previous] = SidebarScroll.VerticalOffset;
+        }
+
+        var restore = _tabOffsets.GetValueOrDefault(tab);
+        _shownTab = tab;
         ControlsPanel.Visibility = tab == "controls" ? Visibility.Visible : Visibility.Collapsed;
         PhonePanel.Visibility = tab == "phone" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = tab == "settings" ? Visibility.Visible : Visibility.Collapsed;
@@ -958,7 +833,14 @@ public partial class MainWindow : Window
         {
             InfoPanel.Refresh();
         }
+
+        SidebarScroll.ScrollToVerticalOffset(restore);
+        // The new tab has not been measured yet; apply it again once it has, clamped to its height.
+        Dispatcher.BeginInvoke(() => SidebarScroll.ScrollToVerticalOffset(restore), System.Windows.Threading.DispatcherPriority.Loaded);
     }
+
+    private readonly Dictionary<string, double> _tabOffsets = new(StringComparer.Ordinal);
+    private string? _shownTab;
 
     private string CurrentTab() =>
         TabPhone.IsChecked == true ? "phone" : TabSettings.IsChecked == true ? "settings" : TabInfo.IsChecked == true ? "info" : "controls";

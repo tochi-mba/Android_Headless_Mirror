@@ -65,9 +65,6 @@ public static class Shortcuts
     /// <summary>The keys that mean something on their own while browse mode is on.</summary>
     public static IReadOnlyList<Shortcut> BrowseKeys => All.Where(s => s.Browse).ToArray();
 
-    /// <summary>How a shortcut reads in a list: browse keys say which mode they belong to.</summary>
-    public static string Label(Shortcut shortcut) => shortcut.Browse ? "Browse · " + shortcut.Gesture : shortcut.Gesture;
-
     /// <summary>The gesture for an action, or an empty string when it has none.</summary>
     public static string Gesture(string id) => Find(id)?.Gesture ?? string.Empty;
 

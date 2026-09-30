@@ -11,117 +11,88 @@ namespace Rex.Tests;
 /// and saves screenshots under artifacts/screens. This is the closest CI gets to a phone.
 /// </summary>
 [Collection("desktop")]
-public sealed class AppEndToEndTests
+public sealed partial class AppEndToEndTests
 {
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(45);
 
     [Fact]
-    public async Task KeyboardMode_FallsBackOnceWhenAnOldPhoneDeniesUhid()
+    public async Task SoftBackgroundAndNavigator_FollowAMovingPicture()
     {
+        // A still picture proves the background appears; a moving one proves it keeps up. The
+        // fake phone cycles red, green and blue like a video, and both the soft background around
+        // the phone and the navigator's picture of it must change colour with it.
         using var package = new TestPackage(withFakeTools: true);
-        File.WriteAllText(package.DenyUhidMarker, string.Empty);
-        using var app = new AppProcess(package);
+        File.WriteAllText(package.AnimateMarker, string.Empty);
+        var config = ConfigFile.Load(package.Paths.Config);
+        config.Ambient.FrameRate = 30;
+        config.Ambient.Opacity = 1;
+        config.Zoom.NavigatorAlways = true;
+        ConfigFile.Save(package.Paths.Config, config);
 
-        var status = await app.WaitForPhaseAsync("mirroring", StartupTimeout);
-        var launches = package.ScrcpyLog().Where(line => line.StartsWith("args ", StringComparison.Ordinal)).ToArray();
-        Assert.Equal(2, launches.Length);
-        Assert.Contains("--keyboard=uhid", launches[0], StringComparison.Ordinal);
-        Assert.Contains("--keyboard=sdk", launches[1], StringComparison.Ordinal);
-        Assert.Contains("--raw-key-events", launches[1], StringComparison.Ordinal);
-        Assert.Equal("sdk", status["keyboard"]!["mode"]!.GetValue<string>());
-        await app.QuitAsync();
-
-        // The refusal is remembered, so the next session starts in compatibility mode without
-        // failing first.
-        Assert.True(new StateStore(package.Paths.State).GetDevice("FAKE123")!.CompatibilityKeyboard);
-        using var second = new AppProcess(package);
-        await second.WaitForPhaseAsync("mirroring", StartupTimeout);
-        launches = package.ScrcpyLog().Where(line => line.StartsWith("args ", StringComparison.Ordinal)).ToArray();
-        Assert.Equal(3, launches.Length);
-        Assert.Contains("--keyboard=sdk", launches[2], StringComparison.Ordinal);
-        await second.QuitAsync();
-    }
-
-    [Fact]
-    public async Task BrowseMode_TurnsPlainKeysIntoGesturesUntilEscape()
-    {
-        using var package = new TestPackage(withFakeTools: true);
-        using var app = new AppProcess(package);
-        var status = await app.WaitForPhaseAsync("mirroring", StartupTimeout);
-        Assert.Equal("uhid", status["keyboard"]!["mode"]!.GetValue<string>());
-        Assert.False(status["keyboard"]!["browse"]!.GetValue<bool>());
-
-        await app.ActionAsync("browse");
-        await app.WaitForStatusAsync(data => data["keyboard"]!["browse"]!.GetValue<bool>(), TimeSpan.FromSeconds(5), "browse mode to switch on");
-
-        await app.PressKeyAsync(0x28); // Down: next item, as a swipe up.
-        await app.WaitUntilAsync(
-            () => package.ScrcpyLog().Any(line => line.StartsWith("pointerup", StringComparison.Ordinal)),
-            TimeSpan.FromSeconds(5),
-            "a plain arrow key to swipe the phone");
-        Assert.DoesNotContain(package.ScrcpyLog(), line => line.StartsWith("key vk=40", StringComparison.Ordinal));
-
-        await app.PressKeyAsync(0x4D); // M: mute, over ADB.
-        await app.WaitUntilAsync(
-            () => package.AdbCalls().Any(line => line.EndsWith("input keyevent KEYCODE_VOLUME_MUTE", StringComparison.Ordinal)),
-            TimeSpan.FromSeconds(5),
-            "M to mute the phone");
-
-        await app.PressKeyAsync(0x1B); // Esc leaves the mode.
-        await app.WaitForStatusAsync(data => !data["keyboard"]!["browse"]!.GetValue<bool>(), TimeSpan.FromSeconds(5), "browse mode to switch off");
-        var touches = package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal));
-
-        // The same key now types into the phone instead.
-        await app.PressKeyAsync(0x28);
-        await app.WaitUntilAsync(
-            () => package.ScrcpyLog().Any(line => line.StartsWith("key vk=40", StringComparison.Ordinal)),
-            TimeSpan.FromSeconds(5),
-            "the arrow key to reach the phone as a key again");
-        Assert.Equal(touches, package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal)));
-
-        // Gestures also work from the command line, and from the tray with no picture to touch.
-        await app.ActionAsync("swipe-left");
-        await app.WaitUntilAsync(
-            () => package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal)) > touches,
-            TimeSpan.FromSeconds(5),
-            "a command-line gesture to touch the phone");
-        await app.SendAsync(new IpcRequest("hide", new Dictionary<string, string>()));
-        await app.ActionAsync("like");
-        await app.WaitUntilAsync(
-            () => package.AdbCalls().Count(line => line.EndsWith("input tap 540 1200", StringComparison.Ordinal)) >= 2,
-            TimeSpan.FromSeconds(5),
-            "a hidden window to play the gesture through Android instead");
-        await app.QuitAsync();
-    }
-
-    [Fact]
-    public async Task KeyboardOnlyFeedControls_SendSwipesTapsAndPhoneNavigation()
-    {
-        using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        var status = await app.WaitForStatusAsync(
+            s => s["ambientFrame"]!.GetValue<bool>() && s["navigatorPicture"]!.GetValue<bool>(),
+            StartupTimeout,
+            "the soft background and the navigator picture");
+        // With "keep the navigator on screen" set, it shows at 100% as a live preview.
+        Assert.Equal(1.0, status["zoom"]!.GetValue<double>());
+        await app.FocusAsync();
 
-        await app.PressCtrlAltKeyAsync(0x28); // Down: next feed item.
-        await app.WaitUntilAsync(
-            () => package.ScrcpyLog().Any(line => line.StartsWith("pointerup", StringComparison.Ordinal)),
-            TimeSpan.FromSeconds(5),
-            "keyboard swipe to finish");
-        var firstTouches = package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal));
+        var navigator = status["navigator"]!;
+        var bounds = app.WindowBounds();
+        var inNavigator = new System.Drawing.Point(
+            (int)(navigator["left"]!.GetValue<double>() + navigator["width"]!.GetValue<double>() / 2) - bounds.Left,
+            (int)(navigator["top"]!.GetValue<double>() + navigator["height"]!.GetValue<double>() / 2) - bounds.Top);
 
-        await app.PressCtrlAltKeyAsync(0x0D); // Enter: tap the centre.
-        await app.WaitUntilAsync(
-            () => package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal)) > firstTouches,
-            TimeSpan.FromSeconds(5),
-            "keyboard tap to reach the phone");
-        await app.PressCtrlAltKeyAsync(0x08); // Backspace: Android back.
-        await app.PressCtrlAltKeyAsync((byte)'R'); // Recent apps.
+        var marginColours = new HashSet<char>();
+        var navigatorColours = new HashSet<char>();
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(25);
+        while ((marginColours.Count < 3 || navigatorColours.Count < 3) && DateTime.UtcNow < deadline)
+        {
+            using var shot = await app.CaptureWindowAsync();
+            if (Dominant(MeanColour(shot, new System.Drawing.Rectangle(shot.Width / 20, shot.Height / 5, shot.Width / 7, shot.Height * 3 / 5))) is { } margin)
+            {
+                marginColours.Add(margin);
+            }
 
-        await app.WaitUntilAsync(
-            () => package.AdbCalls().Any(line => line.EndsWith("input keyevent KEYCODE_BACK", StringComparison.Ordinal)) &&
-                  package.AdbCalls().Any(line => line.EndsWith("input keyevent KEYCODE_APP_SWITCH", StringComparison.Ordinal)),
-            TimeSpan.FromSeconds(5),
-            "keyboard phone navigation");
+            if (Dominant(MeanColour(shot, new System.Drawing.Rectangle(inNavigator.X - 6, inNavigator.Y - 6, 12, 12))) is { } preview)
+            {
+                navigatorColours.Add(preview);
+            }
+
+            await Task.Delay(150, TestContext.Current.CancellationToken);
+        }
+
+        await app.SaveScreenshotAsync("ambient-moving.png");
+        Assert.True(marginColours.Count == 3, $"The soft background must follow the video; it showed only {string.Join(",", marginColours)}.");
+        Assert.True(navigatorColours.Count == 3, $"The navigator picture must follow the video; it showed only {string.Join(",", navigatorColours)}.");
         await app.QuitAsync();
+    }
+
+    private static System.Drawing.Color MeanColour(System.Drawing.Bitmap bitmap, System.Drawing.Rectangle area)
+    {
+        long r = 0, g = 0, b = 0, count = 0;
+        for (var y = Math.Max(0, area.Top); y < Math.Min(bitmap.Height, area.Bottom); y += 2)
+        {
+            for (var x = Math.Max(0, area.Left); x < Math.Min(bitmap.Width, area.Right); x += 2)
+            {
+                var pixel = bitmap.GetPixel(x, y);
+                r += pixel.R;
+                g += pixel.G;
+                b += pixel.B;
+                count++;
+            }
+        }
+
+        return count == 0 ? System.Drawing.Color.Black : System.Drawing.Color.FromArgb((int)(r / count), (int)(g / count), (int)(b / count));
+    }
+
+    /// <summary>R, G or B when one channel clearly leads, which is all the fake video ever shows; null in between.</summary>
+    private static char? Dominant(System.Drawing.Color colour)
+    {
+        var channels = new[] { ('R', colour.R), ('G', colour.G), ('B', colour.B) }.OrderByDescending(c => c.Item2).ToArray();
+        return channels[0].Item2 >= 60 && channels[0].Item2 - channels[1].Item2 >= 40 ? channels[0].Item1 : null;
     }
 
     [Fact]
@@ -140,11 +111,20 @@ public sealed class AppEndToEndTests
         await app.SaveScreenshotAsync("ambient-live.png");
         await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));
         await app.WaitForStatusAsync(s => s["navigatorVisible"]!.GetValue<bool>(), StartupTimeout, "navigator");
+        // The navigator carries a live picture of the whole phone screen, from the same capture as
+        // the soft background: one copy of the screen serves both.
+        var status = await app.WaitForStatusAsync(s => s["navigatorPicture"]!.GetValue<bool>(), StartupTimeout, "navigator picture");
+        Assert.Contains(status["capture"]!.GetValue<string>(), new[] { "gpu", "gdi" });
         await app.SaveScreenshotAsync("navigator.png");
 
-        // The navigator is a frame and a draggable viewport box, so it costs nothing to keep open:
-        // zooming must not send a screenshot request to the phone.
+        // Neither picture ever comes from the phone: zooming must not send a screenshot request.
         Assert.DoesNotContain(package.AdbCalls(), line => line.Contains("screencap", StringComparison.Ordinal));
+
+        // Switching the picture off leaves the frame; the mode stays adjustable while zoomed.
+        var config = ConfigFile.Load(package.Paths.Config);
+        config.Zoom.NavigatorPicture = false;
+        ConfigFile.Save(package.Paths.Config, config);
+        await app.WaitForStatusAsync(s => s["navigatorVisible"]!.GetValue<bool>() && !s["navigatorPicture"]!.GetValue<bool>(), StartupTimeout, "navigator without its picture");
         await app.QuitAsync();
     }
 
@@ -189,7 +169,7 @@ public sealed class AppEndToEndTests
     /// <summary>Captures the window once it looks the way a test is waiting for, or fails saying what it waited for.</summary>
     private static async Task<System.Drawing.Bitmap> CaptureWhenAsync(AppProcess app, Func<System.Drawing.Bitmap, bool> ready, string description)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(25);
         while (true)
         {
             var bitmap = await app.CaptureWindowAsync();
@@ -285,6 +265,37 @@ public sealed class AppEndToEndTests
         Assert.InRange(landscape.Width, landscape.ViewportWidth - 2, landscape.ViewportWidth + 2);
         Assert.True(landscape.Height <= landscape.ViewportHeight + 2, "The picture must still fit inside the mirror area.");
         await app.SaveScreenshotAsync("landscape-refit.png");
+        await app.QuitAsync();
+    }
+
+    [Fact]
+    public async Task Landscape_FillsTheWidthEvenWhenScrcpyNeverResizesItsWindow()
+    {
+        // The case seen on a real phone: the video turned, but scrcpy's window kept its portrait
+        // size (its one resize was lost), so the picture sat letterboxed at portrait width. scrcpy
+        // still reports the new video size, and that alone must turn the picture.
+        using var package = new TestPackage(withFakeTools: true);
+        File.WriteAllText(package.KeepWindowMarker, string.Empty);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        var portrait = await Surface(app);
+        Assert.True(portrait.Width < portrait.Height, "The phone starts upright.");
+
+        await app.ActionAsync("rotation-landscape");
+        await app.WaitUntilAsync(() => package.ScrcpyLog().Contains("texture 2400x1080"), StartupTimeout, "scrcpy to report the turn");
+        await app.WaitForStatusAsync(s => s["video"]?["width"]?.GetValue<int>() == 2400, TimeSpan.FromSeconds(5), "the report to reach the app");
+        await app.WaitForStatusAsync(
+            s => s["surface"]!["width"]!.GetValue<double>() > s["surface"]!["height"]!.GetValue<double>(),
+            TimeSpan.FromSeconds(5),
+            "the picture to turn from the report alone");
+        var landscape = await Surface(app);
+        Assert.InRange(landscape.Width, landscape.ViewportWidth - 2, landscape.ViewportWidth + 2);
+
+        await app.ActionAsync("rotation-portrait");
+        await app.WaitForStatusAsync(
+            s => s["surface"]!["width"]!.GetValue<double>() < s["surface"]!["height"]!.GetValue<double>(),
+            TimeSpan.FromSeconds(10),
+            "the picture to turn back");
         await app.QuitAsync();
     }
 
@@ -429,11 +440,22 @@ public sealed class AppEndToEndTests
         Assert.Equal("second-phone", status["tip"]!.GetValue<string>());
         await app.SaveScreenshotAsync("two-phones.png");
 
-        // Choosing is what the CLI writes too, so the window and a script agree on it.
-        await app.SendAsync(new IpcRequest("quit"));
-        var chosen = ConfigFile.Load(package.Paths.Config);
-        chosen.Session.PreferredSerial = "FAKE456";
-        ConfigFile.Save(package.Paths.Config, chosen);
+        // The chip opens a menu in the app's own style listing both, with what each one is doing.
+        app.Ui.Invoke("DeviceChip");
+        var items = app.Ui.OpenMenuItems();
+        Assert.True(items.Count == 2, "The picker should list the two phones, not: " + string.Join(" | ", items.Select(i => $"{i.Current.Name} [{i.Current.ClassName}]")));
+        Assert.Equal("Fake Phone, USB · mirroring now", items[0].Current.Name);
+        Assert.Equal("Second Phone, USB · ready", items[1].Current.Name);
+        await app.SaveScreenshotAsync("phone-picker.png");
+
+        // Picking the second phone switches the mirror to it and is remembered.
+        ((System.Windows.Automation.InvokePattern)items[1].GetCurrentPattern(System.Windows.Automation.InvokePattern.Pattern)).Invoke();
+        await app.WaitForStatusAsync(
+            data => data["device"]?["serial"]?.GetValue<string>() == "FAKE456" && data["phase"]!.GetValue<string>() == "mirroring",
+            StartupTimeout,
+            "the picked phone mirroring");
+        Assert.Equal("FAKE456", ConfigFile.Load(package.Paths.Config).Session.PreferredSerial);
+        await app.QuitAsync();
 
         using var again = new AppProcess(package);
         var second = await again.WaitForStatusAsync(
@@ -626,12 +648,20 @@ public sealed class AppEndToEndTests
 
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+
+        // While Android is asked where the pattern is, the spinner shows and runs; once the dots
+        // are drawn it stops, rather than pulsing forever behind them.
+        await app.WaitForStatusAsync(
+            data => data["patternGuide"]?["resolving"]?.GetValue<bool>() == true && data["patternGuide"]?["spinning"]?.GetValue<bool>() == true,
+            TimeSpan.FromSeconds(8),
+            "the spinner while the pattern is found");
         var ready = await app.WaitForStatusAsync(
             data => data["patternGuide"]?["visible"]?.GetValue<bool>() == true &&
                 data["patternGuide"]?["resolving"]?.GetValue<bool>() == false &&
                 data["patternGuide"]?["source"]?.GetValue<string>() == PatternGeometry.SourceUiView,
             TimeSpan.FromSeconds(8),
             "discovered pattern geometry");
+        Assert.False(ready["patternGuide"]!["spinning"]!.GetValue<bool>());
         Assert.Equal(PatternGeometry.SourceUiView, ready["patternGuide"]!["source"]!.GetValue<string>());
         await app.SaveScreenshotAsync("pattern-ready.png");
         await app.DragPatternAndCaptureAsync("pattern-trace.png");

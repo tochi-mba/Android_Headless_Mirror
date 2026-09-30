@@ -37,7 +37,9 @@ public sealed class TrayIcon : IDisposable
         quit.Click += (_, _) => host.Window?.QuitApplication();
 
         menu.Items.AddRange([open, new WinForms.ToolStripSeparator(), _stopStart, _startup, new WinForms.ToolStripSeparator(), quit]);
-        menu.Opening += (_, _) => Refresh();
+        TrayMenuRenderer.Apply(menu);
+        // High Contrast can be switched while the app runs; the menu follows at the next opening.
+        menu.Opening += (_, _) => { TrayMenuRenderer.Apply(menu); Refresh(); };
 
         _icon = new WinForms.NotifyIcon
         {

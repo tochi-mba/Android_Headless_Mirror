@@ -219,6 +219,63 @@ public sealed class AppUiTests
     }
 
     [Fact(Timeout = 75_000)]
+    public async Task Settings_CompatibilityKeyboard_OffersRestartAndLaunchesWithRawKeys()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", Startup);
+        Assert.Contains("--keyboard=uhid", package.ScrcpyLog().Last(l => l.StartsWith("args ", StringComparison.Ordinal)), StringComparison.Ordinal);
+
+        app.Ui.Select("TabSettings");
+        app.Ui.ExpandGroup("GroupControls");
+        app.Ui.Toggle("CompatibilityKeyboard", on: true);
+        await app.WaitUntilAsync(() => ConfigFile.Load(package.Paths.Config).Mirror.CompatibilityKeyboard, Soon, "the setting saved");
+        await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "restart notice");
+
+        app.Ui.InvokeNamed("Restart now");
+        await app.WaitUntilAsync(
+            () => package.ScrcpyLog().Count(l => l.StartsWith("args ", StringComparison.Ordinal)) == 2,
+            Startup,
+            "the mirror to be relaunched");
+        var status = await app.WaitForPhaseAsync("mirroring", Startup);
+        var relaunch = package.ScrcpyLog().Last(l => l.StartsWith("args ", StringComparison.Ordinal));
+        Assert.Contains("--keyboard=sdk", relaunch, StringComparison.Ordinal);
+        Assert.Contains("--raw-key-events", relaunch, StringComparison.Ordinal);
+        await app.WaitForStatusAsync(s => s["keyboard"]!["mode"]?.GetValue<string>() == "sdk", Soon, "the new keyboard mode");
+        await app.QuitAsync();
+    }
+
+    [Fact(Timeout = 75_000)]
+    public async Task Settings_NavigatorControls_PreviewLiveAndSave()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", Startup);
+        app.Ui.Select("TabSettings");
+        app.Ui.ExpandGroup("GroupControls");
+
+        // Keeping it on screen shows it without zooming, as a live preview of the whole phone.
+        app.Ui.Toggle("NavigatorAlways", on: true);
+        await app.WaitForStatusAsync(s => s["navigatorVisible"]!.GetValue<bool>() && s["zoom"]!.GetValue<double>() == 1.0, Soon, "the navigator at 100%");
+        await app.WaitForStatusAsync(s => s["navigatorPicture"]!.GetValue<bool>(), Soon, "its live picture");
+
+        app.Ui.Toggle("NavigatorPicture", on: false);
+        await app.WaitForStatusAsync(s => s["navigatorVisible"]!.GetValue<bool>() && !s["navigatorPicture"]!.GetValue<bool>(), Soon, "the frame without its picture");
+
+        app.Ui.SetValue("NavigatorOpacity", 0.5);
+        app.Ui.SetValue("NavigatorFrameRate", 12);
+        await app.WaitUntilAsync(() =>
+        {
+            var zoom = ConfigFile.Load(package.Paths.Config).Zoom;
+            return zoom.NavigatorAlways && !zoom.NavigatorPicture && Math.Abs(zoom.NavigatorOpacity - 0.5) < 0.01 && zoom.NavigatorFrameRate == 12;
+        }, Soon, "the navigator settings saved");
+        await app.SaveScreenshotAsync("ui-navigator-settings.png");
+        await app.QuitAsync();
+    }
+
+    [Fact(Timeout = 75_000)]
     public async Task TopBar_QuickActions_ReachThePhone()
     {
         TestContext.Current.CancellationToken.ThrowIfCancellationRequested();

@@ -131,6 +131,10 @@ internal static partial class NativeMethods
     public const int WM_KEYUP = 0x0101;
     public const int WM_SYSKEYDOWN = 0x0104;
     public const int WM_SYSKEYUP = 0x0105;
+    public const int WM_SYSCHAR = 0x0106;
+    public const int WM_CHAR = 0x0102;
+    public const int VK_LWIN = 0x5B;
+    public const int VK_RWIN = 0x5C;
     public const int WM_MOUSEWHEEL = 0x020A;
     public const int WM_MOUSEHWHEEL = 0x020E;
     public const int WM_NCHITTEST = 0x0084;
@@ -240,6 +244,9 @@ internal static partial class NativeMethods
     public static partial IntPtr SetFocus(IntPtr hWnd);
 
     [LibraryImport("user32.dll")]
+    public static partial IntPtr GetFocus();
+
+    [LibraryImport("user32.dll")]
     public static partial IntPtr GetForegroundWindow();
 
     [LibraryImport("user32.dll")]
@@ -312,6 +319,24 @@ internal static partial class NativeMethods
 
     [LibraryImport("user32.dll")]
     public static partial uint GetDpiForWindow(IntPtr hWnd);
+
+    /// <summary>Gives a window a region; the system owns <paramref name="hRgn"/> after a successful call.</summary>
+    [LibraryImport("user32.dll")]
+    public static partial int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, [MarshalAs(UnmanagedType.Bool)] bool bRedraw);
+
+    public const uint LWA_ALPHA = 0x00000002;
+
+    /// <summary>One alpha for a whole layered window, composed by DWM on the GPU.</summary>
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+    [LibraryImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool DeleteObject(IntPtr hObject);
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
     public static partial IntPtr GetModuleHandleW(string? lpModuleName);

@@ -593,4 +593,118 @@
     <Setter Property="Padding" Value="8,5" />
     <Setter Property="FontSize" Value="12" />
   </Style>
+
+  <!-- Menus: the phone picker, and the Cut / Copy / Paste menu every text box opens on a right
+       click. Left to Windows they come up light and square in a dark window. -->
+  <Style TargetType="ContextMenu">
+    <Setter Property="Foreground" Value="{StaticResource Text}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="OverridesDefaultStyle" Value="True" />
+    <Setter Property="HasDropShadow" Value="True" />
+    <Setter Property="Grid.IsSharedSizeScope" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContextMenu">
+          <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                  CornerRadius="10" Padding="4" MinWidth="220" Margin="0,6,0,0" SnapsToDevicePixels="True">
+            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style TargetType="MenuItem">
+    <Setter Property="Foreground" Value="{StaticResource Text}" />
+    <Setter Property="Padding" Value="8,7,12,7" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="MenuItem">
+          <Border x:Name="Border" Background="Transparent" CornerRadius="7" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="MenuGesture" />
+              </Grid.ColumnDefinitions>
+              <Path x:Name="Check" Data="M1 6 L5 10 L12 2" Stroke="{StaticResource Signal}" StrokeThickness="2"
+                    StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                    VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="Hidden" />
+              <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="{StaticResource Muted}"
+                         FontSize="12" Margin="18,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsHighlighted" Value="True">
+              <Setter TargetName="Border" Property="Background" Value="{StaticResource Hover}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Border" Property="Background" Value="{StaticResource Raised}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Opacity" Value="0.45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Separator">
+          <Border Height="1" Margin="8,4" Background="{StaticResource Line}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- A flat bar in the app's colours instead of the system's animated green one. -->
+  <Style TargetType="ProgressBar">
+    <Setter Property="Foreground" Value="{StaticResource Signal}" />
+    <Setter Property="Background" Value="{StaticResource Line}" />
+    <Setter Property="Height" Value="6" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ProgressBar">
+          <Grid SnapsToDevicePixels="True">
+            <Border x:Name="PART_Track" CornerRadius="3" Background="{TemplateBinding Background}" />
+            <Border x:Name="PART_Indicator" CornerRadius="3" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" />
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The side panel's resize handle: invisible until the pointer or keyboard reaches it, so it
+       says it can be dragged exactly when that is useful, and stays lit while it is. -->
+  <Style x:Key="PanelSplitter" TargetType="GridSplitter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Focusable" Value="True" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="GridSplitter">
+          <Border Background="Transparent">
+            <Border x:Name="Grip" Width="2" CornerRadius="1" HorizontalAlignment="Center" Background="{StaticResource Signal}" Opacity="0" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Grip" Property="Opacity" Value="0.5" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Grip" Property="Opacity" Value="0.8" />
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+              <Setter TargetName="Grip" Property="Opacity" Value="1" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
 </ResourceDictionary>
