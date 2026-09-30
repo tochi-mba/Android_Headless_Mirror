@@ -141,6 +141,7 @@
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
           <!-- The tabs line up with the content below: 16 DIP in from the left, and clear of the
@@ -153,7 +154,19 @@
           </UniformGrid>
           <!-- Half the 16 DIP gutter is padding and half is margin inside the scrolled area, so a focus
                ring may reach past the content's edge without being clipped. -->
-          <ScrollViewer x:Name="SidebarScroll" Grid.Row="1" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,16">
+          <!-- Pinned above the tabs' content, so it is seen from any tab and at any scroll. -->
+          <Border x:Name="RestartBar" Grid.Row="1" Background="{StaticResource SignalWash}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8"
+                  Padding="10,8" Margin="16,4,24,4" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="Mirror settings apply on the next start." VerticalAlignment="Center" FontSize="12" TextWrapping="Wrap" />
+              <Button x:Name="RestartNow" Grid.Column="1" Content="Restart now" Style="{StaticResource PrimaryButton}" MinHeight="28" Padding="10,3" Margin="8,0,0,0" Click="OnRestartNow" />
+            </Grid>
+          </Border>
+          <ScrollViewer x:Name="SidebarScroll" Grid.Row="2" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,16">
             <Grid Margin="8,0">
               <views:ControlsPanel x:Name="ControlsPanel" />
               <views:PhonePanel x:Name="PhonePanel" Visibility="Collapsed" />

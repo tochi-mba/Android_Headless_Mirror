@@ -65,6 +65,10 @@ public sealed partial class AppUiTests
         app.Ui.SetText("SettingsFilter", "wash");
         await app.WaitUntilAsync(() => app.Ui.Exists("AmbientTintHue"), Soon, "the soft background group to stay");
         Assert.False(app.Ui.Exists("HudScale"), "A group that does not mention the search should be hidden.");
+        // Row by row: the rest of the soft background goes too, and the count says what is left.
+        Assert.False(app.Ui.Exists("AmbientBlur"), "A row that does not mention the search should be hidden.");
+        Assert.True(app.Ui.Exists("AmbientTintStrength"));
+        Assert.Equal("2 settings match", app.Ui.Read("FilterCount", e => e.Name));
         await app.SaveScreenshotAsync("ui-settings-search.png");
 
         app.Ui.SetText("SettingsFilter", "nothing whatsoever");
@@ -200,6 +204,10 @@ public sealed partial class AppUiTests
         app.Ui.Select("TabSettings");
         app.Ui.SelectComboItem("MaxFps", "30 fps");
         await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "restart notice");
+
+        // The offer stays in sight above every tab, however far the settings were scrolled.
+        app.Ui.Select("TabControls");
+        Assert.True(app.Ui.Exists("RestartNow"));
         await app.SaveScreenshotAsync("ui-restart-notice.png");
 
         app.Ui.InvokeNamed("Restart now");
@@ -229,7 +237,7 @@ public sealed partial class AppUiTests
         Assert.Contains("--keyboard=uhid", package.ScrcpyLog().Last(l => l.StartsWith("args ", StringComparison.Ordinal)), StringComparison.Ordinal);
 
         app.Ui.Select("TabSettings");
-        app.Ui.ExpandGroup("GroupControls");
+        app.Ui.ExpandGroup("GroupInput");
         app.Ui.Toggle("CompatibilityKeyboard", on: true);
         await app.WaitUntilAsync(() => ConfigFile.Load(package.Paths.Config).Mirror.CompatibilityKeyboard, Soon, "the setting saved");
         await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "restart notice");
@@ -255,7 +263,7 @@ public sealed partial class AppUiTests
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
         app.Ui.Select("TabSettings");
-        app.Ui.ExpandGroup("GroupControls");
+        app.Ui.ExpandGroup("GroupZoom");
 
         // Keeping it on screen shows it without zooming, as a live preview of the whole phone.
         app.Ui.Toggle("NavigatorAlways", on: true);
@@ -464,7 +472,7 @@ public sealed partial class AppUiTests
         await app.SaveScreenshotAsync("ui-alt-wheel-zoom.png");
 
         app.Ui.Select("TabSettings");
-        app.Ui.ExpandGroup("GroupControls");
+        app.Ui.ExpandGroup("GroupZoom");
         app.Ui.SelectComboItem("NavigatorCorner", "Top left");
         await app.WaitUntilAsync(() => ConfigFile.Load(package.Paths.Config).Zoom.NavigatorCorner == "top-left", Soon, "navigator corner saved");
         await app.SaveScreenshotAsync("ui-navigator-top-left.png");

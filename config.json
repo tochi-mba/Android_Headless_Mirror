@@ -105,14 +105,14 @@
     "X": null,
     "Y": null,
     "Buttons": [
-      "back",
       "home",
+      "back",
       "recents",
       "rotation-portrait",
       "rotation-landscape",
       "rotation-auto",
-      "zoom-reset",
       "screenshot",
+      "zoom-reset",
       "fullscreen"
     ],
     "HideSeconds": 3,
