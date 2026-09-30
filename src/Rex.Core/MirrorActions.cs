@@ -105,6 +105,15 @@ public static class ScrcpyShortcuts
 {
     private const int VkLeft = 0x25, VkUp = 0x26, VkRight = 0x27;
 
+    /// <summary>
+    /// Whether a shortcut changes only how this PC shows the picture (a turn, a flip, a pause, a
+    /// fresh capture) rather than the phone. Each copy of the phone is a scrcpy session of its own,
+    /// so these go to every copy as well; otherwise a paused or turned main view would sit beside
+    /// copies still playing upright.
+    /// </summary>
+    public static bool AppliesToEveryView(string actionId) =>
+        DisplayOrientation.TransformFor(actionId) is not null || actionId is "pause" or "resume" or "reset-capture";
+
     public static ScrcpyShortcut? For(string actionId) => actionId switch
     {
         "sleep" => new('O', false),

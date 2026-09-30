@@ -50,6 +50,7 @@ public partial class MainWindow : ICopyViews
     private void InitCopies()
     {
         _copies = new CopiesController(_host, this);
+        _host.Session.CopyWindows = () => _copies?.Processes.Select(p => p.Hwnd).ToArray() ?? [];
         _copies.Changed += OnCopiesChanged;
         _copies.Problem += message => SetStatus(message, isError: true);
         Group.Gap = _host.Config.Copies.Gap;
@@ -252,7 +253,9 @@ public partial class MainWindow : ICopyViews
     {
         foreach (var view in AllViews)
         {
-            if (!view.HasChild)
+            // A hidden copy keeps the rectangle it last had, which may now be the gap or another
+            // copy's place; only a view that is on screen can be under the pointer.
+            if (!view.HasChild || !view.IsShown)
             {
                 continue;
             }
@@ -294,11 +297,12 @@ public partial class MainWindow : ICopyViews
     private RectD PicturesInArea()
     {
         RectD? union = null;
-        var shown = Math.Max(1, Group.Shown);
-        var index = 0;
-        foreach (var view in AllViews)
+
+        // The views the layout gave room to, in the layout's own order: a copy that is still
+        // starting has a cell of its own, and a running copy after it may have none.
+        foreach (var view in Group.Children.OfType<MirrorHost>().Take(Math.Max(1, Group.Shown)))
         {
-            if (index++ >= shown || !view.HasChild)
+            if (!view.HasChild)
             {
                 continue;
             }

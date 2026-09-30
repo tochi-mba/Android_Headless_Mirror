@@ -120,6 +120,57 @@ public sealed partial class AppEndToEndTests
     }
 
     [Fact]
+    public async Task Copies_PauseAndTurnWithTheMainViewAndOpenShowingItTheSameWay()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.WaitForStatusAsync(s => Copies(s)["canAdd"]!.GetValue<bool>(), StartupTimeout, "room for a copy");
+
+        // Turned before the copy opens: the copy starts turned the same way.
+        await app.ActionAsync("rotate-right");
+        await app.WaitForStatusAsync(s => s["view"]!["orientation"]!.GetValue<string>() == "90", TimeSpan.FromSeconds(5), "the turn to be followed");
+        await app.ActionAsync("copy-add");
+        await app.WaitForStatusAsync(s => CopiesRunning(s) == 1, StartupTimeout, "the copy to open");
+        Assert.EndsWith("--display-orientation=90", Launches(package)[1], StringComparison.Ordinal);
+
+        // What changes the picture on this PC reaches the copy's own session as well.
+        bool CopyGot(int virtualKey) => package.ScrcpyLog().Any(line =>
+            line.StartsWith($"key vk={virtualKey} ", StringComparison.Ordinal) && line.EndsWith("at=27184", StringComparison.Ordinal));
+        await app.ActionAsync("rotate-left");
+        await app.WaitUntilAsync(() => CopyGot(0x25), TimeSpan.FromSeconds(10), "the turn to reach the copy");
+        await app.ActionAsync("pause");
+        await app.WaitUntilAsync(() => CopyGot('Z'), TimeSpan.FromSeconds(10), "the pause to reach the copy");
+        var paused = await app.SendAsync(new IpcRequest("status"));
+        Assert.True(paused.Data!["view"]!["paused"]!.GetValue<bool>());
+        Assert.Equal("0", paused.Data["view"]!["orientation"]!.GetValue<string>());
+
+        // What acts on the phone happens once, through the main session.
+        await app.ActionAsync("sleep");
+        await app.WaitUntilAsync(
+            () => package.ScrcpyLog().Any(line => line.StartsWith("key vk=79 ", StringComparison.Ordinal) && line.EndsWith("at=27183", StringComparison.Ordinal)),
+            TimeSpan.FromSeconds(10),
+            "the main session to turn the screen off");
+        Assert.False(CopyGot('O'));
+
+        // A copy opened while the picture is paused starts paused, and upright again.
+        var pausesBefore = package.ScrcpyLog().Count(line => line.StartsWith("key vk=90 ", StringComparison.Ordinal) && line.EndsWith("at=27184", StringComparison.Ordinal));
+        await app.ActionAsync("copy-remove");
+        await app.WaitForStatusAsync(s => CopiesRunning(s) == 0, StartupTimeout, "the copy to close");
+        await app.ActionAsync("copy-add");
+        await app.WaitForStatusAsync(s => CopiesRunning(s) == 1, StartupTimeout, "the copy to open again");
+        Assert.EndsWith("--display-orientation=0", Launches(package)[^1], StringComparison.Ordinal);
+        await app.WaitUntilAsync(
+            () => package.ScrcpyLog().Count(line => line.StartsWith("key vk=90 ", StringComparison.Ordinal) && line.EndsWith("at=27184", StringComparison.Ordinal)) > pausesBefore,
+            TimeSpan.FromSeconds(10),
+            "the new copy to be paused");
+
+        await app.ActionAsync("resume");
+        await app.WaitForStatusAsync(s => !s["view"]!["paused"]!.GetValue<bool>(), TimeSpan.FromSeconds(5), "the picture to play again");
+        await app.QuitAsync();
+    }
+
+    [Fact]
     public async Task Copies_ThatThePhoneCannotHoldAreGivenUpWithTheReason()
     {
         using var package = new TestPackage(withFakeTools: true);

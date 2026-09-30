@@ -213,6 +213,11 @@ public static class CommandRouter
             // The copies of the phone: how many are wanted, running and given room, and where each
             // view is on screen with its zoom, so a test can see them side by side and in step.
             ["copies"] = host.Window is { } copies ? CopiesStatus(copies) : null,
+            ["view"] = new JsonObject
+            {
+                ["orientation"] = DisplayOrientation.Name(session.ViewOrientation),
+                ["paused"] = session.ViewPaused,
+            },
             ["keyboard"] = new JsonObject
             {
                 ["mode"] = session.Scrcpy?.KeyboardMode,

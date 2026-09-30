@@ -170,6 +170,10 @@ docs/                   GitHub Pages site; its download button points at the lat
   and records nothing. Copies start one at a time after the main picture is up (`CopiesPlan`): two
   sessions starting together race for the server upload and the port. Copies are only shown for an
   upright picture and only as many as the width holds; the rest keep running out of sight.
+  A scrcpy shortcut that changes only the picture on this PC (turns, flips, pause, recapture:
+  `ScrcpyShortcuts.AppliesToEveryView`) is sent to every copy too, and a copy opens with the main
+  view's current `--display-orientation` (`DisplayOrientation`, composed as scrcpy composes it)
+  and paused if the main view is. Anything that acts on the phone is sent once, to the main session.
 - The soft background and the navigator picture are live copies of the on-screen mirror
   (`LiveCapture`), never phone screenshots: they must not add ADB traffic, and nothing else may poll
   the phone for pictures either. One capture feeds both. It goes through DXGI desktop duplication
