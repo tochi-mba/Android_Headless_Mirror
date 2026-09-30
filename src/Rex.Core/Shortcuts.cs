@@ -6,7 +6,8 @@ namespace Rex.Core;
 /// <param name="Description">What happens, in the same voice as the buttons.</param>
 /// <param name="IsKey">True for a key combination, false for a pointer or touchpad gesture.</param>
 /// <param name="Browse">True for a plain key that only means this while browse mode is on.</param>
-public sealed record Shortcut(string Id, string Gesture, string Description, bool IsKey = true, bool Browse = false);
+/// <param name="Action">For a browse key, the <see cref="MirrorActions"/> id it plays.</param>
+public sealed record Shortcut(string Id, string Gesture, string Description, bool IsKey = true, bool Browse = false, string? Action = null);
 
 /// <summary>
 /// Every shortcut the app answers to, in one place.
@@ -35,6 +36,8 @@ public static class Shortcuts
         new("swipe-up", "Ctrl+Alt+Down", "Next item in a feed (swipe up)"),
         new("tap", "Ctrl+Alt+Enter", "Tap the centre: open, play or pause"),
         new("browse", "Ctrl+Alt+K", "Browse mode on or off: plain keys drive the phone"),
+        new("copy-add", "Ctrl+Alt+N", "Add a copy of the phone beside it"),
+        new("copy-remove", "Ctrl+Alt+W", "Remove the last copy"),
         new("screenshot", "Ctrl+Alt+S", "Save a screenshot"),
         new("zoom-in", "Ctrl+Alt+Plus", "Zoom the PC view in"),
         new("zoom-out", "Ctrl+Alt+Minus", "Zoom the PC view out"),
@@ -46,14 +49,14 @@ public static class Shortcuts
         new("rotate-right", "Ctrl+Alt+Right", "Turn the PC view right"),
         new("pattern-guide", "Ctrl+Alt+P", "Show or hide the pattern guide"),
         new("pattern-calibrate", "Ctrl+Alt+C", "Calibrate the guide with the arrow keys"),
-        new("browse-next", "Down", "Next item in a feed (swipe up)", Browse: true),
-        new("browse-previous", "Up", "Previous item in a feed (swipe down)", Browse: true),
-        new("browse-forward", "Right", "Next story, photo or page (swipe left)", Browse: true),
-        new("browse-back", "Left", "Previous story, photo or page (swipe right)", Browse: true),
-        new("browse-tap", "Enter", "Tap the centre: open, play or pause (Space does the same)", Browse: true),
-        new("browse-like", "L", "Like: double-tap the centre", Browse: true),
-        new("browse-mute", "M", "Mute or unmute the phone", Browse: true),
-        new("browse-android-back", "Backspace", "Back", Browse: true),
+        new("browse-next", "Down", "Next item in a feed (swipe up)", Browse: true, Action: "swipe-up"),
+        new("browse-previous", "Up", "Previous item in a feed (swipe down)", Browse: true, Action: "swipe-down"),
+        new("browse-forward", "Right", "Next story, photo or page (swipe left)", Browse: true, Action: "swipe-left"),
+        new("browse-back", "Left", "Previous story, photo or page (swipe right)", Browse: true, Action: "swipe-right"),
+        new("browse-tap", "Enter", "Tap the centre: open, play or pause (Space does the same)", Browse: true, Action: "tap"),
+        new("browse-like", "L", "Like: double-tap the centre", Browse: true, Action: "like"),
+        new("browse-mute", "M", "Mute or unmute the phone", Browse: true, Action: "mute"),
+        new("browse-android-back", "Backspace", "Back", Browse: true, Action: "back"),
         new("host-zoom", "Alt + wheel", "Zoom the PC view at the pointer", IsKey: false),
         new("host-pinch", "Alt + pinch", "Zoom the PC view on a touchpad", IsKey: false),
         new("host-pan", "Alt + drag", "Pan while zoomed", IsKey: false),
@@ -68,10 +71,27 @@ public static class Shortcuts
     /// <summary>The gesture for an action, or an empty string when it has none.</summary>
     public static string Gesture(string id) => Find(id)?.Gesture ?? string.Empty;
 
-    /// <summary>A tooltip that ends with the shortcut, for controls that have one.</summary>
+    /// <summary>The plain key browse mode plays an action with, or an empty string when it has none.</summary>
+    public static string BrowseKey(string actionId) =>
+        All.FirstOrDefault(s => s.Browse && s.Action == actionId)?.Gesture ?? string.Empty;
+
+    /// <summary>
+    /// A tooltip that ends with every key that does the same thing: the shortcut, and the plain
+    /// key browse mode uses for it. A control with neither keeps its text as it is.
+    /// </summary>
     public static string Tip(string text, string id)
     {
-        var gesture = Gesture(id);
-        return gesture.Length == 0 ? text : text + " · " + gesture;
+        var keys = new List<string>(2);
+        if (Gesture(id) is { Length: > 0 } gesture)
+        {
+            keys.Add(gesture);
+        }
+
+        if (BrowseKey(id) is { Length: > 0 } browse)
+        {
+            keys.Add(browse + " in browse mode");
+        }
+
+        return keys.Count == 0 ? text : text + " · " + string.Join(" · ", keys);
     }
 }

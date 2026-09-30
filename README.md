@@ -68,6 +68,11 @@ until you delete that folder.
   letters still typing so a search box works. Esc returns to typing. The same gestures are buttons
   in Controls and the HUD, and `rex action swipe-up` from the command line, working over ADB
   even while the window is in the tray.
+- **Copies side by side.** While the phone is upright, **Add a copy** in Controls (Ctrl+Alt+N)
+  puts another live view of it beside the first, as many as fit the window at full height (up to
+  the limit in Settings → Copies of the phone). Every copy takes touch, typing and gestures, and
+  Alt + wheel or Alt + pinch over any of them zooms them all to the same place. Copies step aside
+  while the phone is on its side and come back when it is upright; Ctrl+Alt+W closes the last one.
 - **Command line and agent mode.** `rex.exe` (on your PATH after installing) scripts everything;
   `rex agent ...` and `rex --json ...` emit exactly one JSON document and never prompt.
 
@@ -86,6 +91,7 @@ until you delete that folder.
 | Take a screenshot              | Ctrl+Alt+S, or the camera in the top bar                       |
 | Browse a feed without the mouse| Ctrl+Alt+K, then Up / Down, Left / Right, Enter, L, M, Backspace |
 | One gesture while typing       | Ctrl+Alt+Up / Down; Ctrl+Alt+Enter taps the centre             |
+| See the phone twice or more    | Ctrl+Alt+N adds a copy beside it; Ctrl+Alt+W closes the last   |
 | Go back / show recent apps     | Ctrl+Alt+Backspace / Ctrl+Alt+R                                |
 | See the window explained again | F1, or Info → **Take the tour**                                 |
 | Find a setting                 | The search box at the top of Settings                          |
@@ -134,6 +140,16 @@ Installed, the app keeps `config.json`, `state.json`, logs and captures under
   USB debugging interface without the ADB interface GUID, typically after the phone changes USB
   mode or port. The app detects this and offers **Repair USB driver**; `rex usb` lists what Windows
   has and `rex usb repair` registers it (one administrator approval).
+- **"USB device not recognised".** Windows gave up reading the phone (Device Manager shows
+  *Unknown USB Device (Device Descriptor Request Failed)*). The app notices within a few seconds and
+  offers **Fix USB**, which resets the device through one administrator approval, and **Fix
+  automatically from now on**, which sets up a Windows task so later occurrences are reset without
+  asking (at most once every 90 seconds, three times per occurrence). If Windows still cannot read
+  the phone, try a port on the PC itself rather than a hub, another cable, turning off USB selective
+  suspend, and *File transfer* in the phone's USB options. `rex usb status` shows what Windows
+  reports; `rex usb repair --dry-run` and `rex usb enable-auto-repair --dry-run` say exactly what
+  would run; `rex usb disable-auto-repair` removes the task. The switch lives in Settings →
+  Connection & advanced.
 - **The phone asks to allow USB debugging.** Unlock it, tick *Always allow from this computer*, Allow.
 - **Nothing at all.** Try another cable or port; charge-only cables have no data lines.
 
@@ -143,8 +159,10 @@ Installed, the app keeps `config.json`, `state.json`, logs and captures under
 - Wireless ADB is off by default. USB remains the recovery path.
 - The app never stores or injects a PIN, password or pattern. After a reboot some phones require the
   first unlock on the device itself; that is an Android boundary, not something the app bypasses.
-- Nothing needs administrator rights except the optional USB driver repair, which always goes
-  through the Windows administrator prompt. REX has no account or telemetry and does not upload the
+- Nothing needs administrator rights except the optional USB repairs, which always go through the
+  Windows administrator prompt. The automatic USB repair is a scheduled task that runs only Windows'
+  own `pnputil.exe` from System32, with fixed arguments that touch only devices the USB hub already
+  failed to read; it never runs anything from the app's folder. REX has no account or telemetry and does not upload the
   mirrored screen, control data, lock information or phone content. Setup and updates connect to
   GitHub only to download REX and the official scrcpy distribution.
 

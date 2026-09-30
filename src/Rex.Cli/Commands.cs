@@ -41,7 +41,7 @@ public static class Commands
             }
 
             case "usb":
-                return await UsbAsync(context, positional.Length >= 2 ? positional[1] : "list").ConfigureAwait(false);
+                return await UsbCommands.RunAsync(args, context).ConfigureAwait(false);
 
             case "diagnostics":
             {
@@ -120,62 +120,6 @@ public static class Commands
 
             default:
                 throw new ArgumentException($"Unknown command '{command}'. Run 'rex help'.");
-        }
-    }
-
-    private static async Task<int> UsbAsync(CliContext context, string verb)
-    {
-        switch (verb.ToLowerInvariant())
-        {
-            case "list":
-            {
-                var interfaces = UsbAdbInterfaces.Scan();
-                if (interfaces.Count == 0)
-                {
-                    Console.WriteLine("Windows has no ADB interface registered. Plug the phone in with USB debugging turned on.");
-                    return 0;
-                }
-
-                foreach (var adbInterface in interfaces)
-                {
-                    var state = adbInterface.Unreachable ? "PLUGGED IN, NOT REGISTERED FOR ADB" : adbInterface.Present ? "ok" : "not attached";
-                    Console.WriteLine($"{state,-36} {adbInterface.InstanceId}  ({adbInterface.Description}, {adbInterface.Driver})");
-                }
-
-                if (interfaces.Any(x => x.Unreachable))
-                {
-                    Console.WriteLine("Run 'rex usb repair' to register the interface for ADB (asks for administrator approval).");
-                }
-
-                return 0;
-            }
-
-            case "repair":
-            {
-                if (!UsbAdbInterfaces.IsElevated)
-                {
-                    // Re-run this command through UAC; the elevated copy does the work and its exit code is ours.
-                    try
-                    {
-                        using var elevated = Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "usb repair") { UseShellExecute = true, Verb = "runas" })
-                            ?? throw new InvalidOperationException("Windows did not start the elevated repair.");
-                        await elevated.WaitForExitAsync().ConfigureAwait(false);
-                        Console.WriteLine(elevated.ExitCode == 0 ? "Repair finished. The phone should appear within a few seconds." : "The repair did not finish.");
-                        return elevated.ExitCode;
-                    }
-                    catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
-                    {
-                        throw new InvalidOperationException("Repair cancelled at the administrator prompt.");
-                    }
-                }
-
-                var repaired = await UsbAdbInterfaces.RepairAsync(context.Runner).ConfigureAwait(false);
-                Console.WriteLine(repaired.Count == 0 ? "Nothing to repair: every attached ADB interface is registered." : $"Registered {repaired.Count} interface(s): {string.Join(", ", repaired)}");
-                return 0;
-            }
-
-            default:
-                throw new ArgumentException("usb expects list or repair.");
         }
     }
 
@@ -484,7 +428,10 @@ public static class Commands
               rex lock-mode <serial> <mode>     pattern | other | none
               rex reset-lock [serial|ALL]       Forget lock-screen answers
               rex setup                         Install scrcpy without the app
-              rex usb [list|repair]             ADB interfaces Windows sees; repair one adb cannot (administrator)
+              rex usb [list]                    ADB interfaces, and USB devices Windows could not read
+              rex usb repair [--dry-run]        Repair both (asks for administrator approval)
+              rex usb enable-auto-repair        Fix "USB device not recognised" without asking (asks once)
+              rex usb disable-auto-repair       Remove that again; run-auto-repair starts it now
               rex diagnostics                   Full report
 
             Machine mode (one JSON document, never prompts): rex agent <command>, rex --json <command>

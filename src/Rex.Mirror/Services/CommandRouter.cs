@@ -77,6 +77,7 @@ public static class CommandRouter
                 var result = await session.RunActionAsync(id, appId => window is null
                     ? Task.FromResult(AndroidResult.Failure("The window is not available."))
                     : window.ApplyAppActionAsync(appId)).ConfigureAwait(true);
+                window?.NoteAction(id, result.Ok);
                 return result.Ok ? IpcResponse.Success(new JsonObject { ["action"] = id, ["text"] = result.Text }) : IpcResponse.Fail(result.Text);
             }
 
@@ -88,6 +89,42 @@ public static class CommandRouter
     public static string AppVersion =>
         typeof(CommandRouter).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
+    private static JsonObject CopiesStatus(MainWindow window)
+    {
+        var state = window.CopiesState;
+        return new JsonObject
+        {
+            ["wanted"] = state.Wanted,
+            ["running"] = state.Running,
+            ["starting"] = state.Starting,
+            ["shown"] = state.ShownViews,
+            ["hidden"] = state.Hidden,
+            ["canAdd"] = state.CanAdd,
+            ["canRemove"] = state.CanRemove,
+            ["reason"] = state.WhyNoMore,
+            ["summary"] = state.Summary,
+            ["processes"] = new JsonArray(window.Copies.Processes.Select(p => (JsonNode)p.ProcessId).ToArray()),
+            ["views"] = new JsonArray(window.AllViews.Select(view =>
+            {
+                var rect = view.ViewportScreenRect;
+                var surface = view.SurfaceRect;
+                return (JsonNode)new JsonObject
+                {
+                    ["x"] = rect.Left,
+                    ["y"] = rect.Top,
+                    ["width"] = rect.Width,
+                    ["height"] = rect.Height,
+                    ["shown"] = view.IsShown,
+                    ["zoom"] = Math.Round(view.Zoom, 3),
+                    ["surfaceX"] = Math.Round(surface.X),
+                    ["surfaceY"] = Math.Round(surface.Y),
+                    ["surfaceWidth"] = Math.Round(surface.Width),
+                    ["surfaceHeight"] = Math.Round(surface.Height),
+                };
+            }).ToArray()),
+        };
+    }
+
     public static JsonObject Status(AppHost host)
     {
         var session = host.Session;
@@ -98,6 +135,7 @@ public static class CommandRouter
             ["mirroring"] = session.IsMirroring,
             ["visibleDevices"] = session.Devices.Count,
             ["restartRequired"] = session.NeedsRestart,
+            ["paused"] = host.Window?.MirrorPaused ?? false,
             ["sidebarScrollOffset"] = host.Window?.SidebarScrollOffset ?? 0,
             ["ambientFrame"] = host.Window?.AmbientFrameAvailable ?? false,
             ["sidebarTab"] = host.Window?.SidebarTab,
@@ -137,6 +175,7 @@ public static class CommandRouter
                 ["dragging"] = nav.NavigatorDragging,
             } : null,
             ["lockQuestion"] = session.PendingLockQuestionSerial is not null,
+            ["usb"] = host.Usb.Status(),
             ["zoom"] = host.Window is { } w ? Math.Round(w.Host.Zoom, 3) : 1.0,
             // Where the picture sits inside the mirror area, so a caller can tell whether it fills
             // the space it is given: after the phone turns, a landscape picture should.
@@ -171,11 +210,14 @@ public static class CommandRouter
                 ["width"] = video.Width,
                 ["height"] = video.Height,
             } : null,
+            // The copies of the phone: how many are wanted, running and given room, and where each
+            // view is on screen with its zoom, so a test can see them side by side and in step.
+            ["copies"] = host.Window is { } copies ? CopiesStatus(copies) : null,
             ["keyboard"] = new JsonObject
             {
                 ["mode"] = session.Scrcpy?.KeyboardMode,
                 ["browse"] = host.Window?.BrowseMode ?? false,
-                ["altHeldForPc"] = host.Window?.Host.HoldingKeyboard ?? false,
+                ["altHeldForPc"] = host.Window?.AllViews.Any(view => view.HoldingKeyboard) ?? false,
             },
             ["device"] = session.ActiveDevice is null ? null : new JsonObject
             {

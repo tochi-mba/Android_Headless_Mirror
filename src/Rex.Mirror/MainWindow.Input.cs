@@ -68,15 +68,17 @@ public partial class MainWindow
             return false;
         }
 
-        var viewport = Host.ViewportScreenRect;
-        if (screenX < viewport.Left || screenX >= viewport.Right || screenY < viewport.Top || screenY >= viewport.Bottom)
+        // Over a copy, the zoom is anchored at the same spot of the main view: every copy follows
+        // the main view, so all of them zoom in on the same place.
+        if (OnMainView(screenX, screenY) is not { } onMain)
         {
             return false;
         }
 
+        var viewport = Host.ViewportScreenRect;
         var direction = delta > 0 ? 1 : -1;
-        var anchorX = screenX - viewport.Left;
-        var anchorY = screenY - viewport.Top;
+        var anchorX = onMain.X - viewport.Left;
+        var anchorY = onMain.Y - viewport.Top;
         var step = _host.Config.Zoom.WheelStep;
         Dispatcher.BeginInvoke(() => Host.ZoomStep(direction, anchorX, anchorY, step));
         return true;
@@ -143,6 +145,12 @@ public partial class MainWindow
                 return true;
             case NativeMethods.VK_RETURN when ctrl && alt:
                 Dispatcher.BeginInvoke(() => _ = RunActionAsync("tap"));
+                return true;
+            case 'N' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("copy-add"));
+                return true;
+            case 'W' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("copy-remove"));
                 return true;
             case 'K' when ctrl && alt:
                 Dispatcher.BeginInvoke(() => _ = RunActionAsync("browse"));

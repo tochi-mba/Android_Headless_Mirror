@@ -301,12 +301,14 @@ public sealed class AdbClient
         }
 
         var probed = new Dictionary<string, string>(StringComparer.Ordinal);
+        var native = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (id, command) in PhoneSettings.Probes)
         {
             var result = await ShellAsync(serial, command, cancellationToken).ConfigureAwait(false);
             if (result.Ok)
             {
                 probed[id] = PhoneSettings.ParseProbe(id, result.StdOut);
+                native[id] = PhoneSettings.ParseNative(id, result.StdOut);
             }
         }
 
@@ -315,11 +317,11 @@ public sealed class AdbClient
         {
             var value = probed.TryGetValue(setting.Id, out var probe) && probe.Length > 0
                 ? probe
-                : stored.GetValueOrDefault((setting.Namespace, setting.Key), string.Empty);
+                : PhoneSettings.StoredValue(setting, stored.GetValueOrDefault((setting.Namespace, setting.Key), string.Empty));
 
             if (setting.AlwaysAvailable || stored.ContainsKey((setting.Namespace, setting.Key)))
             {
-                values.Add(new PhoneSettingValue(setting, value));
+                values.Add(new PhoneSettingValue(setting, value) { Native = native.GetValueOrDefault(setting.Id, string.Empty) });
             }
         }
 
@@ -352,7 +354,10 @@ public sealed class AdbClient
             : AndroidResult.Failure(result.FailureText);
     }
 
-    /// <summary>Deletes a catalogue setting's key so Android falls back to its own default.</summary>
+    /// <summary>
+    /// Puts back the phone's own value: a provider key is deleted so Android falls back to its
+    /// default, and a display size or density override is reset.
+    /// </summary>
     public async Task<AndroidResult> ResetPhoneSettingAsync(string serial, string id, CancellationToken cancellationToken = default)
     {
         if (PhoneSettings.Find(id) is not { } setting)
@@ -365,7 +370,14 @@ public sealed class AdbClient
             return AndroidResult.Failure($"{setting.Label} has no stored key to delete; set it to the value you want instead.");
         }
 
-        return await DeleteSettingAsync(serial, setting.Namespace, setting.Key, cancellationToken).ConfigureAwait(false);
+        if (setting.Source == PhoneSettingSource.SettingsProvider)
+        {
+            // Through DeleteSettingAsync, so the protected-key guard is never bypassed.
+            return await DeleteSettingAsync(serial, setting.Namespace, setting.Key, cancellationToken).ConfigureAwait(false);
+        }
+
+        var result = await ShellAsync(serial, PhoneSettings.ResetCommand(setting), cancellationToken).ConfigureAwait(false);
+        return result.Ok ? AndroidResult.Success($"{setting.Label} is back to the phone's own.") : AndroidResult.Failure(result.FailureText);
     }
 
     /// <summary>Forces a display rotation (0..3) or restores sensor rotation ("auto"). Reversible.</summary>

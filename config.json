@@ -52,6 +52,12 @@
     "NavigatorFrameRate": 30,
     "NavigatorAlways": false
   },
+  "Copies": {
+    "Most": 3,
+    "Gap": 12,
+    "MaxSize": 0,
+    "Remember": true
+  },
   "Ambient": {
     "Enabled": true,
     "Opacity": 0.42,
@@ -101,7 +107,8 @@
     "RunInBackground": true,
     "OpenOnConnect": true,
     "ConfirmSensitiveWrites": true,
-    "ScreenshotDirectory": "captures/screenshots"
+    "ScreenshotDirectory": "captures/screenshots",
+    "AutoRepairUsb": true
   },
   "Logging": {
     "Enabled": true,

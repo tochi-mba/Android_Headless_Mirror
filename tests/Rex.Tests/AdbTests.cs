@@ -152,6 +152,10 @@ public sealed class AdbTests
         Assert.True((await adb.ResetPhoneSettingAsync("S", "brightness", TestContext.Current.CancellationToken)).Ok);
         Assert.Equal(["-s", "S", "shell", "settings", "delete", "system", "screen_brightness"], runner.Calls[^1].Arguments);
         Assert.False((await adb.ResetPhoneSettingAsync("S", "dark-mode", TestContext.Current.CancellationToken)).Ok);
+
+        // A display size override is reset rather than deleted.
+        Assert.True((await adb.ResetPhoneSettingAsync("S", "display-density", TestContext.Current.CancellationToken)).Ok);
+        Assert.Equal(["-s", "S", "shell", "wm", "density", "reset"], runner.Calls[^1].Arguments);
     }
 
     [Fact]
@@ -180,7 +184,32 @@ public sealed class AdbTests
         Assert.DoesNotContain(values, v => v.Setting.Id == "auto-rotate");
         // Settings with their own writer are always offered.
         Assert.Contains(values, v => v.Setting.Id == "wifi");
-        Assert.Equal("1440x3200", values.Single(v => v.Setting.Id == "display-size").Value);
+        // No override: the value is empty (so no reset is offered) and the screen's own size is shown.
+        var size = values.Single(v => v.Setting.Id == "display-size");
+        Assert.Equal(string.Empty, size.Value);
+        Assert.Equal("1440x3200", size.Native);
+        Assert.Equal("default (1440x3200)", size.Display);
+    }
+
+    [Fact]
+    public async Task ReadPhoneSettings_DarkModeFallsBackToTheStoredNumberInWords()
+    {
+        // An old phone without "cmd uimode" answers with nothing useful; ui_night_mode still says.
+        var runner = new FakeProcessRunner
+        {
+            Respond = args => args switch
+            {
+                [.., "settings", "list", "secure"] => new ProcessResult(0, "ui_night_mode=2\n", ""),
+                [.., "cmd", "uimode", "night"] => new ProcessResult(0, "Unknown command: night\n", ""),
+                _ => new ProcessResult(0, string.Empty, ""),
+            },
+        };
+
+        var values = await new AdbClient("adb.exe", runner).ReadPhoneSettingsAsync("S", TestContext.Current.CancellationToken);
+
+        var dark = values.Single(v => v.Setting.Id == "dark-mode");
+        Assert.Equal("yes", dark.Value);
+        Assert.Equal("On", dark.Display);
     }
 
     [Fact]

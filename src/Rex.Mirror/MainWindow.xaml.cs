@@ -106,6 +106,7 @@ public partial class MainWindow : Window
         {
             PanelAt = (x, y) => SidebarScroll.IsVisible && _sidebarWheelBounds.Contains(x, y),
             ScrollPanel = delta => SidebarScroll.ScrollToVerticalOffset(SidebarScroll.VerticalOffset - delta),
+            MapToMain = OnMainView,
         };
         _keyboardTouch = new KeyboardTouch(Host, _injector, host.Log.Warn)
         {
@@ -119,6 +120,7 @@ public partial class MainWindow : Window
         _ambientTimer.Tick += (_, _) => CaptureAmbientFrame();
 
         Host.ViewChanged += _ => OnViewChanged();
+        InitCopies();
         Host.ChildFocused += () => _overlay.ClearTrail();
 
         // WPF IsActive can lag when focus crosses into the embedded scrcpy HWND.
@@ -130,13 +132,17 @@ public partial class MainWindow : Window
         _hooks.KeyDown = OnHotkey;
         _hooks.PcAlt = down =>
         {
-            if (down)
+            // Whichever view has the keyboard: the main one or a copy.
+            foreach (var view in AllViews)
             {
-                Host.HoldKeyboard();
-            }
-            else
-            {
-                Host.ReleaseKeyboard();
+                if (down)
+                {
+                    view.HoldKeyboard();
+                }
+                else
+                {
+                    view.ReleaseKeyboard();
+                }
             }
         };
 
@@ -147,11 +153,12 @@ public partial class MainWindow : Window
         Onboarding.Attach(this, host);
 
         host.Session.Changed += OnSessionChanged;
+        host.Usb.Changed += OnUsbChanged;
         host.Session.MirrorReady += OnMirrorReady;
         host.Session.MirrorEnded += OnMirrorEnded;
         host.Session.LaunchRect = LaunchRect;
         host.ConfigChanged += OnConfigChanged;
-        host.ConfigPreviewed += () => { Host.MaxZoom = _host.Config.Zoom.MaxZoom; TrackOverlay(); };
+        host.ConfigPreviewed += () => { Host.MaxZoom = _host.Config.Zoom.MaxZoom; PreviewCopies(); TrackOverlay(); };
 
         SourceInitialized += (_, _) =>
         {
@@ -165,7 +172,7 @@ public partial class MainWindow : Window
         LocationChanged += (_, _) => TrackOverlay();
         SizeChanged += (_, _) => TrackOverlay();
         StateChanged += (_, _) => TrackOverlay();
-        Activated += (_, _) => { if (Host.HasChild) { Host.FocusChild(); } };
+        Activated += (_, _) => { if (ActiveView.HasChild) { ActiveView.FocusChild(); } };
         Deactivated += (_, _) => _overlay.ClearTrail();
         Closing += OnClosing;
 
@@ -205,6 +212,13 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// True once the app is quitting. Work queued before then (a layout pass's follow-up, a USB
+    /// check that was already running) can land after the application's resources are gone, and
+    /// anything that looks one up would throw and keep the process from exiting.
+    /// </summary>
+    internal bool Quitting => _quitting;
+
     public void QuitApplication()
     {
         _quitting = true;
@@ -223,6 +237,7 @@ public partial class MainWindow : Window
             _liveCapture.Dispose();
             _overlay.Close();
             _hooks.Dispose();
+            _copies?.Dispose();
             return;
         }
 
@@ -241,6 +256,11 @@ public partial class MainWindow : Window
 
     private void OnSessionChanged()
     {
+        if (_quitting)
+        {
+            return;
+        }
+
         var session = _host.Session;
         SettingsPanel.RefreshRestartNotice();
         var mirroring = session.IsMirroring;
@@ -295,6 +315,7 @@ public partial class MainWindow : Window
         MirrorArea.Visibility = onboarding ? Visibility.Collapsed : Visibility.Visible;
         Sidebar.Visibility = onboarding ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);
         Host.SetShown(mirroring && !onboarding);
+        UpdateCopiesShown();
         if (onboarding)
         {
             Onboarding.Refresh();
@@ -344,6 +365,10 @@ public partial class MainWindow : Window
                 NoticeText.Text = "Pattern phones get a nine-dot guide when the lock screen shows black. Nothing about the pattern itself is stored.";
             }
         }
+        else if (ShowUsbNotice())
+        {
+            // A phone Windows cannot read outranks a hint: it is why nothing is on screen.
+        }
         else if (_tipShowing is null || _fullscreen)
         {
             NoticeBar.Visibility = Visibility.Collapsed;
@@ -379,6 +404,8 @@ public partial class MainWindow : Window
 
         Host.SetShown(true);
         Host.Attach(scrcpy.Hwnd, scrcpy.ThreadId, (uint)scrcpy.ProcessId);
+        // A new mirror shows a live picture, whatever the last one was left at.
+        SetPaused(false);
 
         // scrcpy says what shape the video is every time it changes. Its own window resize is the
         // other signal, but it is sent once and can be lost to a layout pass that lands first,
@@ -416,6 +443,9 @@ public partial class MainWindow : Window
 
         OnSessionChanged();
         TrackOverlay();
+
+        // Copies follow the main picture: they start once it is up, one at a time.
+        _copies?.Pump();
     }
 
     private void OnMirrorEnded()
@@ -432,6 +462,9 @@ public partial class MainWindow : Window
         _overlay.Track(default, visible: false);
         // Browse mode is about the picture that just went away; the next session starts typing.
         _browse = false;
+        SetPaused(false);
+        // Nothing to copy without the main picture: the copies close, and come back with it.
+        _copies?.Pump();
         OnSessionChanged();
     }
 
@@ -474,6 +507,7 @@ public partial class MainWindow : Window
             StartPatternGuideIfNeeded();
         }
 
+        ApplyCopiesConfig();
         SettingsPanel.Refresh();
         OnSessionChanged();
     }
@@ -505,11 +539,15 @@ public partial class MainWindow : Window
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         if (visible)
         {
-            Host.SyncChildShape();
+            foreach (var view in AllViews)
+            {
+                view.SyncChildShape();
+            }
         }
 
         _overlay.ReleaseStuckDrags();
-        _overlay.Track(visible ? Host.ViewportScreenRect : default, visible);
+        // The overlay covers the whole mirror area: with copies the main view is only one cell of it.
+        _overlay.Track(visible ? AreaScreenRect() : default, visible);
         _overlay.UpdateHud(_fullscreen && visible, Host.Zoom, _host.Config.Hud);
         if (visible)
         {
@@ -540,7 +578,7 @@ public partial class MainWindow : Window
         _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction(), zoom);
         // A blurred wash is the opposite of what High Contrast is for, so it stands down there.
         var ambient = _host.Config.Ambient.Enabled && Host.HasChild && !SystemParameters.HighContrast;
-        Ambient.Update(ambient, Host.SurfaceRect, _host.Config.Ambient);
+        Ambient.Update(ambient, PicturesInArea(), _host.Config.Ambient);
         _ambientWanted = ambient;
         _previewWanted = show && zoom.NavigatorPicture;
 
@@ -633,6 +671,10 @@ public partial class MainWindow : Window
             case "screenshot":
                 _ = SaveScreenshotAsync();
                 return AndroidResult.Success("Saving…");
+            case "copy-add":
+                return Copies.Add();
+            case "copy-remove":
+                return Copies.Remove();
             default:
                 return AndroidResult.Failure($"Unknown app action '{id}'.");
         }
@@ -641,10 +683,12 @@ public partial class MainWindow : Window
     public async Task RunActionAsync(string id)
     {
         var result = await _host.Session.RunActionAsync(id, ApplyAppActionAsync);
+        NoteAction(id, result.Ok);
         SetStatus(result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? MirrorActions.Find(id)?.Label ?? id : result.Text) : result.Text, !result.Ok);
-        if (Host.HasChild)
+        // Back to whichever view was being used, the main one or a copy.
+        if (ActiveView.HasChild)
         {
-            Host.FocusChild();
+            ActiveView.FocusChild();
         }
     }
 
@@ -763,31 +807,18 @@ public partial class MainWindow : Window
 
     private async void OnRepairUsb(object sender, RoutedEventArgs e) => await RepairUsbAsync();
 
-    /// <summary>Runs "rex usb repair" elevated; Windows shows the UAC prompt, the exit code tells the outcome.</summary>
+    /// <summary>
+    /// Runs "rex usb repair" through the administrator prompt: it registers ADB interfaces Windows
+    /// bound without the ADB class and resets USB devices Windows could not read.
+    /// </summary>
     public async Task RepairUsbAsync()
     {
-        var cli = Path.Combine(AppContext.BaseDirectory, "rex.exe");
-        if (!File.Exists(cli))
-        {
-            SetStatus("rex.exe was not found next to the app, so the repair cannot run.", isError: true);
-            return;
-        }
-
         EmptyRepair.IsEnabled = false;
         SetStatus("Waiting for administrator approval…");
         try
         {
-            using var repair = Process.Start(new ProcessStartInfo(cli, "usb repair") { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden })
-                ?? throw new InvalidOperationException("Windows did not start the repair.");
-            await repair.WaitForExitAsync();
-            SetStatus(repair.ExitCode == 0
-                ? "USB driver registered. The phone should appear in a moment; unplug and plug it in again if it does not."
-                : "The repair did not finish. Run 'rex usb repair' in an administrator terminal to see why.", repair.ExitCode != 0);
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            // ERROR_CANCELLED (1223) is the user declining the UAC prompt.
-            SetStatus(ex is System.ComponentModel.Win32Exception { NativeErrorCode: 1223 } ? "Repair cancelled." : "Could not start the repair: " + ex.Message, isError: true);
+            var (ok, message) = await _host.Usb.RepairAsync();
+            SetStatus(message, isError: !ok);
         }
         finally
         {

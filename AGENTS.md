@@ -29,7 +29,8 @@ Discover the live contract first:
 REX.bat agent capabilities
 ```
 
-Commands: `capabilities`, `status`, `devices`, `diagnostics`, `usb [list|repair]`, `open`, `stop`, `quit`, `action <id>`,
+Commands: `capabilities`, `status`, `devices`, `diagnostics`,
+`usb [list|status|repair|enable-auto-repair|disable-auto-repair|run-auto-repair] [--dry-run]`, `open`, `stop`, `quit`, `action <id>`,
 `zoom <in|out|reset>`, `screenshot`, `phone get|set <setting> <value>`,
 `android list|get|set|delete <system|secure|global> [key] [value] [--filter text]`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
@@ -45,8 +46,10 @@ Rules:
   `development_settings_enabled`, `android_id`, `bluetooth_address`, `adb_wifi_enabled`).
 - `config set` keeps the type of the existing value and writes `config.json.rex-backup` first;
   `config restore` swaps them back.
-- `usb repair` edits HKLM device registrations, so in machine mode it requires an already
-  elevated shell and fails otherwise; the human CLI and the app go through the UAC prompt.
+- `usb repair`, `usb enable-auto-repair` and `usb disable-auto-repair` change the PC (HKLM device
+  registrations, pnputil, Task Scheduler), so in machine mode they require an already elevated
+  shell and fail otherwise; the human CLI and the app go through the UAC prompt. `--dry-run` says
+  what they would do without either. `usb run-auto-repair` needs no elevation.
 
 ## Layout and paths
 
@@ -70,7 +73,13 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   ConfigStore           dotted-path access to config.json for the CLI
   AdbClient/AdbParsing  every ADB call, quoting, output parsing, friendly settings
   UsbAdbInterfaces      Windows ADB interfaces adb cannot see, and their repair
-  ScrcpyArguments       the scrcpy command line for an embedded session
+  UsbProblems           phones Windows could not read over USB (pure classifier over a thin CfgMgr32 scan)
+  UsbRecoveryPolicy     when to repair and what the notice says: episodes, delays, rate limits
+  UsbRepairPlan         the prompted repair: restart failed nodes, then remove and rescan what is left
+  UsbAutoRepairTask     the no-prompt repair: a fixed System32 pnputil task (WindowsTaskScheduler)
+  UsbSystem             every USB-touching dependency in one place, with the test seams
+  ScrcpyArguments       the scrcpy command line for an embedded session (and for a copy of it)
+  CopiesLayout/Plan     copies of the phone: how many fit, their cells, and which to start or stop next
   ScrcpyInstaller       verified download of the official scrcpy release; ToolLocator finds the newest copy
   StateStore            state.json: phones, lock-screen answers, calibration, UI state
   PatternGeometry       pattern-guide geometry (pure functions)
@@ -80,13 +89,14 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   MirrorActions         the single list of user actions and their scrcpy shortcuts
 src/Rex.Mirror          WPF app (RexMirror.exe)
   Mirror/MirrorHost     HwndHost that embeds scrcpy and scales it for zoom
+  Mirror/MirrorGroupPanel lays out the main view and its copies side by side
   Mirror/OverlayWindow  transparent layer: soft background, pattern guide, navigator, touchpad receiver
   Mirror/LiveCapture    one downscaled frame of the on-screen mirror surface for the soft background
   Mirror/FullscreenHud* the compact fullscreen HUD in its own non-activating window
   Mirror/TouchpadBridge Precision Touchpad contacts → phone touch (or Alt → host zoom/pan)
   Mirror/PatternGuide   keyguard polling, geometry discovery, calibration
-  Session/*             supervisor: device watching, scrcpy lifecycle, actions
-  Services/*            composition root, pipe server, command router, tray icon
+  Session/*             supervisor: device watching, scrcpy lifecycle, actions, copies (CopiesController)
+  Services/*            composition root, pipe server, command router, tray icon, UsbDoctor
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
 src/Rex.Cli             rex.exe: human commands and MachineMode
 tests/Rex.Tests         xUnit: unit, contract, end-to-end and UI-automation tests
@@ -150,6 +160,16 @@ docs/                   GitHub Pages site; its download button points at the lat
   calibration only applies in the orientation it was made in, and saving one without moving it
   clears it instead: an unmoved calibration would freeze the automatic placement for good.
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
+- Copies of the phone are extra scrcpy sessions, each embedded in its own `MirrorHost` beside the
+  main one. The main view leads: zoom, pan, the navigator, the pattern guide and the soft
+  background's source are its own, and every copy follows its zoom (`MirrorHost.Follow`). A point
+  over a copy is mapped to the same spot on the main view (`MainWindow.OnMainView`) before it
+  anchors a zoom or starts a touch. A copy passes `--no-cleanup --no-power-on --no-audio` and none
+  of the power options, because each scrcpy session restores its own snapshot of the phone when it
+  exits and would undo the main session's; it gets a port of its own (`ScrcpyArguments.CopyPort`)
+  and records nothing. Copies start one at a time after the main picture is up (`CopiesPlan`): two
+  sessions starting together race for the server upload and the port. Copies are only shown for an
+  upright picture and only as many as the width holds; the rest keep running out of sight.
 - The soft background and the navigator picture are live copies of the on-screen mirror
   (`LiveCapture`), never phone screenshots: they must not add ADB traffic, and nothing else may poll
   the phone for pictures either. One capture feeds both. It goes through DXGI desktop duplication
@@ -169,6 +189,8 @@ docs/                   GitHub Pages site; its download button points at the lat
   splitter included); `RepositoryTests.NoControlIsLeftLookingLikeStockWindows` fails otherwise. The
   tray menu is Windows Forms and is painted by `TrayMenuRenderer`, whose colours must match the
   palette.
+- The overlay covers the whole mirror area, which with copies is wider than the main view:
+  anything drawn on it for the main view is placed with `MirrorHost.AreaSurfaceRect`.
 - Every visual choice the user can make lives in `config.json` and previews instantly:
   `AppHost.PreviewConfig` updates memory and debounces the write, `UpdateConfig` writes at once.
   The app also watches config.json, so `rex config set` applies to the running window.
@@ -178,7 +200,16 @@ docs/                   GitHub Pages site; its download button points at the lat
 - Plain two-finger touchpad gestures go to the phone as real touch. Alt is the only host modifier.
 - Any authorised phone can be used. A preferred serial is a preference, never a lock.
 - The app never calls `adb kill-server`, never stores or injects unlock credentials, and needs admin only
-  for the explicit USB driver repair (`UsbAdbInterfaces`), always via the Windows prompt.
+  for the explicit USB repairs (`UsbAdbInterfaces`, `UsbRepairPlan`) and for setting up or removing
+  the auto-repair task, always via the Windows prompt.
+- The installer is per-user, so the app's own executables are writable by the user. Nothing may
+  ever run them with elevated rights without a prompt: that would hand administrator rights to
+  whatever replaced them. The one no-prompt path, `UsbAutoRepairTask`, runs only System32
+  `pnputil.exe` with fixed arguments that name the generic failed-enumeration ids, as SYSTEM, with a
+  security descriptor that lets interactive users start it and nobody but SYSTEM and Administrators
+  change it. The app starts it only when the registered definition matches exactly
+  (`UsbAutoRepairTask.IsCurrent`). Tests never reach the real devices, Task Scheduler or UAC:
+  `REX_FAKE_USB_PROBLEMS` and `REX_FAKE_USB_REPAIR_LOG` replace them, and `AppProcess` always sets both.
 - Before upgrading, the installer stops processes whose executable paths are inside the installation
   directory, including its bundled ADB server. It never sends a global `adb kill-server` command.
 - Wireless ADB stays opt-in.

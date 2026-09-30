@@ -28,9 +28,32 @@ public sealed class MirrorHost : HwndHost
     public event Action<ZoomView>? ViewChanged;
     public event Action? ChildFocused;
 
+    /// <summary>
+    /// Where this viewport sits inside the mirror area, in physical pixels. With one view it is
+    /// the whole area and this is zero; with copies of the phone beside it, the overlay and the
+    /// soft background still cover the whole area, and use this to find this view inside it.
+    /// </summary>
+    public Point AreaOffset { get; set; }
+
+    /// <summary>The picture's rectangle in mirror-area pixels (see <see cref="AreaOffset"/>).</summary>
+    public RectD AreaSurfaceRect => new(AreaOffset.X + _view.OffsetX, AreaOffset.Y + _view.OffsetY, _view.SurfaceWidth, _view.SurfaceHeight);
+
+    /// <summary>The viewport's rectangle in mirror-area pixels.</summary>
+    public RectD AreaViewportRect
+    {
+        get
+        {
+            var (width, height) = ViewportPixels;
+            return new RectD(AreaOffset.X, AreaOffset.Y, width, height);
+        }
+    }
+
     public bool HasChild => _child != IntPtr.Zero && NativeMethods.IsWindow(_child);
     public IntPtr ViewportHandle => _viewport;
     public double Zoom => _zoom;
+
+    /// <summary>The picture's width over its height, as last reported by scrcpy or its window.</summary>
+    public double VideoAspect => _videoAspect;
     public ZoomView View => _view;
     public double MaxZoom { get; set; } = 4.0;
 
@@ -201,6 +224,9 @@ public sealed class MirrorHost : HwndHost
     private static bool Same(RECT? a, RECT? b) =>
         a is { } x ? b is { } y && x.Left == y.Left && x.Top == y.Top && x.Right == y.Right && x.Bottom == y.Bottom : b is null;
 
+    /// <summary>Whether the native viewport is showing on screen right now.</summary>
+    public bool IsShown => _viewport != IntPtr.Zero && NativeMethods.IsWindowVisible(_viewport);
+
     /// <summary>Hides the native viewport so WPF content (empty state, setup) can show in its place.</summary>
     public void SetShown(bool shown)
     {
@@ -298,6 +324,50 @@ public sealed class MirrorHost : HwndHost
         var (width, height) = ViewportPixels;
         _view = ZoomMath.Pan(width, height, _view, deltaX, deltaY);
         Apply();
+    }
+
+    /// <summary>
+    /// Takes the same zoom and the same part of the phone as <paramref name="leader"/>, so a copy
+    /// of the phone always shows what the main view shows. Views of different sizes keep the same
+    /// proportions: the picture is scaled with the viewport.
+    /// </summary>
+    public void Follow(MirrorHost leader)
+    {
+        if (ReferenceEquals(leader, this))
+        {
+            return;
+        }
+
+        var (width, height) = ViewportPixels;
+        var (leaderWidth, leaderHeight) = leader.ViewportPixels;
+        if (width <= 0 || height <= 0 || leaderWidth <= 0 || leaderHeight <= 0)
+        {
+            return;
+        }
+
+        var view = FollowedView(leader._view, leaderWidth, leaderHeight, width, height);
+        if (Math.Abs(leader._zoom - _zoom) < 1e-9 && view == _view)
+        {
+            return;
+        }
+
+        _zoom = leader._zoom;
+        _view = view;
+        Apply();
+    }
+
+    /// <summary>A leader's view carried over to a viewport of another size, in proportion.</summary>
+    internal static ZoomView FollowedView(ZoomView leader, int leaderWidth, int leaderHeight, int width, int height)
+    {
+        var scaleX = (double)width / leaderWidth;
+        var scaleY = (double)height / leaderHeight;
+        return leader with
+        {
+            OffsetX = leader.OffsetX * scaleX,
+            OffsetY = leader.OffsetY * scaleY,
+            SurfaceWidth = leader.SurfaceWidth * scaleX,
+            SurfaceHeight = leader.SurfaceHeight * scaleY,
+        };
     }
 
     public void CenterOn(double fractionX, double fractionY)

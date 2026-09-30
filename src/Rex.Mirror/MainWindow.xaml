@@ -92,6 +92,12 @@
           <Button x:Name="NoticeOther" Content="PIN, password or other" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnLockAnswer" Tag="other" />
           <Button x:Name="NoticeNone" Content="No lock" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnLockAnswer" Tag="none" />
           <Button x:Name="NoticeLater" Content="Later" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Margin="0,2,0,2" Click="OnLockAnswer" Tag="later" />
+          <Button x:Name="NoticeUsbRepair" Content="Fix USB" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnUsbRepair" Visibility="Collapsed"
+                  ToolTip="Reset the USB connection. Windows asks for administrator approval." />
+          <Button x:Name="NoticeUsbAuto" Content="Fix automatically from now on" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnUsbAutoRepair" Visibility="Collapsed"
+                  ToolTip="Set up a Windows task that resets failed USB devices without asking again. Windows asks for administrator approval once." />
+          <Button x:Name="NoticeUsbHide" Content="Hide" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Margin="0,2,0,2" Click="OnUsbHide" Visibility="Collapsed"
+                  ToolTip="Say nothing more about it until the phone comes back or is unplugged" />
           <Button x:Name="NoticeDismiss" Content="Got it" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="14,4" Margin="0,2,0,2" Click="OnDismissTip" Visibility="Collapsed" />
         </WrapPanel>
       </Grid>
@@ -107,7 +113,9 @@
 
       <Grid x:Name="MirrorArea" Background="{StaticResource Ink}">
         <mirror:AmbientView x:Name="Ambient" />
-        <mirror:MirrorHost x:Name="Host" />
+        <mirror:MirrorGroupPanel x:Name="Group">
+          <mirror:MirrorHost x:Name="Host" />
+        </mirror:MirrorGroupPanel>
         <Grid x:Name="EmptyState" Background="{StaticResource Ink}">
           <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420" Margin="24">
             <Grid Width="96" Height="96" HorizontalAlignment="Center" Margin="0,0,0,22">
@@ -135,14 +143,18 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
-          <UniformGrid x:Name="SidebarTabs" Rows="1" Margin="8,8,8,4">
+          <!-- The tabs line up with the content below: 16 DIP in from the left, and clear of the
+               scroll bar on the right, which is always there so the edge never moves. -->
+          <UniformGrid x:Name="SidebarTabs" Rows="1" Margin="14,8,22,4">
             <RadioButton x:Name="TabControls" Style="{StaticResource SidebarTab}" Content="Controls" Tag="{StaticResource IconSliders}" IsChecked="True" Checked="OnTabChecked" />
             <RadioButton x:Name="TabPhone" Style="{StaticResource SidebarTab}" Content="Phone" Tag="{StaticResource IconPhone}" Checked="OnTabChecked" />
             <RadioButton x:Name="TabSettings" Style="{StaticResource SidebarTab}" Content="Settings" Tag="{StaticResource IconSettings}" Checked="OnTabChecked" />
             <RadioButton x:Name="TabInfo" Style="{StaticResource SidebarTab}" Content="Info" Tag="{StaticResource IconInfo}" Checked="OnTabChecked" />
           </UniformGrid>
-          <ScrollViewer x:Name="SidebarScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,4,16,16">
-            <Grid>
+          <!-- Half the 16 DIP gutter is padding and half is margin inside the scrolled area, so a focus
+               ring may reach past the content's edge without being clipped. -->
+          <ScrollViewer x:Name="SidebarScroll" Grid.Row="1" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,16">
+            <Grid Margin="8,0">
               <views:ControlsPanel x:Name="ControlsPanel" />
               <views:PhonePanel x:Name="PhonePanel" Visibility="Collapsed" />
               <views:SettingsPanel x:Name="SettingsPanel" Visibility="Collapsed" />

@@ -1,5 +1,8 @@
+using System.ComponentModel;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Rex.Core;
 using Rex.Mirror.Services;
@@ -7,94 +10,162 @@ using Rex.Mirror.Session;
 
 namespace Rex.Mirror.Views;
 
-public sealed record ActionTileModel(string Id, string Label, string Detail, Geometry Icon);
+/// <summary>
+/// One tile: the action it runs, its icon, and a tooltip that ends with every key that does the
+/// same. The pause tile turns into Resume in place, so the tile a person just pressed keeps focus.
+/// </summary>
+public sealed class ActionTileModel : INotifyPropertyChanged
+{
+    public ActionTileModel(MirrorAction action, Geometry icon, string automationId)
+    {
+        AutomationId = automationId;
+        Show(action, icon);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Stays the same when the tile changes action, so automation can hold on to it.</summary>
+    public string AutomationId { get; }
+
+    public string Id { get; private set; } = string.Empty;
+
+    public string Label { get; private set; } = string.Empty;
+
+    public string Tip { get; private set; } = string.Empty;
+
+    public Geometry Icon { get; private set; } = Geometry.Empty;
+
+    public void Show(MirrorAction action, Geometry icon)
+    {
+        if (Id == action.Id)
+        {
+            return;
+        }
+
+        Id = action.Id;
+        Label = action.Label;
+        Tip = Shortcuts.Tip(action.Detail, action.Id);
+        Icon = icon;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));
+    }
+}
 
 public partial class ControlsPanel : UserControl
 {
+    /// <summary>What a tile or button says while there is no phone for it to act on.</summary>
+    public const string NeedsPhone = "Connect a phone to use these";
+
+    internal static readonly string[] PhoneTileIds =
+        ["home", "back", "recents", "power", "wake", "sleep", "volume-up", "volume-down", "mute", "notifications", "quick-settings", "collapse"];
+
+    /// <summary>
+    /// What the PC does with the picture. Rotating the phone itself is under phone orientation, and
+    /// scrcpy's FPS counter is left to the command line: it prints to a console nobody can see here.
+    /// </summary>
+    internal static readonly string[] ViewTileIds = ["rotate-left", "rotate-right", "pause", "reset-capture", "screenshot", "fullscreen"];
+
+    /// <summary>Up then down, left then right, the way their keys sit; tap and like end the rows.</summary>
+    internal static readonly string[] GestureTileIds = ["swipe-down", "swipe-up", "tap", "swipe-right", "swipe-left", "like"];
+
+    private readonly ActionTileModel _pauseTile;
     private MainWindow? _window;
     private AppHost? _host;
+
+    /// <summary>
+    /// True while the panel shows state it has read (the phone's orientation, browse mode). Only a
+    /// person, or assistive technology acting for one, changing a choice should run its action.
+    /// </summary>
+    private bool _syncing;
 
     public ControlsPanel()
     {
         InitializeComponent();
+        NavigationTiles.ItemsSource = Tiles(PhoneTileIds);
+        var view = Tiles(ViewTileIds);
+        _pauseTile = view.Single(t => t.Id == "pause");
+        ViewTiles.ItemsSource = view;
+        GestureTiles.ItemsSource = Tiles(GestureTileIds);
     }
 
     public void Attach(MainWindow window, AppHost host)
     {
         _window = window;
         _host = host;
-        RotationPortrait.ToolTip = Shortcuts.Tip("Lock the phone to portrait", "rotation-portrait");
-        RotationLandscape.ToolTip = Shortcuts.Tip("Lock the phone to landscape", "rotation-landscape");
-        RotationAuto.ToolTip = Shortcuts.Tip("Let the phone rotate by itself", "rotation-auto");
         PatternToggle.ToolTip = Shortcuts.Tip("Show or hide the nine-dot guide", "pattern-guide");
         PatternCalibrate.ToolTip = Shortcuts.Tip("Line the guide up with the arrow keys", "pattern-calibrate");
-        NavigationTiles.ItemsSource = Tiles(["home", "back", "recents", "power", "wake", "sleep", "volume-up", "volume-down", "mute", "notifications", "quick-settings", "collapse"]);
-        ViewTiles.ItemsSource = Tiles(["rotate-device", "rotate-left", "rotate-right", "pause", "resume", "reset-capture", "screenshot", "fullscreen", "fps"]);
-        KeyboardTiles.ItemsSource = Tiles(["browse", "swipe-up", "swipe-down", "swipe-left", "swipe-right", "tap", "like", "mute", "keyboard-layout"]);
+        ZoomOut.ToolTip = Shortcuts.Tip("Zoom the PC view out", "zoom-out");
+        ZoomIn.ToolTip = Shortcuts.Tip("Zoom the PC view in", "zoom-in");
+        ZoomReset.ToolTip = Shortcuts.Tip("Fit the whole phone screen in the window", "zoom-reset");
+        CopyAdd.ToolTip = Shortcuts.Tip("Show another live view of the phone beside this one", "copy-add");
+        CopyRemove.ToolTip = Shortcuts.Tip("Close the last copy", "copy-remove");
         Refresh();
     }
 
-    private ActionTileModel[] Tiles(string[] ids) =>
-        ids.Select(id => MirrorActions.Find(id)!)
-            .Select(a => new ActionTileModel(a.Id, a.Label, a.Detail, (Geometry)FindResource(IconKey(a.Id))))
-            .ToArray();
+    private ActionTileModel[] Tiles(IEnumerable<string> ids) =>
+        ids.Select(id => new ActionTileModel(MirrorActions.Find(id)!, Icon(id), "tile-" + id)).ToArray();
 
-    private static string IconKey(string id) => id switch
-    {
-        "home" => "IconHome",
-        "back" => "IconBack",
-        "recents" => "IconRecents",
-        "power" => "IconPower",
-        "wake" => "IconSun",
-        "sleep" => "IconMoon",
-        "volume-up" => "IconVolumeUp",
-        "volume-down" => "IconVolumeDown",
-        "mute" => "IconVolumeDown",
-        "notifications" => "IconBell",
-        "quick-settings" => "IconSliders",
-        "collapse" => "IconBack",
-        "rotate-device" or "rotate-left" or "rotate-right" => "IconRotate",
-        "pause" => "IconPause",
-        "resume" => "IconPlay",
-        "reset-capture" => "IconRefresh",
-        "screenshot" => "IconCamera",
-        "fullscreen" => "IconFullscreen",
-        "fps" => "IconInfo",
-        "swipe-up" => "IconArrowUp",
-        "swipe-down" => "IconArrowDown",
-        "swipe-left" => "IconArrowLeft",
-        "swipe-right" => "IconArrowRight",
-        "tap" => "IconTap",
-        "like" => "IconHeart",
-        "browse" or "keyboard-layout" => "IconKeyboard",
-        _ => "IconInfo",
-    };
+    private Geometry Icon(string id) => (Geometry)FindResource(ActionIcons.For(id) ?? "IconInfo");
+
+    /// <summary>The action the pause tile runs: it resumes a picture that is frozen and pauses one that is not.</summary>
+    internal static string PauseTileAction(bool paused) => paused ? "resume" : "pause";
+
+    /// <summary>What the session button says and does in each phase of the mirror.</summary>
+    internal static (string Content, string Tip, bool Enabled) SessionButtonState(bool mirroring, SessionPhase phase) =>
+        mirroring ? ("Stop mirror", "Close the mirror and keep waiting in the tray", true)
+        : phase == SessionPhase.Stopped ? ("Start mirror", "Open the mirror again", true)
+        : phase == SessionPhase.Starting ? ("Starting…", "The mirror is on its way", false)
+        : ("Waiting for phone…", "The mirror opens by itself when a phone connects", false);
 
     public void Refresh()
     {
-        if (_host is null || _window is null)
+        // A refresh queued before quitting can run after the application's resources are gone.
+        if (_host is null || _window is null || _window.Quitting)
         {
             return;
         }
 
         var session = _host.Session;
         var mirroring = session.IsMirroring;
-        SessionButton.Content = mirroring ? "Stop mirror" : session.Phase == SessionPhase.Stopped ? "Start mirror" : "Waiting for phone…";
-        SessionButton.IsEnabled = mirroring || session.Phase == SessionPhase.Stopped;
+        var (content, tip, enabled) = SessionButtonState(mirroring, session.Phase);
+        SessionButton.Content = content;
+        SessionButton.ToolTip = tip;
+        SessionButton.IsEnabled = enabled;
         RestartButton.IsEnabled = mirroring;
+        RestartButton.ToolTip = mirroring ? "Relaunch scrcpy (applies changed mirror settings)" : "There is no mirror to restart yet";
+
         var ready = session.Devices.Any(d => d.IsReady);
         NavigationTiles.IsEnabled = ready;
         ViewTiles.IsEnabled = ready;
-        KeyboardTiles.IsEnabled = ready;
-        KeyboardStatus.Text = _window.BrowseMode
+        GestureTiles.IsEnabled = ready;
+        Explain(RotationPortrait, ready, "rotation-portrait");
+        Explain(RotationLandscape, ready, "rotation-landscape");
+        Explain(RotationAuto, ready, "rotation-auto");
+        Explain(RotateDevice, ready, "rotate-device");
+        Explain(BrowseToggle, ready, "browse");
+        Explain(KeyboardLayout, ready, "keyboard-layout");
+        Explain(ClipboardCopy, ready, "copy");
+        Explain(ClipboardCut, ready, "cut");
+        Explain(ClipboardPaste, ready, "paste");
+        Explain(ClipboardType, ready, "paste-text");
+
+        _pauseTile.Show(MirrorActions.Find(PauseTileAction(_window.MirrorPaused))!, Icon(PauseTileAction(_window.MirrorPaused)));
+
+        var browsing = _window.BrowseMode;
+        Sync(() => BrowseToggle.IsChecked = browsing);
+        BrowseState.Text = browsing ? "On" : "Off";
+        BrowseState.Foreground = (Brush)FindResource(browsing ? "Signal" : "Muted");
+        KeyboardStatus.Text = browsing
             ? "Browse mode is on: Up and Down move through a feed, Left and Right turn pages, Enter taps, L likes, M mutes, Backspace goes back. Esc leaves."
             : $"Typing goes straight to the phone. {Shortcuts.Gesture("browse")} turns on browse mode, where the arrow keys, Enter, L, M and Backspace drive a feed.";
-        RotationPortrait.IsEnabled = ready;
-        RotationLandscape.IsEnabled = ready;
-        RotationAuto.IsEnabled = ready;
 
         ZoomLabel.Text = $"{_window.Host.Zoom * 100:0}%";
         ZoomReset.IsEnabled = _window.Host.View.IsZoomed;
+
+        // A disabled Add says why in the line under it: no room, the limit, or a phone on its side.
+        var copies = _window.CopiesState;
+        CopyAdd.IsEnabled = copies.CanAdd;
+        CopyRemove.IsEnabled = copies.CanRemove;
+        CopiesStatus.Text = copies.Summary;
 
         var guide = _window.Guide;
         PatternSection.Visibility = guide is not null ? Visibility.Visible : Visibility.Collapsed;
@@ -108,9 +179,37 @@ public partial class ControlsPanel : UserControl
         }
     }
 
+    /// <summary>
+    /// Turns a control on or off with the phone, and says why while it is off: a greyed button
+    /// with no reason reads as broken. While on, its tooltip is the action's own words and keys.
+    /// </summary>
+    private static void Explain(Control control, bool ready, string actionId)
+    {
+        control.IsEnabled = ready;
+        control.ToolTip = ready ? Shortcuts.Tip(MirrorActions.Find(actionId)!.Detail, actionId) : NeedsPhone;
+        AutomationProperties.SetHelpText(control, ready ? string.Empty : NeedsPhone);
+    }
+
+    private void Sync(Action show)
+    {
+        _syncing = true;
+        try
+        {
+            show();
+        }
+        finally
+        {
+            _syncing = false;
+        }
+    }
+
+    /// <summary>
+    /// Runs when a choice becomes checked, which a click, the keyboard and UI Automation all do;
+    /// a click alone would leave Narrator users choosing a segment that does nothing.
+    /// </summary>
     private async void OnRotation(object sender, RoutedEventArgs e)
     {
-        if (_window is null || sender is not System.Windows.Controls.Primitives.ToggleButton { Tag: string id })
+        if (_syncing || _window is null || sender is not ToggleButton { Tag: string id })
         {
             return;
         }
@@ -151,12 +250,12 @@ public partial class ControlsPanel : UserControl
         });
     }
 
-    private void SetRotation(System.Windows.Controls.Primitives.ToggleButton? chosen)
+    private void SetRotation(ToggleButton? chosen) => Sync(() =>
     {
         RotationPortrait.IsChecked = ReferenceEquals(chosen, RotationPortrait);
         RotationLandscape.IsChecked = ReferenceEquals(chosen, RotationLandscape);
         RotationAuto.IsChecked = ReferenceEquals(chosen, RotationAuto);
-    }
+    });
 
     private async void OnTile(object sender, RoutedEventArgs e)
     {
@@ -165,6 +264,21 @@ public partial class ControlsPanel : UserControl
             await _window.RunActionAsync(id);
             Refresh();
         }
+    }
+
+    /// <summary>
+    /// Turns browse mode the way the toggle was just turned, then shows what the window says,
+    /// which is the truth. The keys that turn the mode on and off refresh the toggle too.
+    /// </summary>
+    private async void OnBrowseToggle(object sender, RoutedEventArgs e)
+    {
+        if (_syncing || _window is null || BrowseToggle.IsChecked == _window.BrowseMode)
+        {
+            return;
+        }
+
+        await _window.RunActionAsync("browse");
+        Refresh();
     }
 
     private void OnSessionButton(object sender, RoutedEventArgs e)

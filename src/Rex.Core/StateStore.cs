@@ -65,6 +65,9 @@ public sealed record UiState
 
     /// <summary>Ids from <see cref="Tips"/> that have been shown once already.</summary>
     public List<string> TipsSeen { get; set; } = [];
+
+    /// <summary>How many copies of the phone were open, brought back when Copies.Remember is on.</summary>
+    public int Copies { get; set; }
 }
 
 public sealed record StateDocument

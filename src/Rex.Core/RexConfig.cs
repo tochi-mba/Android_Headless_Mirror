@@ -18,6 +18,7 @@ public sealed record RexConfig
     public WirelessSettings Wireless { get; set; } = new();
     public TouchpadSettings Touchpad { get; set; } = new();
     public ZoomSettings Zoom { get; set; } = new();
+    public CopiesSettings Copies { get; set; } = new();
     public AmbientSettings Ambient { get; set; } = new();
     public HudSettings Hud { get; set; } = new();
     public PatternGuideSettings PatternGuide { get; set; } = new();
@@ -33,6 +34,7 @@ public sealed record RexConfig
         Wireless.Normalize();
         Touchpad.Normalize();
         Zoom.Normalize();
+        Copies.Normalize();
         Ambient.Normalize();
         Hud.Normalize();
         PatternGuide.Normalize();
@@ -47,6 +49,7 @@ public sealed record RexConfig
         Wireless = Wireless.Copy(),
         Touchpad = Touchpad.Copy(),
         Zoom = Zoom.Copy(),
+        Copies = Copies.Copy(),
         Ambient = Ambient.Copy(),
         Hud = Hud.Copy(),
         PatternGuide = PatternGuide.Copy(),
@@ -339,6 +342,39 @@ public sealed record AmbientSettings
     }
 }
 
+/// <summary>
+/// Copies of the phone: extra live views of the same phone beside the first, each one fully
+/// controllable. Every copy is its own scrcpy session, so each costs the phone an encoder and the
+/// PC a decoder; the settings bound how many and how heavy.
+/// </summary>
+public sealed record CopiesSettings
+{
+    public const int MostUpperBound = 5;
+    public const double GapUpperBound = 48;
+    public const int SmallestMaxSize = 480;
+
+    /// <summary>The most copies that may be added, not counting the phone's own view (1 to 5).</summary>
+    public int Most { get; set; } = 3;
+
+    /// <summary>Space between the views, in device-independent pixels (0 to 48).</summary>
+    public double Gap { get; set; } = 12;
+
+    /// <summary>Longest side of each copy's video in pixels; 0 matches the main picture.</summary>
+    public int MaxSize { get; set; }
+
+    /// <summary>Bring the copies back the next time the phone is mirrored.</summary>
+    public bool Remember { get; set; } = true;
+
+    public CopiesSettings Copy() => this with { };
+
+    public void Normalize()
+    {
+        Most = Math.Clamp(Most, 1, MostUpperBound);
+        Gap = double.IsFinite(Gap) ? Math.Clamp(Gap, 0, GapUpperBound) : 12;
+        MaxSize = MaxSize <= 0 ? 0 : Math.Clamp(MaxSize, SmallestMaxSize, MirrorSettings.MaxSizeUpperBound);
+    }
+}
+
 /// <summary>PC-only magnification of the mirror surface. Alt is the host modifier.</summary>
 public sealed record ZoomSettings
 {
@@ -432,6 +468,13 @@ public sealed record AppSettings
     public bool ConfirmSensitiveWrites { get; set; } = true;
 
     public string ScreenshotDirectory { get; set; } = "captures/screenshots";
+
+    /// <summary>
+    /// When Windows cannot read the phone over USB ("USB device not recognised"), start the
+    /// auto-repair task without asking. The task itself is set up once, with administrator
+    /// approval; with this off the app still says what is wrong and offers the repair.
+    /// </summary>
+    public bool AutoRepairUsb { get; set; } = true;
 
     public AppSettings Copy() => this with { };
 
