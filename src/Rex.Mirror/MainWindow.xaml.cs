@@ -212,6 +212,13 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// True once the app is quitting. Work queued before then (a layout pass's follow-up, a USB
+    /// check that was already running) can land after the application's resources are gone, and
+    /// anything that looks one up would throw and keep the process from exiting.
+    /// </summary>
+    internal bool Quitting => _quitting;
+
     public void QuitApplication()
     {
         _quitting = true;
@@ -249,6 +256,11 @@ public partial class MainWindow : Window
 
     private void OnSessionChanged()
     {
+        if (_quitting)
+        {
+            return;
+        }
+
         var session = _host.Session;
         SettingsPanel.RefreshRestartNotice();
         var mirroring = session.IsMirroring;

@@ -118,7 +118,8 @@ public partial class ControlsPanel : UserControl
 
     public void Refresh()
     {
-        if (_host is null || _window is null)
+        // A refresh queued before quitting can run after the application's resources are gone.
+        if (_host is null || _window is null || _window.Quitting)
         {
             return;
         }

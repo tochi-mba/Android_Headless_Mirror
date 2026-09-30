@@ -67,6 +67,11 @@ public partial class MainWindow
 
     private void OnUsbChanged()
     {
+        if (_quitting)
+        {
+            return;
+        }
+
         OnSessionChanged();
         SettingsPanel.Refresh();
     }

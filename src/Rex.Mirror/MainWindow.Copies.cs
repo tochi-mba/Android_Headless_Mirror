@@ -140,6 +140,11 @@ public partial class MainWindow : ICopyViews
 
     private void OnCopiesChanged()
     {
+        if (_quitting)
+        {
+            return;
+        }
+
         Group.InvalidateMeasure();
         ControlsPanel.Refresh();
         TrackOverlay();
@@ -183,6 +188,12 @@ public partial class MainWindow : ICopyViews
             {
                 view.AreaOffset = new Point(Math.Round(shown[i].X * scale), Math.Round(shown[i].Y * scale));
             }
+        }
+
+        if (_quitting)
+        {
+            // Closing the window lays it out once more; nothing needs following up after that.
+            return;
         }
 
         UpdateCopiesShown();
