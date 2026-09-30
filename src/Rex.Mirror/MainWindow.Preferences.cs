@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Rex.Core;
 using Rex.Mirror.Mirror;
+using Rex.Mirror.Native;
 
 namespace Rex.Mirror;
 
@@ -92,6 +93,29 @@ public partial class MainWindow
         var screen = wanted.Any(id => id is "sleep" or "screenshot");
         QuickDivider.Visibility = navigation && screen ? Visibility.Visible : Visibility.Collapsed;
         QuickEndDivider.Visibility = navigation || screen ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// Ends a hold on the keyboard for the PC view once left Alt is seen to be up. The hold ends
+    /// when the keyboard hook sees Alt released, but Windows skips a hook that answers late, so
+    /// a busy moment could lose the release and leave typing cut off from the phone until Alt
+    /// was pressed again.
+    /// </summary>
+    private void ReleaseStaleAltHold()
+    {
+        if (NativeMethods.IsKeyDown(NativeMethods.VK_LMENU))
+        {
+            return;
+        }
+
+        foreach (var view in AllViews)
+        {
+            if (view.HoldingKeyboard)
+            {
+                _host.Log.Info("Left Alt is up but its release never arrived; the phone has the keyboard again.");
+                view.ReleaseKeyboard();
+            }
+        }
     }
 
     // ----- The frame rate in the status bar -----
