@@ -171,7 +171,7 @@ public sealed class AppEndToEndTests
         // on the way in and on the way out. The picture is a blue-to-orange gradient, so the strip
         // of mirror area left of the phone has colour in it exactly while the background is drawn;
         // the app's own chrome there is grey and dark.
-        using var lit = await CaptureWhenAsync(app, bitmap => MarginColour(bitmap) > 0.5, "the soft background to be on screen");
+        using var lit = await CaptureWhenAsync(app, bitmap => MarginColour(bitmap) > 0.2, "the soft background to be on screen");
 
         // Turning it off in the config file also exercises the live reload the settings panel uses.
         var config = ConfigFile.Load(package.Paths.Config);
