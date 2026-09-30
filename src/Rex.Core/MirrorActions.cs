@@ -45,6 +45,14 @@ public static class MirrorActions
         new("cut", "Cut", ActionKind.Scrcpy, "Cut on the phone to the PC clipboard"),
         new("paste", "Paste", ActionKind.Scrcpy, "Paste the PC clipboard on the phone"),
         new("paste-text", "Type clipboard", ActionKind.Scrcpy, "Type the PC clipboard as keystrokes"),
+        new("swipe-up", "Next item", ActionKind.App, "Swipe up: the next video or post in a feed"),
+        new("swipe-down", "Previous item", ActionKind.App, "Swipe down: the previous video or post"),
+        new("swipe-left", "Next page", ActionKind.App, "Swipe left: the next story, photo or page"),
+        new("swipe-right", "Previous page", ActionKind.App, "Swipe right: the previous story, photo or page"),
+        new("tap", "Tap", ActionKind.App, "Tap the centre of the screen: open, play or pause"),
+        new("like", "Like", ActionKind.App, "Double-tap the centre of the screen"),
+        new("browse", "Browse mode", ActionKind.App, "Plain keys swipe and tap the phone until Esc"),
+        new("keyboard-layout", "Keyboard layout", ActionKind.Adb, "Open Android's physical keyboard settings, where the layout typing follows is chosen"),
         new("screenshot", "Screenshot", ActionKind.App, "Save a PNG of the phone screen"),
         new("zoom-in", "Zoom in", ActionKind.App, "Magnify the PC view"),
         new("zoom-out", "Zoom out", ActionKind.App, "Shrink the PC view"),
@@ -57,7 +65,12 @@ public static class MirrorActions
 
     public static IReadOnlyList<string> Ids => All.Select(x => x.Id).ToArray();
 
-    /// <summary>ADB key code or status-bar verb for <see cref="ActionKind.Adb"/> actions.</summary>
+    /// <summary>The touch gestures a key or button can play on the phone.</summary>
+    public static readonly IReadOnlyList<string> Gestures = ["swipe-up", "swipe-down", "swipe-left", "swipe-right", "tap", "like"];
+
+    public static bool IsGesture(string id) => Gestures.Contains(id, StringComparer.Ordinal);
+
+    /// <summary>ADB key code, status-bar verb, rotation mode or settings activity for <see cref="ActionKind.Adb"/> actions.</summary>
     public static (string Kind, string Argument)? AdbCommand(string id) => id switch
     {
         "home" => ("key", "KEYCODE_HOME"),
@@ -74,6 +87,7 @@ public static class MirrorActions
         "rotation-portrait" => ("rotation", "0"),
         "rotation-landscape" => ("rotation", "1"),
         "rotation-auto" => ("rotation", "auto"),
+        "keyboard-layout" => ("activity", "android.settings.HARD_KEYBOARD_SETTINGS"),
         _ => null,
     };
 }

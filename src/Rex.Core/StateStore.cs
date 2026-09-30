@@ -13,7 +13,8 @@ public static class LockScreenModes
     public static bool IsValid(string? value) => value is Pattern or Other or None;
 }
 
-public sealed record PatternCalibration(double Left, double Top, double Right, double Bottom)
+/// <param name="Landscape">True when the guide was lined up over a landscape picture; it only applies in that orientation.</param>
+public sealed record PatternCalibration(double Left, double Top, double Right, double Bottom, bool Landscape = false)
 {
     public bool IsValid =>
         Left >= 0 && Top >= 0 && Right <= 1 && Bottom <= 1 && Right > Left && Bottom > Top;
@@ -28,6 +29,13 @@ public sealed record DeviceProfile
     public string LockScreenMode { get; set; } = LockScreenModes.Unknown;
 
     public PatternCalibration? Calibration { get; set; }
+
+    /// <summary>
+    /// True once this phone has refused scrcpy's hardware (UHID) keyboard, so the next session
+    /// starts straight in raw-key compatibility mode instead of failing once first.
+    /// </summary>
+    public bool CompatibilityKeyboard { get; set; }
+
     public DateTimeOffset? LastSeenUtc { get; set; }
 }
 
@@ -190,6 +198,9 @@ public sealed class StateStore
 
         Update(state => GetOrAdd(state, serial).Calibration = calibration);
     }
+
+    public void SetCompatibilityKeyboard(string serial, bool compatibility) =>
+        Update(state => GetOrAdd(state, serial).CompatibilityKeyboard = compatibility);
 
     public void AddWirelessHosts(IEnumerable<string> hosts)
     {

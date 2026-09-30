@@ -14,14 +14,22 @@ public sealed class StateAndIpcTests
 
         store.RememberDevice("USB1", "Galaxy", "SM-G998B");
         store.SetLockScreenMode("USB1", LockScreenModes.Pattern);
-        store.SetCalibration("USB1", new PatternCalibration(0.2, 0.3, 0.8, 0.7));
+        store.SetCalibration("USB1", new PatternCalibration(0.2, 0.3, 0.8, 0.7, Landscape: true));
+        store.SetCompatibilityKeyboard("USB1", true);
 
         var reloaded = new StateStore(package.Paths.State);
         var profile = reloaded.GetDevice("USB1")!;
         Assert.Equal("Galaxy", profile.Name);
         Assert.Equal(LockScreenModes.Pattern, profile.LockScreenMode);
         Assert.Equal(0.2, profile.Calibration!.Left);
+        Assert.True(profile.Calibration.Landscape);
+        Assert.True(profile.CompatibilityKeyboard);
         Assert.Equal("USB1", reloaded.PreferredSerial);
+
+        // A calibration saved before orientation was recorded reads as portrait, which it was.
+        var legacy = System.Text.Json.JsonSerializer.Deserialize<PatternCalibration>("""{"Left":0.2,"Top":0.3,"Right":0.8,"Bottom":0.7}""")!;
+        Assert.False(legacy.Landscape);
+        Assert.True(legacy.IsValid);
 
         Assert.Equal(1, reloaded.ResetLockScreen("USB1"));
         Assert.Equal(LockScreenModes.Unknown, reloaded.GetDevice("USB1")!.LockScreenMode);

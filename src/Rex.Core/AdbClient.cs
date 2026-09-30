@@ -169,6 +169,35 @@ public sealed class AdbClient
     public Task<AndroidResult> WakeAsync(string serial, CancellationToken cancellationToken = default) =>
         KeyEventAsync(serial, "KEYCODE_WAKEUP", cancellationToken);
 
+    /// <summary>Opens a system settings screen by its intent action (android.settings.*).</summary>
+    public async Task<AndroidResult> StartActivityAsync(string serial, string intentAction, CancellationToken cancellationToken = default)
+    {
+        if (!Regex.IsMatch(intentAction, @"^android\.settings\.[A-Z0-9_]+$"))
+        {
+            return AndroidResult.Failure("Only Android settings screens can be opened this way.");
+        }
+
+        var result = await ShellAsync(serial, ["am", "start", "-a", intentAction], cancellationToken).ConfigureAwait(false);
+        return AndroidResult.From(result);
+    }
+
+    /// <summary>A swipe in screen pixels, played by Android itself; works with no mirror window at all.</summary>
+    public async Task<AndroidResult> SwipeAsync(string serial, int fromX, int fromY, int toX, int toY, int milliseconds, CancellationToken cancellationToken = default)
+    {
+        var result = await ShellAsync(serial,
+            ["input", "swipe", Px(fromX), Px(fromY), Px(toX), Px(toY), Math.Clamp(milliseconds, 1, 5000).ToString(CultureInfo.InvariantCulture)],
+            cancellationToken).ConfigureAwait(false);
+        return AndroidResult.From(result);
+    }
+
+    public async Task<AndroidResult> TapAsync(string serial, int x, int y, CancellationToken cancellationToken = default)
+    {
+        var result = await ShellAsync(serial, ["input", "tap", Px(x), Px(y)], cancellationToken).ConfigureAwait(false);
+        return AndroidResult.From(result);
+    }
+
+    private static string Px(int value) => Math.Max(0, value).ToString(CultureInfo.InvariantCulture);
+
     public async Task<AndroidResult> DismissKeyguardAsync(string serial, CancellationToken cancellationToken = default)
     {
         var result = await ShellAsync(serial, ["wm", "dismiss-keyguard"], cancellationToken).ConfigureAwait(false);

@@ -11,7 +11,8 @@
     "AudioDup": false,
     "RecordOnStart": false,
     "RecordDirectory": "captures/recordings",
-    "ExtraArgs": ""
+    "ExtraArgs": "",
+    "CompatibilityKeyboard": false
   },
   "Session": {
     "TurnScreenOff": true,

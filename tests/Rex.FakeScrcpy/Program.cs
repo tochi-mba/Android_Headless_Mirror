@@ -34,6 +34,15 @@ internal static class Program
         Log("pid " + Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
         Log("args " + string.Join(' ', args));
 
+        var denyUhid = Path.Combine(Path.GetDirectoryName(LogPath) ?? AppContext.BaseDirectory, "deny-uhid");
+        if (args.Contains("--keyboard=uhid") && File.Exists(denyUhid))
+        {
+            Console.Error.WriteLine("[server] ERROR: Controller error");
+            Console.Error.WriteLine("java.io.IOException: android.system.ErrnoException: open failed: EACCES (Permission denied)");
+            Console.Error.WriteLine("at com.genymobile.scrcpy.control.UhidManager.open(UhidManager.java:84)");
+            return 1;
+        }
+
         var shortcutModifier = args.FirstOrDefault(a => a.StartsWith("--shortcut-mod=", StringComparison.Ordinal));
         if (shortcutModifier?.Contains('+', StringComparison.Ordinal) == true)
         {

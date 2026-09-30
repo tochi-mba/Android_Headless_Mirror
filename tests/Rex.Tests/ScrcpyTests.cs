@@ -17,7 +17,7 @@ public sealed class ScrcpyTests
         foreach (var expected in new[]
         {
             "--serial=USB123", "--window-title=Android Headless Mirror [USB123]", "--window-borderless",
-            "--no-window-aspect-ratio-lock", "--mouse=sdk", "--keyboard=sdk", "--shortcut-mod=rctrl",
+            "--no-window-aspect-ratio-lock", "--mouse=sdk", "--keyboard=uhid", "--shortcut-mod=rctrl",
             "--window-x=10", "--window-y=20", "--window-width=300", "--window-height=600",
             "--turn-screen-off", "--stay-awake", "--keep-active", "--max-size=1920", "--max-fps=60",
             "--video-bit-rate=12M", "--video-codec=h264", "--audio-codec=opus", "--audio-buffer=50",
@@ -31,7 +31,45 @@ public sealed class ScrcpyTests
         Assert.DoesNotContain("--audio-dup", args);
         Assert.DoesNotContain("--record=", args);
         Assert.DoesNotContain(args, argument => argument.StartsWith("--shortcut-mod=", StringComparison.Ordinal) && argument.Contains('+', StringComparison.Ordinal));
+        Assert.DoesNotContain("--raw-key-events", args);
     }
+
+    [Fact]
+    public void KeyboardMode_IsHardwareUnlessTheSettingsOrThePhoneSayOtherwise()
+    {
+        var config = new RexConfig();
+        Assert.Equal(ScrcpyArguments.FullKeyboardMode, ScrcpyArguments.KeyboardModeFor(config, null));
+        Assert.Equal(ScrcpyArguments.FullKeyboardMode, ScrcpyArguments.KeyboardModeFor(config, new DeviceProfile()));
+        Assert.Equal(ScrcpyArguments.CompatibilityKeyboardMode, ScrcpyArguments.KeyboardModeFor(config, new DeviceProfile { CompatibilityKeyboard = true }));
+
+        config.Mirror.CompatibilityKeyboard = true;
+        Assert.Equal(ScrcpyArguments.CompatibilityKeyboardMode, ScrcpyArguments.KeyboardModeFor(config, null));
+
+        // Building without naming a mode follows the settings, so the setting counts as a launch
+        // setting and changing it offers a restart.
+        var args = ScrcpyArguments.Build(config, "S", false, "T", null, null);
+        Assert.Contains("--keyboard=sdk", args);
+        Assert.Contains("--raw-key-events", args);
+        Assert.NotEqual(ScrcpyArguments.LaunchSettings(new RexConfig(), false), ScrcpyArguments.LaunchSettings(config, false));
+    }
+
+    [Fact]
+    public void Build_UsesRawKeysInSdkCompatibilityMode()
+    {
+        var args = ScrcpyArguments.Build(new RexConfig(), "OLD", false, "T", null, null, ScrcpyArguments.CompatibilityKeyboardMode);
+
+        Assert.Contains("--keyboard=sdk", args);
+        Assert.Contains("--raw-key-events", args);
+        Assert.Throws<ArgumentException>(() => ScrcpyArguments.Build(new RexConfig(), "S", false, "T", null, null, "aoa"));
+    }
+
+    [Theory]
+    [InlineData("at com.genymobile.scrcpy.control.UhidManager.open\nopen failed: EACCES (Permission denied)", true)]
+    [InlineData("ERROR: Failed to enable UHID: operation not permitted", true)]
+    [InlineData("ERROR: Demuxer error", false)]
+    [InlineData("Permission denied while opening the camera", false)]
+    public void UhidFallback_OnlyMatchesUhidPermissionFailures(string stderr, bool expected) =>
+        Assert.Equal(expected, ScrcpyArguments.IsUhidPermissionFailure(stderr.Split('\n')));
 
     [Fact]
     public void Build_HonoursSessionAndAudioSwitches()

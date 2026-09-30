@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private readonly OverlayWindow _overlay;
     private readonly TouchInjector _injector = new();
     private readonly TouchpadBridge _touchpad;
+    private readonly KeyboardTouch _keyboardTouch;
+    private bool _browse;
     private readonly InputHooks _hooks = new();
     private readonly DispatcherTimer _overlayTimer;
     private readonly DispatcherTimer _ambientTimer;
@@ -58,6 +60,10 @@ public partial class MainWindow : Window
     public bool PatternGuideVisible => _guide?.IsVisible == true;
     public bool PatternGuideResolving => _guide?.IsResolving == true;
     public string PatternGuideSource => _guide?.Source ?? PatternGeometry.SourceUnavailable;
+    public PatternBounds? PatternGuideBounds => _guide?.NormalizedBounds;
+
+    /// <summary>True while plain keys drive the phone instead of typing into it.</summary>
+    public bool BrowseMode => _browse;
 
     public MainWindow(AppHost host)
     {
@@ -94,6 +100,11 @@ public partial class MainWindow : Window
         {
             PanelAt = (x, y) => SidebarScroll.IsVisible && _sidebarWheelBounds.Contains(x, y),
             ScrollPanel = delta => SidebarScroll.ScrollToVerticalOffset(SidebarScroll.VerticalOffset - delta),
+        };
+        _keyboardTouch = new KeyboardTouch(Host, _injector, host.Log.Warn)
+        {
+            Fallback = action => _host.Session.PlayGestureOverAdbAsync(action, Host.SurfaceRect.Width > Host.SurfaceRect.Height),
+            SurfaceOnScreen = () => IsVisible && WindowState != WindowState.Minimized,
         };
 
         _overlayTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
@@ -326,8 +337,10 @@ public partial class MainWindow : Window
             ShowTipOnce(Tips.SecondPhone);
         }
 
-        HintText.Text = session.IsMirroring
-            ? $"{Shortcuts.Gesture("host-zoom")} zoom · {Shortcuts.Gesture("host-pan")} pan · {Shortcuts.Gesture("fullscreen")} fullscreen"
+        HintText.Text = _browse
+            ? KeyboardBrowse.Hint
+            : session.IsMirroring
+            ? $"{Shortcuts.Gesture("host-zoom")} zoom · {Shortcuts.Gesture("host-pan")} pan · {Shortcuts.Gesture("browse")} browse · {Shortcuts.Gesture("fullscreen")} fullscreen"
             : session.Devices.Count == 0
                 ? $"Plug a phone in over USB · {Shortcuts.Gesture("tour")} shows the tour"
                 : $"{Shortcuts.Gesture("tour")} shows the tour";
@@ -363,6 +376,11 @@ public partial class MainWindow : Window
             ShowFromTray();
         }
 
+        if (scrcpy.KeyboardMode == ScrcpyArguments.FullKeyboardMode)
+        {
+            ShowTipSoon(Tips.HardwareKeyboard);
+        }
+
         OnSessionChanged();
         TrackOverlay();
     }
@@ -379,8 +397,42 @@ public partial class MainWindow : Window
         if (_fullscreen) ToggleFullscreen();
         _overlayTimer.Stop();
         _overlay.Track(default, visible: false);
+        // Browse mode is about the picture that just went away; the next session starts typing.
+        _browse = false;
         OnSessionChanged();
     }
+
+    /// <summary>Turns browse mode on or off: plain keys swipe and tap the phone while it is on.</summary>
+    public void SetBrowse(bool on)
+    {
+        if (_browse == on)
+        {
+            return;
+        }
+
+        _browse = on;
+        if (on)
+        {
+            ShowTipSoon(Tips.FirstBrowse);
+        }
+
+        // The session refresh rewrites the status line from the session, so it goes first.
+        OnSessionChanged();
+        SetStatus(on ? "Browse mode on: plain keys drive the phone. Esc leaves." : "Browse mode off: keys type into the phone again.");
+        if (Host.HasChild)
+        {
+            Host.FocusChild();
+        }
+    }
+
+    /// <summary>
+    /// Whether keyboard focus sits in one of the app's own controls, where a plain key belongs to
+    /// that control rather than to browse mode. Focus in the mirror itself reads as nothing.
+    /// </summary>
+    private static bool FocusInsideControl() =>
+        System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase
+            or PasswordBox or ComboBox or System.Windows.Controls.Primitives.ButtonBase
+            or System.Windows.Controls.Primitives.RangeBase or System.Windows.Controls.Primitives.Selector;
 
     public void StartPatternGuideIfNeeded()
     {
@@ -574,6 +626,22 @@ public partial class MainWindow : Window
             }
         }
 
+        if (_browse && !ctrl && !alt)
+        {
+            if (virtualKey == NativeMethods.VK_ESCAPE)
+            {
+                Dispatcher.BeginInvoke(() => SetBrowse(false));
+                return true;
+            }
+
+            if (KeyboardBrowse.ActionFor(virtualKey) is { } browseAction &&
+                KeyboardBrowse.Applies(_browse, ctrl, alt, FocusInsideControl()))
+            {
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync(browseAction));
+                return true;
+            }
+        }
+
         switch (virtualKey)
         {
             case NativeMethods.VK_F11:
@@ -596,6 +664,24 @@ public partial class MainWindow : Window
                 return true;
             case NativeMethods.VK_RIGHT when ctrl && alt:
                 Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotate-right"));
+                return true;
+            case NativeMethods.VK_UP when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("swipe-down"));
+                return true;
+            case NativeMethods.VK_DOWN when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("swipe-up"));
+                return true;
+            case NativeMethods.VK_RETURN when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("tap"));
+                return true;
+            case 'K' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("browse"));
+                return true;
+            case NativeMethods.VK_BACK when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("back"));
+                return true;
+            case 'R' when ctrl && alt:
+                Dispatcher.BeginInvoke(() => _ = RunActionAsync("recents"));
                 return true;
             case 'P' when ctrl && alt:
                 Dispatcher.BeginInvoke(() => _guide?.Toggle());
@@ -658,10 +744,15 @@ public partial class MainWindow : Window
 
     // ----- Actions -----
 
-    public AndroidResult ApplyAppAction(string id)
+    public async Task<AndroidResult> ApplyAppActionAsync(string id)
     {
         switch (id)
         {
+            case "browse":
+                SetBrowse(!_browse);
+                return AndroidResult.Success(_browse ? "Browse mode on" : "Browse mode off");
+            case var gesture when MirrorActions.IsGesture(gesture):
+                return await _keyboardTouch.RunAsync(gesture);
             case "zoom-in":
                 Host.ZoomStep(1, step: 0.25);
                 return AndroidResult.Success($"{Host.Zoom * 100:0}%");
@@ -684,7 +775,7 @@ public partial class MainWindow : Window
 
     public async Task RunActionAsync(string id)
     {
-        var result = await _host.Session.RunActionAsync(id, ApplyAppAction);
+        var result = await _host.Session.RunActionAsync(id, ApplyAppActionAsync);
         SetStatus(result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? MirrorActions.Find(id)?.Label ?? id : result.Text) : result.Text, !result.Ok);
         if (Host.HasChild)
         {

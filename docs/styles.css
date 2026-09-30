@@ -140,6 +140,8 @@ strong{font-weight:700;color:var(--text)}
 .shortcut-table div{display:flex;align-items:center;gap:6px;padding:10px 0;border-bottom:1px solid var(--line);color:var(--muted);font-size:14px}
 .shortcut-table kbd{padding:3px 8px;border-radius:6px;border:1px solid var(--line);background:var(--raised);color:var(--text);font-size:12px;font-weight:700}
 .shortcut-table span{margin-left:6px}
+.browse-heading{margin-top:40px}
+.browse-heading h3{font-size:22px;margin:8px 0 6px}
 
 /* Install */
 .install-steps{margin:0;padding-left:0;list-style:none;counter-reset:step;display:grid;gap:14px;max-width:80ch}

@@ -251,6 +251,18 @@ public sealed class AppProcess : IDisposable
         await Task.Delay(200, TestContext.Current.CancellationToken);
     }
 
+    public async Task PressCtrlAltKeyAsync(byte key)
+    {
+        await FocusAsync();
+        keybd_event(0x11, 0, 0, UIntPtr.Zero);
+        keybd_event(0x12, 0, 0, UIntPtr.Zero);
+        keybd_event(key, 0, 0, UIntPtr.Zero);
+        keybd_event(key, 0, 2, UIntPtr.Zero);
+        keybd_event(0x12, 0, 2, UIntPtr.Zero);
+        keybd_event(0x11, 0, 2, UIntPtr.Zero);
+        await Task.Delay(250, TestContext.Current.CancellationToken);
+    }
+
     public void KillMirror()
     {
         var executable = Path.Combine(_package.ToolsFolder, "scrcpy.exe");

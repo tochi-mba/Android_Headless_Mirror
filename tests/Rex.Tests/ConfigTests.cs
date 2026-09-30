@@ -227,6 +227,11 @@ public sealed class ConfigTests
         copy.Hud.Buttons.Add("back");
         Assert.Equal(["home", "screenshot"], config.Hud.Buttons);
         Assert.All(HudSettings.DefaultButtons, id => Assert.NotNull(MirrorActions.Find(id)));
+        Assert.All(MirrorActions.Gestures, id => Assert.Equal(ActionKind.App, MirrorActions.Find(id)!.Kind));
+        Assert.True(MirrorActions.IsGesture("swipe-up"));
+        Assert.False(MirrorActions.IsGesture("browse"));
+        Assert.Equal(("activity", "android.settings.HARD_KEYBOARD_SETTINGS"), MirrorActions.AdbCommand("keyboard-layout"));
+        Assert.All(MirrorActions.All.Where(a => a.Kind == ActionKind.Adb), a => Assert.NotNull(MirrorActions.AdbCommand(a.Id)));
     }
 
     [Fact]
@@ -296,10 +301,24 @@ public sealed class ConfigTests
         Assert.Equal(Shortcuts.All.Count, Shortcuts.All.Select(s => s.Gesture).Distinct(StringComparer.Ordinal).Count());
         Assert.All(Shortcuts.All, s => Assert.False(string.IsNullOrWhiteSpace(s.Description)));
 
-        // Plain keys reach the phone, so every key shortcut needs a modifier scrcpy does not take.
+        // Plain keys reach the phone, so every key shortcut needs a modifier scrcpy does not take,
+        // except inside browse mode, whose whole point is that plain keys drive the phone.
         Assert.All(
-            Shortcuts.All.Where(s => s.IsKey && !s.Gesture.StartsWith('F') && s.Gesture != "Esc"),
+            Shortcuts.All.Where(s => s.IsKey && !s.Browse && !s.Gesture.StartsWith('F') && s.Gesture != "Esc"),
             s => Assert.StartsWith("Ctrl+Alt+", s.Gesture, StringComparison.Ordinal));
+        Assert.All(Shortcuts.BrowseKeys, s => Assert.DoesNotContain("+", s.Gesture, StringComparison.Ordinal));
+        Assert.NotEmpty(Shortcuts.BrowseKeys);
+        Assert.Equal("Browse · Down", Shortcuts.Label(Shortcuts.Find("browse-next")!));
+        Assert.Equal("Ctrl+Alt+K", Shortcuts.Label(Shortcuts.Find("browse")!));
+
+        // A shortcut named after an action reaches that action.
+        foreach (var shortcut in Shortcuts.All.Where(s => s.IsKey && !s.Browse))
+        {
+            if (MirrorActions.Find(shortcut.Id) is { } action)
+            {
+                Assert.Equal(action.Id, shortcut.Id);
+            }
+        }
 
         Assert.Equal("F11", Shortcuts.Gesture("fullscreen"));
         Assert.Equal(string.Empty, Shortcuts.Gesture("nothing-like-this"));

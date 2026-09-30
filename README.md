@@ -58,6 +58,15 @@ until you delete that folder.
 - **Pattern-lock guide.** Some phones mirror their secure lock screen as black. For pattern locks the
   app draws a nine-dot guide, positioned from Android's own UI layout when available, with keyboard
   calibration as a fallback. The pattern itself is never stored or replayed.
+- **Complete keyboard input.** The mirror appears to Android as a physical keyboard, so numbers,
+  shifted symbols, AltGr characters and IME input follow the phone's chosen hardware-keyboard
+  layout. Phones that reject this mode reconnect once with raw-key compatibility and start there
+  from then on; **Keyboard layout** in Controls opens the Android screen where the layout is picked.
+- **Keyboard-only browsing.** Ctrl+Alt+K turns on browse mode: Up and Down move through a feed,
+  Left and Right turn pages or stories, Enter taps, L likes, M mutes and Backspace goes back, with
+  letters still typing so a search box works. Esc returns to typing. The same gestures are buttons
+  in Controls and the HUD, and `rex action swipe-up` from the command line, working over ADB
+  even while the window is in the tray.
 - **Command line and agent mode.** `rex.exe` (on your PATH after installing) scripts everything;
   `rex agent ...` and `rex --json ...` emit exactly one JSON document and never prompt.
 
@@ -74,6 +83,9 @@ until you delete that folder.
 | Show or hide the pattern guide | Ctrl+Alt+P; Ctrl+Alt+C calibrates it with the arrow keys       |
 | Jump between the side tabs     | Ctrl+Alt+1 to Ctrl+Alt+4; Ctrl+Alt+B hides the panel           |
 | Take a screenshot              | Ctrl+Alt+S, or the camera in the top bar                       |
+| Browse a feed without the mouse| Ctrl+Alt+K, then Up / Down, Left / Right, Enter, L, M, Backspace |
+| One gesture while typing       | Ctrl+Alt+Up / Down; Ctrl+Alt+Enter taps the centre             |
+| Go back / show recent apps     | Ctrl+Alt+Backspace / Ctrl+Alt+R                                |
 | See the window explained again | F1, or Info → **Take the tour**                                 |
 | Find a setting                 | The search box at the top of Settings                          |
 | Choose between two phones      | The chip in the top bar lists them once more than one is in    |

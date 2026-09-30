@@ -88,6 +88,13 @@ public sealed record MirrorSettings
     /// <summary>Extra raw scrcpy arguments for options the app does not expose.</summary>
     public string ExtraArgs { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Start every session with scrcpy's raw-key (sdk) keyboard instead of the hardware (UHID)
+    /// one. Off by default: the hardware keyboard is what makes numbers, shifted symbols and AltGr
+    /// follow the phone's own layout. Turn it on when typing misbehaves on a particular phone.
+    /// </summary>
+    public bool CompatibilityKeyboard { get; set; }
+
     public MirrorSettings Copy() => this with { };
 
     public void Normalize()

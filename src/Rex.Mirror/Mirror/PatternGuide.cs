@@ -34,6 +34,8 @@ public sealed class PatternGuide : IDisposable
     private PatternGeometryInfo? _discovered;
     private PatternGeometryInfo? _calibration;
     private PatternBounds? _draft;
+    private PatternBounds? _draftOrigin;
+    private string _draftOriginSource = string.Empty;
     private PatternLayout? _lastLayout;
     private IReadOnlyList<PointD> _patternPoints = [];
     private readonly List<int> _traceNodes = [];
@@ -70,6 +72,11 @@ public sealed class PatternGuide : IDisposable
     public bool IsResolving => IsVisible && NeedsInitialDiscovery();
     public string Source => _lastLayout?.Source ?? PatternGeometry.SourceUnavailable;
 
+    /// <summary>Where the nine dots sit as fractions of the picture, or null while nothing is drawn.</summary>
+    public PatternBounds? NormalizedBounds { get; private set; }
+
+    private bool IsLandscape => _mirror.SurfaceRect.Width > _mirror.SurfaceRect.Height;
+
     public event Action? Changed;
 
     public void Start()
@@ -94,9 +101,9 @@ public sealed class PatternGuide : IDisposable
         _manualOverride = !IsVisible;
         _manualUntil = DateTime.UtcNow.AddSeconds(ManualShowSeconds);
         Render();
-        if (_manualOverride == true && NeedsInitialDiscovery())
+        if (_manualOverride == true)
         {
-            _ = DiscoverAsync(initial: true);
+            _ = DiscoverAsync(initial: NeedsInitialDiscovery());
         }
     }
 
@@ -127,6 +134,8 @@ public sealed class PatternGuide : IDisposable
         }
 
         _draft = bounds;
+        _draftOrigin = bounds;
+        _draftOriginSource = layout.Source;
         _manualOverride = true;
         _manualUntil = DateTime.MaxValue;
         Render();
@@ -190,10 +199,23 @@ public sealed class PatternGuide : IDisposable
     {
         if (_draft is not null)
         {
-            var calibration = new PatternCalibration(_draft.Left, _draft.Top, _draft.Right, _draft.Bottom);
-            _host.State.SetCalibration(_serial, calibration);
-            _calibration = PatternGeometry.FromCalibration(calibration);
-            _host.Log.Info($"Pattern calibration saved for {_serial}.");
+            if (_draftOrigin is not null && _draftOriginSource != PatternGeometry.SourceCalibration &&
+                PatternGeometry.SameBounds(_draft, _draftOrigin))
+            {
+                // Nothing was moved, so there is nothing to remember. Saving the automatic
+                // placement as a calibration would freeze today's guess and stop the guide
+                // following Android the next time the lock screen comes up.
+                _host.State.SetCalibration(_serial, null);
+                _calibration = null;
+                _host.Log.Info($"Pattern guide for {_serial} stays automatic: calibration was saved without moving it.");
+            }
+            else
+            {
+                var calibration = new PatternCalibration(_draft.Left, _draft.Top, _draft.Right, _draft.Bottom, IsLandscape);
+                _host.State.SetCalibration(_serial, calibration);
+                _calibration = PatternGeometry.FromCalibration(calibration);
+                _host.Log.Info($"Pattern calibration saved for {_serial} ({(IsLandscape ? "landscape" : "portrait")}).");
+            }
         }
 
         CancelCalibration();
@@ -202,6 +224,7 @@ public sealed class PatternGuide : IDisposable
     public void CancelCalibration()
     {
         _draft = null;
+        _draftOrigin = null;
         _manualOverride = true;
         _manualUntil = DateTime.UtcNow.AddSeconds(ManualShowSeconds);
         Render();
@@ -257,10 +280,10 @@ public sealed class PatternGuide : IDisposable
             {
                 _initialDiscoveryComplete = _calibration is not null || !_host.Config.PatternGuide.AutoDiscoverGeometry;
                 Render();
-                if (NeedsInitialDiscovery())
-                {
-                    _ = DiscoverAsync(initial: true);
-                }
+                // Ask Android where the pattern is every time the lock screen comes up, whether or
+                // not a calibration is saved: exact dot bounds beat any calibration, and the
+                // three-second timer would otherwise leave the old placement showing until it ran.
+                _ = DiscoverAsync(initial: NeedsInitialDiscovery());
             }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
@@ -347,6 +370,7 @@ public sealed class PatternGuide : IDisposable
             if (IsVisible)
             {
                 IsVisible = false;
+                NormalizedBounds = null;
                 _overlay.ClearPattern();
                 ResetTrace();
                 Changed?.Invoke();
@@ -358,6 +382,7 @@ public sealed class PatternGuide : IDisposable
         if (NeedsInitialDiscovery())
         {
             _lastLayout = null;
+            NormalizedBounds = null;
             _patternPoints = [];
             _overlay.ShowPatternLoading("Finding the pattern position…");
             if (!IsVisible)
@@ -372,10 +397,11 @@ public sealed class PatternGuide : IDisposable
         var surface = _mirror.SurfaceRect;
         var geometry = _draft is not null
             ? new PatternGeometryInfo("calibration-draft", 0, 0, false, _draft)
-            : PatternGeometry.Effective(_discovered, _calibration);
+            : PatternGeometry.Effective(_discovered, _calibration, IsLandscape);
 
         var layout = PatternGeometry.Layout(geometry, surface.Width, surface.Height, _identity.DisplayWidth, _identity.DisplayHeight, allowEstimate: true);
         _lastLayout = layout;
+        NormalizedBounds = PatternGeometry.BoundsFromPoints(layout.Points, new RectD(0, 0, surface.Width, surface.Height));
 
         var points = layout.Points.Select(p => new PointD(p.X + surface.X, p.Y + surface.Y)).ToArray();
         var radius = Math.Max(5, layout.ContentRect.Width * PatternGeometry.DotRadiusRelativeToWidth);
