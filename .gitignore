@@ -32,3 +32,6 @@ test-results/
 *.suo
 .DS_Store
 Thumbs.db
+
+# WPF writes a temporary project next to Rex.Mirror.csproj while it compiles XAML.
+*_wpftmp.csproj

@@ -38,12 +38,6 @@
     "TwoFingerToAndroid": true,
     "Sensitivity": 1
   },
-  "Copies": {
-    "Most": 3,
-    "Gap": 12,
-    "MaxSize": 0,
-    "Remember": true
-  },
   "Zoom": {
     "Enabled": true,
     "WheelZoom": true,
@@ -57,6 +51,12 @@
     "NavigatorOpacity": 0.92,
     "NavigatorFrameRate": 30,
     "NavigatorAlways": false
+  },
+  "Copies": {
+    "Most": 3,
+    "Gap": 12,
+    "MaxSize": 0,
+    "Remember": true
   },
   "Ambient": {
     "Enabled": true,
