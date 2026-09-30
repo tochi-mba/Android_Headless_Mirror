@@ -84,8 +84,65 @@ public sealed class PhoneSettingsTests
         Assert.Equal("5 minutes", PhoneSettings.Find("screen-timeout")!.Describe("300000"));
         Assert.Equal("3000 K", PhoneSettings.Find("night-light-temperature")!.Describe("3000"));
         Assert.Equal("default", PhoneSettings.Find("brightness")!.Describe(""));
-        // A value the phone holds that the catalogue does not list is shown as it is.
-        Assert.Equal("99999", PhoneSettings.Find("screen-timeout")!.Describe("99999"));
+        // A value the phone holds that the catalogue does not list is shown for what it is, and
+        // never mistaken for one of the choices.
+        Assert.Equal("Other (99999)", PhoneSettings.Find("screen-timeout")!.Describe("99999"));
+        Assert.Equal("Other (3)", PhoneSettings.Find("dark-mode")!.ChoiceLabel("3"));
+    }
+
+    [Fact]
+    public void Brightness_ReadsAsAPercentButWritesWhatAndroidStores()
+    {
+        var brightness = PhoneSettings.Find("brightness")!;
+        Assert.True(brightness.ShowsPercent);
+        Assert.Equal("0%", brightness.Readout(1));
+        Assert.Equal("50%", brightness.Readout(128));
+        Assert.Equal("100%", brightness.Readout(255));
+        Assert.Equal("100%", brightness.Readout(900));
+        Assert.Equal("100%", brightness.Describe("255"));
+        Assert.Equal("128", brightness.SliderValue(127.6));
+
+        var temperature = PhoneSettings.Find("night-light-temperature")!;
+        Assert.Equal("3000 K", temperature.Readout(3000));
+        Assert.Equal("0.5", (brightness with { Step = 0.1 }).SliderValue(0.5));
+        Assert.Equal("text", brightness.Describe("text"));
+    }
+
+    [Fact]
+    public void DarkMode_StoredAsANumberReadsAsItsChoice()
+    {
+        // UiModeManager stores 0 automatic, 1 off, 2 on; the choices are auto, no and yes.
+        var dark = PhoneSettings.Find("dark-mode")!;
+        Assert.Equal("auto", PhoneSettings.StoredValue(dark, "0"));
+        Assert.Equal("no", PhoneSettings.StoredValue(dark, " 1 "));
+        Assert.Equal("yes", PhoneSettings.StoredValue(dark, "2"));
+        Assert.Equal("7", PhoneSettings.StoredValue(dark, "7"));
+        Assert.Equal("On", dark.Describe(PhoneSettings.StoredValue(dark, "2")));
+        Assert.Equal("1", PhoneSettings.StoredValue(PhoneSettings.Find("show-touches")!, "1"));
+    }
+
+    [Fact]
+    public void DisplaySize_OffersResetAndSaysWhatTheScreenItselfIs()
+    {
+        var size = PhoneSettings.Find("display-size")!;
+        var density = PhoneSettings.Find("display-density")!;
+        Assert.True(size.CanReset);
+        Assert.True(density.CanReset);
+        Assert.False(PhoneSettings.Find("wifi")!.CanReset);
+        Assert.Equal(["wm", "size", "reset"], PhoneSettings.ResetCommand(size));
+        Assert.Equal(["wm", "density", "reset"], PhoneSettings.ResetCommand(density));
+        Assert.Equal(["settings", "delete", "system", "screen_brightness"], PhoneSettings.ResetCommand(PhoneSettings.Find("brightness")!));
+        Assert.Equal("e.g. 1080x2400", size.Hint);
+        Assert.DoesNotContain("Use reset", size.Description, StringComparison.Ordinal);
+
+        Assert.Equal("1440x3200", PhoneSettings.ParseNative("display-size", "Physical size: 1440x3200\nOverride size: 1080x2400"));
+        Assert.Equal("560", PhoneSettings.ParseNative("display-density", "Physical density: 560"));
+        Assert.Equal(string.Empty, PhoneSettings.ParseNative("dark-mode", "Night mode: yes"));
+        Assert.Equal("Native: 1440x3200", PhoneSetting.NativeLabel(" 1440x3200 "));
+        Assert.Equal(string.Empty, PhoneSetting.NativeLabel(""));
+
+        Assert.Equal("default (1440x3200)", new PhoneSettingValue(size, string.Empty) { Native = "1440x3200" }.Display);
+        Assert.Equal("1080x2400", new PhoneSettingValue(size, "1080x2400") { Native = "1440x3200" }.Display);
     }
 
     [Fact]
@@ -95,6 +152,10 @@ public sealed class PhoneSettingsTests
         Assert.Equal("no", PhoneSettings.ParseProbe("dark-mode", "Night mode: no"));
         Assert.Equal("auto", PhoneSettings.ParseProbe("dark-mode", "Night mode: auto"));
         Assert.Equal(string.Empty, PhoneSettings.ParseProbe("dark-mode", "error"));
+        // "Unknown command" contains "no"; only the word after "Night mode:" counts.
+        Assert.Equal(string.Empty, PhoneSettings.ParseProbe("dark-mode", "Unknown command: night"));
+        // Without an override the phone draws at its own size, and there is nothing to reset.
+        Assert.Equal(string.Empty, PhoneSettings.ParseProbe("display-size", "Physical size: 1440x3200"));
         Assert.Equal("1080x2400", PhoneSettings.ParseProbe("display-size", "Physical size: 1440x3200 Override size: 1080x2400 "));
         Assert.Equal("420", PhoneSettings.ParseProbe("display-density", "Physical density: 560 Override density: 420"));
     }

@@ -219,7 +219,9 @@ public partial class PhonePanel : UserControl
         if (!await ConfirmAsync(
                 setting,
                 $"Put {setting.Label} back to the phone's default?",
-                "The value this app stored is deleted and Android decides again.",
+                setting.Source == PhoneSettingSource.SettingsProvider
+                    ? "The value this app stored is deleted and Android decides again."
+                    : "The override is removed and the phone draws at its own setting again.",
                 "Use the default"))
         {
             return;
@@ -249,6 +251,13 @@ public partial class PhonePanel : UserControl
     }
 
     /// <summary>One row: label, description, the control the setting deserves, and a reset button.</summary>
+    /// <summary>
+    /// The keys that move a slider. Each one commits, since nothing else would: a keyboard user
+    /// has no drag to end.
+    /// </summary>
+    internal static bool CommitsSlider(Key key) =>
+        key is Key.Left or Key.Right or Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End;
+
     private sealed class SettingRow
     {
         private readonly PhonePanel _panel;
@@ -396,7 +405,7 @@ public partial class PhonePanel : UserControl
             else if (!value.IsDefault)
             {
                 // The phone holds a value outside the catalogue; show it rather than silently retagging.
-                var extra = new ComboBoxItem { Content = value.Value, Tag = value.Value };
+                var extra = new ComboBoxItem { Content = value.Setting.ChoiceLabel(value.Value), Tag = value.Value };
                 combo.Items.Add(extra);
                 combo.SelectedItem = extra;
             }
@@ -439,33 +448,36 @@ public partial class PhonePanel : UserControl
             slider.Value = double.TryParse(value.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var current)
                 ? Math.Clamp(current, slider.Minimum, slider.Maximum)
                 : slider.Minimum;
-            readout.Text = Format(slider.Value, value.Setting);
-            slider.ValueChanged += (_, _) => readout.Text = Format(slider.Value, value.Setting);
+            readout.Text = value.Setting.Readout(slider.Value);
+            slider.ValueChanged += (_, _) => readout.Text = value.Setting.Readout(slider.Value);
             // Writing on every pixel of a drag would flood ADB; commit when the drag ends.
-            slider.PreviewMouseUp += async (_, _) => await _panel.ApplyAsync(value.Setting, Text(slider.Value, value.Setting));
+            slider.PreviewMouseUp += async (_, _) => await _panel.ApplyAsync(value.Setting, value.Setting.SliderValue(slider.Value));
             slider.KeyUp += async (_, e) =>
             {
-                if (e.Key is Key.Left or Key.Right or Key.Home or Key.End)
+                if (CommitsSlider(e.Key))
                 {
-                    await _panel.ApplyAsync(value.Setting, Text(slider.Value, value.Setting));
+                    await _panel.ApplyAsync(value.Setting, value.Setting.SliderValue(slider.Value));
                 }
             };
 
             panel.Children.Add(slider);
             panel.Children.Add(readout);
             return panel;
-
-            static string Text(double number, PhoneSetting setting) => setting.Step >= 1
-                ? ((long)Math.Round(number)).ToString(CultureInfo.InvariantCulture)
-                : number.ToString("0.##", CultureInfo.InvariantCulture);
-
-            static string Format(double number, PhoneSetting setting) =>
-                Text(number, setting) + (setting.Unit.Length > 0 ? " " + setting.Unit : string.Empty);
         }
 
         private FrameworkElement Text(PhoneSettingValue value)
         {
             var box = Identify(new TextBox { Text = value.Value, HorizontalAlignment = HorizontalAlignment.Stretch }, value);
+            var hint = new TextBlock
+            {
+                Text = value.Setting.Hint,
+                Style = (Style)_panel.FindResource("MutedText"),
+                Margin = new Thickness(10, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                IsHitTestVisible = false,
+                Visibility = value.Value.Length == 0 && value.Setting.Hint.Length > 0 ? Visibility.Visible : Visibility.Collapsed,
+            };
+            box.TextChanged += (_, _) => hint.Visibility = box.Text.Length == 0 && value.Setting.Hint.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             box.KeyUp += async (_, e) =>
             {
                 if (e.Key == Key.Enter && box.Text.Trim() != value.Value)
@@ -480,7 +492,21 @@ public partial class PhonePanel : UserControl
                     await _panel.ApplyAsync(value.Setting, box.Text.Trim());
                 }
             };
-            return box;
+
+            var field = new Grid();
+            field.Children.Add(box);
+            field.Children.Add(hint);
+            var native = PhoneSetting.NativeLabel(value.Native);
+            if (native.Length == 0)
+            {
+                return field;
+            }
+
+            var stack = new StackPanel();
+            stack.Children.Add(field);
+            stack.Children.Add(new TextBlock { Text = native, Style = (Style)_panel.FindResource("MutedText"), FontSize = 11, Margin = new Thickness(0, 4, 0, 0) });
+            return stack;
         }
+
     }
 }
