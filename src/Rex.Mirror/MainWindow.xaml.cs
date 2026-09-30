@@ -545,6 +545,7 @@ public partial class MainWindow : Window
                 SidebarScroll.ActualHeight * scale.DpiScaleY);
         }
         else _sidebarWheelBounds = Rect.Empty;
+        ReleaseStaleAltHold();
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         if (visible)
         {
