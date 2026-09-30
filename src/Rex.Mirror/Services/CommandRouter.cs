@@ -137,6 +137,14 @@ public static class CommandRouter
             ["restartRequired"] = session.NeedsRestart,
             ["paused"] = host.Window?.MirrorPaused ?? false,
             ["sidebarScrollOffset"] = host.Window?.SidebarScrollOffset ?? 0,
+            // Where the panel's scrolling area is on screen, so the audit can stitch its pages.
+            ["sidebarViewport"] = host.Window is { SidebarViewport.IsEmpty: false } panel ? new JsonObject
+            {
+                ["left"] = Math.Round(panel.SidebarViewport.X),
+                ["top"] = Math.Round(panel.SidebarViewport.Y),
+                ["width"] = Math.Round(panel.SidebarViewport.Width),
+                ["height"] = Math.Round(panel.SidebarViewport.Height),
+            } : null,
             ["ambientFrame"] = host.Window?.AmbientFrameAvailable ?? false,
             ["sidebarTab"] = host.Window?.SidebarTab,
             ["windowVisible"] = host.Window?.IsVisible ?? false,

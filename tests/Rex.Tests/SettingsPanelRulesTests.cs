@@ -90,6 +90,33 @@ public sealed class SettingsPanelRulesTests
         });
     }
 
+    [Fact]
+    public void TheAuditStitchesScreenfulsAtTheirOffsets()
+    {
+        // Three screenfuls of a 100-pixel scrolling area, scrolled 0, 100 and 150: the picture is
+        // the strip above the area, then the area's content from 0 to 250.
+        var band = new System.Drawing.Rectangle(10, 70, 80, 100);
+        var pages = new[] { 0.0, 100, 150 }
+            .Select(offset => (offset, new System.Drawing.Bitmap(120, 200)))
+            .ToArray();
+        try
+        {
+            using var stitched = UiAuditCapture.Stitch(pages, band, scale: 1);
+            Assert.Equal(80, stitched.Width);
+            Assert.Equal(60 + 150 + 100, stitched.Height);
+
+            using var scaled = UiAuditCapture.Stitch(pages, band, scale: 1.5);
+            Assert.Equal(60 + 225 + 100, scaled.Height);
+        }
+        finally
+        {
+            foreach (var (_, shot) in pages)
+            {
+                shot.Dispose();
+            }
+        }
+    }
+
     private static IEnumerable<System.Windows.DependencyObject> LogicalDescendants(System.Windows.DependencyObject root)
     {
         foreach (var child in System.Windows.LogicalTreeHelper.GetChildren(root).OfType<System.Windows.DependencyObject>())

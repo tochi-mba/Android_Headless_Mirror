@@ -23,6 +23,9 @@ public partial class MainWindow
     /// <summary>The last notification the tray showed, for the status command and the tests.</summary>
     internal string LastNotification { get; private set; } = string.Empty;
 
+    /// <summary>The side panel's scrolling area on screen, in physical pixels (empty when hidden).</summary>
+    internal Rect SidebarViewport => _sidebarWheelBounds;
+
     internal bool SidebarOnLeft => ReferenceEquals(Body.ColumnDefinitions[0], SidebarColumn);
 
     internal bool HintsShowing => HintText.Visibility == Visibility.Visible;

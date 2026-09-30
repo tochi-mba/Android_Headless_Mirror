@@ -5,11 +5,12 @@ using Rex.Tests.Support;
 namespace Rex.Tests;
 
 /// <summary>
-/// Not a test so much as a camera: walks every tab of the side panel with every group open and
-/// saves a screenshot of each scroll page, at the default window size and at the smallest, into
-/// artifacts/screens/audit. It exists so the whole panel can be looked over after a change instead
-/// of the one screen somebody happened to open. It only runs when REX_UI_AUDIT=1, because it takes
-/// a minute and judges nothing by itself.
+/// Not a test so much as a camera: walks every tab of the side panel with every group open, scrolls
+/// it a screenful at a time, and stitches the screenfuls into one tall picture per tab and window
+/// size (the default and the smallest) in artifacts/screens/audit. It exists so the whole panel can
+/// be looked over after a change instead of the one screen somebody happened to open. CI runs it on
+/// every pull request; locally it only runs when REX_UI_AUDIT=1, because it takes minutes and
+/// judges nothing by itself.
 /// </summary>
 [Collection("desktop")]
 public sealed class UiAuditCapture
@@ -18,7 +19,7 @@ public sealed class UiAuditCapture
 
     private static bool Enabled => Environment.GetEnvironmentVariable("REX_UI_AUDIT") == "1";
 
-    [Fact(Timeout = 240_000)]
+    [Fact(Timeout = 600_000)]
     public async Task EveryPageOfTheSidePanel()
     {
         Assert.SkipUnless(Enabled, "Set REX_UI_AUDIT=1 to capture the side panel for review.");
@@ -101,9 +102,10 @@ public sealed class UiAuditCapture
         (await app.SendAsync(new IpcRequest("status"))).Data?["sidebarScrollOffset"]?.GetValue<double>() ?? 0;
 
     /// <summary>
-    /// Saves one screenshot per screenful of the panel. The panel is scrolled with the wheel, the
-    /// way a person does, and the offset is read back from the app: the scroll viewer is not in UI
-    /// Automation's control view, so it cannot be driven from there.
+    /// Photographs the panel a screenful at a time and stitches the screenfuls into one tall
+    /// picture: the tab strip from the first, then each screenful's scrolling area placed at its
+    /// own offset. The panel is scrolled with the wheel, the way a person does, and the offset is
+    /// read back from the app: the scroll viewer is not in UI Automation's control view.
     /// </summary>
     private static async Task CapturePagesAsync(AppProcess app, string prefix)
     {
@@ -112,24 +114,70 @@ public sealed class UiAuditCapture
             await app.ScrollSidebarAsync(10);
         }
 
-        Note(prefix, $"top offset={await OffsetAsync(app):0}");
-        for (var page = 0; page < 40; page++)
+        var scale = app.DpiScale();
+        var pages = new List<(double Offset, System.Drawing.Bitmap Shot)>();
+        try
         {
-            await Task.Delay(300, TestContext.Current.CancellationToken);
-            using (var shot = await app.CaptureWindowAsync())
+            for (var page = 0; page < 60; page++)
             {
-                shot.Save($"{prefix}-{page:00}.png", System.Drawing.Imaging.ImageFormat.Png);
+                await Task.Delay(300, TestContext.Current.CancellationToken);
+                pages.Add((await OffsetAsync(app), await app.CaptureWindowAsync()));
+                var before = pages[^1].Offset;
+                await app.ScrollSidebarAsync(-4);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
+                var after = await OffsetAsync(app);
+                Note(prefix, $"page {page} offset {before:0} -> {after:0}");
+                if (after - before < 1)
+                {
+                    break;
+                }
             }
 
-            var before = await OffsetAsync(app);
-            await app.ScrollSidebarAsync(-4);
-            await Task.Delay(250, TestContext.Current.CancellationToken);
-            var after = await OffsetAsync(app);
-            Note(prefix, $"page {page} offset {before:0} -> {after:0}");
-            if (after - before < 1)
+            var status = (await app.SendAsync(new IpcRequest("status"))).Data!;
+            var window = app.WindowBounds();
+            var viewport = status["sidebarViewport"]!;
+            var band = new System.Drawing.Rectangle(
+                viewport["left"]!.GetValue<int>() - window.Left,
+                viewport["top"]!.GetValue<int>() - window.Top,
+                viewport["width"]!.GetValue<int>(),
+                viewport["height"]!.GetValue<int>());
+            using var stitched = Stitch(pages, band, scale);
+            stitched.Save($"{prefix}.png", System.Drawing.Imaging.ImageFormat.Png);
+            Note(prefix, $"stitched {pages.Count} screenfuls into {stitched.Width}x{stitched.Height}");
+        }
+        finally
+        {
+            foreach (var (_, shot) in pages)
             {
-                return;
+                shot.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// One tall picture of the panel: everything above the scrolling area from the first screenful
+    /// (the tab strip), then each screenful's scrolling area at its offset, later ones on top.
+    /// </summary>
+    internal static System.Drawing.Bitmap Stitch(IReadOnlyList<(double Offset, System.Drawing.Bitmap Shot)> pages, System.Drawing.Rectangle band, double scale)
+    {
+        var top = Math.Max(0, band.Top - 60);
+        var header = band.Top - top;
+        var last = pages.Count == 0 ? 0 : (int)Math.Round(pages[^1].Offset * scale);
+        var result = new System.Drawing.Bitmap(band.Width, header + last + band.Height);
+        using var graphics = System.Drawing.Graphics.FromImage(result);
+        graphics.Clear(System.Drawing.Color.Black);
+        if (pages.Count > 0)
+        {
+            graphics.DrawImage(pages[0].Shot, new System.Drawing.Rectangle(0, 0, band.Width, header),
+                new System.Drawing.Rectangle(band.Left, top, band.Width, header), System.Drawing.GraphicsUnit.Pixel);
+        }
+
+        foreach (var (offset, shot) in pages)
+        {
+            var y = header + (int)Math.Round(offset * scale);
+            graphics.DrawImage(shot, new System.Drawing.Rectangle(0, y, band.Width, band.Height), band, System.Drawing.GraphicsUnit.Pixel);
+        }
+
+        return result;
     }
 }
