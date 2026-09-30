@@ -71,6 +71,8 @@ public partial class PhonePanel : UserControl
         }
 
         _busy = true;
+        ReloadButton.IsEnabled = false;
+        ReloadButton.Content = "Reading…";
         LoadingText.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         try
         {
@@ -86,6 +88,8 @@ public partial class PhonePanel : UserControl
         finally
         {
             _busy = false;
+            ReloadButton.IsEnabled = true;
+            ReloadButton.Content = "Reload";
             LoadingText.Visibility = Visibility.Collapsed;
         }
     }
@@ -196,16 +200,31 @@ public partial class PhonePanel : UserControl
             return;
         }
 
+        var refocus = IsKeyboardFocusWithin;
         if (!await ConfirmAsync(setting, $"Change {setting.Label}?", $"Set it to {setting.Describe(value)}.", "Change it"))
         {
-            await LoadAsync(target.Adb, target.Serial);
+            await ReloadKeepingFocusAsync(target, setting.Id, refocus);
             return;
         }
 
         var result = await target.Adb.ApplyPhoneSettingAsync(target.Serial, setting.Id, value);
         ShowStatus(result.Ok ? string.Empty : result.Text);
         _window.SetStatus(result.Ok ? $"{setting.Label}: {setting.Describe(value)}" : result.Text, !result.Ok);
+        await ReloadKeepingFocusAsync(target, setting.Id, refocus);
+    }
+
+    /// <summary>
+    /// Reads the settings again and puts the keyboard back on the setting that was just changed.
+    /// Every row is rebuilt from what the phone reports, so without this a keyboard user would be
+    /// thrown back to the top of the window after every change.
+    /// </summary>
+    private async Task ReloadKeepingFocusAsync((AdbClient Adb, string Serial) target, string settingId, bool refocus)
+    {
         await LoadAsync(target.Adb, target.Serial);
+        if (refocus)
+        {
+            _rows.FirstOrDefault(r => r.Value.Setting.Id == settingId)?.Control.Focus();
+        }
     }
 
     /// <summary>Deletes the key so Android falls back to its own default.</summary>
@@ -227,10 +246,11 @@ public partial class PhonePanel : UserControl
             return;
         }
 
+        var refocus = IsKeyboardFocusWithin;
         var result = await target.Adb.ResetPhoneSettingAsync(target.Serial, setting.Id);
         ShowStatus(result.Ok ? string.Empty : result.Text);
         _window.SetStatus(result.Ok ? $"{setting.Label} is back to the phone's default." : result.Text, !result.Ok);
-        await LoadAsync(target.Adb, target.Serial);
+        await ReloadKeepingFocusAsync(target, setting.Id, refocus);
     }
 
     /// <summary>
@@ -250,7 +270,9 @@ public partial class PhonePanel : UserControl
         return await _window.ConfirmAsync(title, body, action, setting.Risk);
     }
 
-    /// <summary>One row: label, description, the control the setting deserves, and a reset button.</summary>
+    /// <summary>Whether a row offers Reset: only when the setting can be reset and is not at the phone's default already.</summary>
+    internal static bool ShowsReset(PhoneSettingValue value) => value.Setting.CanReset && !value.IsDefault;
+
     /// <summary>
     /// The keys that move a slider. Each one commits, since nothing else would: a keyboard user
     /// has no drag to end.
@@ -258,10 +280,15 @@ public partial class PhonePanel : UserControl
     internal static bool CommitsSlider(Key key) =>
         key is Key.Left or Key.Right or Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End;
 
+    /// <summary>
+    /// One row: label, description, the control the setting deserves, and a Reset button when
+    /// there is something to reset. A switch sits beside its label; anything wider gets the
+    /// panel's full width on a line of its own, with a slider's readout on the label's line.
+    /// </summary>
     private sealed class SettingRow
     {
         private readonly PhonePanel _panel;
-        private readonly Button _reset;
+        private TextBlock? _readout;
 
         public SettingRow(PhoneSettingValue value, PhonePanel panel)
         {
@@ -279,35 +306,25 @@ public partial class PhonePanel : UserControl
                 Margin = new Thickness(0, 2, 0, 0),
             });
 
-            _reset = new Button
-            {
-                Content = "Default",
-                Style = (Style)panel.FindResource("GhostButton"),
-                MinHeight = 26,
-                Padding = new Thickness(8, 2, 8, 2),
-                Margin = new Thickness(0, 0, 8, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Opacity = 0,
-                Focusable = true,
-                ToolTip = $"Delete {value.Setting.Namespace}/{value.Setting.Key} so Android uses its own default",
-                Visibility = value.Setting.CanReset && !value.IsDefault ? Visibility.Visible : Visibility.Hidden,
-            };
-            System.Windows.Automation.AutomationProperties.SetAutomationId(_reset, "Reset " + value.Setting.Id);
-            _reset.Click += async (_, _) => await panel.ResetAsync(value.Setting);
+            // Only a setting that has something to go back to offers it, and then plainly: a
+            // button that was there but invisible used to hold its place on every row.
+            var reset = ResetButton(value, panel);
 
-            var control = Build(value);
-            control.VerticalAlignment = VerticalAlignment.Center;
-            control.ToolTip = $"{value.Setting.Namespace}/{value.Setting.Key}";
+            Control = Build(value);
+            Control.VerticalAlignment = VerticalAlignment.Center;
+            // The Android key is for people who want it, not a tooltip over every control.
+            System.Windows.Automation.AutomationProperties.SetHelpText(Control, $"Android setting {value.Setting.Namespace}/{value.Setting.Key}");
 
-            // A switch fits beside its label. Anything wider (a slider, a list, a text box) goes
-            // under it at the panel's full width: side by side, the control took the whole row
-            // and squeezed the label to nothing, which left a slider floating in empty space.
             FrameworkElement row;
             if (IsInline(value.Setting.Kind))
             {
                 var editor = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-                editor.Children.Add(_reset);
-                editor.Children.Add(control);
+                if (reset is not null)
+                {
+                    editor.Children.Add(reset);
+                }
+
+                editor.Children.Add(Control);
                 row = new HeaderedContentControl
                 {
                     Style = (Style)panel.FindResource("SettingRow"),
@@ -317,20 +334,31 @@ public partial class PhonePanel : UserControl
             }
             else
             {
-                _reset.Margin = new Thickness(8, 0, 0, 0);
-                _reset.VerticalAlignment = VerticalAlignment.Top;
                 var top = new Grid();
                 top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 top.Children.Add(text);
-                Grid.SetColumn(_reset, 1);
-                top.Children.Add(_reset);
+                if (_readout is not null)
+                {
+                    // On the label's line, as in the Settings tab, so the slider has the full width.
+                    Grid.SetColumn(_readout, 1);
+                    top.Children.Add(_readout);
+                }
 
-                control.Margin = new Thickness(0, 8, 0, 0);
-                control.HorizontalAlignment = HorizontalAlignment.Stretch;
+                if (reset is not null)
+                {
+                    reset.Margin = new Thickness(8, 0, 0, 0);
+                    reset.VerticalAlignment = VerticalAlignment.Top;
+                    Grid.SetColumn(reset, 2);
+                    top.Children.Add(reset);
+                }
+
+                Control.Margin = new Thickness(0, 8, 0, 0);
+                Control.HorizontalAlignment = HorizontalAlignment.Stretch;
                 var stack = new StackPanel();
                 stack.Children.Add(top);
-                stack.Children.Add(control);
+                stack.Children.Add(Control);
                 row = new Border
                 {
                     BorderBrush = (Brush)panel.FindResource("Line"),
@@ -341,13 +369,36 @@ public partial class PhonePanel : UserControl
                     Child = stack,
                 };
             }
-            // The reset button stays out of the way until the pointer is on its row.
-            row.MouseEnter += (_, _) => _reset.Opacity = 1;
-            row.MouseLeave += (_, _) => _reset.Opacity = _reset.IsKeyboardFocusWithin ? 1 : 0;
-            _reset.GotKeyboardFocus += (_, _) => _reset.Opacity = 1;
-            _reset.LostKeyboardFocus += (_, _) => _reset.Opacity = row.IsMouseOver ? 1 : 0;
+
             Element = row;
         }
+
+        /// <summary>The Reset button for a changed setting that can go back to the phone's default, or null.</summary>
+        private static Button? ResetButton(PhoneSettingValue value, PhonePanel panel)
+        {
+            if (!ShowsReset(value))
+            {
+                return null;
+            }
+
+            var reset = new Button
+            {
+                Content = "Reset",
+                Style = (Style)panel.FindResource("GhostButton"),
+                MinHeight = 26,
+                Padding = new Thickness(8, 2, 8, 2),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = "Back to the phone's own default",
+            };
+            System.Windows.Automation.AutomationProperties.SetAutomationId(reset, "Reset " + value.Setting.Id);
+            System.Windows.Automation.AutomationProperties.SetName(reset, "Reset " + value.Setting.Label);
+            reset.Click += async (_, _) => await panel.ResetAsync(value.Setting);
+            return reset;
+        }
+
+        /// <summary>The control that edits the setting, which the keyboard goes back to after a change.</summary>
+        public FrameworkElement Control { get; }
 
         /// <summary>Only switches sit beside their label; every other control gets a line of its own.</summary>
         internal static bool IsInline(PhoneSettingKind kind) => kind == PhoneSettingKind.Toggle;
@@ -422,21 +473,13 @@ public partial class PhonePanel : UserControl
 
         private FrameworkElement Slider(PhoneSettingValue value)
         {
-            // The slider takes the width it is given; the readout keeps enough room for the widest
-            // value so the thumb does not jump as the number grows a digit.
-            var panel = new Grid();
-            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            panel.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var readout = new TextBlock
+            _readout = new TextBlock
             {
                 Style = (Style)_panel.FindResource("MutedText"),
-                MinWidth = 56,
                 TextAlignment = TextAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(10, 0, 0, 0),
-                FontFamily = (FontFamily)_panel.FindResource("Mono"),
             };
-            Grid.SetColumn(readout, 1);
             var slider = Identify(new System.Windows.Controls.Slider
             {
                 Minimum = value.Setting.Minimum,
@@ -448,6 +491,7 @@ public partial class PhonePanel : UserControl
             slider.Value = double.TryParse(value.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var current)
                 ? Math.Clamp(current, slider.Minimum, slider.Maximum)
                 : slider.Minimum;
+            var readout = _readout;
             readout.Text = value.Setting.Readout(slider.Value);
             slider.ValueChanged += (_, _) => readout.Text = value.Setting.Readout(slider.Value);
             // Writing on every pixel of a drag would flood ADB; commit when the drag ends.
@@ -460,9 +504,7 @@ public partial class PhonePanel : UserControl
                 }
             };
 
-            panel.Children.Add(slider);
-            panel.Children.Add(readout);
-            return panel;
+            return slider;
         }
 
         private FrameworkElement Text(PhoneSettingValue value)

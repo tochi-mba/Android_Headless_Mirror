@@ -6,6 +6,9 @@ using Rex.Mirror.Services;
 
 namespace Rex.Mirror.Views;
 
+/// <summary>One line of the Info tab: a name, its value, and whether the value is set in the mono face.</summary>
+public sealed record InfoRow(string Key, string Value, bool Mono = false);
+
 public partial class InfoPanel : UserControl
 {
     private MainWindow? _window;
@@ -21,7 +24,8 @@ public partial class InfoPanel : UserControl
         ShortcutKeys.ItemsSource = Rows(Shortcuts.All.Where(s => s.IsKey && !s.Browse));
         ShortcutBrowse.ItemsSource = Rows(Shortcuts.BrowseKeys);
         ShortcutGestures.ItemsSource = Rows(Shortcuts.All.Where(s => !s.IsKey));
-        BrowseHeading.Text = "BROWSE MODE · " + Shortcuts.Gesture("browse").ToUpperInvariant();
+        // The heading is set in capitals; the key is written the way it is everywhere else.
+        BrowseHeading.Text = "BROWSE MODE · " + Shortcuts.Gesture("browse");
     }
 
     public void Attach(MainWindow window, AppHost host)
@@ -39,47 +43,47 @@ public partial class InfoPanel : UserControl
         }
 
         var session = _host.Session;
-        var rows = new List<KeyValuePair<string, string>>();
+        var rows = new List<InfoRow>();
         if (session.Identity is { } id && session.ActiveDevice is { } device)
         {
-            rows.Add(KeyValuePair.Create("Name", id.DisplayName));
-            rows.Add(KeyValuePair.Create("Model", string.IsNullOrWhiteSpace(id.Model) ? "unknown" : id.Model));
-            rows.Add(KeyValuePair.Create("Android", string.IsNullOrWhiteSpace(id.AndroidVersion) ? "unknown" : $"{id.AndroidVersion} (API {id.ApiLevel})"));
-            rows.Add(KeyValuePair.Create("Serial", device.Serial));
-            rows.Add(KeyValuePair.Create("Connection", device.Transport));
+            rows.Add(new InfoRow("Name", id.DisplayName));
+            rows.Add(new InfoRow("Model", string.IsNullOrWhiteSpace(id.Model) ? "unknown" : id.Model));
+            rows.Add(new InfoRow("Android", string.IsNullOrWhiteSpace(id.AndroidVersion) ? "unknown" : $"{id.AndroidVersion} (API {id.ApiLevel})"));
+            rows.Add(new InfoRow("Serial", device.Serial, Mono: true));
+            rows.Add(new InfoRow("Connection", device.Transport));
             if (id.DisplayWidth > 0)
             {
-                rows.Add(KeyValuePair.Create("Display", $"{id.DisplayWidth} × {id.DisplayHeight}"));
+                rows.Add(new InfoRow("Display", $"{id.DisplayWidth} × {id.DisplayHeight}"));
             }
 
             if (session.Battery is { } battery)
             {
-                rows.Add(KeyValuePair.Create("Battery", $"{battery.Level}%{(battery.Charging ? ", charging" : string.Empty)}"));
+                rows.Add(new InfoRow("Battery", $"{battery.Level}%{(battery.Charging ? ", charging" : string.Empty)}"));
             }
 
             var profile = _host.State.GetDevice(device.Serial);
-            rows.Add(KeyValuePair.Create("Lock type", string.IsNullOrEmpty(profile?.LockScreenMode) ? "not set" : profile!.LockScreenMode));
+            rows.Add(new InfoRow("Lock type", string.IsNullOrEmpty(profile?.LockScreenMode) ? "not set" : profile!.LockScreenMode));
         }
         else if (session.Devices.Count > 0)
         {
             foreach (var d in session.Devices)
             {
-                rows.Add(KeyValuePair.Create(d.Serial, $"{d.State} ({d.Transport})"));
+                rows.Add(new InfoRow(d.Serial, $"{d.State} ({d.Transport})"));
             }
         }
         else
         {
-            rows.Add(KeyValuePair.Create("Status", session.Message));
+            rows.Add(new InfoRow("Status", session.Message));
         }
 
         DeviceRows.ItemsSource = rows;
 
         ToolRows.ItemsSource = new[]
         {
-            KeyValuePair.Create("scrcpy", session.Tools is null ? "not installed" : $"{session.Tools.Version}"),
-            KeyValuePair.Create("Folder", _host.Paths.Root),
-            KeyValuePair.Create("Version", CommandRouter.AppVersion),
-            KeyValuePair.Create("Startup", StartupRegistration.IsEnabled() ? "starts with Windows" : "manual"),
+            new InfoRow("scrcpy", session.Tools is null ? "not installed" : $"{session.Tools.Version}"),
+            new InfoRow("Folder", _host.Paths.Root, Mono: true),
+            new InfoRow("Version", CommandRouter.AppVersion, Mono: true),
+            new InfoRow("Startup", StartupRegistration.IsEnabled() ? "starts with Windows" : "manual"),
         };
 
         LogText.Text = string.Join(Environment.NewLine, _host.Log.Tail(12));

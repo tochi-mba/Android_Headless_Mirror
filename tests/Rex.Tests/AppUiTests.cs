@@ -332,6 +332,9 @@ public sealed partial class AppUiTests
         await app.WaitForPhaseAsync("mirroring", Startup);
         app.Ui.Select("TabPhone");
         await app.WaitUntilAsync(() => package.AdbCalls().Any(l => l.Contains("settings list system", StringComparison.Ordinal)), Soon, "phone settings read");
+        // The tab's own content on screen, not the frame drawn before the switch.
+        await app.WaitUntilAsync(() => app.Ui.Exists("SettingsSearch") && !app.Ui.Read("SettingsSearch", e => e.IsOffscreen), Soon, "the Phone tab to show");
+        await Task.Delay(300, TestContext.Current.CancellationToken);
         await app.SaveScreenshotAsync("ui-phone-tab.png");
 
         // A toggle, a choice and a slider, each written the moment it changes.
@@ -345,6 +348,8 @@ public sealed partial class AppUiTests
         app.Ui.SetValue("brightness", 200);
         app.Ui.Invoke("Reset show-touches");
         await app.WaitUntilAsync(() => package.AdbCalls().Any(l => l.Contains("settings delete system show_touches", StringComparison.Ordinal)), Soon, "reset to the phone default");
+        // Back at the default there is nothing to reset, so the button is gone, not merely invisible.
+        await app.WaitUntilAsync(() => !app.Ui.Exists("Reset show-touches"), Soon, "the reset to go once the setting is at its default");
         await app.QuitAsync();
     }
 
@@ -486,6 +491,9 @@ public sealed partial class AppUiTests
         app.Ui.Select("TabInfo");
         Assert.NotNull(app.Ui.FindByName("v9.9"));
         Assert.NotNull(app.Ui.FindByName(package.Root));
+        // The recent log is a box whose lines can be selected and copied, not plain text.
+        Assert.Equal(System.Windows.Automation.ControlType.Edit, app.Ui.Read("LogText", e => e.ControlType));
+        Assert.NotNull(app.Ui.FindText("BROWSE MODE · Ctrl+Alt+K"));
         await app.SaveScreenshotAsync("ui-info-tab.png");
         await app.QuitAsync();
     }

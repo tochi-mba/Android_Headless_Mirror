@@ -47,7 +47,11 @@ public sealed record AndroidResult(bool Ok, string Text)
         result.Ok ? Success(result.StdOut.Trim()) : Failure(result.FailureText);
 }
 
-public sealed record AndroidSettingRow(string Namespace, string Key, string Value, string Risk);
+public sealed record AndroidSettingRow(string Namespace, string Key, string Value, string Risk)
+{
+    /// <summary>The risk as a row shows it: nothing for an ordinary key, so the others stand out.</summary>
+    public string RiskTag => Risk == AndroidSettings.RiskNormal ? string.Empty : Risk;
+}
 
 public enum KeyguardState
 {

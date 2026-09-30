@@ -2,29 +2,31 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
-    <TextBlock Text="Android settings provider" Style="{StaticResource MutedText}" />
-    <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,8"
-               Text="Live keys from this phone. Keys that could cut off ADB are protected; others may still be refused by Android." />
+    <!-- One warning, here, rather than a second one above the view. -->
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+               Text="Every key in Android's settings provider, including the ones above. Editing here is unguided: keys that could cut off ADB are refused, and Android may refuse others." />
     <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <ComboBox x:Name="Namespace" MinWidth="90" SelectedIndex="0" SelectionChanged="OnNamespace"
+      <ComboBox x:Name="Namespace" SelectedIndex="0" SelectionChanged="OnNamespace"
                AutomationProperties.Name="Settings namespace" ToolTip="Which of Android's three settings tables to read">
         <ComboBoxItem Content="system" Tag="system" />
         <ComboBoxItem Content="secure" Tag="secure" />
         <ComboBoxItem Content="global" Tag="global" />
       </ComboBox>
-      <TextBox x:Name="Search" Grid.Column="1" Margin="6,0" TextChanged="OnSearch"
-               AutomationProperties.Name="Filter keys" ToolTip="Show only the keys and values that mention this" />
-      <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="{StaticResource IconRefresh}" Click="OnReload"
+      <Button Grid.Column="1" Style="{StaticResource IconButton}" Content="{StaticResource IconRefresh}" Click="OnReload" Margin="6,0,0,0"
               AutomationProperties.Name="Reload" ToolTip="Read every key from the phone again" />
+    </Grid>
+    <Grid Margin="0,6,0,0">
+      <TextBox x:Name="Search" TextChanged="OnSearch" AutomationProperties.Name="Filter keys" ToolTip="Show only the keys and values that mention this" />
+      <TextBlock x:Name="SearchHint" Style="{StaticResource MutedText}" Text="Filter keys and values" Margin="10,0,0,0"
+                 VerticalAlignment="Center" IsHitTestVisible="False" />
     </Grid>
     <Border Margin="0,8,0,0" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Background="{StaticResource Ink}">
       <ListBox x:Name="Rows" MaxHeight="260" Background="Transparent" BorderThickness="0" SelectionChanged="OnRowSelected"
-               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+               PreviewMouseWheel="OnRowsWheel" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemContainerStyle>
           <Style TargetType="ListBoxItem">
             <Setter Property="Padding" Value="8,5" />
@@ -64,26 +66,29 @@
                 <TextBlock Text="{Binding Key}" FontFamily="{StaticResource Mono}" FontSize="11" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                 <TextBlock Text="{Binding Value}" Style="{StaticResource MutedText}" FontSize="11" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
               </StackPanel>
-              <TextBlock Grid.Column="1" Text="{Binding Risk}" FontSize="10" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+              <TextBlock Grid.Column="1" Text="{Binding RiskTag}" FontSize="10" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
     </Border>
+    <!-- Full width, each with a hint inside it: side by side they were 64 DIP wide and unlabelled. -->
     <Grid Margin="0,8,0,0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-      <TextBox x:Name="Key" AutomationProperties.Name="Key" ToolTip="The Android settings key, for example screen_brightness" />
-      <TextBox x:Name="Value" Grid.Column="1" Margin="6,0" AutomationProperties.Name="Value" ToolTip="What to write into that key" />
-      <Button x:Name="WriteButton" Grid.Column="2" Content="Write" Style="{StaticResource PrimaryButton}" Click="OnWrite"
-              ToolTip="Put this value into the key on the phone" />
-      <Button x:Name="DeleteButton" Grid.Column="3" Content="Delete" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Click="OnDelete"
-              ToolTip="Remove the key so Android uses its own default" />
+      <TextBox x:Name="Key" TextChanged="OnFieldText" AutomationProperties.Name="Key" ToolTip="The Android settings key, for example screen_brightness" />
+      <TextBlock x:Name="KeyHint" Style="{StaticResource MutedText}" Text="Key, for example screen_brightness" Margin="10,0,0,0"
+                 VerticalAlignment="Center" IsHitTestVisible="False" />
     </Grid>
+    <Grid Margin="0,6,0,0">
+      <TextBox x:Name="Value" TextChanged="OnFieldText" AutomationProperties.Name="Value" ToolTip="What to write into that key" />
+      <TextBlock x:Name="ValueHint" Style="{StaticResource MutedText}" Text="Value to write" Margin="10,0,0,0"
+                 VerticalAlignment="Center" IsHitTestVisible="False" />
+    </Grid>
+    <UniformGrid Columns="2" Margin="-3,8,-3,0">
+      <Button x:Name="WriteButton" Content="Write" Style="{StaticResource PrimaryButton}" Margin="3,0" Click="OnWrite"
+              ToolTip="Put this value into the key on the phone" />
+      <Button x:Name="DeleteButton" Content="Delete" Style="{StaticResource DangerButton}" Margin="3,0" Click="OnDelete"
+              ToolTip="Remove the key so Android uses its own default" />
+    </UniformGrid>
     <TextBlock x:Name="Status" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
   </StackPanel>
 </UserControl>
