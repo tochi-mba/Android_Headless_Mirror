@@ -22,6 +22,7 @@ public sealed class AppHost : IDisposable
         Log = log;
         Runner = new ProcessRunner();
         Session = new SessionController(this);
+        Usb = new UsbDoctor(this, UsbSystem.FromEnvironment(Runner));
     }
 
     public AppPaths Paths { get; }
@@ -30,6 +31,9 @@ public sealed class AppHost : IDisposable
     public RexLog Log { get; }
     public IProcessRunner Runner { get; }
     public SessionController Session { get; }
+
+    /// <summary>Notices a phone Windows could not read over USB and gets it repaired.</summary>
+    public UsbDoctor Usb { get; }
     public MainWindow? Window { get; private set; }
     public TrayIcon? Tray => _tray;
 
@@ -61,6 +65,7 @@ public sealed class AppHost : IDisposable
         _pipe = new PipeServer(this);
         _pipe.Start();
         Session.Start();
+        Usb.Start();
         WatchConfigFile();
     }
 
@@ -190,6 +195,7 @@ public sealed class AppHost : IDisposable
     {
         _configWatcher?.Dispose();
         _configReload?.Stop();
+        Usb.Dispose();
         Session.Dispose();
         _pipe?.Dispose();
         _tray?.Dispose();

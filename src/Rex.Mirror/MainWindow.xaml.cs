@@ -153,6 +153,7 @@ public partial class MainWindow : Window
         Onboarding.Attach(this, host);
 
         host.Session.Changed += OnSessionChanged;
+        host.Usb.Changed += OnUsbChanged;
         host.Session.MirrorReady += OnMirrorReady;
         host.Session.MirrorEnded += OnMirrorEnded;
         host.Session.LaunchRect = LaunchRect;
@@ -351,6 +352,10 @@ public partial class MainWindow : Window
                 NoticeTitle.Text = $"How does {session.Identity.DisplayName} unlock?";
                 NoticeText.Text = "Pattern phones get a nine-dot guide when the lock screen shows black. Nothing about the pattern itself is stored.";
             }
+        }
+        else if (ShowUsbNotice())
+        {
+            // A phone Windows cannot read outranks a hint: it is why nothing is on screen.
         }
         else if (_tipShowing is null || _fullscreen)
         {
@@ -790,31 +795,18 @@ public partial class MainWindow : Window
 
     private async void OnRepairUsb(object sender, RoutedEventArgs e) => await RepairUsbAsync();
 
-    /// <summary>Runs "rex usb repair" elevated; Windows shows the UAC prompt, the exit code tells the outcome.</summary>
+    /// <summary>
+    /// Runs "rex usb repair" through the administrator prompt: it registers ADB interfaces Windows
+    /// bound without the ADB class and resets USB devices Windows could not read.
+    /// </summary>
     public async Task RepairUsbAsync()
     {
-        var cli = Path.Combine(AppContext.BaseDirectory, "rex.exe");
-        if (!File.Exists(cli))
-        {
-            SetStatus("rex.exe was not found next to the app, so the repair cannot run.", isError: true);
-            return;
-        }
-
         EmptyRepair.IsEnabled = false;
         SetStatus("Waiting for administrator approval…");
         try
         {
-            using var repair = Process.Start(new ProcessStartInfo(cli, "usb repair") { UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden })
-                ?? throw new InvalidOperationException("Windows did not start the repair.");
-            await repair.WaitForExitAsync();
-            SetStatus(repair.ExitCode == 0
-                ? "USB driver registered. The phone should appear in a moment; unplug and plug it in again if it does not."
-                : "The repair did not finish. Run 'rex usb repair' in an administrator terminal to see why.", repair.ExitCode != 0);
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            // ERROR_CANCELLED (1223) is the user declining the UAC prompt.
-            SetStatus(ex is System.ComponentModel.Win32Exception { NativeErrorCode: 1223 } ? "Repair cancelled." : "Could not start the repair: " + ex.Message, isError: true);
+            var (ok, message) = await _host.Usb.RepairAsync();
+            SetStatus(message, isError: !ok);
         }
         finally
         {

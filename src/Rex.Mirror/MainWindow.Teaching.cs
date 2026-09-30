@@ -124,7 +124,7 @@ public partial class MainWindow
     /// <summary>Offers a hint once, and never while something is being asked in the same bar.</summary>
     public void ShowTipOnce(string id)
     {
-        if (_fullscreen || _tipShowing is not null || TourLayer.IsRunning ||
+        if (_fullscreen || _tipShowing is not null || _usbNoticeShowing || TourLayer.IsRunning ||
             _host.State.Ui.TipsSeen.Contains(id, StringComparer.Ordinal) ||
             _host.Session.PendingLockQuestionSerial is not null ||
             Tips.Find(id) is not { } tip)
@@ -183,6 +183,8 @@ public partial class MainWindow
         }
 
         NoticeDismiss.Visibility = question ? Visibility.Collapsed : Visibility.Visible;
+        _usbNoticeShowing = false;
+        ShowUsbAnswers(UsbNotice.None);
     }
 
     private void OnDismissTip(object sender, RoutedEventArgs e)

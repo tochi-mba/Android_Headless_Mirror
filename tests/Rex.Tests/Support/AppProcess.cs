@@ -73,6 +73,9 @@ public sealed class AppProcess : IDisposable
         start.ArgumentList.Add("--root");
         start.ArgumentList.Add(_package.Root);
         start.Environment[Ipc.PipeNameOverride] = _pipe;
+        // Never the PC's real USB devices, Task Scheduler or administrator prompt.
+        start.Environment[UsbDeviceSource.FakeVariable] = _package.UsbProblemsFile;
+        start.Environment[UsbSystem.FakeRepairLogVariable] = _package.UsbRepairLog;
         start.Environment.Remove(ToolLocator.AdbOverride);
         start.Environment.Remove(ToolLocator.ScrcpyOverride);
         var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start RexMirror.exe.");
@@ -646,6 +649,8 @@ public sealed class AppProcess : IDisposable
 
         start.Environment[AppPaths.RootEnvironmentVariable] = _package.Root;
         start.Environment[Ipc.PipeNameOverride] = _pipe;
+        start.Environment[UsbDeviceSource.FakeVariable] = _package.UsbProblemsFile;
+        start.Environment[UsbSystem.FakeRepairLogVariable] = _package.UsbRepairLog;
         using var cli = Process.Start(start)!;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));

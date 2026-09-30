@@ -175,6 +175,7 @@ public static class CommandRouter
                 ["dragging"] = nav.NavigatorDragging,
             } : null,
             ["lockQuestion"] = session.PendingLockQuestionSerial is not null,
+            ["usb"] = host.Usb.Status(),
             ["zoom"] = host.Window is { } w ? Math.Round(w.Host.Zoom, 3) : 1.0,
             // Where the picture sits inside the mirror area, so a caller can tell whether it fills
             // the space it is given: after the phone turns, a landscape picture should.

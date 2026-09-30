@@ -49,6 +49,18 @@ public sealed class TestPackage : IDisposable
     public string FailCopiesMarker => Path.Combine(ToolsFolder, "fail-copies");
     public string FakeAdbScenario => Path.Combine(ToolsFolder, "fake-adb.json");
 
+    /// <summary>The USB devices the app is told Windows could not read (none until a test writes them).</summary>
+    public string UsbProblemsFile => Path.Combine(Root, "usb-problems.json");
+
+    /// <summary>Where the app records Task Scheduler and administrator-prompt calls instead of making them.</summary>
+    public string UsbRepairLog => Path.Combine(Root, "usb-repair.log");
+
+    public string[] UsbRepairCalls() => ReadLiveLog(UsbRepairLog);
+
+    /// <summary>Tells the app Windows reports these devices; an empty list clears them.</summary>
+    public void WriteUsbProblems(params object[] nodes) =>
+        File.WriteAllText(UsbProblemsFile, JsonSerializer.Serialize(nodes));
+
     public string[] AdbCalls() => ReadLiveLog(FakeAdbLog);
     public string[] ScrcpyLog() => ReadLiveLog(FakeScrcpyLog);
 

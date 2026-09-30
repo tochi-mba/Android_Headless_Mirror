@@ -360,6 +360,15 @@
         <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Enable TCP/IP on the phone from a USB session">
           <CheckBox x:Name="WirelessTcpip" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
         </HeaderedContentControl>
+        <HeaderedContentControl Style="{StaticResource SettingRow}">
+          <HeaderedContentControl.Header>
+            <StackPanel>
+              <TextBlock Text="Fix USB by itself when Windows can't read the phone" />
+              <TextBlock x:Name="AutoRepairUsbState" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+          </HeaderedContentControl.Header>
+          <CheckBox x:Name="AutoRepairUsb" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
+        </HeaderedContentControl>
         <TextBlock Text="Extra scrcpy arguments" Margin="0,12,0,4" />
         <TextBox x:Name="ExtraArgs" LostFocus="OnExtraArgs" KeyDown="OnExtraArgsKey" AutomationProperties.Name="Extra scrcpy arguments"
                  ToolTip="Passed to scrcpy at launch, for options this app does not expose" />

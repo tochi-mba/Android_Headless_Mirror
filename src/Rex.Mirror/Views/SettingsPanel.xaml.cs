@@ -105,6 +105,8 @@ public partial class SettingsPanel : UserControl
             OpenOnConnect.IsChecked = c.App.OpenOnConnect;
             ConfirmWrites.IsChecked = c.App.ConfirmSensitiveWrites;
             Wireless.IsChecked = c.Wireless.Enabled;
+            AutoRepairUsb.IsChecked = c.App.AutoRepairUsb;
+            AutoRepairUsbState.Text = UsbSettingText(c.App.AutoRepairUsb, _host.Usb.AutoRepair);
             WirelessTcpip.IsChecked = c.Wireless.EnableTcpipWhenUsbAvailable;
             ExtraArgs.Text = c.Mirror.ExtraArgs;
             CompatibilityKeyboard.IsChecked = c.Mirror.CompatibilityKeyboard;
@@ -116,6 +118,15 @@ public partial class SettingsPanel : UserControl
             _loading = false;
         }
     }
+
+    /// <summary>What the USB auto-repair switch does right now, under its label.</summary>
+    internal static string UsbSettingText(bool enabled, UsbAutoRepairStatus task) => (enabled, task.State) switch
+    {
+        (false, _) => "Off: the app offers the fix and asks first.",
+        (true, UsbAutoRepairState.Installed) => "On. Windows resets a phone it could not read without asking.",
+        (true, UsbAutoRepairState.Outdated) => "Set up by another version. Choose Fix automatically when the notice offers it to update it.",
+        _ => "Needs one administrator approval, offered the first time Windows can't read the phone.",
+    };
 
     private static void SelectTag(ComboBox combo, string tag)
     {
@@ -164,6 +175,7 @@ public partial class SettingsPanel : UserControl
         c.Session.RestartOnUnexpectedExit = RestartOnCrash.IsChecked == true;
         c.Wireless.Enabled = Wireless.IsChecked == true;
         c.Wireless.EnableTcpipWhenUsbAvailable = WirelessTcpip.IsChecked == true;
+        c.App.AutoRepairUsb = AutoRepairUsb.IsChecked == true;
     });
 
     private void OnLiveChanged(object sender, RoutedEventArgs e) => Save(c =>
