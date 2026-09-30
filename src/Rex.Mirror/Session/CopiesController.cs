@@ -214,6 +214,10 @@ public sealed class CopiesController : IDisposable
         });
         _ = scrcpy.Exited.ContinueWith(_ => view.Dispatcher.BeginInvoke(() => OnExited(index, scrcpy)), TaskScheduler.Default);
         view.Follow(_views.MainView);
+        if (_host.Session.ViewPaused && ScrcpyShortcuts.For("pause") is { } pause)
+        {
+            ScrcpyShortcutSender.Send(scrcpy.Hwnd, pause);
+        }
         _copies[index] = new RunningCopy(index, scrcpy, view, maxSize);
         _plan.Ready(index);
         _host.Log.Info($"Copy {index + 1} is showing.");

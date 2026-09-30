@@ -64,7 +64,8 @@ public static partial class ScrcpyArguments
         (int X, int Y, int Width, int Height)? window,
         string? recordPath,
         string? keyboardMode = null,
-        int? copyIndex = null)
+        int? copyIndex = null,
+        int? displayOrientation = null)
     {
         keyboardMode ??= KeyboardModeFor(config, null);
         var isCopy = copyIndex is not null;
@@ -176,6 +177,14 @@ public static partial class ScrcpyArguments
         }
 
         args.AddRange(SplitExtraArgs(mirror.ExtraArgs));
+
+        // After the extra arguments, so it wins over an orientation given there: the main view may
+        // have been turned since it started, and a copy opens showing the picture the same way.
+        if (isCopy && displayOrientation is { } orientation)
+        {
+            args.Add("--display-orientation=" + DisplayOrientation.Name(orientation));
+        }
+
         return args;
     }
 

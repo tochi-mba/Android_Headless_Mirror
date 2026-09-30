@@ -80,6 +80,15 @@ public sealed partial class SessionController : IDisposable
     /// <summary>Set by the window: the screen rectangle (pixels) where scrcpy should first appear.</summary>
     public Func<(int X, int Y, int Width, int Height)?>? LaunchRect { get; set; }
 
+    /// <summary>Set by the window: the scrcpy windows of the copies of the phone, which follow the view shortcuts too.</summary>
+    public Func<IEnumerable<IntPtr>>? CopyWindows { get; set; }
+
+    /// <summary>How the main session shows the picture now (<see cref="DisplayOrientation"/>): its start, then every turn and flip since.</summary>
+    public int ViewOrientation { get; private set; }
+
+    /// <summary>Whether the main session's picture is paused.</summary>
+    public bool ViewPaused { get; private set; }
+
     public event Action? Changed;
     public event Action<ScrcpyProcess>? MirrorReady;
     public event Action? MirrorEnded;
@@ -336,6 +345,9 @@ public sealed partial class SessionController : IDisposable
             PendingLockQuestionSerial = askLock ? device.Serial : null;
             _activeLaunchSettings = launchSettings;
             _mirrorStartedAt = DateTime.UtcNow;
+            // A new session shows the picture as its arguments say, and playing.
+            ViewOrientation = DisplayOrientation.Initial(ScrcpyArguments.SplitExtraArgs(config.Mirror.ExtraArgs));
+            ViewPaused = false;
             SetState(SessionPhase.Mirroring, identity.DisplayName);
             MirrorReady?.Invoke(scrcpy);
             StartBatteryPoll(device.Serial);
@@ -587,15 +599,40 @@ public sealed partial class SessionController : IDisposable
                 }
 
                 var shortcut = ScrcpyShortcuts.For(action.Id);
-                return shortcut is not null && ScrcpyShortcutSender.Send(scrcpy.Hwnd, shortcut)
-                    ? AndroidResult.Success(action.Label)
-                    : AndroidResult.Failure($"Could not send '{action.Label}' to the mirror.");
+                if (shortcut is null || !ScrcpyShortcutSender.Send(scrcpy.Hwnd, shortcut))
+                {
+                    return AndroidResult.Failure($"Could not send '{action.Label}' to the mirror.");
+                }
+
+                if (ScrcpyShortcuts.AppliesToEveryView(action.Id))
+                {
+                    FollowView(action.Id);
+                    foreach (var copy in CopyWindows?.Invoke() ?? [])
+                    {
+                        ScrcpyShortcutSender.Send(copy, shortcut);
+                    }
+                }
+
+                return AndroidResult.Success(action.Label);
             }
 
             default:
                 return appActions is null
                     ? AndroidResult.Failure($"'{action.Label}' is only available in the app.")
                     : await appActions(action.Id).ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>Keeps <see cref="ViewOrientation"/> and <see cref="ViewPaused"/> in step with a view shortcut just sent.</summary>
+    private void FollowView(string actionId)
+    {
+        if (DisplayOrientation.TransformFor(actionId) is { } transform)
+        {
+            ViewOrientation = DisplayOrientation.Apply(ViewOrientation, transform);
+        }
+        else if (actionId is "pause" or "resume")
+        {
+            ViewPaused = actionId == "pause";
         }
     }
 

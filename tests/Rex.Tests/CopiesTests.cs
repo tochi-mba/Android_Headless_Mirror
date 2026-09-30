@@ -267,6 +267,87 @@ public sealed class CopiesTests
         Assert.Throws<FormatException>(() => ScrcpyArguments.SplitExtraArgs(extra));
 
     [Fact]
+    public void ACopyOpensShowingThePictureTheWayTheMainViewDoes()
+    {
+        var config = new RexConfig();
+        config.Mirror.ExtraArgs = "--display-orientation=180";
+
+        // Last, so it wins over the extra arguments' own starting orientation.
+        var copy = ScrcpyArguments.Build(config, "S", false, "Copy", null, null, copyIndex: 0, displayOrientation: 5);
+        Assert.Equal("--display-orientation=flip90", copy[^1]);
+        Assert.Contains("--display-orientation=180", copy);
+
+        // The main session is never given one: it starts as its arguments say.
+        var main = ScrcpyArguments.Build(config, "S", false, "Main", null, null, displayOrientation: 5);
+        Assert.DoesNotContain("--display-orientation=flip90", main);
+        Assert.DoesNotContain(ScrcpyArguments.Build(new RexConfig(), "S", false, "Copy", null, null, copyIndex: 0), a => a.StartsWith("--display-orientation", StringComparison.Ordinal));
+    }
+
+    // ----- How the PC view is shown, which every copy follows -----
+
+    [Theory]
+    // Quarter turns add up, clockwise, and come round again.
+    [InlineData("0", "rotate-right", "90")]
+    [InlineData("90", "rotate-right", "180")]
+    [InlineData("270", "rotate-right", "0")]
+    [InlineData("0", "rotate-left", "270")]
+    [InlineData("90", "rotate-left", "0")]
+    // A flip is taken before the turn, so flipping a picture on its side turns it the other way.
+    [InlineData("0", "flip-horizontal", "flip0")]
+    [InlineData("90", "flip-horizontal", "flip270")]
+    [InlineData("270", "flip-horizontal", "flip90")]
+    [InlineData("180", "flip-horizontal", "flip180")]
+    [InlineData("flip0", "flip-horizontal", "0")]
+    [InlineData("0", "flip-vertical", "flip180")]
+    [InlineData("flip90", "rotate-right", "flip180")]
+    public void Orientation_ComposesTurnsAndFlipsTheWayScrcpyDoes(string from, string action, string expected)
+    {
+        var transform = DisplayOrientation.TransformFor(action);
+        Assert.NotNull(transform);
+        Assert.Equal(expected, DisplayOrientation.Name(DisplayOrientation.Apply(DisplayOrientation.Parse(from)!.Value, transform.Value)));
+    }
+
+    [Fact]
+    public void Orientation_StartsWhereTheExtraArgumentsPutIt()
+    {
+        Assert.Equal(DisplayOrientation.Upright, DisplayOrientation.Initial([]));
+        Assert.Equal(2, DisplayOrientation.Initial(["--display-orientation=180"]));
+        Assert.Equal(5, DisplayOrientation.Initial(["--orientation", "flip90"]));
+        // The last one given wins, as it does for scrcpy.
+        Assert.Equal(1, DisplayOrientation.Initial(["--orientation=270", "--render-fit=letterbox", "--display-orientation=90"]));
+        // Anything scrcpy would not take is not an orientation.
+        Assert.Equal(DisplayOrientation.Upright, DisplayOrientation.Initial(["--display-orientation=45"]));
+        Assert.Equal(DisplayOrientation.Upright, DisplayOrientation.Initial(["--display-orientation"]));
+
+        Assert.Equal(8, DisplayOrientation.Names.Count);
+        Assert.All(DisplayOrientation.Names, name => Assert.Equal(name, DisplayOrientation.Name(DisplayOrientation.Parse(name)!.Value)));
+        Assert.Equal(7, DisplayOrientation.Parse(" FLIP270 "));
+        Assert.Null(DisplayOrientation.Parse(null));
+        Assert.Null(DisplayOrientation.TransformFor("rotate-device"));
+    }
+
+    [Theory]
+    [InlineData("rotate-left", true)]
+    [InlineData("rotate-right", true)]
+    [InlineData("flip-horizontal", true)]
+    [InlineData("flip-vertical", true)]
+    [InlineData("pause", true)]
+    [InlineData("resume", true)]
+    [InlineData("reset-capture", true)]
+    // Anything that acts on the phone happens once, through the main session.
+    [InlineData("rotate-device", false)]
+    [InlineData("sleep", false)]
+    [InlineData("copy", false)]
+    [InlineData("paste", false)]
+    [InlineData("paste-text", false)]
+    [InlineData("fps", false)]
+    public void OnlyShortcutsAboutThePictureOnThisPcGoToEveryCopy(string action, bool everyView)
+    {
+        Assert.NotNull(ScrcpyShortcuts.For(action));
+        Assert.Equal(everyView, ScrcpyShortcuts.AppliesToEveryView(action));
+    }
+
+    [Fact]
     public void Settings_AreKeptWithinWhatAPhoneAndAWindowCanHold()
     {
         var copies = new CopiesSettings { Most = 99, Gap = double.NaN, MaxSize = 100, Remember = false };

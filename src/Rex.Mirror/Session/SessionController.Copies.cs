@@ -32,7 +32,8 @@ public sealed partial class SessionController
         var config = _host.Config;
         var title = CopyTitle(device.Serial, index);
         var keyboardMode = ScrcpyArguments.KeyboardModeFor(config, _host.State.GetDevice(device.Serial));
-        var args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, window, recordPath: null, keyboardMode, copyIndex: index);
+        var args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, window, recordPath: null, keyboardMode, copyIndex: index,
+            displayOrientation: ViewOrientation);
         _host.Log.Info($"Starting copy {index + 1} of {device.Serial}: {string.Join(' ', args)}");
 
         ScrcpyProcess scrcpy;
