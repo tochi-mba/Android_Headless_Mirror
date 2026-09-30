@@ -1,71 +1,81 @@
 <UserControl x:Class="Rex.Mirror.Views.ControlsPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:Rex.Mirror.Views">
+  <UserControl.Resources>
+    <!-- A tile says what it does and, while it is off, why: a greyed button with no reason reads
+         as broken. Tooltips show on disabled tiles for exactly that. -->
+    <Style x:Key="PanelTile" TargetType="Button" BasedOn="{StaticResource ActionTile}">
+      <Setter Property="ToolTip" Value="{Binding Tip}" />
+      <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+      <Setter Property="AutomationProperties.Name" Value="{Binding Label}" />
+      <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
+      <Style.Triggers>
+        <Trigger Property="IsEnabled" Value="False">
+          <Setter Property="ToolTip" Value="{x:Static views:ControlsPanel.NeedsPhone}" />
+          <Setter Property="AutomationProperties.HelpText" Value="{x:Static views:ControlsPanel.NeedsPhone}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <DataTemplate x:Key="Tile">
+      <Button Style="{StaticResource PanelTile}" Content="{Binding}" Tag="{Binding Id}" Click="OnTile" />
+    </DataTemplate>
+    <ItemsPanelTemplate x:Key="ThreeColumns">
+      <UniformGrid Columns="3" />
+    </ItemsPanelTemplate>
+  </UserControl.Resources>
+
   <StackPanel>
     <Grid Margin="0,6,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <Button x:Name="SessionButton" Content="Stop mirror" Click="OnSessionButton" ToolTip="Close the mirror and keep waiting in the tray" />
-      <Button x:Name="RestartButton" Grid.Column="1" Content="Restart" Margin="6,0,0,0" ToolTip="Relaunch scrcpy (applies changed mirror settings)" Click="OnRestart" />
+      <Button x:Name="SessionButton" Content="Stop mirror" Click="OnSessionButton" ToolTipService.ShowOnDisabled="True" />
+      <Button x:Name="RestartButton" Grid.Column="1" Content="Restart" Margin="6,0,0,0" Click="OnRestart" ToolTipService.ShowOnDisabled="True" />
     </Grid>
 
+    <!-- Each grid is pulled out by the 3 DIP its tiles keep around themselves, so the outer tiles
+         line up with everything else in the panel. -->
     <TextBlock Text="PHONE" Style="{StaticResource Eyebrow}" />
-    <ItemsControl x:Name="NavigationTiles">
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-          <UniformGrid Columns="3" />
-        </ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate>
-          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile"
-                  AutomationProperties.Name="{Binding Label}" />
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <ItemsControl x:Name="NavigationTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
 
     <TextBlock Text="PHONE ORIENTATION" Style="{StaticResource Eyebrow}" />
-    <UniformGrid Columns="3">
-      <RadioButton x:Name="RotationPortrait" Style="{StaticResource Segment}" Content="Portrait" Tag="rotation-portrait" Click="OnRotation"
-                   GroupName="Rotation" HorizontalContentAlignment="Center" />
-      <RadioButton x:Name="RotationLandscape" Style="{StaticResource Segment}" Content="Landscape" Tag="rotation-landscape" Click="OnRotation"
-                   GroupName="Rotation" HorizontalContentAlignment="Center" />
-      <RadioButton x:Name="RotationAuto" Style="{StaticResource Segment}" Content="Auto" Tag="rotation-auto" Click="OnRotation"
-                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="0" />
+    <UniformGrid Columns="3" Margin="-3,0">
+      <RadioButton x:Name="RotationPortrait" Style="{StaticResource Segment}" Content="Portrait" Tag="rotation-portrait" Checked="OnRotation"
+                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
+      <RadioButton x:Name="RotationLandscape" Style="{StaticResource Segment}" Content="Landscape" Tag="rotation-landscape" Checked="OnRotation"
+                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
+      <RadioButton x:Name="RotationAuto" Style="{StaticResource Segment}" Content="Auto" Tag="rotation-auto" Checked="OnRotation"
+                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
     </UniformGrid>
+    <!-- Asks Android itself to turn, which is not the same as turning the picture on this PC. -->
+    <Button x:Name="RotateDevice" Content="Rotate the phone 90°" Tag="rotate-device" Click="OnTile" Margin="0,6,0,0"
+            ToolTipService.ShowOnDisabled="True" />
+
     <TextBlock Text="VIEW" Style="{StaticResource Eyebrow}" />
-    <ItemsControl x:Name="ViewTiles">
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-          <UniformGrid Columns="3" />
-        </ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate>
-          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile"
-                  AutomationProperties.Name="{Binding Label}" />
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <ItemsControl x:Name="ViewTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
 
     <TextBlock Text="KEYBOARD" Style="{StaticResource Eyebrow}" />
     <TextBlock x:Name="KeyboardStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8"
                Text="Typing goes straight to the phone." />
-    <ItemsControl x:Name="KeyboardTiles">
-      <ItemsControl.ItemsPanel>
-        <ItemsPanelTemplate>
-          <UniformGrid Columns="3" />
-        </ItemsPanelTemplate>
-      </ItemsControl.ItemsPanel>
-      <ItemsControl.ItemTemplate>
-        <DataTemplate>
-          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile"
-                  AutomationProperties.Name="{Binding Label}" />
-        </DataTemplate>
-      </ItemsControl.ItemTemplate>
-    </ItemsControl>
+    <ToggleButton x:Name="BrowseToggle" Style="{StaticResource WideToggle}" Checked="OnBrowseToggle" Unchecked="OnBrowseToggle" AutomationProperties.Name="Browse mode"
+                  ToolTipService.ShowOnDisabled="True">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Path Data="{StaticResource IconKeyboard}" Stroke="{StaticResource Signal}" StrokeThickness="1.6" StrokeLineJoin="Round"
+              StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="22" Height="22" Stretch="None" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="Browse mode" Margin="10,0,0,0" VerticalAlignment="Center" />
+        <TextBlock x:Name="BrowseState" Grid.Column="2" Text="Off" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+      </Grid>
+    </ToggleButton>
+    <ItemsControl x:Name="GestureTiles" Margin="-3,5,-3,-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
+    <Button x:Name="KeyboardLayout" Content="Keyboard layout" Tag="keyboard-layout" Click="OnTile" Margin="0,8,0,0"
+            ToolTipService.ShowOnDisabled="True" />
 
     <TextBlock Text="ZOOM (PC ONLY)" Style="{StaticResource Eyebrow}" />
     <Grid>
@@ -75,28 +85,29 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
-      <Button Content="−" Width="40" Padding="0" Tag="zoom-out" Click="OnTile" AutomationProperties.Name="Zoom out" ToolTip="Zoom the PC view out" />
+      <Button x:Name="ZoomOut" Content="−" Width="40" Padding="0" Tag="zoom-out" Click="OnTile" AutomationProperties.Name="Zoom out" />
       <TextBlock x:Name="ZoomLabel" Grid.Column="1" Text="100%" FontFamily="{StaticResource Mono}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Button Grid.Column="2" Content="+" Width="40" Padding="0" Tag="zoom-in" Click="OnTile" AutomationProperties.Name="Zoom in" ToolTip="Zoom the PC view in" />
-      <Button x:Name="ZoomReset" Grid.Column="3" Content="Reset" Margin="6,0,0,0" Tag="zoom-reset" Click="OnTile" IsEnabled="False" ToolTip="Fit the whole phone screen in the window" />
+      <Button x:Name="ZoomIn" Grid.Column="2" Content="+" Width="40" Padding="0" Tag="zoom-in" Click="OnTile" AutomationProperties.Name="Zoom in" />
+      <Button x:Name="ZoomReset" Grid.Column="3" Content="Reset" Margin="6,0,0,0" Tag="zoom-reset" Click="OnTile" IsEnabled="False" />
     </Grid>
     <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0"
                Text="Two fingers on the touchpad act on the phone (pinch, rotate, pan). Hold Alt to zoom or pan the PC view instead; Alt + wheel and Alt + drag work with a mouse." />
 
     <TextBlock Text="CLIPBOARD" Style="{StaticResource Eyebrow}" />
-    <UniformGrid Columns="4">
-      <Button Content="Copy" Margin="0,0,3,0" Tag="copy" Click="OnTile" ToolTip="Copy on the phone into the PC clipboard" />
-      <Button Content="Cut" Margin="3,0" Tag="cut" Click="OnTile" ToolTip="Cut on the phone into the PC clipboard" />
-      <Button Content="Paste" Margin="3,0" Tag="paste" Click="OnTile" ToolTip="Paste the PC clipboard on the phone" />
-      <Button Content="Type" Margin="3,0,0,0" Tag="paste-text" Click="OnTile" ToolTip="Type the PC clipboard as keystrokes" />
+    <UniformGrid x:Name="ClipboardButtons" Columns="4" Margin="-3,0">
+      <Button x:Name="ClipboardCopy" Content="Copy" Margin="3,0" Tag="copy" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+      <Button x:Name="ClipboardCut" Content="Cut" Margin="3,0" Tag="cut" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+      <Button x:Name="ClipboardPaste" Content="Paste" Margin="3,0" Tag="paste" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+      <Button x:Name="ClipboardType" Content="Type" Margin="3,0" Tag="paste-text" Click="OnTile" ToolTipService.ShowOnDisabled="True"
+              AutomationProperties.Name="Type clipboard" />
     </UniformGrid>
 
     <StackPanel x:Name="PatternSection" Visibility="Collapsed">
       <TextBlock Text="PATTERN GUIDE" Style="{StaticResource Eyebrow}" />
       <TextBlock x:Name="PatternStatus" Style="{StaticResource MutedText}" Text="Shows nine dots over a black lock screen." />
-      <UniformGrid Columns="2" Margin="0,8,0,0">
-        <Button x:Name="PatternToggle" Content="Show guide" Margin="0,0,3,0" Click="OnPatternToggle" />
-        <Button x:Name="PatternCalibrate" Content="Calibrate" Margin="3,0,0,0" Click="OnPatternCalibrate" />
+      <UniformGrid Columns="2" Margin="-3,8,-3,0">
+        <Button x:Name="PatternToggle" Content="Show guide" Margin="3,0" Click="OnPatternToggle" />
+        <Button x:Name="PatternCalibrate" Content="Calibrate" Margin="3,0" Click="OnPatternCalibrate" />
       </UniformGrid>
     </StackPanel>
   </StackPanel>

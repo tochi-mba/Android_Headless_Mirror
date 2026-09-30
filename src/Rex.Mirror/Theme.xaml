@@ -1,5 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:views="clr-namespace:Rex.Mirror.Views">
 
   <!-- REX palette -->
   <Color x:Key="InkColor">#080A09</Color>
@@ -22,6 +24,11 @@
   <SolidColorBrush x:Key="Live" Color="{StaticResource LiveColor}" />
   <SolidColorBrush x:Key="LiveWash" Color="#1AFF774D" />
   <SolidColorBrush x:Key="Hover" Color="#202820" />
+  <!-- The outline of a box you type into: 3:1 against the panel and the ink inside it, so an empty
+       box still reads as a box. Line is only 1.4:1 there. -->
+  <SolidColorBrush x:Key="Field" Color="#5F675E" />
+  <!-- A switch's track under the pointer, a step up from Line. -->
+  <SolidColorBrush x:Key="TrackHover" Color="#343C35" />
 
   <FontFamily x:Key="Mono">Consolas</FontFamily>
 
@@ -34,7 +41,14 @@
   <Geometry x:Key="IconSun">M12 7 A5 5 0 1 0 12 17 A5 5 0 1 0 12 7 M12 2 V4 M12 20 V22 M2 12 H4 M20 12 H22 M5 5 L6.5 6.5 M17.5 17.5 L19 19 M5 19 L6.5 17.5 M17.5 6.5 L19 5</Geometry>
   <Geometry x:Key="IconVolumeDown">M4 10 H8 L13 6 V18 L8 14 H4 Z M16 10 V14</Geometry>
   <Geometry x:Key="IconVolumeUp">M4 10 H8 L13 6 V18 L8 14 H4 Z M16 9 A4 4 0 0 1 16 15 M18 6 A8 8 0 0 1 18 18</Geometry>
+  <Geometry x:Key="IconMute">M4 10 H8 L13 6 V18 L8 14 H4 Z M16 9.5 L21 14.5 M21 9.5 L16 14.5</Geometry>
   <Geometry x:Key="IconRotate">M20 12 A8 8 0 1 1 16 5.1 M16 2 V6 H12</Geometry>
+  <Geometry x:Key="IconRotateLeft">M4 12 A8 8 0 1 0 8 5.1 M8 2 V6 H12</Geometry>
+  <!-- The phone itself turning, rather than the picture of it on this PC. -->
+  <Geometry x:Key="IconRotatePhone">M7 8 H15 A1.5 1.5 0 0 1 16.5 9.5 V20.5 A1.5 1.5 0 0 1 15 22 H7 A1.5 1.5 0 0 1 5.5 20.5 V9.5 A1.5 1.5 0 0 1 7 8 Z M12 4 A8 8 0 0 1 20 12 M17.5 10 L20 12.5 L22.5 10</Geometry>
+  <Geometry x:Key="IconChevronUp">M6 15 L12 9 L18 15</Geometry>
+  <!-- A layout is a language's arrangement of the keys, so a globe rather than another keyboard. -->
+  <Geometry x:Key="IconKeyboardLayout">M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 Z M3 12 H21 M12 3 C8.5 6.5 8.5 17.5 12 21 M12 3 C15.5 6.5 15.5 17.5 12 21</Geometry>
   <Geometry x:Key="IconCamera">M4 8 H8 L10 5 H14 L16 8 H20 V19 H4 Z M12 10 A3.5 3.5 0 1 0 12 17 A3.5 3.5 0 1 0 12 10</Geometry>
   <Geometry x:Key="IconBell">M6 17 V11 A6 6 0 0 1 18 11 V17 L20 19 H4 Z M10 21 H14</Geometry>
   <Geometry x:Key="IconSettings">M12 8 A4 4 0 1 0 12 16 A4 4 0 1 0 12 8 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M4.9 19.1 L7 17 M17 7 L19.1 4.9</Geometry>
@@ -44,10 +58,15 @@
   <Geometry x:Key="IconSidebar">M4 5 H20 V19 H4 Z M15 5 V19</Geometry>
   <Geometry x:Key="IconFullscreen">M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15</Geometry>
   <Geometry x:Key="IconZoomOut">M4 12 H20</Geometry>
+  <Geometry x:Key="IconZoomIn">M4 12 H20 M12 4 V20</Geometry>
   <Geometry x:Key="IconPause">M8 5 V19 M16 5 V19</Geometry>
   <Geometry x:Key="IconPlay">M7 4 L19 12 L7 20 Z</Geometry>
   <Geometry x:Key="IconRefresh">M4 12 A8 8 0 0 1 18 6.3 M20 3 V8 H15 M20 12 A8 8 0 0 1 6 17.7 M4 21 V16 H9</Geometry>
   <Geometry x:Key="IconClipboard">M9 4 H15 V7 H9 Z M7 6 H5 V21 H19 V6 H17</Geometry>
+  <Geometry x:Key="IconCopy">M9 9 H19 V21 H9 Z M5 16 V3 H15 V5</Geometry>
+  <Geometry x:Key="IconCut">M9.5 17 A2.5 2.5 0 1 1 4.5 17 A2.5 2.5 0 1 1 9.5 17 Z M19.5 17 A2.5 2.5 0 1 1 14.5 17 A2.5 2.5 0 1 1 19.5 17 Z M8.6 15.1 L17 3 M15.4 15.1 L7 3</Geometry>
+  <!-- The clipboard with a T on it: its text typed out, key by key. -->
+  <Geometry x:Key="IconTypeClipboard">M9 4 H15 V7 H9 Z M7 6 H5 V21 H19 V6 H17 M9 11 H15 M12 11 V18</Geometry>
   <Geometry x:Key="IconKeyboard">M3 7 H21 V17 H3 Z M7 11 H7.5 M11 11 H11.5 M15 11 H15.5 M8 14 H16</Geometry>
   <Geometry x:Key="IconArrowUp">M12 20 V4 M5 11 L12 4 L19 11</Geometry>
   <Geometry x:Key="IconArrowDown">M12 4 V20 M5 13 L12 20 L19 13</Geometry>
@@ -87,13 +106,16 @@
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <!-- Centred unless a control asks otherwise: the combo box stretches its own content so its
+         text starts at the left and its chevron sits at the right. -->
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ButtonBase">
           <Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}"
                   SnapsToDevicePixels="True">
-            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False" />
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="False" />
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
@@ -157,6 +179,19 @@
     <Setter Property="BorderBrush" Value="Transparent" />
   </Style>
 
+  <!-- A full-width button that stays in while its mode is on (browse mode). The state is also
+       spelled out inside it, since hovering repaints the button the same either way. -->
+  <Style x:Key="WideToggle" TargetType="ToggleButton" BasedOn="{StaticResource BaseButton}">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="12,8" />
+    <Style.Triggers>
+      <Trigger Property="IsChecked" Value="True">
+        <Setter Property="Background" Value="{StaticResource SignalWash}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Signal}" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
   <!-- Chip: a pill that is either in or out. Used to pick from a set, never for a lone setting. -->
   <Style x:Key="Chip" TargetType="ToggleButton">
     <Setter Property="Foreground" Value="{StaticResource Muted}" />
@@ -212,11 +247,14 @@
     </Setter>
   </Style>
 
-  <!-- Action tile: icon above label, used in the Controls grid -->
+  <!-- Action tile: icon above label, used in the Controls grid. The label stays on one line and
+       trims: a wrapped label made its row taller and, in a uniform grid, every other row with it.
+       The whole label is the tile's tooltip and automation name. -->
   <Style x:Key="ActionTile" TargetType="Button" BasedOn="{StaticResource BaseButton}">
     <Setter Property="Padding" Value="4,8" />
     <Setter Property="MinHeight" Value="58" />
     <Setter Property="Margin" Value="3" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="ContentTemplate">
       <Setter.Value>
         <DataTemplate>
@@ -224,7 +262,7 @@
             <Path Data="{Binding Icon}" Stroke="{StaticResource Signal}" StrokeThickness="1.6" StrokeLineJoin="Round"
                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="22" Height="22" Stretch="None"
                   HorizontalAlignment="Center" Margin="0,0,0,5" />
-            <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center" TextAlignment="Center" />
+            <TextBlock Text="{Binding Label}" FontSize="11" TextAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
           </StackPanel>
         </DataTemplate>
       </Setter.Value>
@@ -239,27 +277,36 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="CheckBox">
-          <Grid Background="Transparent">
+          <!-- At least 44 x 32 of it answers the pointer, though the track it draws is 38 x 22. -->
+          <Grid Background="Transparent" MinWidth="44" MinHeight="32">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <ContentPresenter VerticalAlignment="Center" Margin="0,0,12,0" RecognizesAccessKey="False" />
+            <!-- The border is always there, clear until focus paints it, so focus never moves the knob. -->
             <Border x:Name="Track" Grid.Column="1" Width="38" Height="22" CornerRadius="11" Background="{StaticResource Line}"
-                    VerticalAlignment="Center">
-              <Ellipse x:Name="Knob" Width="16" Height="16" Fill="{StaticResource Muted}" HorizontalAlignment="Left" Margin="3,0,0,0" />
+                    BorderBrush="Transparent" BorderThickness="1" VerticalAlignment="Center">
+              <Ellipse x:Name="Knob" Width="16" Height="16" Fill="{StaticResource Muted}" HorizontalAlignment="Left" Margin="2,0,0,0" />
             </Border>
           </Grid>
           <ControlTemplate.Triggers>
+            <!-- Before IsChecked, so a switch that is on keeps its colour under the pointer. The row
+                 around it lights the track too, since clicking anywhere on the row flips it. -->
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Track" Property="Background" Value="{StaticResource TrackHover}" />
+            </Trigger>
+            <Trigger Property="views:SettingRows.Hot" Value="True">
+              <Setter TargetName="Track" Property="Background" Value="{StaticResource TrackHover}" />
+            </Trigger>
             <Trigger Property="IsChecked" Value="True">
               <Setter TargetName="Track" Property="Background" Value="{StaticResource Signal}" />
               <Setter TargetName="Knob" Property="Fill" Value="{StaticResource Ink}" />
               <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
-              <Setter TargetName="Knob" Property="Margin" Value="0,0,3,0" />
+              <Setter TargetName="Knob" Property="Margin" Value="0,0,2,0" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Text}" />
-              <Setter TargetName="Track" Property="BorderThickness" Value="1" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Opacity" Value="0.4" />
@@ -270,7 +317,9 @@
     </Setter>
   </Style>
 
-  <!-- Expander: a bold header with a chevron, the content indented underneath -->
+  <!-- Expander: a bold header with a chevron, the content indented underneath. The header's own
+       ring shows keyboard focus; it reaches 7 DIP past the text on each side, into the room the side
+       panel leaves around its content, so the words stay in line with the rows below. -->
   <Style TargetType="Expander">
     <Setter Property="Foreground" Value="{StaticResource Text}" />
     <Setter Property="Template">
@@ -279,10 +328,11 @@
           <StackPanel>
             <ToggleButton x:Name="Toggle" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                           Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" Cursor="Hand"
-                          Foreground="{TemplateBinding Foreground}" FontSize="13" FontWeight="SemiBold">
+                          Foreground="{TemplateBinding Foreground}" FontSize="13" FontWeight="SemiBold" FocusVisualStyle="{x:Null}">
               <ToggleButton.Template>
                 <ControlTemplate TargetType="ToggleButton">
-                  <Border Background="Transparent" Padding="0,9">
+                  <Border x:Name="Ring" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6"
+                          Padding="6,8" Margin="-7,0">
                     <Grid>
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -309,6 +359,9 @@
                     <Trigger Property="IsMouseOver" Value="True">
                       <Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource Text}" />
                     </Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                      <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Signal}" />
+                    </Trigger>
                   </ControlTemplate.Triggers>
                 </ControlTemplate>
               </ToggleButton.Template>
@@ -325,9 +378,11 @@
     </Setter>
   </Style>
 
-  <!-- Setting row: label + optional hint on the left, control on the right -->
+  <!-- Setting row: label + optional hint on the left, control on the right. A row holding a switch
+       is one target: a click anywhere on it flips the switch (SettingRows). -->
   <Style x:Key="SettingRow" TargetType="HeaderedContentControl">
     <Setter Property="Margin" Value="0,0,0,2" />
+    <Setter Property="views:SettingRows.ClickToToggle" Value="True" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="HeaderedContentControl">
@@ -350,7 +405,7 @@
   <Style TargetType="TextBox">
     <Setter Property="Foreground" Value="{StaticResource Text}" />
     <Setter Property="Background" Value="{StaticResource Ink}" />
-    <Setter Property="BorderBrush" Value="{StaticResource Line}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Field}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Padding" Value="8,6" />
     <Setter Property="CaretBrush" Value="{StaticResource Signal}" />
@@ -364,6 +419,9 @@
             <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
           </Border>
           <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Muted}" />
+            </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Signal}" />
             </Trigger>
@@ -501,8 +559,14 @@
     </Setter>
   </Style>
 
-  <!-- Scrollbars -->
+  <!-- Scrollbars. The track sizes its thumb from half of the system's arrow-button length, which
+       left a 14 DIP sliver to aim at on a long panel in a small window; asking for 64 here keeps
+       the thumb at least 32 DIP long. It fills the bar under the pointer and while dragged. -->
   <Style TargetType="ScrollBar">
+    <Style.Resources>
+      <sys:Double x:Key="{x:Static SystemParameters.VerticalScrollBarButtonHeightKey}">64</sys:Double>
+      <sys:Double x:Key="{x:Static SystemParameters.HorizontalScrollBarButtonWidthKey}">64</sys:Double>
+    </Style.Resources>
     <Setter Property="Width" Value="8" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Template">
@@ -520,7 +584,19 @@
                 <Thumb Focusable="False">
                   <Thumb.Template>
                     <ControlTemplate TargetType="Thumb">
-                      <Border Background="{StaticResource Line}" CornerRadius="4" Margin="1" />
+                      <Border x:Name="Bar" Background="{StaticResource Line}" CornerRadius="4" Margin="1" />
+                      <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="True">
+                          <Setter TargetName="Bar" Property="Margin" Value="0" />
+                        </DataTrigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter TargetName="Bar" Property="Background" Value="{StaticResource Muted}" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                          <Setter TargetName="Bar" Property="Background" Value="{StaticResource Muted}" />
+                          <Setter TargetName="Bar" Property="Margin" Value="0" />
+                        </Trigger>
+                      </ControlTemplate.Triggers>
                     </ControlTemplate>
                   </Thumb.Template>
                 </Thumb>
@@ -546,7 +622,8 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="RadioButton">
-          <Border x:Name="Border" Background="Transparent" CornerRadius="8" Padding="0,8" Margin="2,0">
+          <!-- A clear border at rest, so the focus ring does not nudge the icon and label. -->
+          <Border x:Name="Border" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="8" Padding="0,7" Margin="2,0">
             <StackPanel>
               <Path Data="{TemplateBinding Tag}" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.6" StrokeLineJoin="Round"
                     StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="20" Height="20" Stretch="None" HorizontalAlignment="Center" />
@@ -563,7 +640,6 @@
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Signal}" />
-              <Setter TargetName="Border" Property="BorderThickness" Value="1" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

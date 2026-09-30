@@ -550,7 +550,7 @@ public partial class SettingsPanel : UserControl
 
         foreach (var action in hud.Buttons.Select(MirrorActions.Find).OfType<MirrorAction>())
         {
-            var icon = HudIcons.For(action.Id);
+            var icon = ActionIcons.For(action.Id);
             var content = icon is not null && TryFindResource(icon) is System.Windows.Media.Geometry geometry
                 ? new System.Windows.Shapes.Path
                 {

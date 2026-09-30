@@ -190,6 +190,17 @@ public sealed class AppProcess : IDisposable
         }
     }
 
+    /// <summary>A left click at a point in physical pixels, with the window in front so it lands there.</summary>
+    public async Task ClickAsync(int x, int y)
+    {
+        await FocusAsync();
+        MovePointer(x, y);
+        await Task.Delay(120, TestContext.Current.CancellationToken);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+        mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+    }
+
     /// <summary>
     /// Presses at one screen point, moves to another and lets go, in steps, the way a hand does.
     /// A single jump would not look like a drag to anything watching the pointer.

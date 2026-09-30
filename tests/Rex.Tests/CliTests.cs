@@ -50,6 +50,12 @@ public sealed class CliTests
         Assert.Contains("action", doc["data"]!["commands"]!.AsArray().Select(x => x!.GetValue<string>()));
         Assert.Contains(doc["data"]!["configPaths"]!.AsArray().Select(x => x!.GetValue<string>()), p => p == "Mirror.MaxFps");
         Assert.DoesNotContain('\n', result.Json);
+
+        // Every action is described in words; key codes are how it is done, not what it does.
+        var actions = doc["data"]!["actions"]!.AsArray();
+        Assert.Equal(MirrorActions.All.Count, actions.Count);
+        Assert.All(actions, a => Assert.DoesNotContain("KEYCODE", a!["detail"]!.GetValue<string>(), StringComparison.Ordinal));
+        Assert.Contains(actions, a => a!["id"]!.GetValue<string>() == "mute" && a["detail"]!.GetValue<string>() == "Mute or unmute");
     }
 
     [Fact]
@@ -247,6 +253,9 @@ public sealed class CliTests
         Assert.Contains("rex open", text);
         Assert.Contains("FAKE123", text);
         Assert.Contains("sleep", text);
+        // The action list says what each action does, not the key code it sends.
+        Assert.Contains("volume-up        Volume up          Raise the volume", text);
+        Assert.DoesNotContain("KEYCODE_", text);
         Assert.Equal(LockScreenModes.Pattern, new StateStore(package.Paths.State).GetDevice("FAKE123")!.LockScreenMode);
     }
 }
