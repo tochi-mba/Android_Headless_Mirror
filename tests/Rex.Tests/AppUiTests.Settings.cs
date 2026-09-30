@@ -34,7 +34,7 @@ public sealed partial class AppUiTests
         await app.SaveScreenshotAsync("ui-settings-input.png");
 
         // A source the phone cannot duplicate rules out keeping the audio playing there.
-        app.Ui.ExpandGroup("GroupDisplay");
+        app.Ui.ExpandGroup("GroupAdvanced");
         app.Ui.SelectComboItem("VideoBuffer", "100 ms");
         app.Ui.SelectComboItem("RenderDriver", "OpenGL");
         app.Ui.ExpandGroup("GroupAudio");
@@ -47,9 +47,11 @@ public sealed partial class AppUiTests
         app.Ui.SelectComboItem("ScreenOffTimeout", "5 minutes");
         app.Ui.Toggle("KeepPcAwake", on: true);
         app.Ui.SetText("StartApp", "--no-video");
+        LeaveTheSettingsTab(app);
         await app.WaitUntilAsync(() => app.Ui.Read("StartAppError", e => e.Name).Length > 0, Soon, "an option given as an app to be refused");
         Assert.Equal(string.Empty, ConfigFile.Load(package.Paths.Config).Session.StartApp);
         app.Ui.SetText("StartApp", "com.example.player");
+        LeaveTheSettingsTab(app);
 
         app.Ui.ExpandGroup("GroupCaptures");
         app.Ui.SelectComboItem("RecordFormat", "MKV (survives a recording cut short)");
@@ -80,5 +82,16 @@ public sealed partial class AppUiTests
 
         Assert.DoesNotContain("--audio-dup", relaunch, StringComparison.Ordinal);
         await app.QuitAsync();
+    }
+
+    /// <summary>
+    /// Moves away from a text box the way a person does, to another tab and back: a box that was
+    /// being typed in commits when the keyboard leaves it, and one set from outside the keyboard
+    /// already has.
+    /// </summary>
+    private static void LeaveTheSettingsTab(AppProcess app)
+    {
+        app.Ui.Select("TabControls");
+        app.Ui.Select("TabSettings");
     }
 }
