@@ -54,7 +54,7 @@ public partial class SettingsPanel
         MouseHover.IsChecked = c.Input.MouseHover;
         ClipboardAutosync.IsChecked = c.Input.ClipboardAutosync;
         LegacyPaste.IsChecked = c.Input.LegacyPaste;
-        SelectTag(Gamepad, c.Input.Gamepad);
+        Gamepad.IsChecked = c.Input.Gamepad == "uhid";
 
         // Someone typing a package name keeps what they have typed until they commit it.
         if (!StartApp.IsKeyboardFocusWithin)
@@ -74,7 +74,7 @@ public partial class SettingsPanel
         c.Input.MouseHover = MouseHover.IsChecked == true;
         c.Input.ClipboardAutosync = ClipboardAutosync.IsChecked == true;
         c.Input.LegacyPaste = LegacyPaste.IsChecked == true;
-        c.Input.Gamepad = SelectedTag(Gamepad, "disabled");
+        c.Input.Gamepad = Gamepad.IsChecked == true ? "uhid" : "disabled";
     });
 
     /// <summary>Keyboard focus leaving the box, by any route (a click, Tab, the tab strip, the phone), commits it.</summary>

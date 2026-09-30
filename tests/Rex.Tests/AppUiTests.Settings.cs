@@ -25,7 +25,7 @@ public sealed partial class AppUiTests
         app.Ui.Toggle("ShiftClicks", on: false);
         app.Ui.Toggle("MouseHover", on: false);
         app.Ui.Toggle("LegacyPaste", on: true);
-        app.Ui.SelectComboItem("Gamepad", "Hand them to the phone");
+        app.Ui.Toggle("Gamepad", on: true);
         await app.WaitUntilAsync(
             () => ConfigFile.Load(package.Paths.Config).Input is { RightClick: "click", ForwardButton: "nothing", ShiftClicks: false, MouseHover: false, LegacyPaste: true, Gamepad: "uhid" },
             Soon,
@@ -54,7 +54,7 @@ public sealed partial class AppUiTests
         LeaveTheSettingsTab(app);
 
         app.Ui.ExpandGroup("GroupCaptures");
-        app.Ui.SelectComboItem("RecordFormat", "MKV (survives a recording cut short)");
+        app.Ui.SelectComboItem("RecordFormat", "MKV");
         await app.WaitUntilAsync(() =>
         {
             var config = ConfigFile.Load(package.Paths.Config);

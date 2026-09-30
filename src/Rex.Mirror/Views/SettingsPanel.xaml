@@ -125,7 +125,7 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep audio playing on the phone too">
       <CheckBox x:Name="AudioDup" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="What to capture">
+    <HeaderedContentControl Style="{StaticResource SettingRowStacked}" Header="What to capture">
       <ComboBox x:Name="AudioSource" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="What audio to capture">
         <ComboBoxItem Content="Everything the phone plays" Tag="auto" />
         <ComboBoxItem Content="The whole output (mutes the phone)" Tag="output" />
@@ -280,13 +280,13 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Right click">
       <ComboBox x:Name="RightClick" SelectionChanged="OnInputChanged" AutomationProperties.Name="Right click" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Middle click (wheel)">
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Middle click">
       <ComboBox x:Name="MiddleClick" SelectionChanged="OnInputChanged" AutomationProperties.Name="Middle click" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mouse back button">
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Back button">
       <ComboBox x:Name="BackButton" SelectionChanged="OnInputChanged" AutomationProperties.Name="Mouse back button" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mouse forward button">
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Forward button">
       <ComboBox x:Name="ForwardButton" SelectionChanged="OnInputChanged" AutomationProperties.Name="Mouse forward button" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
@@ -337,14 +337,11 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
-          <TextBlock Text="Game controllers" />
-          <TextBlock Text="Handed to the phone through the main view only: every copy would add another controller." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Hand game controllers to the phone" />
+          <TextBlock Text="Through the main view only: every copy would add another controller." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
         </StackPanel>
       </HeaderedContentControl.Header>
-      <ComboBox x:Name="Gamepad" SelectionChanged="OnInputChanged" AutomationProperties.Name="Game controllers">
-        <ComboBoxItem Content="Keep them on this PC" Tag="disabled" />
-        <ComboBoxItem Content="Hand them to the phone" Tag="uhid" />
-      </ComboBox>
+      <CheckBox x:Name="Gamepad" Checked="OnInputChanged" Unchecked="OnInputChanged" AutomationProperties.Name="Hand game controllers to the phone" />
     </HeaderedContentControl>
     </StackPanel></Expander>
     <Expander x:Name="GroupCopies" Header="Copies of the phone" Margin="0,12,0,0"><StackPanel>
@@ -462,10 +459,16 @@
       </HeaderedContentControl.Header>
       <CheckBox x:Name="Record" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Recording format">
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Recording format" />
+          <TextBlock Text="MP4 plays anywhere; MKV survives a recording cut short." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
       <ComboBox x:Name="RecordFormat" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Recording format">
-        <ComboBoxItem Content="MP4 (plays anywhere)" Tag="mp4" />
-        <ComboBoxItem Content="MKV (survives a recording cut short)" Tag="mkv" />
+        <ComboBoxItem Content="MP4" Tag="mp4" />
+        <ComboBoxItem Content="MKV" Tag="mkv" />
       </ComboBox>
     </HeaderedContentControl>
     </StackPanel></Expander>
@@ -514,11 +517,11 @@
           <HeaderedContentControl.Header>
             <StackPanel>
               <TextBlock Text="Smoothing buffer" />
-              <TextBlock Text="Holds each frame a moment to even out a shaky connection, such as wireless." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+              <TextBlock Text="Holds each frame a moment to even out a shaky connection, such as wireless. Off is the lowest latency." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
             </StackPanel>
           </HeaderedContentControl.Header>
           <ComboBox x:Name="VideoBuffer" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Smoothing buffer">
-            <ComboBoxItem Content="Off (lowest latency)" Tag="0" />
+            <ComboBoxItem Content="Off" Tag="0" />
             <ComboBoxItem Content="50 ms" Tag="50" />
             <ComboBoxItem Content="100 ms" Tag="100" />
             <ComboBoxItem Content="200 ms" Tag="200" />
@@ -534,14 +537,19 @@
           </HeaderedContentControl.Header>
           <CheckBox x:Name="DownsizeOnError" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" AutomationProperties.Name="Try a lower resolution if the encoder fails" />
         </HeaderedContentControl>
-        <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Renderer">
-          <ComboBox x:Name="RenderDriver" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Renderer"
-                    ToolTip="How scrcpy draws the picture on this PC. Change it only if the picture flickers or stays black.">
+        <HeaderedContentControl Style="{StaticResource SettingRow}">
+          <HeaderedContentControl.Header>
+            <StackPanel>
+              <TextBlock Text="Renderer" />
+              <TextBlock Text="How scrcpy draws the picture here. Change it only if the picture flickers or stays black; software is slowest but always works." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+          </HeaderedContentControl.Header>
+          <ComboBox x:Name="RenderDriver" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Renderer">
             <ComboBoxItem Content="Automatic" Tag="" />
             <ComboBoxItem Content="Direct3D" Tag="direct3d" />
             <ComboBoxItem Content="OpenGL" Tag="opengl" />
             <ComboBoxItem Content="OpenGL ES 2" Tag="opengles2" />
-            <ComboBoxItem Content="Software (slowest, always works)" Tag="software" />
+            <ComboBoxItem Content="Software" Tag="software" />
           </ComboBox>
         </HeaderedContentControl>
         <TextBlock Text="Extra scrcpy arguments" Margin="0,12,0,4" />
