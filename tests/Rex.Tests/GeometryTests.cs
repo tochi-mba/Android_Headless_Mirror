@@ -211,6 +211,28 @@ public sealed class GeometryTests
         Assert.Equal(new RectD(0, 0, 1, 1), ZoomMath.VisibleFraction(10, 10, ZoomView.Identity));
     }
 
+    [Theory]
+    // Before the app's own layout has reached the window, its size is the one it opened with:
+    // not news about the video, whatever shape it is.
+    [InlineData(400, 860, null, null, true, false, ChildShapeAction.None)]
+    [InlineData(308, 684, null, null, false, true, ChildShapeAction.None)]
+    // The size the app gave it, where it was put: nothing to do; moved: put it back.
+    [InlineData(273, 607, 273, 607, true, true, ChildShapeAction.None)]
+    [InlineData(274, 606, 273, 607, true, false, ChildShapeAction.None)]
+    [InlineData(273, 607, 273, 607, false, true, ChildShapeAction.Reposition)]
+    // A size nobody asked for, once scrcpy has said what the video is: give it ours back.
+    [InlineData(308, 607, 273, 607, true, true, ChildShapeAction.Reassert)]
+    [InlineData(607, 273, 273, 607, true, true, ChildShapeAction.Reassert)]
+    // The same with no report: the window's shape is the only sign the phone turned.
+    [InlineData(607, 273, 273, 607, true, false, ChildShapeAction.Adopt)]
+    [InlineData(0, 0, 273, 607, true, false, ChildShapeAction.None)]
+    public void ChildShape_OnlyAnUnaskedSizeWithNoVideoReportMeansTheVideoTurned(
+        int width, int height, int? appliedWidth, int? appliedHeight, bool positioned, bool reported, ChildShapeAction expected)
+    {
+        (int, int)? applied = appliedWidth is { } w && appliedHeight is { } h ? (w, h) : null;
+        Assert.Equal(expected, ChildShape.Decide((width, height), applied, positioned, reported));
+    }
+
     [Fact]
     public void Zoom_ClampAndSensitivity()
     {

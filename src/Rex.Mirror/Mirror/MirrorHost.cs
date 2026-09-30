@@ -25,6 +25,12 @@ public sealed class MirrorHost : HwndHost
     private RECT? _clip;
     private bool _recheckShape;
 
+    /// <summary>The size last given to scrcpy's window; null until a layout has reached it (see <see cref="ChildShape"/>).</summary>
+    private (int Width, int Height)? _applied;
+
+    /// <summary>Whether scrcpy has reported the video's size for this window, which then decides its shape alone.</summary>
+    private bool _videoReported;
+
     public event Action<ZoomView>? ViewChanged;
     public event Action? ChildFocused;
 
@@ -92,10 +98,16 @@ public sealed class MirrorHost : HwndHost
         }
     }
 
-    public void SetVideoSize(int width, int height)
+    /// <summary>
+    /// The video's size. <paramref name="reported"/> is false for a guess made before scrcpy has
+    /// said (the phone's display size, which is in its natural orientation whatever way it is
+    /// held); scrcpy's own report is the word on the picture's shape from then on.
+    /// </summary>
+    public void SetVideoSize(int width, int height, bool reported = true)
     {
         if (width > 0 && height > 0)
         {
+            _videoReported |= reported;
             SetAspect((double)width / height);
         }
     }
@@ -122,6 +134,8 @@ public sealed class MirrorHost : HwndHost
     {
         Detach();
         _child = childHwnd;
+        _applied = null;
+        _videoReported = false;
 
         var style = NativeMethods.GetStyle(childHwnd, NativeMethods.GWL_STYLE);
         style &= ~(NativeMethods.WS_POPUP | NativeMethods.WS_CAPTION | NativeMethods.WS_THICKFRAME |
@@ -159,6 +173,8 @@ public sealed class MirrorHost : HwndHost
         }
 
         _child = IntPtr.Zero;
+        _applied = null;
+        _videoReported = false;
         _holdingKeyboard = false;
         _zoom = 1.0;
         _view = ZoomView.Identity;
@@ -408,6 +424,7 @@ public sealed class MirrorHost : HwndHost
                 NativeMethods.SetWindowPos(_child, NativeMethods.HWND_TOP,
                     (int)_view.OffsetX, (int)_view.OffsetY, (int)_view.SurfaceWidth, (int)_view.SurfaceHeight,
                     NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_NOZORDER);
+                _applied = ((int)_view.SurfaceWidth, (int)_view.SurfaceHeight);
             }
             finally
             {
@@ -466,30 +483,22 @@ public sealed class MirrorHost : HwndHost
         }
 
         NativeMethods.GetWindowRect(_child, out var rect);
-        var width = rect.Width;
-        var height = rect.Height;
-        if (width <= 0 || height <= 0)
+        NativeMethods.GetWindowRect(_viewport, out var viewport);
+        var positioned = rect.Left - viewport.Left == (int)_view.OffsetX && rect.Top - viewport.Top == (int)_view.OffsetY;
+        switch (ChildShape.Decide((rect.Width, rect.Height), _applied, positioned, _videoReported))
         {
-            return;
-        }
-
-        var expectedWidth = (int)_view.SurfaceWidth;
-        var expectedHeight = (int)_view.SurfaceHeight;
-        if (Math.Abs(width - expectedWidth) <= 1 && Math.Abs(height - expectedHeight) <= 1)
-        {
-            // Only the position drifted (SDL likes to re-assert its own geometry); put it back.
-            NativeMethods.GetWindowRect(_viewport, out var viewport);
-            if (rect.Left - viewport.Left != (int)_view.OffsetX || rect.Top - viewport.Top != (int)_view.OffsetY)
-            {
+            case ChildShapeAction.Reposition:
+            case ChildShapeAction.Reassert:
+                // SDL likes to re-assert its own geometry; the view is right, so it goes back.
                 Apply();
-            }
-
-            return;
+                break;
+            case ChildShapeAction.Adopt:
+                // A size change we did not ask for, from a scrcpy that has not said what the video
+                // is: its new shape is the only sign the phone turned. Re-fit, so a landscape
+                // picture fills the viewport instead of sitting in the old rectangle.
+                SetAspect((double)rect.Width / rect.Height);
+                break;
         }
-
-        // A size change we did not request: the video orientation changed. Adopt the new shape and
-        // re-fit, so a landscape picture fills the viewport instead of sitting in the old rectangle.
-        SetAspect((double)width / height);
     }
 
     // ----- HwndHost plumbing -----
