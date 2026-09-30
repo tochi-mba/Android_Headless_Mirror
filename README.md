@@ -54,6 +54,12 @@ until you delete that folder.
 - **Phone settings.** Brightness, timeout, forced rotation, dark mode, text size, animations, stay
   awake, Wi-Fi, mobile data, airplane mode, display size and density, plus a searchable browser for
   the raw Android settings provider (keys that would cut off ADB are protected).
+- **Tuned to taste.** Settings covers what scrcpy can do and more: a smoothing buffer for a
+  shaky connection, the renderer, what audio to capture (the phone's output, app playback, a
+  microphone or a call) and its quality, the phone's screen timeout while mirrored, keeping this
+  PC awake, an app to open when the mirror starts, what the right, middle, back and forward mouse
+  buttons do, key repeat, hover, clipboard syncing, paste-by-typing, handing game controllers to
+  the phone, and MP4 or MKV recordings. Each lives in config.json, so `rex config set` works too.
 - **Screenshots where you want them.** Pick the folder in Settings; click a saved filename in the
   status bar to reveal it in File Explorer.
 - **Pattern-lock guide.** Some phones mirror their secure lock screen as black. For pattern locks the

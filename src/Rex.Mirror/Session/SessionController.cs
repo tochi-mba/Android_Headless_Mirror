@@ -293,7 +293,7 @@ public sealed partial class SessionController : IDisposable
         {
             var directory = _host.Paths.Inside(config.Mirror.RecordDirectory);
             Directory.CreateDirectory(directory);
-            recordPath = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".mp4");
+            recordPath = Path.Combine(directory, ScrcpyArguments.RecordingFileName(config.Mirror.RecordFormat, DateTime.Now));
         }
 
         var launchRect = await OnUi(() => LaunchRect?.Invoke()).ConfigureAwait(false);

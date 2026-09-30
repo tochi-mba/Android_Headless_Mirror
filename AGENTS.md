@@ -165,6 +165,14 @@ docs/                   GitHub Pages site; its download button points at the lat
   laid out yet still has the shape it opened with, and once the video has been reported a window
   that changes size by itself is given its size back rather than believed.
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
+- A launch setting belongs either to every session or to the main one alone
+  (`ScrcpyArguments.Build`). How the picture is shown and how input reaches the phone (buffer,
+  renderer, mouse buttons, hover, clipboard, paste) apply to every copy too. Anything that changes
+  the phone or this PC and is put back when its session ends (screen timeout, screen saver), the
+  audio, the app to start, recording and game controllers are the main session's alone. Options
+  scrcpy refuses in combination are never passed together: `--no-key-repeat` only with the
+  raw-key keyboard, `--audio-dup` only with a source it can duplicate. Values that are scrcpy's
+  own defaults are left off the command line.
 - Copies of the phone are extra scrcpy sessions, each embedded in its own `MirrorHost` beside the
   main one. The main view leads: zoom, pan, the navigator, the pattern guide and the soft
   background's source are its own, and every copy follows its zoom (`MirrorHost.Follow`). A point

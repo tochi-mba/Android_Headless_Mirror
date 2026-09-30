@@ -60,6 +60,35 @@
         <ComboBoxItem Content="AV1" Tag="av1" />
       </ComboBox>
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Smoothing buffer">
+      <ComboBox x:Name="VideoBuffer" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Smoothing buffer"
+                ToolTip="Holds each frame a moment to even out a shaky connection. Off is the lowest latency.">
+        <ComboBoxItem Content="Off (lowest latency)" Tag="0" />
+        <ComboBoxItem Content="50 ms" Tag="50" />
+        <ComboBoxItem Content="100 ms" Tag="100" />
+        <ComboBoxItem Content="200 ms" Tag="200" />
+        <ComboBoxItem Content="500 ms" Tag="500" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Try a lower resolution if the encoder fails" />
+          <TextBlock Text="Off stops the mirror instead and says why." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="DownsizeOnError" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" AutomationProperties.Name="Try a lower resolution if the encoder fails" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Renderer">
+      <ComboBox x:Name="RenderDriver" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Renderer"
+                ToolTip="How scrcpy draws the picture on this PC. Change it only if the picture flickers or stays black.">
+        <ComboBoxItem Content="Automatic" Tag="" />
+        <ComboBoxItem Content="Direct3D" Tag="direct3d" />
+        <ComboBoxItem Content="OpenGL" Tag="opengl" />
+        <ComboBoxItem Content="OpenGL ES 2" Tag="opengles2" />
+        <ComboBoxItem Content="Software (slowest, always works)" Tag="software" />
+      </ComboBox>
+    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Soft background around the phone">
       <CheckBox x:Name="AmbientEnabled" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
@@ -125,6 +154,34 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep audio playing on the phone too">
       <CheckBox x:Name="AudioDup" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="What to capture">
+      <ComboBox x:Name="AudioSource" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="What audio to capture">
+        <ComboBoxItem Content="Everything the phone plays" Tag="auto" />
+        <ComboBoxItem Content="The whole output (mutes the phone)" Tag="output" />
+        <ComboBoxItem Content="App playback (apps may opt out)" Tag="playback" />
+        <ComboBoxItem Content="Microphone" Tag="mic" />
+        <ComboBoxItem Content="Microphone, unprocessed" Tag="mic-unprocessed" />
+        <ComboBoxItem Content="Microphone, tuned for video" Tag="mic-camcorder" />
+        <ComboBoxItem Content="Microphone, tuned for speech" Tag="mic-voice-recognition" />
+        <ComboBoxItem Content="Microphone, tuned for calls" Tag="mic-voice-communication" />
+        <ComboBoxItem Content="Voice call, both sides" Tag="voice-call" />
+        <ComboBoxItem Content="Voice call, your side" Tag="voice-call-uplink" />
+        <ComboBoxItem Content="Voice call, the other side" Tag="voice-call-downlink" />
+        <ComboBoxItem Content="Karaoke (microphone and playback)" Tag="voice-performance" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Audio quality">
+      <ComboBox x:Name="AudioBitRate" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Audio quality">
+        <ComboBoxItem Content="64 kbps" Tag="64K" />
+        <ComboBoxItem Content="96 kbps" Tag="96K" />
+        <ComboBoxItem Content="128 kbps" Tag="128K" />
+        <ComboBoxItem Content="192 kbps" Tag="192K" />
+        <ComboBoxItem Content="256 kbps" Tag="256K" />
+        <ComboBoxItem Content="320 kbps" Tag="320K" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <TextBlock x:Name="AudioDupHint" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"
+               Text="Keeping audio playing on the phone needs &#8220;Everything the phone plays&#8221; or &#8220;App playback&#8221;." />
     </StackPanel></Expander>
 
     <Expander x:Name="GroupSession" Header="Phone screen &amp; session" Margin="0,12,0,0"><StackPanel>
@@ -146,6 +203,40 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Restart the mirror if it crashes">
       <CheckBox x:Name="RestartOnCrash" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Phone screen timeout while mirrored" />
+          <TextBlock Text="The phone's own comes back when the mirror ends." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <ComboBox x:Name="ScreenOffTimeout" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Phone screen timeout while mirrored">
+        <ComboBoxItem Content="The phone's own" Tag="0" />
+        <ComboBoxItem Content="15 seconds" Tag="15" />
+        <ComboBoxItem Content="30 seconds" Tag="30" />
+        <ComboBoxItem Content="1 minute" Tag="60" />
+        <ComboBoxItem Content="2 minutes" Tag="120" />
+        <ComboBoxItem Content="5 minutes" Tag="300" />
+        <ComboBoxItem Content="10 minutes" Tag="600" />
+        <ComboBoxItem Content="30 minutes" Tag="1800" />
+        <ComboBoxItem Content="1 hour" Tag="3600" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Keep this PC awake while mirroring" />
+          <TextBlock Text="No screen saver or sleep while the phone is on screen." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="KeepPcAwake" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" AutomationProperties.Name="Keep this PC awake while mirroring" />
+    </HeaderedContentControl>
+    <TextBlock x:Name="StartAppLabel" Text="Open an app when the mirror starts" Margin="0,12,0,4" />
+    <TextBox x:Name="StartApp" LostFocus="OnStartApp" KeyDown="OnStartAppKey" TextChanged="OnStartAppText" AutomationProperties.LabeledBy="{Binding ElementName=StartAppLabel}"
+             ToolTip="Leave empty to open nothing" />
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+               Text="Its package name, like com.spotify.music, or ?name to find it by the start of its name. A + in front restarts it. Press Enter to apply." />
+    <TextBlock x:Name="StartAppError" Foreground="{StaticResource Live}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
 
     </StackPanel></Expander>
     <Expander x:Name="GroupControls" Header="Controls &amp; zoom" Margin="0,12,0,0"><StackPanel>
@@ -211,6 +302,79 @@
     <Slider x:Name="MaximumZoom" AutomationProperties.Name="Maximum zoom" Minimum="1.5" Maximum="8" TickFrequency="0.5" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
     <Grid Margin="0,8,0,0"><TextBlock Text="Wheel zoom speed" /><TextBlock x:Name="WheelSpeedValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="WheelSpeed" AutomationProperties.Name="Wheel zoom speed" Minimum="0.05" Maximum="0.5" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
+    </StackPanel></Expander>
+    <Expander x:Name="GroupInput" Header="Mouse &amp; keyboard" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="How the mouse buttons, the keys and the clipboard reach the phone, on every copy too. They apply the next time the mirror starts." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Right click">
+      <ComboBox x:Name="RightClick" SelectionChanged="OnInputChanged" AutomationProperties.Name="Right click" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Middle click (wheel)">
+      <ComboBox x:Name="MiddleClick" SelectionChanged="OnInputChanged" AutomationProperties.Name="Middle click" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mouse back button">
+      <ComboBox x:Name="BackButton" SelectionChanged="OnInputChanged" AutomationProperties.Name="Mouse back button" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mouse forward button">
+      <ComboBox x:Name="ForwardButton" SelectionChanged="OnInputChanged" AutomationProperties.Name="Mouse forward button" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Shift + click always clicks on the phone" />
+          <TextBlock Text="Whatever the button is set to do above." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="ShiftClicks" Checked="OnInputChanged" Unchecked="OnInputChanged" AutomationProperties.Name="Shift + click always clicks on the phone" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Repeat a held key" />
+          <TextBlock Text="With the compatibility keyboard. The phone repeats keys itself otherwise." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="KeyRepeat" Checked="OnInputChanged" Unchecked="OnInputChanged" AutomationProperties.Name="Repeat a held key" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Send the pointer's movement without a click" />
+          <TextBlock Text="For apps and games that react to hovering." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="MouseHover" Checked="OnInputChanged" Unchecked="OnInputChanged" AutomationProperties.Name="Send the pointer's movement without a click" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Keep the clipboards in step" />
+          <TextBlock Text="Copying on the phone copies on the PC too, and pasting sends the PC's clipboard first." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="ClipboardAutosync" Checked="OnInputChanged" Unchecked="OnInputChanged" AutomationProperties.Name="Keep the clipboards in step" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Paste by typing the text out" />
+          <TextBlock Text="For phones that ignore a pasted clipboard." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="LegacyPaste" Checked="OnInputChanged" Unchecked="OnInputChanged" AutomationProperties.Name="Paste by typing the text out" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Game controllers" />
+          <TextBlock Text="Handed to the phone through the main view only: every copy would add another controller." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <ComboBox x:Name="Gamepad" SelectionChanged="OnInputChanged" AutomationProperties.Name="Game controllers">
+        <ComboBoxItem Content="Keep them on this PC" Tag="disabled" />
+        <ComboBoxItem Content="Hand them to the phone" Tag="uhid" />
+      </ComboBox>
+    </HeaderedContentControl>
     </StackPanel></Expander>
     <Expander x:Name="GroupCopies" Header="Copies of the phone" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
@@ -326,6 +490,12 @@
         </StackPanel>
       </HeaderedContentControl.Header>
       <CheckBox x:Name="Record" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Recording format">
+      <ComboBox x:Name="RecordFormat" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Recording format">
+        <ComboBoxItem Content="MP4 (plays anywhere)" Tag="mp4" />
+        <ComboBoxItem Content="MKV (survives a recording cut short)" Tag="mkv" />
+      </ComboBox>
     </HeaderedContentControl>
     </StackPanel></Expander>
     <Expander x:Name="GroupStartup" Header="Startup &amp; window" Margin="0,12,0,0"><StackPanel>

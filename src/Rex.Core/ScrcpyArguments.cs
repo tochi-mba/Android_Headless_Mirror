@@ -27,6 +27,9 @@ public static partial class ScrcpyArguments
     /// <summary>The port for copy number <paramref name="index"/> (0-based), after the main session's.</summary>
     public static int CopyPort(int index) => MainPort + 1 + Math.Max(0, index);
 
+    /// <summary>scrcpy's own bindings for an SDK mouse: right Back, middle Home, back button Recents, forward Notifications; with Shift, all clicks.</summary>
+    public const string DefaultMouseBind = "bhsn:++++";
+
     public const string FullKeyboardMode = "uhid";
     public const string CompatibilityKeyboardMode = "sdk";
 
@@ -39,6 +42,11 @@ public static partial class ScrcpyArguments
         config.Mirror.CompatibilityKeyboard || profile?.CompatibilityKeyboard == true
             ? CompatibilityKeyboardMode
             : FullKeyboardMode;
+
+    /// <summary>A new recording's file name; scrcpy writes the container its extension names.</summary>
+    public static string RecordingFileName(string format, DateTime startedAt) =>
+        "android-" + startedAt.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + "." +
+        MirrorSettings.OneOf(MirrorSettings.RecordFormats, format, "mp4");
 
     public static IReadOnlyList<string> LaunchSettings(RexConfig config, bool isTcp) =>
         Build(config, "", isTcp, "", null,
@@ -134,6 +142,18 @@ public static partial class ScrcpyArguments
             args.Add("--power-off-on-close");
         }
 
+        // The phone's own screen timeout is changed and put back by the session that changed it,
+        // so only the main one may; keeping this PC awake needs saying once.
+        if (session.ScreenOffTimeoutSeconds > 0 && !isCopy)
+        {
+            args.Add("--screen-off-timeout=" + session.ScreenOffTimeoutSeconds.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (session.KeepPcAwake && !isCopy)
+        {
+            args.Add("--disable-screensaver");
+        }
+
         var mirror = config.Mirror;
         var maxSize = isCopy && config.Copies.MaxSize > 0 ? config.Copies.MaxSize : mirror.MaxSize;
         if (maxSize > 0)
@@ -153,6 +173,21 @@ public static partial class ScrcpyArguments
 
         args.Add("--video-codec=" + mirror.VideoCodec);
 
+        if (mirror.VideoBufferMs > 0)
+        {
+            args.Add("--video-buffer=" + mirror.VideoBufferMs.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (!mirror.DownsizeOnError)
+        {
+            args.Add("--no-downsize-on-error");
+        }
+
+        if (mirror.RenderDriver.Length > 0)
+        {
+            args.Add("--render-driver=" + mirror.RenderDriver);
+        }
+
         if (!mirror.Audio || isCopy)
         {
             args.Add("--no-audio");
@@ -165,10 +200,30 @@ public static partial class ScrcpyArguments
                 args.Add("--audio-buffer=" + mirror.AudioBufferMs.ToString(CultureInfo.InvariantCulture));
             }
 
-            if (mirror.AudioDup)
+            if (mirror.AudioSource != "auto")
+            {
+                args.Add("--audio-source=" + mirror.AudioSource);
+            }
+
+            if (IsValidBitRate(mirror.AudioBitRate) && !string.Equals(mirror.AudioBitRate.Trim(), MirrorSettings.DefaultAudioBitRate, StringComparison.OrdinalIgnoreCase))
+            {
+                args.Add("--audio-bit-rate=" + mirror.AudioBitRate.Trim());
+            }
+
+            // scrcpy only keeps the playback going on the phone, and refuses to start when asked
+            // to with any other source.
+            if (mirror.AudioDup && mirror.AudioDupPossible)
             {
                 args.Add("--audio-dup");
             }
+        }
+
+        AddInput(args, config.Input, keyboardMode, isCopy);
+
+        if (session.StartApp.Length > 0 && SessionSettings.IsValidStartApp(session.StartApp) && !isCopy)
+        {
+            // Once: a copy that started the app again would restart it under the main view.
+            args.Add("--start-app=" + session.StartApp.Trim());
         }
 
         if (recordPath is not null && !isCopy)
@@ -230,6 +285,46 @@ public static partial class ScrcpyArguments
                      text.Contains("Failed to enable", StringComparison.OrdinalIgnoreCase) ||
                      text.Contains("not permitted", StringComparison.OrdinalIgnoreCase);
         return mentionsUhid && denied;
+    }
+
+    /// <summary>
+    /// How the mouse buttons, the keys, the clipboard and game controllers reach the phone. Every
+    /// view of the phone takes input the same way, so copies get the same options, except game
+    /// controllers: each session would hand the phone another controller.
+    /// </summary>
+    private static void AddInput(List<string> args, InputSettings input, string keyboardMode, bool isCopy)
+    {
+        if (input.MouseBind != DefaultMouseBind)
+        {
+            args.Add("--mouse-bind=" + input.MouseBind);
+        }
+
+        // scrcpy refuses --no-key-repeat unless the keyboard is its raw-key one; the hardware
+        // keyboard repeats a held key the way Android does for any plugged-in keyboard.
+        if (!input.KeyRepeat && keyboardMode == CompatibilityKeyboardMode)
+        {
+            args.Add("--no-key-repeat");
+        }
+
+        if (!input.MouseHover)
+        {
+            args.Add("--no-mouse-hover");
+        }
+
+        if (!input.ClipboardAutosync)
+        {
+            args.Add("--no-clipboard-autosync");
+        }
+
+        if (input.LegacyPaste)
+        {
+            args.Add("--legacy-paste");
+        }
+
+        if (input.Gamepad == "uhid" && !isCopy)
+        {
+            args.Add("--gamepad=uhid");
+        }
     }
 
     /// <summary>

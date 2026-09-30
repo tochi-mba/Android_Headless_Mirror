@@ -45,8 +45,20 @@ public partial class SettingsPanel : UserControl
             SelectTag(MaxFps, c.Mirror.MaxFps.ToString(CultureInfo.InvariantCulture));
             SelectTag(BitRate, c.Mirror.VideoBitRate.ToUpperInvariant());
             SelectTag(VideoCodec, c.Mirror.VideoCodec);
+            SelectTag(VideoBuffer, c.Mirror.VideoBufferMs.ToString(CultureInfo.InvariantCulture));
+            DownsizeOnError.IsChecked = c.Mirror.DownsizeOnError;
+            SelectTag(RenderDriver, c.Mirror.RenderDriver);
             Audio.IsChecked = c.Mirror.Audio;
             AudioDup.IsChecked = c.Mirror.AudioDup;
+            SelectTag(AudioSource, c.Mirror.AudioSource);
+            SelectTag(AudioBitRate, c.Mirror.AudioBitRate);
+            AudioSource.IsEnabled = c.Mirror.Audio;
+            AudioBitRate.IsEnabled = c.Mirror.Audio;
+            AudioDupHint.Visibility = c.Mirror.Audio && !c.Mirror.AudioDupPossible ? Visibility.Visible : Visibility.Collapsed;
+            SelectTag(RecordFormat, c.Mirror.RecordFormat);
+            SelectTag(ScreenOffTimeout, c.Session.ScreenOffTimeoutSeconds.ToString(CultureInfo.InvariantCulture));
+            KeepPcAwake.IsChecked = c.Session.KeepPcAwake;
+            RefreshInput(c);
             Record.IsChecked = c.Mirror.RecordOnStart;
             TurnScreenOff.IsChecked = c.Session.TurnScreenOff;
             StayAwake.IsChecked = c.Session.StayAwake;
@@ -96,7 +108,8 @@ public partial class SettingsPanel : UserControl
             SelectTag(CopiesMaxSize, c.Copies.MaxSize.ToString(CultureInfo.InvariantCulture));
             CopiesRemember.IsChecked = c.Copies.Remember;
             ShowCopiesValues();
-            AudioDup.IsEnabled = c.Mirror.Audio;
+            // scrcpy only keeps the playback going on the phone, so another source rules it out.
+            AudioDup.IsEnabled = c.Mirror.Audio && c.Mirror.AudioDupPossible;
             PatternEnabled.IsChecked = c.PatternGuide.Enabled;
             PatternAuto.IsChecked = c.PatternGuide.AutoShowOnKeyguard;
             PatternDiscover.IsChecked = c.PatternGuide.AutoDiscoverGeometry;
@@ -163,6 +176,14 @@ public partial class SettingsPanel : UserControl
         c.Mirror.VideoCodec = SelectedTag(VideoCodec, "h264");
         c.Mirror.Audio = Audio.IsChecked == true;
         c.Mirror.AudioDup = AudioDup.IsChecked == true;
+        c.Mirror.AudioSource = SelectedTag(AudioSource, "auto");
+        c.Mirror.AudioBitRate = SelectedTag(AudioBitRate, MirrorSettings.DefaultAudioBitRate);
+        c.Mirror.VideoBufferMs = int.Parse(SelectedTag(VideoBuffer, "0"), CultureInfo.InvariantCulture);
+        c.Mirror.DownsizeOnError = DownsizeOnError.IsChecked == true;
+        c.Mirror.RenderDriver = SelectedTag(RenderDriver, string.Empty);
+        c.Mirror.RecordFormat = SelectedTag(RecordFormat, "mp4");
+        c.Session.ScreenOffTimeoutSeconds = int.Parse(SelectedTag(ScreenOffTimeout, "0"), CultureInfo.InvariantCulture);
+        c.Session.KeepPcAwake = KeepPcAwake.IsChecked == true;
         c.Mirror.RecordOnStart = Record.IsChecked == true;
         c.Mirror.CompatibilityKeyboard = CompatibilityKeyboard.IsChecked == true;
         c.Session.TurnScreenOff = TurnScreenOff.IsChecked == true;
@@ -422,7 +443,7 @@ public partial class SettingsPanel : UserControl
     }
 
     private IEnumerable<Expander> Groups() =>
-        [GroupDisplay, GroupAudio, GroupSession, GroupControls, GroupCopies, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
+        [GroupDisplay, GroupAudio, GroupSession, GroupControls, GroupInput, GroupCopies, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
 
     /// <summary>Whether a group says the words somewhere: its header, a label, a hint or an option.</summary>
     private static bool Mentions(Expander group, string query)
@@ -487,6 +508,7 @@ public partial class SettingsPanel : UserControl
             c.Mirror = fresh.Mirror;
             c.Session = fresh.Session;
             c.Touchpad = fresh.Touchpad;
+            c.Input = fresh.Input;
             c.Zoom = fresh.Zoom;
             c.Copies = fresh.Copies;
             c.Ambient = fresh.Ambient;
