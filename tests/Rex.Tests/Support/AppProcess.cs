@@ -119,7 +119,10 @@ public sealed class AppProcess : IDisposable
         SetPhysicalCursorPos(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
     }
 
-    public async Task ScrollSidebarAsync()
+    public Task ScrollSidebarAsync() => ScrollSidebarAsync(-3);
+
+    /// <summary>Turns the wheel over the side panel; negative notches scroll down, as a wheel does.</summary>
+    public async Task ScrollSidebarAsync(int notches)
     {
         await FocusAsync();
         var bounds = WindowBounds();
@@ -127,7 +130,7 @@ public sealed class AppProcess : IDisposable
         try { SetCursorPos(bounds.Right - 100, bounds.Top + bounds.Height / 2); }
         finally { SetThreadDpiAwarenessContext(dpiContext); }
         await Task.Delay(200, TestContext.Current.CancellationToken);
-        mouse_event(0x0800, 0, 0, unchecked((uint)-360), UIntPtr.Zero);
+        mouse_event(0x0800, 0, 0, unchecked((uint)(notches * 120)), UIntPtr.Zero);
     }
 
     /// <summary>The very corner of the window, for a HUD pinned to bottom-right.</summary>
@@ -517,6 +520,9 @@ public sealed class AppProcess : IDisposable
         }
     }
 
+    /// <summary>The main window's handle, for tests that walk its automation tree themselves.</summary>
+    public IntPtr MainWindowHandle() => FindMainWindow();
+
     private IntPtr FindMainWindow()
     {
         // Process.MainWindowHandle may select a tooltip owned by the WPF process.
@@ -703,7 +709,7 @@ public sealed class AppProcess : IDisposable
     }
 
     /// <summary>Alt + mouse wheel over the mirror, as real input, so the low-level hook path is exercised.</summary>
-    public async Task AltWheelOverMirrorAsync(int notches)
+    public async Task AltWheelOverMirrorAsync(int notches, Func<Task>? whileHeld = null)
     {
         await FocusAsync();
         var bounds = WindowBounds();
@@ -712,6 +718,11 @@ public sealed class AppProcess : IDisposable
         keybd_event(0x12, 0, 0, UIntPtr.Zero);
         try
         {
+            if (whileHeld is not null)
+            {
+                await whileHeld();
+            }
+
             for (var i = 0; i < Math.Abs(notches); i++)
             {
                 mouse_event(0x0800, 0, 0, unchecked((uint)(notches > 0 ? 120 : -120)), UIntPtr.Zero);

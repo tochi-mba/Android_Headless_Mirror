@@ -21,6 +21,9 @@ public sealed class MirrorHost : HwndHost
     private ZoomView _view = ZoomView.Identity;
     private double _zoom = 1.0;
     private bool _applying;
+    private bool _holdingKeyboard;
+    private RECT? _clip;
+    private bool _recheckShape;
 
     public event Action<ZoomView>? ViewChanged;
     public event Action? ChildFocused;
@@ -133,10 +136,70 @@ public sealed class MirrorHost : HwndHost
         }
 
         _child = IntPtr.Zero;
+        _holdingKeyboard = false;
         _zoom = 1.0;
         _view = ZoomView.Identity;
+        ClipToPicture();
         ViewChanged?.Invoke(_view);
     }
+
+    /// <summary>
+    /// The viewport rectangle the viewport window keeps, in its own client pixels: the part the
+    /// picture covers. Null means the whole viewport (no picture yet, or the picture fills it).
+    /// </summary>
+    internal static RECT? ClipFor(int viewportWidth, int viewportHeight, ZoomView view, bool hasChild)
+    {
+        if (!hasChild || viewportWidth <= 0 || viewportHeight <= 0 || view.SurfaceWidth <= 0 || view.SurfaceHeight <= 0)
+        {
+            return null;
+        }
+
+        var clip = new RECT
+        {
+            Left = Math.Max(0, (int)Math.Floor(view.OffsetX)),
+            Top = Math.Max(0, (int)Math.Floor(view.OffsetY)),
+            Right = Math.Min(viewportWidth, (int)Math.Ceiling(view.OffsetX + view.SurfaceWidth)),
+            Bottom = Math.Min(viewportHeight, (int)Math.Ceiling(view.OffsetY + view.SurfaceHeight)),
+        };
+        if (clip.Left == 0 && clip.Top == 0 && clip.Right == viewportWidth && clip.Bottom == viewportHeight)
+        {
+            return null;
+        }
+
+        return clip.Right > clip.Left && clip.Bottom > clip.Top ? clip : null;
+    }
+
+    /// <summary>
+    /// Cuts the viewport window down to the picture, so the main window shows through the margins
+    /// around the phone. That is where the soft background is drawn (<see cref="AmbientView"/>):
+    /// as ordinary window content on the GPU, instead of in the transparent overlay, which Windows
+    /// redraws on the CPU.
+    /// </summary>
+    private void ClipToPicture()
+    {
+        if (_viewport == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var (width, height) = ViewportPixels;
+        var clip = ClipFor(width, height, _view, HasChild);
+        if (Same(clip, _clip))
+        {
+            return;
+        }
+
+        _clip = clip;
+        var region = clip is { } r ? NativeMethods.CreateRectRgn(r.Left, r.Top, r.Right, r.Bottom) : IntPtr.Zero;
+        if (NativeMethods.SetWindowRgn(_viewport, region, true) == 0 && region != IntPtr.Zero)
+        {
+            NativeMethods.DeleteObject(region);
+            _clip = null;
+        }
+    }
+
+    private static bool Same(RECT? a, RECT? b) =>
+        a is { } x ? b is { } y && x.Left == y.Left && x.Top == y.Top && x.Right == y.Right && x.Bottom == y.Bottom : b is null;
 
     /// <summary>Hides the native viewport so WPF content (empty state, setup) can show in its place.</summary>
     public void SetShown(bool shown)
@@ -144,6 +207,44 @@ public sealed class MirrorHost : HwndHost
         if (_viewport != IntPtr.Zero)
         {
             NativeMethods.ShowWindow(_viewport, shown ? NativeMethods.SW_SHOWNOACTIVATE : NativeMethods.SW_HIDE);
+        }
+    }
+
+    /// <summary>True while left Alt is held for the PC and the phone is kept from seeing it.</summary>
+    public bool HoldingKeyboard => _holdingKeyboard;
+
+    /// <summary>
+    /// Takes keyboard focus away from the phone while left Alt is held for the PC view.
+    ///
+    /// The phone is a real keyboard to Android now, so it sees a held Alt the way it would from a
+    /// plugged-in keyboard, and Android answers a held modifier by showing its keyboard shortcut
+    /// list, right in the middle of an Alt + pinch or Alt + wheel zoom. Called from the keyboard
+    /// hook before Windows routes the key, this moves focus to the viewport so the Alt, and
+    /// anything typed with it, lands here instead of on the phone.
+    /// </summary>
+    public void HoldKeyboard()
+    {
+        if (_holdingKeyboard || !HasChild || _viewport == IntPtr.Zero || NativeMethods.GetFocus() != _child)
+        {
+            return;
+        }
+
+        _holdingKeyboard = true;
+        NativeMethods.SetFocus(_viewport);
+    }
+
+    /// <summary>Hands the keyboard back to the phone once Alt is released, if nothing else took it meanwhile.</summary>
+    public void ReleaseKeyboard()
+    {
+        if (!_holdingKeyboard)
+        {
+            return;
+        }
+
+        _holdingKeyboard = false;
+        if (NativeMethods.GetFocus() == _viewport)
+        {
+            FocusChild();
         }
     }
 
@@ -244,12 +345,52 @@ public sealed class MirrorHost : HwndHost
             }
         }
 
+        ClipToPicture();
         ViewChanged?.Invoke(_view);
+        if (_recheckShape)
+        {
+            // scrcpy changed its own size while ours was being applied; look at what it ended up as.
+            _recheckShape = false;
+            Dispatcher.BeginInvoke(AdoptChildShape);
+        }
     }
 
     private void OnChildWinEvent(IntPtr hook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
     {
-        if (_applying || hwnd != _child || idObject != NativeMethods.OBJID_WINDOW || !HasChild)
+        if (hwnd != _child || idObject != NativeMethods.OBJID_WINDOW || !HasChild)
+        {
+            return;
+        }
+
+        if (_applying)
+        {
+            // Setting the child's position pumps messages, so a resize of scrcpy's own (the phone
+            // turning) can be reported in the middle of ours. Ignoring it outright is how a
+            // landscape picture was occasionally left at the portrait width.
+            _recheckShape = true;
+            return;
+        }
+
+        AdoptChildShape();
+    }
+
+    /// <summary>
+    /// Makes sure the picture is the shape and size the view says it is. scrcpy resizes its own
+    /// window when the phone turns (keeping the old width, so a landscape picture arrives small);
+    /// that is followed by window events, which can be missed, so the window calls this on its
+    /// regular tick as well and a missed event corrects itself within a frame or two.
+    /// </summary>
+    public void SyncChildShape()
+    {
+        if (!_applying && HasChild)
+        {
+            AdoptChildShape();
+        }
+    }
+
+    private void AdoptChildShape()
+    {
+        if (_applying || !HasChild)
         {
             return;
         }
@@ -319,13 +460,25 @@ public sealed class MirrorHost : HwndHost
                 var evt = (int)(wParam.ToInt64() & 0xFFFF);
                 if (evt is NativeMethods.WM_LBUTTONDOWN or NativeMethods.WM_RBUTTONDOWN or NativeMethods.WM_MBUTTONDOWN)
                 {
+                    // A click is a clear sign of where the person wants the keyboard.
+                    _holdingKeyboard = false;
                     FocusChild();
                 }
 
                 break;
             case NativeMethods.WM_SETFOCUS:
-                FocusChild();
+                if (!_holdingKeyboard)
+                {
+                    FocusChild();
+                }
+
                 break;
+            case NativeMethods.WM_SYSKEYDOWN or NativeMethods.WM_SYSKEYUP or NativeMethods.WM_SYSCHAR
+                or NativeMethods.WM_KEYDOWN or NativeMethods.WM_KEYUP or NativeMethods.WM_CHAR when _holdingKeyboard:
+                // Keys that arrive while Alt is held for the PC are swallowed here. Left to the
+                // default handling, releasing Alt would open the window menu and Alt + letter would beep.
+                handled = true;
+                return IntPtr.Zero;
         }
 
         return base.WndProc(hwnd, msg, wParam, lParam, ref handled);

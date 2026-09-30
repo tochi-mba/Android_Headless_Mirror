@@ -104,6 +104,35 @@ public sealed class AppAutomation(IntPtr window)
         Bounded(() => { expand.Collapse(); return true; }, $"close '{comboId}'");
     }
 
+    /// <summary>
+    /// The menu items of an open popup menu of this app. A context menu is a window of its own,
+    /// not part of the main window's tree, so it is found among the process's top-level windows.
+    /// </summary>
+    public IReadOnlyList<AutomationElement> OpenMenuItems()
+    {
+        AutomationElement[]? found = null;
+        _ = Wait(() =>
+        {
+            var processId = AutomationElement.FromHandle(window).Current.ProcessId;
+            var windows = AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, processId));
+            foreach (AutomationElement top in windows)
+            {
+                // The window's own title-bar menu reports itself as a menu item too; only the app's count.
+                var items = top.FindAll(TreeScope.Descendants, new AndCondition(
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem),
+                    new PropertyCondition(AutomationElement.ClassNameProperty, "MenuItem")));
+                if (items.Count > 0)
+                {
+                    found = items.Cast<AutomationElement>().ToArray();
+                    return found[0];
+                }
+            }
+
+            return null;
+        }, "an open menu");
+        return found!;
+    }
+
     private AutomationElement? FindBy(AutomationProperty property, string value) =>
         AutomationElement.FromHandle(window).FindFirst(TreeScope.Descendants, new PropertyCondition(property, value));
 

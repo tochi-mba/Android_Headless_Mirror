@@ -16,9 +16,12 @@ public partial class InfoPanel : UserControl
         InitializeComponent();
 
         // One list, from the registry the window and the website also read, so it cannot drift.
-        ShortcutRows.ItemsSource = Shortcuts.All
-            .Select(shortcut => KeyValuePair.Create(Shortcuts.Label(shortcut), shortcut.Description))
-            .ToArray();
+        static KeyValuePair<string, string>[] Rows(IEnumerable<Shortcut> shortcuts) =>
+            shortcuts.Select(s => KeyValuePair.Create(s.Gesture, s.Description)).ToArray();
+        ShortcutKeys.ItemsSource = Rows(Shortcuts.All.Where(s => s.IsKey && !s.Browse));
+        ShortcutBrowse.ItemsSource = Rows(Shortcuts.BrowseKeys);
+        ShortcutGestures.ItemsSource = Rows(Shortcuts.All.Where(s => !s.IsKey));
+        BrowseHeading.Text = "BROWSE MODE · " + Shortcuts.Gesture("browse").ToUpperInvariant();
     }
 
     public void Attach(MainWindow window, AppHost host)

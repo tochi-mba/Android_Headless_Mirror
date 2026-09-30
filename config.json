@@ -46,7 +46,11 @@
     "WheelStep": 0.1,
     "ShowNavigator": true,
     "NavigatorCorner": "bottom-right",
-    "NavigatorWidth": 150
+    "NavigatorWidth": 150,
+    "NavigatorPicture": true,
+    "NavigatorOpacity": 0.92,
+    "NavigatorFrameRate": 30,
+    "NavigatorAlways": false
   },
   "Ambient": {
     "Enabled": true,

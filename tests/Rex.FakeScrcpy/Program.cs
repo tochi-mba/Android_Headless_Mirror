@@ -126,7 +126,30 @@ internal sealed class MirrorForm : Form
         _rotationWatch = new System.Windows.Forms.Timer { Interval = 100 };
         _rotationWatch.Tick += (_, _) => FollowRotation();
         _rotationWatch.Start();
+
+        // Real scrcpy prints this at its first frame and every time the picture changes shape.
+        ReportTexture(landscape: false);
+
+        // A phone playing a video: with the marker present the whole picture cycles through
+        // colours, so a test can see the soft background and the navigator follow it.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "animate")))
+        {
+            _animation = new System.Windows.Forms.Timer { Interval = 120 };
+            _animation.Tick += (_, _) => { _frame++; Invalidate(); };
+            _animation.Start();
+        }
     }
+
+    private readonly System.Windows.Forms.Timer? _animation;
+    private int _frame;
+
+    /// <summary>A strong, clearly different colour for each frame of the fake video.</summary>
+    internal static Color FrameColour(int frame) => (frame % 3) switch
+    {
+        0 => Color.FromArgb(230, 40, 40),
+        1 => Color.FromArgb(40, 200, 60),
+        _ => Color.FromArgb(40, 90, 240),
+    };
 
     private readonly System.Windows.Forms.Timer _rotationWatch;
 
@@ -160,14 +183,43 @@ internal sealed class MirrorForm : Form
         // every tick means the two converge whichever order they happen in, and once the app has
         // adopted the new aspect there is nothing left to correct.
         var landscape = value is "1" or "3";
+        if (landscape != _reportedLandscape)
+        {
+            ReportTexture(landscape);
+        }
+
+        // With the marker present the window keeps its size when the phone turns, the case where
+        // scrcpy's own resize never reaches the app: only the texture report says the phone turned.
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "keep-window")))
+        {
+            return;
+        }
+
         if (landscape == ClientSize.Width > ClientSize.Height)
         {
             return;
         }
 
-        ClientSize = new Size(ClientSize.Height, ClientSize.Width);
+        // scrcpy does not swap the window's sides: it fits the turned picture inside the window it
+        // already has, so going to landscape keeps the portrait width and the picture arrives
+        // small. It is the app's job to notice and give it the room.
+        var aspect = (double)ClientSize.Height / ClientSize.Width;
+        var fitted = ClientSize.Width / (double)ClientSize.Height > aspect
+            ? new Size(Math.Max(1, (int)Math.Round(ClientSize.Height * aspect)), ClientSize.Height)
+            : new Size(ClientSize.Width, Math.Max(1, (int)Math.Round(ClientSize.Width / aspect)));
+        ClientSize = fitted;
         Program.Log($"rotation {value} {ClientSize.Width}x{ClientSize.Height}");
         Invalidate();
+    }
+
+    private bool? _reportedLandscape;
+
+    private void ReportTexture(bool landscape)
+    {
+        _reportedLandscape = landscape;
+        Console.Out.WriteLine(landscape ? "INFO: Texture: 2400x1080" : "INFO: Texture: 1080x2400");
+        Console.Out.Flush();
+        Program.Log(landscape ? "texture 2400x1080" : "texture 1080x2400");
     }
 
     private string? Option(string name)
@@ -186,6 +238,13 @@ internal sealed class MirrorForm : Form
         var rect = ClientRectangle;
         if (rect.Width <= 0 || rect.Height <= 0)
         {
+            return;
+        }
+
+        if (_animation is not null)
+        {
+            using var solid = new SolidBrush(FrameColour(_frame / 4));
+            g.FillRectangle(solid, rect);
             return;
         }
 

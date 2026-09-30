@@ -249,6 +249,14 @@ public sealed class SessionController : IDisposable
             _host.Log.Warn("Could not read the phone identity: " + ex.Message);
         }
 
+        // Some phones (and emulators) report no model through getprop, and the name would then be
+        // the serial number. ADB's own device list usually still has the model, which reads better
+        // everywhere the phone is named: the chip, the title bar, the tray and the questions asked.
+        if (identity.DisplayName == device.Serial && device.Model.Length > 0)
+        {
+            identity = identity with { Model = device.Model };
+        }
+
         _host.State.RememberDevice(device.Serial, identity.DisplayName, identity.Model);
         var profile = _host.State.GetDevice(device.Serial);
         var askLock = _host.Config.PatternGuide.Enabled && _host.Config.PatternGuide.AskPerDevice &&

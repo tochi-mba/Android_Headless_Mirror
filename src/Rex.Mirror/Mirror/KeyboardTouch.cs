@@ -87,6 +87,12 @@ public sealed class KeyboardTouch
                 if (!await PlayStrokeAsync(strokes[i], action).ConfigureAwait(true))
                 {
                     _log($"Keyboard touch failed (error {_injector.LastError}).");
+                    if (i == 0 && Fallback is not null)
+                    {
+                        // Nothing reached the phone yet, so Android can play the whole gesture itself.
+                        return await Fallback(action).ConfigureAwait(true);
+                    }
+
                     return AndroidResult.Failure("Windows could not send that touch to the phone.");
                 }
             }

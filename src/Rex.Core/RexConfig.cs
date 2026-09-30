@@ -318,7 +318,7 @@ public sealed record AmbientSettings
     /// <summary>Hue of the wash in degrees (0 red, 120 green, 240 blue).</summary>
     public double TintHue { get; set; } = 75;
 
-    /// <summary>How many times per second the background follows the live video (1 to 30).</summary>
+    /// <summary>How many times per second the background follows the live video (1 to 60).</summary>
     public double FrameRate { get; set; } = 15;
 
     public AmbientSettings Copy() => this with { };
@@ -335,7 +335,7 @@ public sealed record AmbientSettings
         EdgeFade = double.IsFinite(EdgeFade) ? Math.Clamp(EdgeFade, 0, 1) : 0;
         TintStrength = double.IsFinite(TintStrength) ? Math.Clamp(TintStrength, 0, 1) : 0;
         TintHue = double.IsFinite(TintHue) ? Math.Clamp(TintHue, 0, 360) : 75;
-        FrameRate = double.IsFinite(FrameRate) ? Math.Clamp(FrameRate, 1, 30) : 15;
+        FrameRate = double.IsFinite(FrameRate) ? Math.Clamp(FrameRate, 1, 60) : 15;
     }
 }
 
@@ -364,6 +364,18 @@ public sealed record ZoomSettings
     /// <summary>Navigator width in device-independent pixels.</summary>
     public double NavigatorWidth { get; set; } = 150;
 
+    /// <summary>Show a live picture of the whole phone screen inside the navigator, not just the frame.</summary>
+    public bool NavigatorPicture { get; set; } = true;
+
+    /// <summary>How solid the navigator is over the mirror: 0.2 (glass) to 1 (solid).</summary>
+    public double NavigatorOpacity { get; set; } = 0.92;
+
+    /// <summary>How many times per second the navigator picture follows the live video (1 to 60).</summary>
+    public double NavigatorFrameRate { get; set; } = 30;
+
+    /// <summary>Keep the navigator on screen at 100% too, as a small live preview of the whole phone.</summary>
+    public bool NavigatorAlways { get; set; }
+
     public ZoomSettings Copy() => this with { };
 
     public void Normalize()
@@ -372,6 +384,8 @@ public sealed record ZoomSettings
         WheelStep = double.IsFinite(WheelStep) ? Math.Clamp(WheelStep, 0.05, 0.5) : 0.1;
         NavigatorCorner = NavigatorCorners.Contains(NavigatorCorner?.ToLowerInvariant() ?? "", StringComparer.Ordinal) ? NavigatorCorner!.ToLowerInvariant() : "bottom-right";
         NavigatorWidth = double.IsFinite(NavigatorWidth) ? Math.Clamp(NavigatorWidth, 100, 360) : 150;
+        NavigatorOpacity = double.IsFinite(NavigatorOpacity) ? Math.Clamp(NavigatorOpacity, 0.2, 1) : 0.92;
+        NavigatorFrameRate = double.IsFinite(NavigatorFrameRate) ? Math.Clamp(NavigatorFrameRate, 1, 60) : 30;
     }
 }
 

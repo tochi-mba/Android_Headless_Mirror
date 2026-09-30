@@ -107,7 +107,7 @@
           </Slider.Background>
         </Slider>
         <Grid Margin="0,8,0,0"><TextBlock Text="Live frame rate" /><TextBlock x:Name="AmbientFrameRateValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-        <Slider x:Name="AmbientFrameRate" AutomationProperties.Name="Soft background frame rate" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" ToolTip="How closely the background follows the video. Lower uses less power." />
+        <Slider x:Name="AmbientFrameRate" AutomationProperties.Name="Soft background frame rate" Minimum="1" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" ToolTip="How closely the background follows the video. Lower uses less power." />
       </StackPanel>
       <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mirror it left to right">
         <CheckBox x:Name="AmbientFlip" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
@@ -181,6 +181,18 @@
       <CheckBox x:Name="Navigator" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
 
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Live picture in the navigator" />
+          <TextBlock Text="The whole phone screen, small, with the part you are looking at framed." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="NavigatorPicture" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep the navigator on screen at 100% too">
+      <CheckBox x:Name="NavigatorAlways" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
+    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Navigator corner">
       <ComboBox x:Name="NavigatorCorner" SelectionChanged="OnLiveChanged">
         <ComboBoxItem Content="Bottom right" Tag="bottom-right" />
@@ -191,6 +203,10 @@
     </HeaderedContentControl>
     <Grid Margin="0,8,0,0"><TextBlock Text="Navigator size" /><TextBlock x:Name="NavigatorWidthValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="NavigatorWidth" AutomationProperties.Name="Navigator size" Minimum="100" Maximum="360" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
+    <Grid Margin="0,8,0,0"><TextBlock Text="Navigator opacity" /><TextBlock x:Name="NavigatorOpacityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="NavigatorOpacity" AutomationProperties.Name="Navigator opacity" Minimum="0.2" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
+    <Grid Margin="0,8,0,0"><TextBlock Text="Navigator frame rate" /><TextBlock x:Name="NavigatorFrameRateValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="NavigatorFrameRate" AutomationProperties.Name="Navigator frame rate" Minimum="1" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" ToolTip="How closely the navigator picture follows the video." />
     <Grid Margin="0,8,0,0"><TextBlock Text="Maximum zoom" /><TextBlock x:Name="MaximumZoomValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="MaximumZoom" AutomationProperties.Name="Maximum zoom" Minimum="1.5" Maximum="8" TickFrequency="0.5" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
     <Grid Margin="0,8,0,0"><TextBlock Text="Wheel zoom speed" /><TextBlock x:Name="WheelSpeedValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>

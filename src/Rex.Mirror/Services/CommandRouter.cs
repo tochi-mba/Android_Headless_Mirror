@@ -125,6 +125,8 @@ public static class CommandRouter
             ["sidebarWidth"] = host.Window?.SidebarWidthDip ?? 0,
             ["ambientVisible"] = host.Window?.AmbientVisible ?? false,
             ["navigatorVisible"] = host.Window?.NavigatorVisible ?? false,
+            ["navigatorPicture"] = host.Window?.NavigatorPictureVisible ?? false,
+            ["capture"] = host.Window?.CapturePath,
             // Where the navigator is and whether it is being dragged, so a test can grab it.
             ["navigator"] = host.Window is { } nav ? new JsonObject
             {
@@ -152,6 +154,7 @@ public static class CommandRouter
                 ["visible"] = window.PatternGuideVisible,
                 ["resolving"] = window.PatternGuideResolving,
                 ["source"] = window.PatternGuideSource,
+                ["spinning"] = window.PatternSpinnerRunning,
                 // Where the dots sit, as fractions of the picture, so a test can see the guide
                 // move when Android moves the pattern.
                 ["bounds"] = window.PatternGuideBounds is { } bounds ? new JsonObject
@@ -162,10 +165,17 @@ public static class CommandRouter
                     ["bottom"] = Math.Round(bounds.Bottom, 4),
                 } : null,
             } : null,
+            // The video size scrcpy last reported: the shape the phone's picture really is.
+            ["video"] = session.Scrcpy?.VideoSize is { } video ? new JsonObject
+            {
+                ["width"] = video.Width,
+                ["height"] = video.Height,
+            } : null,
             ["keyboard"] = new JsonObject
             {
                 ["mode"] = session.Scrcpy?.KeyboardMode,
                 ["browse"] = host.Window?.BrowseMode ?? false,
+                ["altHeldForPc"] = host.Window?.Host.HoldingKeyboard ?? false,
             },
             ["device"] = session.ActiveDevice is null ? null : new JsonObject
             {

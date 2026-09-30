@@ -32,6 +32,21 @@ public sealed class InputHooks : IDisposable
     /// <summary>Tells the hooks whether our window currently owns the keyboard (foreground and not minimized).</summary>
     public Func<bool>? IsActive { get; set; }
 
+    /// <summary>
+    /// Left Alt pressed on its own (true) or released (false). Alt is the PC-view modifier, and
+    /// this runs inside the hook, before Windows decides which window gets the key, so whatever it
+    /// does to keyboard focus decides where the Alt goes.
+    /// </summary>
+    public Action<bool>? PcAlt { get; set; }
+
+    /// <summary>
+    /// Whether a left Alt press belongs to the PC rather than the phone: pressed on its own, with no
+    /// Ctrl (that is an app shortcut or AltGr), Shift or Windows key held. Right Alt is AltGr on many
+    /// layouts and always goes to the phone.
+    /// </summary>
+    internal static bool IsPcAlt(int virtualKey, bool ctrl, bool shift, bool win) =>
+        virtualKey == NativeMethods.VK_LMENU && !ctrl && !shift && !win;
+
     public void Install()
     {
         var module = NativeMethods.GetModuleHandleW(null);
@@ -84,6 +99,13 @@ public sealed class InputHooks : IDisposable
         if (nCode >= 0 && message is NativeMethods.WM_KEYUP or NativeMethods.WM_SYSKEYUP)
         {
             var released = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+            if (released.vkCode == NativeMethods.VK_LMENU)
+            {
+                // Always reported, even when the window lost the foreground while Alt was held
+                // (Alt+Tab), so the hold never outlives the key.
+                PcAlt?.Invoke(false);
+            }
+
             if (_consumedKeys.Remove((int)released.vkCode)) return new IntPtr(1);
         }
         if (nCode >= 0 && message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN && IsActive?.Invoke() == true)
@@ -96,6 +118,12 @@ public sealed class InputHooks : IDisposable
             // Windows exposes AltGr as Ctrl+Right-Alt. It is text input, not one of the app's
             // Ctrl+Alt shortcuts; stealing it breaks characters on many keyboard layouts.
             var altGr = NativeMethods.IsKeyDown(NativeMethods.VK_RMENU);
+            var win = NativeMethods.IsKeyDown(NativeMethods.VK_LWIN) || NativeMethods.IsKeyDown(NativeMethods.VK_RWIN);
+            if (IsPcAlt((int)data.vkCode, ctrl, shift, win))
+            {
+                PcAlt?.Invoke(true);
+            }
+
             if (CanOfferHotkey(altGr) && KeyDown?.Invoke((int)data.vkCode, ctrl, alt, shift) == true)
             {
                 _consumedKeys.Add((int)data.vkCode);

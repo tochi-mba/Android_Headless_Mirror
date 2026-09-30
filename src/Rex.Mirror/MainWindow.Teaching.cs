@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Rex.Core;
 using Rex.Mirror.Views;
@@ -205,21 +206,53 @@ public partial class MainWindow
         }
 
         var menu = new ContextMenu { PlacementTarget = DeviceChip, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        System.Windows.Automation.AutomationProperties.SetName(menu, "Choose which phone to mirror");
         var active = _host.Session.ActiveDevice?.Serial;
         foreach (var device in devices)
         {
             var serial = device.Serial;
+            var (name, detail) = PhoneLabel(device, _host.State.GetDevice(serial), serial == active ? _host.Session.Identity : null);
+            var header = new StackPanel();
+            header.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.SemiBold });
+            header.Children.Add(new TextBlock { Text = detail, FontSize = 11, Foreground = (Brush)FindResource("Muted"), Margin = new Thickness(0, 2, 0, 0) });
             var item = new MenuItem
             {
-                Header = $"{_host.State.GetDevice(serial)?.Model ?? serial} · {device.Transport}",
-                IsCheckable = true,
+                Header = header,
                 IsChecked = serial == active,
+                IsEnabled = device.IsReady,
+                Tag = serial,
             };
+            System.Windows.Automation.AutomationProperties.SetName(item, $"{name}, {detail}");
             item.Click += (_, _) => ChoosePhone(serial);
             menu.Items.Add(item);
         }
 
         menu.IsOpen = true;
+    }
+
+    /// <summary>
+    /// How a phone reads in the picker: its name, then how it is connected and whether it can be
+    /// mirrored. A phone that is still asking for permission, or has dropped offline, is listed
+    /// but cannot be picked, and says why.
+    /// </summary>
+    internal static (string Name, string Detail) PhoneLabel(AdbDevice device, DeviceProfile? profile, DeviceIdentity? identity)
+    {
+        // A phone that reports no marketing name gets its serial as a display name, which is the
+        // least useful thing to show; the model saved for it reads better.
+        var name = identity?.DisplayName is { Length: > 0 } shown && shown != device.Serial ? shown
+            : profile?.Name is { Length: > 0 } saved && saved != device.Serial ? saved
+            : profile?.Model is { Length: > 0 } model ? model
+            : device.Model.Length > 0 ? device.Model
+            : device.Serial;
+        var state = device.State switch
+        {
+            "device" when identity is not null => "mirroring now",
+            "device" => "ready",
+            "unauthorized" => "tap Allow on the phone",
+            "offline" => "offline",
+            _ => device.State,
+        };
+        return (name, $"{(device.IsTcp ? "Wireless" : "USB")} · {state}");
     }
 
     private void ChoosePhone(string serial)

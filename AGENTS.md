@@ -127,7 +127,8 @@ docs/                   GitHub Pages site; its download button points at the lat
   otherwise takes the whole gesture, so anything scrollable the pointer can rest on has to be
   offered to `TouchpadBridge.PanelAt` or it will be scrolled on the phone instead.
 - scrcpy is launched with `--shortcut-mod=rctrl`, `--mouse=sdk`, `--keyboard=uhid`,
-  `--window-borderless` and `--no-window-aspect-ratio-lock`; `Mirror.ExtraArgs` cannot override these
+  `--window-borderless`, `--background-color` (the app's ink, so a letterbox is invisible) and
+  `--no-window-aspect-ratio-lock`; `Mirror.ExtraArgs` cannot override these
   and is validated wherever it is written (settings panel, `config set`, `Normalize`). If Android
   denies UHID, the session retries once with `--keyboard=sdk --raw-key-events` and remembers it in
   the device profile (`CompatibilityKeyboard`) so later sessions start there; `Mirror.CompatibilityKeyboard`
@@ -140,19 +141,34 @@ docs/                   GitHub Pages site; its download button points at the lat
   phone, and only while focus is not in one of the app's own controls. Keep ordinary keys for typing
   otherwise, keep AltGr out of the Ctrl+Alt hotkey path, and add every new chord or browse key to
   `Shortcuts` so the app and website continue to agree.
+- Left Alt pressed on its own belongs to the PC view (zoom, pinch, pan). While it is held,
+  `MirrorHost.HoldKeyboard` moves keyboard focus from scrcpy to the viewport, from inside the
+  keyboard hook so it happens before Windows routes the key; otherwise the hardware keyboard shows
+  Android's shortcut list for a held modifier. This focus change is the one synchronous thing the
+  hook is allowed to do. Right Alt (AltGr) and Alt with Ctrl, Shift or Windows still reach the phone.
 - The pattern guide asks Android where the pattern is every time the lock screen comes up. A saved
   calibration only applies in the orientation it was made in, and saving one without moving it
   clears it instead: an unmoved calibration would freeze the automatic placement for good.
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
-- The soft background is a live copy of the on-screen mirror (`LiveCapture`), never a phone
-  screenshot: it must not add ADB traffic, and nothing else may poll the phone for pictures either.
-  It is captured small and blurred before it reaches the window (`AmbientBlur`), so its cost does
-  not grow with the window; never blur it at display size. The navigator is a frame and a viewport
-  box, with no picture inside it.
-- The mirror overlay is a transparent window, which Windows redraws whole whenever anything on it
-  changes. Everything drawn there is compared against what it drew last (soft background, navigator,
-  HUD placement, pattern trail) and skipped when nothing moved. Adding a per-frame assignment there
-  costs a full-window repaint thirty times a second.
+- The soft background and the navigator picture are live copies of the on-screen mirror
+  (`LiveCapture`), never phone screenshots: they must not add ADB traffic, and nothing else may poll
+  the phone for pictures either. One capture feeds both. It goes through DXGI desktop duplication
+  (`GpuCapture`): the region is cut and shrunk on the GPU with a mip chain and only the small
+  picture is read back, and nothing is read while the desktop is unchanged. GDI copying is the
+  fallback when the GPU path is refused, retried with a growing pause. The background is blurred
+  small (`AmbientBlur`), so its cost does not grow with the window; never blur it at display size.
+- The soft background is drawn by the main window (`AmbientView`, behind `MirrorHost`), not by the
+  overlay. The viewport window is clipped to the picture with a window region so the margins show
+  it. Moving it back into the overlay costs most of a core at 60 frames a second.
+- The mirror overlay is a per-pixel-alpha window, which Windows redraws on the CPU whenever anything
+  on it changes. Only small things that must sit over the phone belong there (pattern guide,
+  navigator, touchpad receiver). Everything drawn there is compared against what it drew last and
+  skipped when nothing moved, and no animation may run on it while its element is hidden: a WPF
+  animation keeps the render loop awake whether or not anything can be seen.
+- Every stock control the app puts on screen has a style in `Theme.xaml` (menus, lists, progress,
+  splitter included); `RepositoryTests.NoControlIsLeftLookingLikeStockWindows` fails otherwise. The
+  tray menu is Windows Forms and is painted by `TrayMenuRenderer`, whose colours must match the
+  palette.
 - Every visual choice the user can make lives in `config.json` and previews instantly:
   `AppHost.PreviewConfig` updates memory and debounces the write, `UpdateConfig` writes at once.
   The app also watches config.json, so `rex config set` applies to the running window.
