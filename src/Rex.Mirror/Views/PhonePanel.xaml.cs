@@ -19,6 +19,7 @@ public partial class PhonePanel : UserControl
     private readonly List<SettingRow> _rows = [];
     private readonly Dictionary<string, Expander> _groups = new(StringComparer.Ordinal);
     private readonly HashSet<string> _openGroups = new(StringComparer.Ordinal) { PhoneSettings.GroupDisplay };
+    private readonly SemaphoreSlim _changeGate = new(1, 1);
     private MainWindow? _window;
     private AppHost? _host;
     private bool _loading;
@@ -211,22 +212,35 @@ public partial class PhonePanel : UserControl
     /// <summary>Writes one setting, then reloads so the row shows what the phone really took.</summary>
     private async Task ApplyAsync(PhoneSetting setting, string value)
     {
-        if (_loading || Target() is not { } target || _window is null)
+        if (_loading || _window is null)
         {
             return;
         }
 
         var refocus = IsKeyboardFocusWithin;
-        if (!await ConfirmAsync(setting, $"Change {setting.Label}?", $"Set it to {setting.Describe(value)}.", "Change it"))
+        await _changeGate.WaitAsync();
+        try
         {
-            await ReloadKeepingFocusAsync(target, setting.Id, refocus);
-            return;
-        }
+            if (Target() is not { } target)
+            {
+                return;
+            }
 
-        var result = await target.Adb.ApplyPhoneSettingAsync(target.Serial, setting.Id, value);
-        ShowStatus(result.Ok ? string.Empty : result.Text);
-        _window.SetStatus(result.Ok ? $"{setting.Label}: {setting.Describe(value)}" : result.Text, !result.Ok);
-        await ReloadKeepingFocusAsync(target, setting.Id, refocus);
+            if (!await ConfirmAsync(setting, $"Change {setting.Label}?", $"Set it to {setting.Describe(value)}.", "Change it"))
+            {
+                await ReloadKeepingFocusAsync(target, setting.Id, refocus);
+                return;
+            }
+
+            var result = await target.Adb.ApplyPhoneSettingAsync(target.Serial, setting.Id, value);
+            ShowStatus(result.Ok ? string.Empty : result.Text);
+            _window.SetStatus(result.Ok ? $"{setting.Label}: {setting.Describe(value)}" : result.Text, !result.Ok);
+            await ReloadKeepingFocusAsync(target, setting.Id, refocus);
+        }
+        finally
+        {
+            _changeGate.Release();
+        }
     }
 
     /// <summary>
@@ -246,27 +260,40 @@ public partial class PhonePanel : UserControl
     /// <summary>Deletes the key so Android falls back to its own default.</summary>
     private async Task ResetAsync(PhoneSetting setting)
     {
-        if (Target() is not { } target || _window is null)
-        {
-            return;
-        }
-
-        if (!await ConfirmAsync(
-                setting,
-                $"Put {setting.Label} back to the phone's default?",
-                setting.Source == PhoneSettingSource.SettingsProvider
-                    ? "The value this app stored is deleted and Android decides again."
-                    : "The override is removed and the phone draws at its own setting again.",
-                "Use the default"))
+        if (_window is null)
         {
             return;
         }
 
         var refocus = IsKeyboardFocusWithin;
-        var result = await target.Adb.ResetPhoneSettingAsync(target.Serial, setting.Id);
-        ShowStatus(result.Ok ? string.Empty : result.Text);
-        _window.SetStatus(result.Ok ? $"{setting.Label} is back to the phone's default." : result.Text, !result.Ok);
-        await ReloadKeepingFocusAsync(target, setting.Id, refocus);
+        await _changeGate.WaitAsync();
+        try
+        {
+            if (Target() is not { } target)
+            {
+                return;
+            }
+
+            if (!await ConfirmAsync(
+                    setting,
+                    $"Put {setting.Label} back to the phone's default?",
+                    setting.Source == PhoneSettingSource.SettingsProvider
+                        ? "The value this app stored is deleted and Android decides again."
+                        : "The override is removed and the phone draws at its own setting again.",
+                    "Use the default"))
+            {
+                return;
+            }
+
+            var result = await target.Adb.ResetPhoneSettingAsync(target.Serial, setting.Id);
+            ShowStatus(result.Ok ? string.Empty : result.Text);
+            _window.SetStatus(result.Ok ? $"{setting.Label} is back to the phone's default." : result.Text, !result.Ok);
+            await ReloadKeepingFocusAsync(target, setting.Id, refocus);
+        }
+        finally
+        {
+            _changeGate.Release();
+        }
     }
 
     /// <summary>

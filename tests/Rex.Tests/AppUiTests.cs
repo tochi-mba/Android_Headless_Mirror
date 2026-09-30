@@ -13,6 +13,7 @@ public sealed partial class AppUiTests
 {
     private static readonly TimeSpan Startup = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan Soon = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan PhoneReadback = TimeSpan.FromSeconds(20);
 
     [Fact(Timeout = 75_000)]
     public async Task Tour_ShowsItselfOnceAndCanBeTakenAgain()
@@ -323,7 +324,7 @@ public sealed partial class AppUiTests
         await app.QuitAsync();
     }
 
-    [Fact(Timeout = 75_000)]
+    [Fact(Timeout = 120_000)]
     public async Task PhonePanel_ShowsTheCatalogueAndWritesEveryKindOfSetting()
     {
         TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
@@ -341,16 +342,48 @@ public sealed partial class AppUiTests
         app.Ui.ExpandGroup("PhoneGroup Input & gestures");
         app.Ui.Toggle("show-touches", true);
         await app.WaitUntilAsync(() => package.AdbCalls().Any(l => l.Contains("settings put system show_touches 1", StringComparison.Ordinal)), Soon, "show taps written");
+        await app.WaitUntilAsync(
+            () => HasLaterCall(package.AdbCalls(), "settings put system show_touches 1", "settings list system") &&
+                  app.Ui.IsOn("show-touches"),
+            PhoneReadback,
+            "show taps read back");
 
         app.Ui.SelectComboItem("screen-timeout", "5 minutes");
         await app.WaitUntilAsync(() => package.AdbCalls().Any(l => l.Contains("settings put system screen_off_timeout 300000", StringComparison.Ordinal)), Soon, "timeout written");
+        await app.WaitUntilAsync(
+            () => HasLaterCall(package.AdbCalls(), "settings put system screen_off_timeout 300000", "settings list system") &&
+                  app.Ui.SelectedName("screen-timeout") == "5 minutes",
+            PhoneReadback,
+            "timeout read back");
 
         app.Ui.SetValue("brightness", 200);
         app.Ui.Invoke("Reset show-touches");
         await app.WaitUntilAsync(() => package.AdbCalls().Any(l => l.Contains("settings delete system show_touches", StringComparison.Ordinal)), Soon, "reset to the phone default");
+        await app.WaitUntilAsync(
+            () => HasLaterCall(package.AdbCalls(), "settings delete system show_touches", "settings list system"),
+            PhoneReadback,
+            "the reset read back");
         // Back at the default there is nothing to reset, so the button is gone, not merely invisible.
-        await app.WaitUntilAsync(() => !app.Ui.Exists("Reset show-touches"), Soon, "the reset to go once the setting is at its default");
+        await app.WaitUntilAsync(() => !app.Ui.Exists("Reset show-touches"), PhoneReadback, "the reset to go once the setting is at its default");
         await app.QuitAsync();
+    }
+
+    private static bool HasLaterCall(IReadOnlyList<string> calls, string first, string later)
+    {
+        var firstAt = -1;
+        for (var i = 0; i < calls.Count; i++)
+        {
+            if (calls[i].Contains(first, StringComparison.Ordinal))
+            {
+                firstAt = i;
+            }
+            else if (firstAt >= 0 && calls[i].Contains(later, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     [Fact(Timeout = 75_000)]
