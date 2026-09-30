@@ -63,6 +63,9 @@ public sealed class MirrorHost : HwndHost
     public ZoomView View => _view;
     public double MaxZoom { get; set; } = 4.0;
 
+    /// <summary>Zoom back out to the whole picture when it turns between upright and on its side.</summary>
+    public bool ResetZoomOnTurn { get; set; }
+
     /// <summary>Viewport size in physical pixels.</summary>
     public (int Width, int Height) ViewportPixels
     {
@@ -121,7 +124,13 @@ public sealed class MirrorHost : HwndHost
             return;
         }
 
+        var turned = aspect < 1 != _videoAspect < 1;
         _videoAspect = aspect;
+        if (turned && ResetZoomOnTurn)
+        {
+            _zoom = 1.0;
+        }
+
         var (width, height) = ViewportPixels;
         if (width > 0 && height > 0)
         {

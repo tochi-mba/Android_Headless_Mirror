@@ -59,7 +59,11 @@ until you delete that folder.
   microphone or a call) and its quality, the phone's screen timeout while mirrored, keeping this
   PC awake, an app to open when the mirror starts, what the right, middle, back and forward mouse
   buttons do, key repeat, hover, clipboard syncing, paste-by-typing, handing game controllers to
-  the phone, and MP4 or MKV recordings. Each lives in config.json, so `rex config set` works too.
+  the phone, and MP4 or MKV recordings. The window is yours too: keep it on top, put the side
+  panel on the left, choose the top bar's phone buttons, show the live frame rate, hear from the
+  tray when the phone comes or goes, save screenshots as JPG and copy them to the clipboard, zoom
+  on the pointer or the middle with either wheel direction, zoom out when the phone turns, and set
+  how far and fast keyboard swipes go. Each lives in config.json, so `rex config set` works too.
 - **Screenshots where you want them.** Pick the folder in Settings; click a saved filename in the
   status bar to reveal it in File Explorer.
 - **Pattern-lock guide.** Some phones mirror their secure lock screen as black. For pattern locks the

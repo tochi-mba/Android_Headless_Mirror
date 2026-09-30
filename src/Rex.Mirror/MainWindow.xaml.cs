@@ -112,6 +112,7 @@ public partial class MainWindow : Window
         {
             Fallback = action => _host.Session.PlayGestureOverAdbAsync(action, Host.SurfaceRect.Width > Host.SurfaceRect.Height),
             SurfaceOnScreen = () => IsVisible && WindowState != WindowState.Minimized,
+            Settings = () => _host.Config.Input,
         };
 
         _overlayTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
@@ -179,6 +180,7 @@ public partial class MainWindow : Window
         ApplyPlacement();
         SetSidebarVisible(host.State.Ui.SidebarVisible);
         SelectTab(host.State.Ui.SidebarTab);
+        ApplyWindowPreferences();
         new WindowInteropHelper(this).EnsureHandle();
     }
 
@@ -379,6 +381,8 @@ public partial class MainWindow : Window
             ShowTipOnce(Tips.SecondPhone);
         }
 
+        NoticeConnections();
+
         HintText.Text = _browse
             ? KeyboardBrowse.Hint
             : session.IsMirroring
@@ -422,6 +426,8 @@ public partial class MainWindow : Window
         {
             Host.SetVideoSize(size.Width, size.Height);
         }
+
+        FollowFrameRate(scrcpy);
         _hooks.Install();
         _overlayTimer.Start();
 
@@ -462,6 +468,7 @@ public partial class MainWindow : Window
         _overlay.Track(default, visible: false);
         // Browse mode is about the picture that just went away; the next session starts typing.
         _browse = false;
+        HideFrameRate();
         SetPaused(false);
         // Nothing to copy without the main picture: the copies close, and come back with it.
         _copies?.Pump();
@@ -508,6 +515,8 @@ public partial class MainWindow : Window
         }
 
         ApplyCopiesConfig();
+        _host.Session.ApplyFrameRateSetting();
+        ApplyWindowPreferences();
         SettingsPanel.Refresh();
         OnSessionChanged();
     }

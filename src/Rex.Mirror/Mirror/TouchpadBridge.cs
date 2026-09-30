@@ -137,8 +137,8 @@ public sealed class TouchpadBridge
             NativeMethods.GetCursorPos(out var cursor);
             // Over a copy, the same spot of the main view: every copy follows its zoom.
             var at = MapToMain?.Invoke(cursor.X, cursor.Y) ?? (cursor.X, cursor.Y);
-            var anchorX = Math.Clamp(at.X - viewport.Left, 0, Math.Max(0, viewport.Width));
-            var anchorY = Math.Clamp(at.Y - viewport.Top, 0, Math.Max(0, viewport.Height));
+            var anchorX = config.Zoom.ZoomAtPointer ? Math.Clamp(at.X - viewport.Left, 0, Math.Max(0, viewport.Width)) : viewport.Width / 2;
+            var anchorY = config.Zoom.ZoomAtPointer ? Math.Clamp(at.Y - viewport.Top, 0, Math.Max(0, viewport.Height)) : viewport.Height / 2;
             _host.SetZoom(_startZoom * scale, anchorX, anchorY);
 
             var pan = ToPixels(centroid.Item1 - _lastCentroid.X, centroid.Item2 - _lastCentroid.Y, config.Touchpad.Sensitivity);

@@ -89,6 +89,9 @@ public sealed partial class SessionController : IDisposable
     /// <summary>Whether the main session's picture is paused.</summary>
     public bool ViewPaused { get; private set; }
 
+    /// <summary>Whether scrcpy's frame rate counter is running in the main session.</summary>
+    public bool FrameRateCounterOn { get; private set; }
+
     public event Action? Changed;
     public event Action<ScrcpyProcess>? MirrorReady;
     public event Action? MirrorEnded;
@@ -348,6 +351,7 @@ public sealed partial class SessionController : IDisposable
             // A new session shows the picture as its arguments say, and playing.
             ViewOrientation = DisplayOrientation.Initial(ScrcpyArguments.SplitExtraArgs(config.Mirror.ExtraArgs));
             ViewPaused = false;
+            FrameRateCounterOn = config.App.ShowFrameRate;
             SetState(SessionPhase.Mirroring, identity.DisplayName);
             MirrorReady?.Invoke(scrcpy);
             StartBatteryPoll(device.Serial);
@@ -471,7 +475,8 @@ public sealed partial class SessionController : IDisposable
             (width, height) = (height, width);
         }
 
-        var strokes = KeyboardTouch.Strokes(action, new RECT { Left = 0, Top = 0, Right = width, Bottom = height });
+        var input = _host.Config.Input;
+        var strokes = KeyboardTouch.Strokes(action, new RECT { Left = 0, Top = 0, Right = width, Bottom = height }, input.SwipeLength);
         if (strokes.Count == 0)
         {
             return AndroidResult.Failure($"'{action}' is not a gesture.");
@@ -483,7 +488,7 @@ public sealed partial class SessionController : IDisposable
             var last = stroke[^1];
             var result = stroke.Count == 1
                 ? await Adb.TapAsync(device.Serial, first.X, first.Y).ConfigureAwait(true)
-                : await Adb.SwipeAsync(device.Serial, first.X, first.Y, last.X, last.Y, KeyboardTouch.AdbSwipeMilliseconds).ConfigureAwait(true);
+                : await Adb.SwipeAsync(device.Serial, first.X, first.Y, last.X, last.Y, input.SwipeMilliseconds).ConfigureAwait(true);
             if (!result.Ok)
             {
                 return result;
@@ -604,6 +609,11 @@ public sealed partial class SessionController : IDisposable
                     return AndroidResult.Failure($"Could not send '{action.Label}' to the mirror.");
                 }
 
+                if (action.Id == "fps")
+                {
+                    FrameRateCounterOn = !FrameRateCounterOn;
+                }
+
                 if (ScrcpyShortcuts.AppliesToEveryView(action.Id))
                 {
                     FollowView(action.Id);
@@ -636,6 +646,24 @@ public sealed partial class SessionController : IDisposable
         }
     }
 
+    /// <summary>
+    /// Starts or stops scrcpy's frame rate counter in the running session to match the setting,
+    /// so turning the readout on or off needs no restart.
+    /// </summary>
+    public void ApplyFrameRateSetting()
+    {
+        var wanted = _host.Config.App.ShowFrameRate;
+        if (!IsMirroring || Scrcpy is not { } scrcpy || FrameRateCounterOn == wanted || ScrcpyShortcuts.For("fps") is not { } toggle)
+        {
+            return;
+        }
+
+        if (ScrcpyShortcutSender.Send(scrcpy.Hwnd, toggle))
+        {
+            FrameRateCounterOn = wanted;
+        }
+    }
+
     public async Task<(bool Ok, string Text)> SaveScreenshotAsync()
     {
         var device = ActiveDevice ?? Devices.FirstOrDefault(d => d.IsReady);
@@ -652,8 +680,30 @@ public sealed partial class SessionController : IDisposable
 
         var directory = _host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory);
         Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".png");
-        await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(true);
+        var format = _host.Config.App.ScreenshotFormat;
+        var path = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ScreenshotFile.Extension(format));
+        try
+        {
+            await File.WriteAllBytesAsync(path, ScreenshotFile.Encode(bytes, format)).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or FileFormatException or ArgumentException)
+        {
+            return (false, "The phone's screenshot could not be read: " + ex.Message);
+        }
+
+        if (_host.Config.App.CopyScreenshots)
+        {
+            try
+            {
+                System.Windows.Clipboard.SetImage(ScreenshotFile.Decode(bytes));
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or NotSupportedException or FileFormatException)
+            {
+                // Another app holds the clipboard; the file is saved all the same.
+                _host.Log.Warn("Could not copy the screenshot to the clipboard: " + ex.Message);
+            }
+        }
+
         return (true, path);
     }
 

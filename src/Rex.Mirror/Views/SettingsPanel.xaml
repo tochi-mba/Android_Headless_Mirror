@@ -239,6 +239,18 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Alt + pinch / Alt + wheel zooms the PC view">
       <CheckBox x:Name="HostZoom" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Zoom in on">
+      <ComboBox x:Name="ZoomAnchor" SelectionChanged="OnWindowChanged" AutomationProperties.Name="Zoom in on">
+        <ComboBoxItem Content="The pointer" Tag="pointer" />
+        <ComboBoxItem Content="The middle" Tag="middle" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Turn the wheel the other way to zoom in">
+      <CheckBox x:Name="InvertWheel" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Turn the wheel the other way to zoom in" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Zoom back out when the phone turns">
+      <CheckBox x:Name="ResetOnRotate" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Zoom back out when the phone turns" />
+    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the navigator while zoomed">
       <CheckBox x:Name="Navigator" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
@@ -276,7 +288,7 @@
     </StackPanel></Expander>
     <Expander x:Name="GroupInput" Header="Mouse &amp; keyboard" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
-               Text="How the mouse buttons, the keys and the clipboard reach the phone, on every copy too. They apply the next time the mirror starts." />
+               Text="How the mouse buttons, the keys and the clipboard reach the phone, on every copy too. They apply the next time the mirror starts; keyboard swipes change at once." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Right click">
       <ComboBox x:Name="RightClick" SelectionChanged="OnInputChanged" AutomationProperties.Name="Right click" />
     </HeaderedContentControl>
@@ -343,6 +355,14 @@
       </HeaderedContentControl.Header>
       <CheckBox x:Name="Gamepad" Checked="OnInputChanged" Unchecked="OnInputChanged" AutomationProperties.Name="Hand game controllers to the phone" />
     </HeaderedContentControl>
+    <TextBlock Text="Keyboard swipes" FontWeight="SemiBold" Margin="0,16,0,2" />
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
+               Text="The swipes of browse mode and of the swipe buttons. These change at once." />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="SwipeLengthLabel" Text="How far they go" /><TextBlock x:Name="SwipeLengthValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="SwipeLength" AutomationProperties.LabeledBy="{Binding ElementName=SwipeLengthLabel}" Minimum="0.5" Maximum="1.5" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSwipeSlider" />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="SwipeTimeLabel" Text="How long they take" /><TextBlock x:Name="SwipeTimeValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="SwipeMilliseconds" AutomationProperties.LabeledBy="{Binding ElementName=SwipeTimeLabel}" Minimum="80" Maximum="800" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSwipeSlider"
+            ToolTip="Quicker swipes fling further, as they do under a finger." />
     </StackPanel></Expander>
     <Expander x:Name="GroupCopies" Header="Copies of the phone" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
@@ -462,6 +482,21 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
+          <TextBlock Text="Screenshot format" />
+          <TextBlock Text="PNG is exactly what the phone showed; JPG is much smaller." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <ComboBox x:Name="ScreenshotFormat" SelectionChanged="OnWindowChanged" AutomationProperties.Name="Screenshot format">
+        <ComboBoxItem Content="PNG" Tag="png" />
+        <ComboBoxItem Content="JPG" Tag="jpg" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Copy each screenshot to the clipboard">
+      <CheckBox x:Name="CopyScreenshots" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Copy each screenshot to the clipboard" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
           <TextBlock Text="Recording format" />
           <TextBlock Text="MP4 plays anywhere; MKV survives a recording cut short." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
         </StackPanel>
@@ -484,6 +519,45 @@
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Confirm risky Android setting writes">
       <CheckBox x:Name="ConfirmWrites" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep the window on top">
+      <CheckBox x:Name="AlwaysOnTop" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Keep the window on top" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Side panel">
+      <ComboBox x:Name="SidebarSide" SelectionChanged="OnWindowChanged" AutomationProperties.Name="Side panel position">
+        <ComboBoxItem Content="On the right" Tag="right" />
+        <ComboBoxItem Content="On the left" Tag="left" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRowStacked}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Phone buttons in the top bar" />
+          <TextBlock Text="Tap to show or hide each one." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <WrapPanel x:Name="QuickButtonChoices" Margin="0,4,0,0" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Shortcut hints in the status bar">
+      <CheckBox x:Name="ShowHints" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Shortcut hints in the status bar" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Frame rate in the status bar" />
+          <TextBlock Text="Live, from scrcpy's own counter." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="ShowFrameRate" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Frame rate in the status bar" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Say when a phone connects or leaves" />
+          <TextBlock Text="From the tray, while the window is closed or minimised." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="NotifyConnections" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Say when a phone connects or leaves" />
     </HeaderedContentControl>
 
     </StackPanel></Expander>

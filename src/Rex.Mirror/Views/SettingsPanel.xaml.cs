@@ -59,6 +59,7 @@ public partial class SettingsPanel : UserControl
             SelectTag(ScreenOffTimeout, c.Session.ScreenOffTimeoutSeconds.ToString(CultureInfo.InvariantCulture));
             KeepPcAwake.IsChecked = c.Session.KeepPcAwake;
             RefreshInput(c);
+            RefreshWindow(c);
             Record.IsChecked = c.Mirror.RecordOnStart;
             TurnScreenOff.IsChecked = c.Session.TurnScreenOff;
             StayAwake.IsChecked = c.Session.StayAwake;
