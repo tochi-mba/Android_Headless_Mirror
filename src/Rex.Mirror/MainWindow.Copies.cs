@@ -204,6 +204,10 @@ public partial class MainWindow : ICopyViews
     /// <summary>
     /// A copy shows only while the main picture does and the last layout gave it room; otherwise
     /// its native window is hidden, so nothing of it stays painted where it used to be.
+    ///
+    /// A copy without room is hidden in WPF as well. HwndHost places its window after every layout
+    /// pass and shows it again if WPF still thinks it is visible, which undid the native hide a
+    /// moment later and left a copy showing beside a phone on its side.
     /// </summary>
     private void UpdateCopiesShown()
     {
@@ -212,7 +216,14 @@ public partial class MainWindow : ICopyViews
         {
             if (Group.Children[i] is MirrorHost view)
             {
-                view.SetShown(i < Group.Shown && mirroring && view.HasChild);
+                var room = i < Group.Shown;
+                var visibility = room ? Visibility.Visible : Visibility.Hidden;
+                if (view.Visibility != visibility)
+                {
+                    view.Visibility = visibility;
+                }
+
+                view.SetShown(room && mirroring && view.HasChild);
             }
         }
     }
