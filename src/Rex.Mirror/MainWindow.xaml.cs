@@ -264,7 +264,7 @@ public partial class MainWindow : Window
         }
 
         var session = _host.Session;
-        SettingsPanel.RefreshRestartNotice();
+        RefreshRestartNotice();
         var mirroring = session.IsMirroring;
         var needsSetup = session.Phase == SessionPhase.NeedsSetup;
         var usbBlocked = session.Devices.Count == 0 && session.UnreachableAdbInterfaces.Count > 0;

@@ -409,7 +409,7 @@ public sealed record HudSettings
 
     /// <summary>What a new install starts with: the handful of controls that matter in fullscreen.</summary>
     public static readonly string[] DefaultButtons =
-        ["back", "home", "recents", "rotation-portrait", "rotation-landscape", "rotation-auto", "zoom-reset", "screenshot", "fullscreen"];
+        ["home", "back", "recents", "rotation-portrait", "rotation-landscape", "rotation-auto", "screenshot", "zoom-reset", "fullscreen"];
 
     public bool Enabled { get; set; } = true;
 
@@ -452,12 +452,12 @@ public sealed record HudSettings
         HideSeconds = double.IsFinite(HideSeconds) ? Math.Clamp(HideSeconds, 1, 15) : 3;
         Scale = double.IsFinite(Scale) ? Math.Clamp(Scale, 0.75, 1.75) : 1;
         Opacity = double.IsFinite(Opacity) ? Math.Clamp(Opacity, 0.3, 1) : 1;
-        Buttons = Buttons
-            .Where(id => MirrorActions.Find(id) is not null)
-            .Select(id => MirrorActions.Find(id)!.Id)
-            .Distinct(StringComparer.Ordinal)
-            .Take(16)
-            .ToList();
+        // In the catalogue's order, as the preview and the bar show them, whatever order they were picked in.
+        var chosen = (Buttons ?? [])
+            .Select(id => MirrorActions.Find(id)?.Id)
+            .OfType<string>()
+            .ToHashSet(StringComparer.Ordinal);
+        Buttons = MirrorActions.Ids.Where(chosen.Contains).Take(16).ToList();
     }
 }
 

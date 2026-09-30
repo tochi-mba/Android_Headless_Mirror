@@ -521,18 +521,21 @@
 
   <Style TargetType="Slider">
     <Setter Property="Foreground" Value="{StaticResource Signal}" />
+    <!-- The track is the Background (Line unless a slider paints its own, like the wash colour's
+         rainbow) and the filled part is the Foreground. -->
+    <Setter Property="Background" Value="{StaticResource Line}" />
     <Setter Property="Height" Value="24" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Slider">
           <Grid VerticalAlignment="Center">
-            <Border Height="4" CornerRadius="2" Background="{StaticResource Line}" />
+            <Border Height="4" CornerRadius="2" Background="{TemplateBinding Background}" />
             <Track x:Name="PART_Track">
               <Track.DecreaseRepeatButton>
                 <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
                   <RepeatButton.Template>
                     <ControlTemplate TargetType="RepeatButton">
-                      <Border Height="4" CornerRadius="2" Background="{StaticResource Signal}" />
+                      <Border Height="4" CornerRadius="2" Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}" />
                     </ControlTemplate>
                   </RepeatButton.Template>
                 </RepeatButton>

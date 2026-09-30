@@ -2,23 +2,15 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
-    <Border x:Name="RestartBar" Background="{StaticResource SignalWash}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,8,0,0" Visibility="Collapsed">
-      <Grid>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <TextBlock Text="Mirror settings apply on the next start." VerticalAlignment="Center" FontSize="12" />
-        <Button Grid.Column="1" Content="Restart now" Style="{StaticResource PrimaryButton}" MinHeight="28" Padding="10,3" Click="OnRestartNow" />
-      </Grid>
-    </Border>
 
     <Grid Margin="0,10,0,0">
       <TextBox x:Name="SettingsFilter" TextChanged="OnFilter" AutomationProperties.Name="Find a setting"
-               ToolTip="Show only the groups that mention this" />
+               ToolTip="Show only the settings that mention this" />
       <TextBlock x:Name="FilterHint" Text="Find a setting" Style="{StaticResource MutedText}" Margin="10,0,0,0"
                  VerticalAlignment="Center" IsHitTestVisible="False" />
     </Grid>
+    <TextBlock x:Name="FilterCount" Style="{StaticResource MutedText}" FontSize="11" Margin="2,4,0,0" Visibility="Collapsed"
+               AutomationProperties.LiveSetting="Polite" />
     <TextBlock x:Name="FilterEmpty" Style="{StaticResource MutedText}" Margin="0,8,0,0" Visibility="Collapsed"
                Text="Nothing here mentions that. Phone settings live in the Phone tab." />
 
@@ -60,12 +52,16 @@
         <ComboBoxItem Content="AV1" Tag="av1" />
       </ComboBox>
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Soft background around the phone">
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Soft background around the phone" />
+          <TextBlock Text="A blurred copy of the phone screen fills the empty space around the mirror. Changes preview instantly." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
       <CheckBox x:Name="AmbientEnabled" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
     <StackPanel x:Name="AmbientOptions" Margin="0,4,0,0">
-      <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
-                 Text="A blurred copy of the phone screen fills the empty space around the mirror. Changes preview instantly." />
       <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Where it shows">
         <ComboBox x:Name="AmbientPlacement" SelectionChanged="OnLiveChanged">
           <ComboBoxItem Content="All around the phone" Tag="around" />
@@ -97,8 +93,11 @@
         <Slider x:Name="AmbientEdgeFade" AutomationProperties.Name="Soft background edge fade" Minimum="0" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
         <Grid Margin="0,8,0,0"><TextBlock Text="Colour wash" /><TextBlock x:Name="AmbientTintValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
         <Slider x:Name="AmbientTintStrength" AutomationProperties.Name="Soft background colour wash" Minimum="0" Maximum="1" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" />
-        <Grid Margin="0,8,0,0"><TextBlock Text="Wash colour" /><TextBlock x:Name="AmbientTintHueValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-        <Slider x:Name="AmbientTintHue" AutomationProperties.Name="Soft background wash colour" Minimum="0" Maximum="360" Margin="0,2,0,0" ValueChanged="OnAmbientChanged">
+        <Grid Margin="0,8,0,0"><TextBlock Text="Wash colour" />
+          <Border x:Name="AmbientTintHueSwatch" Width="28" Height="12" CornerRadius="3" HorizontalAlignment="Right" VerticalAlignment="Center"
+                  BorderBrush="{StaticResource Line}" BorderThickness="1" AutomationProperties.Name="The wash colour chosen" /></Grid>
+        <Slider x:Name="AmbientTintHue" AutomationProperties.Name="Soft background wash colour" Minimum="0" Maximum="360" Margin="0,2,0,0" ValueChanged="OnAmbientChanged"
+                Foreground="Transparent">
           <Slider.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
               <GradientStop Color="#FF4D4D" Offset="0" /><GradientStop Color="#FFE04D" Offset="0.17" /><GradientStop Color="#4DFF4D" Offset="0.33" />
@@ -106,13 +105,13 @@
             </LinearGradientBrush>
           </Slider.Background>
         </Slider>
-        <Grid Margin="0,8,0,0"><TextBlock Text="Live frame rate" /><TextBlock x:Name="AmbientFrameRateValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Grid Margin="0,8,0,0"><TextBlock Text="Background refresh rate" /><TextBlock x:Name="AmbientFrameRateValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
         <Slider x:Name="AmbientFrameRate" AutomationProperties.Name="Soft background frame rate" Minimum="1" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAmbientChanged" ToolTip="How closely the background follows the video. Lower uses less power." />
       </StackPanel>
-      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mirror it left to right">
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Flip horizontally">
         <CheckBox x:Name="AmbientFlip" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
       </HeaderedContentControl>
-      <Button Content="Reset soft background" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetAmbient" />
+      <Button Content="Reset soft background" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetAmbient" />
     </StackPanel>
     </StackPanel></Expander>
 
@@ -165,7 +164,13 @@
       </HeaderedContentControl.Header>
       <CheckBox x:Name="TurnScreenOff" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep the phone awake on USB">
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Keep the phone awake while mirroring" />
+          <TextBlock Text="Over USB; a phone on Wi-Fi keeps its own timeout." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
       <CheckBox x:Name="StayAwake" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Turn the phone screen off when the mirror closes">
@@ -202,40 +207,18 @@
       </HeaderedContentControl.Header>
       <CheckBox x:Name="KeepPcAwake" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" AutomationProperties.Name="Keep this PC awake while mirroring" />
     </HeaderedContentControl>
-    <TextBlock x:Name="StartAppLabel" Text="Open an app when the mirror starts" Margin="0,12,0,4" />
-    <TextBox x:Name="StartApp" LostKeyboardFocus="OnStartApp" KeyDown="OnStartAppKey" TextChanged="OnStartAppText" AutomationProperties.LabeledBy="{Binding ElementName=StartAppLabel}"
-             ToolTip="Leave empty to open nothing" />
-    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
-               Text="Its package name, like com.spotify.music, or ?name to find it by the start of its name. A + in front restarts it. Press Enter to apply." />
-    <TextBlock x:Name="StartAppError" Foreground="{StaticResource Live}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+    <!-- One row for the search: the label, the box and its notes together. -->
+    <StackPanel Tag="row">
+      <TextBlock x:Name="StartAppLabel" Text="Open an app when the mirror starts" Margin="0,12,0,4" />
+      <TextBox x:Name="StartApp" LostKeyboardFocus="OnStartApp" KeyDown="OnStartAppKey" TextChanged="OnStartAppText" AutomationProperties.LabeledBy="{Binding ElementName=StartAppLabel}"
+               ToolTip="Leave empty to open nothing" />
+      <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                 Text="Its package name, like com.spotify.music, or ?name to find it by the start of its name. A + in front restarts it. Press Enter to apply." />
+      <TextBlock x:Name="StartAppError" Foreground="{StaticResource Live}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+    </StackPanel>
 
     </StackPanel></Expander>
-    <Expander x:Name="GroupControls" Header="Controls &amp; zoom" Margin="0,12,0,0"><StackPanel>
-    <HeaderedContentControl Style="{StaticResource SettingRow}">
-      <HeaderedContentControl.Header>
-        <StackPanel>
-          <TextBlock Text="Two-finger gestures go to the phone" />
-          <TextBlock x:Name="TouchpadHint" Text="Pinch, rotate and pan like on the phone screen." Style="{StaticResource MutedText}" FontSize="11" />
-        </StackPanel>
-      </HeaderedContentControl.Header>
-      <CheckBox x:Name="TwoFinger" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
-    </HeaderedContentControl>
-    <StackPanel Margin="0,10,0,4">
-      <Grid>
-        <TextBlock Text="Gesture sensitivity" />
-        <TextBlock x:Name="SensitivityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" Text="1.0×" />
-      </Grid>
-      <Slider x:Name="Sensitivity" AutomationProperties.Name="Gesture sensitivity" Minimum="0.25" Maximum="3" Margin="0,2,0,0" ValueChanged="OnSensitivity" />
-    </StackPanel>
-    <HeaderedContentControl Style="{StaticResource SettingRow}">
-      <HeaderedContentControl.Header>
-        <StackPanel>
-          <TextBlock Text="Compatibility keyboard" />
-          <TextBlock Text="Sends raw keys instead of acting as a plugged-in keyboard. Only if typing misbehaves; applies when the mirror restarts." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
-        </StackPanel>
-      </HeaderedContentControl.Header>
-      <CheckBox x:Name="CompatibilityKeyboard" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
-    </HeaderedContentControl>
+    <Expander x:Name="GroupZoom" Header="Zoom &amp; navigator" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Alt + pinch / Alt + wheel zooms the PC view">
       <CheckBox x:Name="HostZoom" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
@@ -286,9 +269,35 @@
     <Grid Margin="0,8,0,0"><TextBlock Text="Wheel zoom speed" /><TextBlock x:Name="WheelSpeedValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="WheelSpeed" AutomationProperties.Name="Wheel zoom speed" Minimum="0.05" Maximum="0.5" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
     </StackPanel></Expander>
-    <Expander x:Name="GroupInput" Header="Mouse &amp; keyboard" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupInput" Header="Mouse, touchpad &amp; keyboard" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
-               Text="How the mouse buttons, the keys and the clipboard reach the phone, on every copy too. They apply the next time the mirror starts; keyboard swipes change at once." />
+               Text="How the touchpad, the mouse buttons, the keys and the clipboard reach the phone, on every copy too. Buttons, keys and the clipboard apply the next time the mirror starts; the rest change at once." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Two-finger gestures go to the phone" />
+          <TextBlock x:Name="TouchpadHint" Text="Pinch, rotate and pan like on the phone screen." Style="{StaticResource MutedText}" FontSize="11" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="TwoFinger" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
+    </HeaderedContentControl>
+    <StackPanel Margin="0,10,0,4">
+      <Grid>
+        <TextBlock Text="Gesture sensitivity" />
+        <TextBlock x:Name="SensitivityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" Text="1.0×" />
+      </Grid>
+      <Slider x:Name="Sensitivity" AutomationProperties.Name="Gesture sensitivity" Minimum="0.25" Maximum="3" Margin="0,2,0,0" ValueChanged="OnSensitivity" />
+    </StackPanel>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Compatibility keyboard" />
+          <TextBlock Text="Sends raw keys instead of acting as a plugged-in keyboard. Only if typing misbehaves; applies when the mirror restarts." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="CompatibilityKeyboard" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
+    </HeaderedContentControl>
+
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Right click">
       <ComboBox x:Name="RightClick" SelectionChanged="OnInputChanged" AutomationProperties.Name="Right click" />
     </HeaderedContentControl>
@@ -393,7 +402,7 @@
       <CheckBox x:Name="CopiesRemember" Checked="OnCopiesOption" Unchecked="OnCopiesOption" AutomationProperties.Name="Open the same copies next time" />
     </HeaderedContentControl>
     </StackPanel></Expander>
-    <Expander x:Name="GroupHud" Header="Fullscreen HUD" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupHud" Header="Fullscreen controls" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
                Text="In fullscreen the controls hide themselves. Move the pointer to where you put them and they come back. Drag them anywhere by the dotted grip on their left." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the floating controls">
@@ -433,12 +442,12 @@
                  Text="Tap to add or remove. They appear in this order." TextWrapping="Wrap" />
       <Border Background="{StaticResource Ink}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="8,7" Margin="0,0,0,10">
         <StackPanel>
-          <TextBlock Text="PREVIEW" Style="{StaticResource Eyebrow}" FontSize="9" Margin="2,0,0,6" />
+          <TextBlock Text="PREVIEW" Style="{StaticResource Eyebrow}" FontSize="11" Margin="2,0,0,6" />
           <WrapPanel x:Name="HudPreview" />
         </StackPanel>
       </Border>
       <WrapPanel x:Name="HudButtons" />
-      <Button Content="Reset the HUD" Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetHud" />
+      <Button Content="Reset the fullscreen controls" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetHud" />
     </StackPanel>
     </StackPanel></Expander>
 
@@ -455,26 +464,35 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show automatically when locked">
       <CheckBox x:Name="PatternAuto" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Use the phone's real pattern position">
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Use the phone's real pattern position" />
+          <TextBlock Text="Asks Android where the dots are each time the lock screen shows. Off keeps your calibration." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
       <CheckBox x:Name="PatternDiscover" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
-    <Button Content="Forget lock-screen answers" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OnForgetLocks" ToolTip="Ask again which lock type each phone uses" />
+    <Button Content="Ask again which lock each phone uses" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OnForgetLocks" ToolTip="Ask again which lock type each phone uses" />
 
     </StackPanel></Expander>
     <Expander x:Name="GroupCaptures" Header="Screenshots &amp; recording" Margin="0,12,0,0"><StackPanel>
-    <TextBlock Text="Save screenshots to" Margin="0,8,0,0" />
-    <TextBlock x:Name="ScreenshotLocation" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,8" />
-    <StackPanel Orientation="Horizontal">
-      <Button Content="Choose folder…" Click="OnChooseScreenshotFolder" Margin="0,0,6,0" />
-      <Button Content="Use default" Click="OnDefaultScreenshotFolder" />
+    <!-- One row for the search: the label, the box and its notes together. -->
+    <StackPanel Tag="row">
+      <TextBlock Text="Save screenshots to" Margin="0,8,0,0" />
+      <TextBlock x:Name="ScreenshotLocation" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,8" />
+      <StackPanel Orientation="Horizontal">
+        <Button Content="Choose folder…" Click="OnChooseScreenshotFolder" Margin="0,0,6,0" />
+        <Button Content="Use default" Click="OnDefaultScreenshotFolder" />
+      </StackPanel>
+      <TextBlock Text="Applies to new screenshots. Existing files stay where they are." Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" />
     </StackPanel>
-    <TextBlock Text="Applies to new screenshots. Existing files stay where they are." Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" />
 
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
           <TextBlock Text="Record every session" />
-          <TextBlock Text="Starts recording with the next mirror, into the folder above." Style="{StaticResource MutedText}" FontSize="11" />
+          <TextBlock Text="Starts recording with the next mirror, into captures\recordings in the app's folder." Style="{StaticResource MutedText}" FontSize="11" />
         </StackPanel>
       </HeaderedContentControl.Header>
       <CheckBox x:Name="Record" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
@@ -517,9 +535,6 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Open the window when a phone connects">
       <CheckBox x:Name="OpenOnConnect" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Confirm risky Android setting writes">
-      <CheckBox x:Name="ConfirmWrites" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
-    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep the window on top">
       <CheckBox x:Name="AlwaysOnTop" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Keep the window on top" />
     </HeaderedContentControl>
@@ -561,21 +576,30 @@
     </HeaderedContentControl>
 
     </StackPanel></Expander>
-    <Expander x:Name="GroupAdvanced" Margin="0,18,0,0">
+    <Expander x:Name="GroupAdvanced" Margin="0,12,0,0">
       <Expander.Header>
         <TextBlock Text="Connection &amp; advanced" FontWeight="SemiBold" />
       </Expander.Header>
-      <StackPanel Margin="0,8,0,0">
+      <StackPanel>
+        <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Confirm risky Android setting writes">
+          <CheckBox x:Name="ConfirmWrites" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
+        </HeaderedContentControl>
         <HeaderedContentControl Style="{StaticResource SettingRow}">
           <HeaderedContentControl.Header>
             <StackPanel>
-              <TextBlock Text="Wireless ADB fallback" />
-              <TextBlock Text="Off means USB only, which is the recovery path." Style="{StaticResource MutedText}" FontSize="11" />
+              <TextBlock Text="Reconnect over Wi-Fi if USB drops" />
+              <TextBlock Text="Off keeps the mirror on USB only." Style="{StaticResource MutedText}" FontSize="11" />
             </StackPanel>
           </HeaderedContentControl.Header>
           <CheckBox x:Name="Wireless" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
         </HeaderedContentControl>
-        <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Enable TCP/IP on the phone from a USB session">
+        <HeaderedContentControl Style="{StaticResource SettingRow}">
+          <HeaderedContentControl.Header>
+            <StackPanel>
+              <TextBlock Text="Turn on the phone's Wi-Fi debugging from USB" />
+              <TextBlock Text="While the phone is plugged in, open its wireless port and remember its address, so the reconnect has somewhere to go." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+          </HeaderedContentControl.Header>
           <CheckBox x:Name="WirelessTcpip" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
         </HeaderedContentControl>
         <HeaderedContentControl Style="{StaticResource SettingRow}">
@@ -626,19 +650,21 @@
             <ComboBoxItem Content="Software" Tag="software" />
           </ComboBox>
         </HeaderedContentControl>
-        <TextBlock Text="Extra scrcpy arguments" Margin="0,12,0,4" />
-        <TextBox x:Name="ExtraArgs" LostFocus="OnExtraArgs" KeyDown="OnExtraArgsKey" AutomationProperties.Name="Extra scrcpy arguments"
-                 ToolTip="Passed to scrcpy at launch, for options this app does not expose" />
-        <TextBlock Text="Press Enter to apply." Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" />
-        <TextBlock x:Name="ExtraArgsError" Foreground="{StaticResource Live}" FontSize="11" Margin="0,4,0,0" />
+        <!-- One row for the search: the label, the box and its notes together. -->
+        <StackPanel Tag="row">
+          <TextBlock Text="Extra scrcpy arguments" Margin="0,12,0,4" />
+          <TextBox x:Name="ExtraArgs" LostFocus="OnExtraArgs" KeyDown="OnExtraArgsKey" AutomationProperties.Name="Extra scrcpy arguments"
+                   ToolTip="Passed to scrcpy at launch, for options this app does not expose" />
+          <TextBlock Text="Press Enter to apply." Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" />
+          <TextBlock x:Name="ExtraArgsError" Foreground="{StaticResource Live}" FontSize="11" Margin="0,4,0,0" />
+        </StackPanel>
         <UniformGrid Columns="2" Margin="0,12,0,0">
           <Button Content="Open config.json" Margin="0,0,3,0" Click="OnOpenConfig" ToolTip="Open the settings file in your text editor" />
-          <Button Content="Undo last config change" Margin="3,0,0,0" Click="OnRestoreConfig" ToolTip="Put back the settings as they were before the last change" />
+          <Button Content="Undo last change" Margin="3,0,0,0" Click="OnRestoreConfig" ToolTip="Put back the settings as they were before the last change" />
         </UniformGrid>
         <Button x:Name="ResetEverything" Content="Reset every app setting" Style="{StaticResource DangerButton}" HorizontalAlignment="Left"
                 Margin="0,12,0,0" Click="OnResetEverything" ToolTip="Put every setting in this panel back to how it ships. Phone settings are untouched." />
       </StackPanel>
     </Expander>
-    <TextBlock x:Name="Status" Style="{StaticResource MutedText}" Margin="0,10,0,0" />
   </StackPanel>
 </UserControl>

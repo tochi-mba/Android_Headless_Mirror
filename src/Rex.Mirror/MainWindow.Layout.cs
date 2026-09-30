@@ -58,6 +58,16 @@ public partial class MainWindow
 
     private void OnToggleFullscreen(object sender, RoutedEventArgs e) => ToggleFullscreen();
 
+    /// <summary>The restart offer, above every tab, whenever the running mirror predates a launch setting.</summary>
+    public void RefreshRestartNotice() =>
+        RestartBar.Visibility = _host.Session.NeedsRestart ? Visibility.Visible : Visibility.Collapsed;
+
+    private void OnRestartNow(object sender, RoutedEventArgs e)
+    {
+        _host.Session.RestartMirror();
+        RefreshRestartNotice();
+    }
+
     /// <summary>The side panel's width when it has never been dragged.</summary>
     private const double DefaultSidebarWidth = 330;
 

@@ -21,7 +21,66 @@ public partial class SettingsPanel : UserControl
     public SettingsPanel()
     {
         InitializeComponent();
+        PolishRows();
     }
+
+    /// <summary>
+    /// Gives every row laid out in the markup the same treatment. A switch sits beside its label;
+    /// anything wider (a list, a set of chips) goes under it at the full width, so the labels do not
+    /// line up against a ragged column of controls. And every control is named after its label for
+    /// assistive technology, which a row's header does not do by itself.
+    /// </summary>
+    private void PolishRows()
+    {
+        var inline = (Style)FindResource("SettingRow");
+        var stacked = (Style)FindResource("SettingRowStacked");
+        foreach (var row in Descendants(this).OfType<HeaderedContentControl>().Where(r => r.GetType() == typeof(HeaderedContentControl)).ToArray())
+        {
+            if (ReferenceEquals(row.Style, inline) && row.Content is not CheckBox)
+            {
+                row.Style = stacked;
+            }
+
+            if (row.Content is FrameworkElement control && string.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetName(control)) &&
+                LabelOf(row) is { Length: > 0 } label)
+            {
+                System.Windows.Automation.AutomationProperties.SetName(control, label);
+            }
+        }
+    }
+
+    /// <summary>Settings whose parent is off stay in sight but cannot be changed (<see cref="SettingsDependencies"/>).</summary>
+    private void ApplyDependencies(RexConfig c)
+    {
+        var on = SettingsDependencies.Of(c);
+        Sensitivity.IsEnabled = on.Sensitivity;
+        foreach (var control in new UIElement[] { ZoomAnchor, InvertWheel, ResetOnRotate, Navigator, MaximumZoom, WheelSpeed })
+        {
+            control.IsEnabled = on.Zoom;
+        }
+
+        foreach (var control in new UIElement[] { NavigatorPicture, NavigatorAlways, NavigatorCorner, NavigatorWidth, NavigatorOpacity, NavigatorFrameRate })
+        {
+            control.IsEnabled = on.Navigator;
+        }
+
+        PatternAuto.IsEnabled = on.PatternOptions;
+        PatternDiscover.IsEnabled = on.PatternOptions;
+        WirelessTcpip.IsEnabled = on.WirelessTcpip;
+        AudioSource.IsEnabled = on.Audio;
+        AudioBitRate.IsEnabled = on.Audio;
+        AudioDup.IsEnabled = on.AudioDup;
+        AmbientOptions.IsEnabled = on.Ambient;
+        HudOptions.IsEnabled = on.Hud;
+    }
+
+    /// <summary>A row's label: its header text, or the first line of a header that also has a description.</summary>
+    internal static string? LabelOf(HeaderedContentControl row) => row.Header switch
+    {
+        string text => text,
+        Panel { Children.Count: > 0 } panel when panel.Children[0] is TextBlock first => first.Text,
+        _ => null,
+    };
 
     public void Attach(MainWindow window, AppHost host)
     {
@@ -110,7 +169,7 @@ public partial class SettingsPanel : UserControl
             CopiesRemember.IsChecked = c.Copies.Remember;
             ShowCopiesValues();
             // scrcpy only keeps the playback going on the phone, so another source rules it out.
-            AudioDup.IsEnabled = c.Mirror.Audio && c.Mirror.AudioDupPossible;
+            // What the audio rows can do follows from the others; see ApplyDependencies.
             PatternEnabled.IsChecked = c.PatternGuide.Enabled;
             PatternAuto.IsChecked = c.PatternGuide.AutoShowOnKeyguard;
             PatternDiscover.IsChecked = c.PatternGuide.AutoDiscoverGeometry;
@@ -125,7 +184,8 @@ public partial class SettingsPanel : UserControl
             ExtraArgs.Text = c.Mirror.ExtraArgs;
             CompatibilityKeyboard.IsChecked = c.Mirror.CompatibilityKeyboard;
             ScreenshotLocation.Text = _host.Paths.ScreenshotFolder(c.App.ScreenshotDirectory);
-            RefreshRestartNotice();
+            ApplyDependencies(c);
+            _window?.RefreshRestartNotice();
         }
         finally
         {
@@ -236,16 +296,10 @@ public partial class SettingsPanel : UserControl
 
     private void OnStartWithWindows(object sender, RoutedEventArgs e) => _window?.SetStartWithWindows(StartWithWindows.IsChecked == true);
 
-    private void OnRestartNow(object sender, RoutedEventArgs e)
-    {
-        _host?.Session.RestartMirror();
-        Refresh();
-    }
-
     private void OnForgetLocks(object sender, RoutedEventArgs e)
     {
         var count = _host?.State.ResetLockScreen("ALL") ?? 0;
-        Status.Text = count == 0 ? "No saved answers." : $"Forgot {count} phone(s). You'll be asked again on the next connection.";
+        _window?.SetStatus(count == 0 ? "No lock answers were saved." : $"Forgot the lock of {count} phone(s). Each is asked again on its next connection.");
     }
 
     private void OnExtraArgs(object sender, RoutedEventArgs e) => CommitExtraArgs();
@@ -299,17 +353,17 @@ public partial class SettingsPanel : UserControl
         {
             if (!ConfigFile.RestoreBackup(_host.Paths.Config))
             {
-                Status.Text = "There is no previous configuration to restore.";
+                _window?.SetStatus("There is no earlier change to undo.", isError: true);
                 return;
             }
 
             _host.ReloadConfigFromDisk();
             Refresh();
-            Status.Text = "Previous configuration restored.";
+            _window?.SetStatus("The last change is undone.");
         }
         catch (InvalidOperationException ex)
         {
-            Status.Text = ex.Message;
+            _window?.SetStatus(ex.Message, isError: true);
         }
     }
 
@@ -322,7 +376,7 @@ public partial class SettingsPanel : UserControl
         NavigatorWidthValue.Text = $"{NavigatorWidth.Value:0} px";
         NavigatorOpacityValue.Text = $"{NavigatorOpacity.Value * 100:0}%";
         NavigatorFrameRateValue.Text = $"{NavigatorFrameRate.Value:0} fps";
-        MaximumZoomValue.Text = $"{MaximumZoom.Value:0.#}×";
+        MaximumZoomValue.Text = MaximumZoom.Value.ToString("0.0", CultureInfo.InvariantCulture) + "×";
         WheelSpeedValue.Text = $"{WheelSpeed.Value * 100:0}% per notch";
         if (_loading) return;
         var maxZoom = MaximumZoom.Value;
@@ -380,7 +434,9 @@ public partial class SettingsPanel : UserControl
         AmbientOffsetYValue.Text = Offset(c.Ambient.OffsetY, "up", "down");
         AmbientEdgeFadeValue.Text = c.Ambient.EdgeFade < 0.005 ? "off" : $"{c.Ambient.EdgeFade * 100:0}%";
         AmbientTintValue.Text = c.Ambient.TintStrength < 0.005 ? "off" : $"{c.Ambient.TintStrength * 100:0}%";
-        AmbientTintHueValue.Text = $"{c.Ambient.TintHue:0}°";
+        var (red, green, blue) = AmbientLayout.HueToRgb(c.Ambient.TintHue);
+        AmbientTintHueSwatch.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(red, green, blue));
+        System.Windows.Automation.AutomationProperties.SetHelpText(AmbientTintHueSwatch, $"Hue {c.Ambient.TintHue:0} degrees");
         AmbientTintHue.IsEnabled = c.Ambient.TintStrength >= 0.005;
         AmbientFrameRateValue.Text = $"{c.Ambient.FrameRate:0} fps";
 
@@ -419,58 +475,123 @@ public partial class SettingsPanel : UserControl
     }
 
     /// <summary>
-    /// Narrows the panel to the groups that mention what was typed, and opens them.
+    /// Narrows the panel to the settings that mention what was typed, row by row, opening their
+    /// groups and saying how many there are. A group whose own name matches shows whole.
     ///
-    /// Nine groups and sixty-odd controls is more than anyone should have to scroll through
-    /// hunting for one switch, and the phone settings next door have had a search from the start.
+    /// Eleven groups and a hundred-odd controls is more than anyone should scroll through hunting
+    /// for one switch, and a whole group shown for one word in it hid nothing.
     /// </summary>
-    private void OnFilter(object sender, TextChangedEventArgs e)
+    private void OnFilter(object sender, TextChangedEventArgs e) => ApplyFilter();
+
+    private void ApplyFilter()
     {
         var query = SettingsFilter.Text.Trim();
         FilterHint.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         var matches = 0;
         foreach (var group in Groups())
         {
-            var hit = query.Length == 0 || Mentions(group, query);
+            var whole = query.Length > 0 && Mentions(group.Header, query);
+            var shown = group.Content is Panel body ? FilterRows(body, whole ? string.Empty : query) : 0;
+            var hit = query.Length == 0 || whole || shown > 0;
             group.Visibility = hit ? Visibility.Visible : Visibility.Collapsed;
             if (query.Length > 0 && hit)
             {
                 group.IsExpanded = true;
-                matches++;
+                matches += shown;
             }
         }
 
         FilterEmpty.Visibility = query.Length > 0 && matches == 0 ? Visibility.Visible : Visibility.Collapsed;
+        FilterCount.Visibility = query.Length > 0 && matches > 0 ? Visibility.Visible : Visibility.Collapsed;
+        FilterCount.Text = matches == 1 ? "1 setting matches" : $"{matches} settings match";
+        if (query.Length == 0 && _host is not null && !_loading)
+        {
+            // Some rows show only in some states (a dragged HUD, a note about the audio source);
+            // clearing the search gives them back to the state that decides.
+            Refresh();
+        }
+    }
+
+    /// <summary>
+    /// Shows the rows of a group that mention the words, or every row for no words, and says how
+    /// many are showing. A row is a setting row, a slider with its label line, a block marked as
+    /// one row, or a button; a nested panel is filtered row by row; a plain line of explanation is
+    /// put away while searching.
+    /// </summary>
+    private static int FilterRows(Panel body, string query)
+    {
+        var searching = query.Length > 0;
+        var shown = 0;
+        var children = body.Children.OfType<UIElement>().ToArray();
+        for (var i = 0; i < children.Length; i++)
+        {
+            var child = children[i];
+            if (child is Grid label && i + 1 < children.Length && children[i + 1] is Slider slider)
+            {
+                var pair = !searching || Mentions(label, query) || Mentions(slider, query);
+                label.Visibility = pair ? Visibility.Visible : Visibility.Collapsed;
+                slider.Visibility = label.Visibility;
+                shown += pair ? 1 : 0;
+                i++;
+                continue;
+            }
+
+            if (child is StackPanel { Tag: not "row" } inner)
+            {
+                var count = FilterRows(inner, query);
+                inner.Visibility = !searching || count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                shown += count;
+                continue;
+            }
+
+            if (child is TextBlock)
+            {
+                child.Visibility = searching ? Visibility.Collapsed : Visibility.Visible;
+                continue;
+            }
+
+            var hit = !searching || Mentions(child, query);
+            child.Visibility = hit ? Visibility.Visible : Visibility.Collapsed;
+            shown += hit ? 1 : 0;
+        }
+
+        return shown;
     }
 
     private IEnumerable<Expander> Groups() =>
-        [GroupDisplay, GroupAudio, GroupSession, GroupControls, GroupInput, GroupCopies, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
+        [GroupDisplay, GroupAudio, GroupSession, GroupZoom, GroupInput, GroupCopies, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
 
-    /// <summary>Whether a group says the words somewhere: its header, a label, a hint or an option.</summary>
-    private static bool Mentions(Expander group, string query)
+    /// <summary>Whether something says the words: its text, a label, a hint, an option or a button's words.</summary>
+    private static bool Mentions(object? subject, string query)
     {
-        if (group.Header is string header && header.Contains(query, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
+        bool Says(string? text) => text is not null && text.Contains(query, StringComparison.OrdinalIgnoreCase);
 
-        foreach (var text in Descendants(group).OfType<TextBlock>())
+        switch (subject)
         {
-            if (text.Text.Contains(query, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
+            case string text:
+                return Says(text);
+            case null:
+                return false;
+            case DependencyObject root:
+                foreach (var node in Descendants(root).Prepend(root))
+                {
+                    var said = node switch
+                    {
+                        TextBlock text => Says(text.Text),
+                        HeaderedContentControl row => Says(row.Header as string),
+                        ContentControl control => Says(control.Content as string),
+                        _ => false,
+                    };
+                    if (said || (node is FrameworkElement element && Says(System.Windows.Automation.AutomationProperties.GetName(element))))
+                    {
+                        return true;
+                    }
+                }
 
-        foreach (var item in Descendants(group).OfType<ComboBoxItem>())
-        {
-            if (item.Content is string content && content.Contains(query, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+                return false;
+            default:
+                return false;
         }
-
-        return false;
     }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
@@ -496,7 +617,7 @@ public partial class SettingsPanel : UserControl
 
         var confirmed = await _window.ConfirmAsync(
             "Reset every app setting?",
-            "Everything in this panel goes back to how it ships, including the soft background and the fullscreen controls. Your phone is not touched, and Undo last config change puts this back.",
+            "Everything in this panel goes back to how it ships, including the soft background and the fullscreen controls. Your phone is not touched, and Undo last change puts this back.",
             "Reset everything");
         if (!confirmed)
         {
@@ -520,7 +641,7 @@ public partial class SettingsPanel : UserControl
             c.App = fresh.App;
         });
 
-        Status.Text = "Every app setting is back to how it ships.";
+        _window?.SetStatus("Every app setting is back to how it ships.");
     }
 
     private void OnHudChanged(object sender, RoutedEventArgs e) => Save(c =>
@@ -573,8 +694,8 @@ public partial class SettingsPanel : UserControl
     private void BuildHudButtons(HudSettings hud)
     {
         HudButtonCount.Text = hud.Buttons.Count == 0
-            ? "Nothing chosen, so the bar stays empty. Tap a chip to add a button."
-            : "Tap to add or remove. They appear in this order.";
+            ? "Nothing chosen, so the bar stays empty. Click a chip to add a button."
+            : "Click to add or remove. They appear in this order.";
 
         if (HudButtons.Children.Count == 0)
         {
@@ -671,11 +792,6 @@ public partial class SettingsPanel : UserControl
                     .ToList();
             }
         });
-    }
-
-    public void RefreshRestartNotice()
-    {
-        RestartBar.Visibility = _host?.Session.NeedsRestart == true ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void OnChooseScreenshotFolder(object sender, RoutedEventArgs e)

@@ -126,7 +126,7 @@ public partial class SettingsPanel
         if (text != _host.Config.Session.StartApp)
         {
             Save(c => c.Session.StartApp = text);
-            Status.Text = text.Length == 0 ? "No app opens with the mirror now." : $"The mirror opens {text} from its next start.";
+            _window?.SetStatus(text.Length == 0 ? "No app opens with the mirror now." : $"The mirror opens {text} from its next start.");
         }
     }
 }
