@@ -69,7 +69,59 @@ public partial class AdvancedSettingsView : UserControl
         }
     }
 
-    private void OnSearch(object sender, TextChangedEventArgs e) => ApplyFilter();
+    private void OnSearch(object sender, TextChangedEventArgs e)
+    {
+        SearchHint.Visibility = Search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ApplyFilter();
+    }
+
+    private void OnFieldText(object sender, TextChangedEventArgs e)
+    {
+        KeyHint.Visibility = Key.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ValueHint.Visibility = Value.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// The list scrolls itself, but at either end the wheel belongs to the panel again: otherwise
+    /// the pointer resting on the list pins the whole tab in place.
+    /// </summary>
+    private void OnRowsWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (FindScrollViewer(Rows) is not { } list || !WheelPassesThrough(e.Delta, list.VerticalOffset, list.ScrollableHeight))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+        {
+            RoutedEvent = MouseWheelEvent,
+            Source = this,
+        });
+    }
+
+    /// <summary>Whether a wheel turn is for the panel: the list cannot move any further that way.</summary>
+    internal static bool WheelPassesThrough(int delta, double offset, double scrollable) =>
+        scrollable <= 0 || (delta > 0 && offset <= 0) || (delta < 0 && offset >= scrollable);
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is ScrollViewer viewer)
+            {
+                return viewer;
+            }
+
+            if (FindScrollViewer(child) is { } deeper)
+            {
+                return deeper;
+            }
+        }
+
+        return null;
+    }
 
     private async void OnReload(object sender, RoutedEventArgs e) => await ReloadAsync();
 
