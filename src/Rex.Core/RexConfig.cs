@@ -433,6 +433,13 @@ public sealed record AppSettings
 
     public string ScreenshotDirectory { get; set; } = "captures/screenshots";
 
+    /// <summary>
+    /// When Windows cannot read the phone over USB ("USB device not recognised"), start the
+    /// auto-repair task without asking. The task itself is set up once, with administrator
+    /// approval; with this off the app still says what is wrong and offers the repair.
+    /// </summary>
+    public bool AutoRepairUsb { get; set; } = true;
+
     public AppSettings Copy() => this with { };
 
     public void Normalize()

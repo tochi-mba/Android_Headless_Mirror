@@ -40,7 +40,7 @@ public static class MachineMode
                 "status" => Success(command, await StatusAsync(context).ConfigureAwait(false)),
                 "devices" => Success(command, await DevicesAsync(context).ConfigureAwait(false)),
                 "diagnostics" => Success(command, (await Diagnostics.BuildAsync(context.Paths, context.Log, context.Runner).ConfigureAwait(false)).ToJson()),
-                "usb" => await UsbAsync(context, positional).ConfigureAwait(false),
+                "usb" => await UsbCommands.MachineAsync(context, positional, UsbCommands.IsDryRun(args)).ConfigureAwait(false),
                 "open" or "start" => await OpenAsync(context).ConfigureAwait(false),
                 "stop" => await ForwardAsync(context, "stop", new IpcRequest("session-stop")).ConfigureAwait(false),
                 "quit" => await ForwardAsync(context, "quit", new IpcRequest("quit")).ConfigureAwait(false),
@@ -67,6 +67,7 @@ public static class MachineMode
         ["protocolVersion"] = ProtocolVersion,
         ["mode"] = "non-interactive-json",
         ["commands"] = new JsonArray("capabilities", "status", "devices", "diagnostics", "usb", "open", "stop", "quit", "action", "zoom", "screenshot", "phone", "android", "config", "autostart", "lock-mode", "reset-lock"),
+        ["usb"] = new JsonArray(UsbCommands.Verbs.Select(x => (JsonNode)x).ToArray()),
         ["actions"] = new JsonArray(MirrorActions.All.Select(a => (JsonNode)new JsonObject { ["id"] = a.Id, ["label"] = a.Label, ["kind"] = a.Kind.ToString().ToLowerInvariant(), ["detail"] = a.Detail }).ToArray()),
         ["phoneSettings"] = new JsonArray(PhoneSettings.Ids.Concat(["rotation"]).Select(x => (JsonNode)x).ToArray()),
         ["androidNamespaces"] = new JsonArray(AndroidSettings.Namespaces.Select(x => (JsonNode)x).ToArray()),
@@ -264,31 +265,6 @@ public static class MachineMode
         }
     }
 
-    /// <summary>usb lists ADB interfaces; usb repair registers the unreachable ones and needs an elevated shell (no UAC prompt in machine mode).</summary>
-    private static async Task<MachineResult> UsbAsync(CliContext context, string[] positional)
-    {
-        if (positional.Length >= 2 && positional[1].Equals("repair", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!UsbAdbInterfaces.IsElevated)
-            {
-                throw new InvalidOperationException("usb repair needs an administrator shell in machine mode (it edits HKLM device registrations).");
-            }
-
-            var repaired = await UsbAdbInterfaces.RepairAsync(context.Runner).ConfigureAwait(false);
-            return Success("usb", new JsonObject { ["repaired"] = new JsonArray(repaired.Select(x => (JsonNode)x).ToArray()) });
-        }
-
-        return Success("usb", new JsonArray(UsbAdbInterfaces.Scan().Select(u => (JsonNode)new JsonObject
-        {
-            ["instanceId"] = u.InstanceId,
-            ["description"] = u.Description,
-            ["driver"] = u.Driver,
-            ["present"] = u.Present,
-            ["registered"] = u.Registered,
-            ["unreachable"] = u.Unreachable,
-        }).ToArray()));
-    }
-
     private static MachineResult Config(CliContext context, string[] positional)
     {
         Arguments.Require(positional, 2, "config <list|get|set|restore> ...");
@@ -371,7 +347,7 @@ public static class MachineMode
         return Success(command, response.Data?.DeepClone() ?? new JsonObject());
     }
 
-    private static MachineResult Success(string command, JsonNode? data) =>
+    internal static MachineResult Success(string command, JsonNode? data) =>
         new(0, new JsonObject { ["ok"] = true, ["protocolVersion"] = ProtocolVersion, ["command"] = command, ["data"] = data }.ToJsonString(Compact));
 
     public static string FailureJson(string command, Exception ex) =>

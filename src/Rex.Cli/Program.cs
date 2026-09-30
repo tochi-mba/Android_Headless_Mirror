@@ -56,13 +56,15 @@ public static class Program
 /// <summary>Everything a command needs; built once per process.</summary>
 public sealed class CliContext
 {
-    public CliContext(AppPaths paths)
+    /// <param name="usb">What the usb commands touch; the real PC unless a test hands in its own.</param>
+    public CliContext(AppPaths paths, UsbSystem? usb = null)
     {
         Paths = paths;
         Config = new ConfigStore(paths.Config);
         Runner = new ProcessRunner();
         Log = new RexLog(paths.LogFile, ConfigFile.Load(paths.Config).Logging);
         Ipc = new IpcClient();
+        Usb = usb ?? UsbSystem.FromEnvironment(Runner);
     }
 
     public AppPaths Paths { get; }
@@ -70,6 +72,7 @@ public sealed class CliContext
     public IProcessRunner Runner { get; }
     public RexLog Log { get; }
     public IpcClient Ipc { get; }
+    public UsbSystem Usb { get; }
 
     public AdbClient? Adb()
     {

@@ -101,7 +101,8 @@
     "RunInBackground": true,
     "OpenOnConnect": true,
     "ConfirmSensitiveWrites": true,
-    "ScreenshotDirectory": "captures/screenshots"
+    "ScreenshotDirectory": "captures/screenshots",
+    "AutoRepairUsb": true
   },
   "Logging": {
     "Enabled": true,
