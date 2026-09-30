@@ -60,35 +60,6 @@
         <ComboBoxItem Content="AV1" Tag="av1" />
       </ComboBox>
     </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Smoothing buffer">
-      <ComboBox x:Name="VideoBuffer" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Smoothing buffer"
-                ToolTip="Holds each frame a moment to even out a shaky connection. Off is the lowest latency.">
-        <ComboBoxItem Content="Off (lowest latency)" Tag="0" />
-        <ComboBoxItem Content="50 ms" Tag="50" />
-        <ComboBoxItem Content="100 ms" Tag="100" />
-        <ComboBoxItem Content="200 ms" Tag="200" />
-        <ComboBoxItem Content="500 ms" Tag="500" />
-      </ComboBox>
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}">
-      <HeaderedContentControl.Header>
-        <StackPanel>
-          <TextBlock Text="Try a lower resolution if the encoder fails" />
-          <TextBlock Text="Off stops the mirror instead and says why." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
-        </StackPanel>
-      </HeaderedContentControl.Header>
-      <CheckBox x:Name="DownsizeOnError" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" AutomationProperties.Name="Try a lower resolution if the encoder fails" />
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Renderer">
-      <ComboBox x:Name="RenderDriver" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Renderer"
-                ToolTip="How scrcpy draws the picture on this PC. Change it only if the picture flickers or stays black.">
-        <ComboBoxItem Content="Automatic" Tag="" />
-        <ComboBoxItem Content="Direct3D" Tag="direct3d" />
-        <ComboBoxItem Content="OpenGL" Tag="opengl" />
-        <ComboBoxItem Content="OpenGL ES 2" Tag="opengles2" />
-        <ComboBoxItem Content="Software (slowest, always works)" Tag="software" />
-      </ComboBox>
-    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Soft background around the phone">
       <CheckBox x:Name="AmbientEnabled" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
@@ -232,7 +203,7 @@
       <CheckBox x:Name="KeepPcAwake" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" AutomationProperties.Name="Keep this PC awake while mirroring" />
     </HeaderedContentControl>
     <TextBlock x:Name="StartAppLabel" Text="Open an app when the mirror starts" Margin="0,12,0,4" />
-    <TextBox x:Name="StartApp" LostFocus="OnStartApp" KeyDown="OnStartAppKey" TextChanged="OnStartAppText" AutomationProperties.LabeledBy="{Binding ElementName=StartAppLabel}"
+    <TextBox x:Name="StartApp" LostKeyboardFocus="OnStartApp" KeyDown="OnStartAppKey" TextChanged="OnStartAppText" AutomationProperties.LabeledBy="{Binding ElementName=StartAppLabel}"
              ToolTip="Leave empty to open nothing" />
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
                Text="Its package name, like com.spotify.music, or ?name to find it by the start of its name. A + in front restarts it. Press Enter to apply." />
@@ -538,6 +509,40 @@
             </StackPanel>
           </HeaderedContentControl.Header>
           <CheckBox x:Name="AutoRepairUsb" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
+        </HeaderedContentControl>
+        <HeaderedContentControl Style="{StaticResource SettingRow}">
+          <HeaderedContentControl.Header>
+            <StackPanel>
+              <TextBlock Text="Smoothing buffer" />
+              <TextBlock Text="Holds each frame a moment to even out a shaky connection, such as wireless." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+          </HeaderedContentControl.Header>
+          <ComboBox x:Name="VideoBuffer" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Smoothing buffer">
+            <ComboBoxItem Content="Off (lowest latency)" Tag="0" />
+            <ComboBoxItem Content="50 ms" Tag="50" />
+            <ComboBoxItem Content="100 ms" Tag="100" />
+            <ComboBoxItem Content="200 ms" Tag="200" />
+            <ComboBoxItem Content="500 ms" Tag="500" />
+          </ComboBox>
+        </HeaderedContentControl>
+        <HeaderedContentControl Style="{StaticResource SettingRow}">
+          <HeaderedContentControl.Header>
+            <StackPanel>
+              <TextBlock Text="Try a lower resolution if the encoder fails" />
+              <TextBlock Text="Off stops the mirror instead and says why." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+            </StackPanel>
+          </HeaderedContentControl.Header>
+          <CheckBox x:Name="DownsizeOnError" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" AutomationProperties.Name="Try a lower resolution if the encoder fails" />
+        </HeaderedContentControl>
+        <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Renderer">
+          <ComboBox x:Name="RenderDriver" SelectionChanged="OnMirrorChanged" AutomationProperties.Name="Renderer"
+                    ToolTip="How scrcpy draws the picture on this PC. Change it only if the picture flickers or stays black.">
+            <ComboBoxItem Content="Automatic" Tag="" />
+            <ComboBoxItem Content="Direct3D" Tag="direct3d" />
+            <ComboBoxItem Content="OpenGL" Tag="opengl" />
+            <ComboBoxItem Content="OpenGL ES 2" Tag="opengles2" />
+            <ComboBoxItem Content="Software (slowest, always works)" Tag="software" />
+          </ComboBox>
         </HeaderedContentControl>
         <TextBlock Text="Extra scrcpy arguments" Margin="0,12,0,4" />
         <TextBox x:Name="ExtraArgs" LostFocus="OnExtraArgs" KeyDown="OnExtraArgsKey" AutomationProperties.Name="Extra scrcpy arguments"

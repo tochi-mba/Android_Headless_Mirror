@@ -77,7 +77,8 @@ public partial class SettingsPanel
         c.Input.Gamepad = SelectedTag(Gamepad, "disabled");
     });
 
-    private void OnStartApp(object sender, RoutedEventArgs e) => CommitStartApp();
+    /// <summary>Keyboard focus leaving the box, by any route (a click, Tab, the tab strip, the phone), commits it.</summary>
+    private void OnStartApp(object sender, KeyboardFocusChangedEventArgs e) => CommitStartApp();
 
     /// <summary>
     /// Typing commits on Enter or on leaving the box, so a half-typed name is never saved. A value
