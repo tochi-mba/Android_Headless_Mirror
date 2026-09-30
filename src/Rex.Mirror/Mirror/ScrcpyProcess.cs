@@ -46,6 +46,11 @@ public sealed class ScrcpyProcess : IDisposable
                 VideoSize = size;
                 VideoSizeChanged?.Invoke(size.Width, size.Height);
             }
+            else if (ScrcpyArguments.ParseFrameRate(e.Data) is { } rate)
+            {
+                FrameRate = rate;
+                FrameRateChanged?.Invoke(rate);
+            }
         };
         process.BeginErrorReadLine();
         process.BeginOutputReadLine();
@@ -60,6 +65,12 @@ public sealed class ScrcpyProcess : IDisposable
 
     /// <summary>Raised on a worker thread whenever scrcpy reports a new video size (the phone turned).</summary>
     public event Action<int, int>? VideoSizeChanged;
+
+    /// <summary>The frame rate scrcpy's counter last printed, or null if it has never run.</summary>
+    public int? FrameRate { get; private set; }
+
+    /// <summary>Raised on a worker thread each second while scrcpy's frame rate counter runs.</summary>
+    public event Action<int>? FrameRateChanged;
     public int ProcessId => _process.Id;
     public IntPtr Hwnd { get; private set; }
     public uint ThreadId { get; private set; }

@@ -76,9 +76,12 @@ public partial class MainWindow
         }
 
         var viewport = Host.ViewportScreenRect;
-        var direction = delta > 0 ? 1 : -1;
-        var anchorX = onMain.X - viewport.Left;
-        var anchorY = onMain.Y - viewport.Top;
+        var zoom = _host.Config.Zoom;
+        var direction = (delta > 0) != zoom.InvertWheel ? 1 : -1;
+
+        // On the pointer, or on the middle of what is showing.
+        var anchorX = zoom.ZoomAtPointer ? onMain.X - viewport.Left : viewport.Width / 2;
+        var anchorY = zoom.ZoomAtPointer ? onMain.Y - viewport.Top : viewport.Height / 2;
         var step = _host.Config.Zoom.WheelStep;
         Dispatcher.BeginInvoke(() => Host.ZoomStep(direction, anchorX, anchorY, step));
         return true;

@@ -57,7 +57,9 @@
     "MouseHover": true,
     "ClipboardAutosync": true,
     "LegacyPaste": false,
-    "Gamepad": "disabled"
+    "Gamepad": "disabled",
+    "SwipeLength": 1,
+    "SwipeMilliseconds": 200
   },
   "Zoom": {
     "Enabled": true,
@@ -65,6 +67,9 @@
     "PinchZoom": true,
     "MaxZoom": 4,
     "WheelStep": 0.1,
+    "ResetOnRotate": false,
+    "InvertWheel": false,
+    "ZoomAtPointer": true,
     "ShowNavigator": true,
     "NavigatorCorner": "bottom-right",
     "NavigatorWidth": 150,
@@ -129,7 +134,21 @@
     "OpenOnConnect": true,
     "ConfirmSensitiveWrites": true,
     "ScreenshotDirectory": "captures/screenshots",
-    "AutoRepairUsb": true
+    "AutoRepairUsb": true,
+    "AlwaysOnTop": false,
+    "SidebarSide": "right",
+    "TopBarButtons": [
+      "home",
+      "back",
+      "recents",
+      "sleep",
+      "screenshot"
+    ],
+    "ShowHints": true,
+    "NotifyConnections": false,
+    "ShowFrameRate": false,
+    "ScreenshotFormat": "png",
+    "CopyScreenshots": false
   },
   "Logging": {
     "Enabled": true,

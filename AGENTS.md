@@ -208,6 +208,12 @@ docs/                   GitHub Pages site; its download button points at the lat
   palette.
 - The overlay covers the whole mirror area, which with copies is wider than the main view:
   anything drawn on it for the main view is placed with `MirrorHost.AreaSurfaceRect`.
+- The window's own preferences (on top, the panel's side, the top bar's buttons, hints, the frame
+  rate readout, connection notices) apply live in `MainWindow.ApplyWindowPreferences`. The panel
+  changes sides by moving `SidebarColumn`, so its width, splitter and hiding behave the same on
+  either side. scrcpy's frame rate counter is switched in the running session
+  (`SessionController.ApplyFrameRateSetting`, the same shortcut as the counter action) and
+  `--print-fps` is left out of `ScrcpyArguments.LaunchSettings`, so it never asks for a restart.
 - Every visual choice the user can make lives in `config.json` and previews instantly:
   `AppHost.PreviewConfig` updates memory and debounces the write, `UpdateConfig` writes at once.
   The app also watches config.json, so `rex config set` applies to the running window.

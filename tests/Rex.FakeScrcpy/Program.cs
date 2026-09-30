@@ -114,6 +114,8 @@ internal sealed class MirrorForm : Form
     private const int WmSyskeydown = 0x0104;
     private const int WmPointerdown = 0x0246;
     private const int WmPointerup = 0x0247;
+    private const int WmKeyup = 0x0101;
+    private const int VkRightControl = 0xA3;
     private const int WmLbuttondown = 0x0201;
 
     private readonly string[] _args;
@@ -163,6 +165,20 @@ internal sealed class MirrorForm : Form
         // Real scrcpy prints this at its first frame and every time the picture changes shape.
         ReportTexture(landscape: false);
 
+        // scrcpy's frame rate counter: on from the start with --print-fps, turned on and off with
+        // the shortcut (Right Ctrl + I), and printing a reading every second while it runs.
+        _frameRateCounter = args.Contains("--print-fps");
+        _frameRate = new System.Windows.Forms.Timer { Interval = 1000 };
+        _frameRate.Tick += (_, _) =>
+        {
+            if (_frameRateCounter)
+            {
+                Console.Out.WriteLine("INFO: 60 fps");
+                Console.Out.Flush();
+            }
+        };
+        _frameRate.Start();
+
         // A phone playing a video: with the marker present the whole picture cycles through
         // colours, so a test can see the soft background and the navigator follow it.
         if (File.Exists(Path.Combine(AppContext.BaseDirectory, "animate")))
@@ -175,6 +191,9 @@ internal sealed class MirrorForm : Form
 
     private readonly System.Windows.Forms.Timer? _animation;
     private int _frame;
+    private readonly System.Windows.Forms.Timer _frameRate;
+    private bool _frameRateCounter;
+    private bool _rightControl;
 
     /// <summary>A strong, clearly different colour for each frame of the fake video.</summary>
     internal static Color FrameColour(int frame) => (frame % 3) switch
@@ -307,6 +326,17 @@ internal sealed class MirrorForm : Form
     protected override void WndProc(ref Message m)
     {
         if (m.Msg == 0x020A) Program.Log($"mousewheel at={_port}");
+        if (m.Msg is WmKeydown or WmKeyup && (int)m.WParam == VkRightControl)
+        {
+            _rightControl = m.Msg == WmKeydown;
+        }
+
+        if (m.Msg == WmKeydown && (int)m.WParam == 'I' && _rightControl)
+        {
+            _frameRateCounter = !_frameRateCounter;
+            Program.Log($"fps counter {(_frameRateCounter ? "on" : "off")} at={_port}");
+        }
+
         if (m.Msg is WmKeydown or WmSyskeydown)
         {
             Program.Log($"key vk={(int)m.WParam} scan=0x{((int)m.LParam >> 16) & 0xFF:X2} ext={(((int)m.LParam >> 24) & 1)} at={_port}");

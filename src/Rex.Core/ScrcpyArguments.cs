@@ -48,9 +48,36 @@ public static partial class ScrcpyArguments
         "android-" + startedAt.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + "." +
         MirrorSettings.OneOf(MirrorSettings.RecordFormats, format, "mp4");
 
+    /// <summary>
+    /// The launch settings a running session is compared against to offer a restart. The frame
+    /// rate counter is left out: the app switches it on and off in the running session itself.
+    /// </summary>
     public static IReadOnlyList<string> LaunchSettings(RexConfig config, bool isTcp) =>
         Build(config, "", isTcp, "", null,
-            config.Mirror.RecordOnStart ? config.Mirror.RecordDirectory : null);
+            config.Mirror.RecordOnStart ? config.Mirror.RecordDirectory : null)
+            .Where(argument => argument != PrintFps)
+            .ToArray();
+
+    /// <summary>scrcpy's frame rate counter, which prints the rate to the console every second.</summary>
+    public const string PrintFps = "--print-fps";
+
+    [GeneratedRegex(@"^\s*INFO:\s+(\d{1,4})\s+fps\b")]
+    private static partial Regex FrameRatePattern();
+
+    /// <summary>
+    /// The frame rate in one of scrcpy's counter lines ("INFO: 60 fps", or with "(+2 frames
+    /// skipped)" after it), or null for any other line.
+    /// </summary>
+    public static int? ParseFrameRate(string? line)
+    {
+        if (string.IsNullOrEmpty(line))
+        {
+            return null;
+        }
+
+        var match = FrameRatePattern().Match(line);
+        return match.Success ? int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : null;
+    }
 
     /// <summary>
     /// Modifier for scrcpy's own keyboard shortcuts. scrcpy 4.1 no longer accepts combined
@@ -219,6 +246,12 @@ public static partial class ScrcpyArguments
         }
 
         AddInput(args, config.Input, keyboardMode, isCopy);
+
+        // The counter only needs to run in the session the status bar reads.
+        if (config.App.ShowFrameRate && !isCopy)
+        {
+            args.Add(PrintFps);
+        }
 
         if (session.StartApp.Length > 0 && SessionSettings.IsValidStartApp(session.StartApp) && !isCopy)
         {

@@ -17,12 +17,11 @@ namespace Rex.Mirror.Mirror;
 public sealed class KeyboardTouch
 {
     private const int SwipeSteps = 7;
-    private const int SwipeStepMilliseconds = 24;
     private const int TapMilliseconds = 55;
     private const int BetweenStrokesMilliseconds = 70;
 
-    /// <summary>How long Android takes to play a swipe when the gesture goes over ADB.</summary>
-    public const int AdbSwipeMilliseconds = 220;
+    /// <summary>How far and how fast swipes go (<see cref="InputSettings.SwipeLength"/>, <see cref="InputSettings.SwipeMilliseconds"/>).</summary>
+    public Func<InputSettings>? Settings { get; set; }
 
     private readonly MirrorHost _host;
     private readonly TouchInjector _injector;
@@ -62,7 +61,8 @@ public sealed class KeyboardTouch
         var surface = _host.HasChild
             ? TouchpadBridge.VisibleSurface(_host.SurfaceScreenRect, _host.ViewportScreenRect)
             : default;
-        var strokes = Strokes(action, surface);
+        var settings = Settings?.Invoke() ?? new InputSettings();
+        var strokes = Strokes(action, surface, settings.SwipeLength);
         if (strokes.Count == 0 || !_injector.IsAvailable || SurfaceOnScreen?.Invoke() == false)
         {
             if (Fallback is null)
@@ -84,7 +84,7 @@ public sealed class KeyboardTouch
                     await Task.Delay(BetweenStrokesMilliseconds).ConfigureAwait(true);
                 }
 
-                if (!await PlayStrokeAsync(strokes[i], action).ConfigureAwait(true))
+                if (!await PlayStrokeAsync(strokes[i], action, StepMilliseconds(settings.SwipeMilliseconds)).ConfigureAwait(true))
                 {
                     _log($"Keyboard touch failed (error {_injector.LastError}).");
                     if (i == 0 && Fallback is not null)
@@ -105,7 +105,10 @@ public sealed class KeyboardTouch
         }
     }
 
-    private async Task<bool> PlayStrokeAsync(IReadOnlyList<(int X, int Y)> stroke, string action)
+    /// <summary>The pause between the points of a swipe, so the whole swipe takes about as long as asked.</summary>
+    internal static int StepMilliseconds(int swipeMilliseconds) => Math.Max(1, (int)Math.Round((double)swipeMilliseconds / SwipeSteps));
+
+    private async Task<bool> PlayStrokeAsync(IReadOnlyList<(int X, int Y)> stroke, string action, int stepMilliseconds)
     {
         var last = stroke[0];
         try
@@ -118,7 +121,7 @@ public sealed class KeyboardTouch
                     return false;
                 }
 
-                await Task.Delay(stroke.Count == 1 ? TapMilliseconds : SwipeStepMilliseconds).ConfigureAwait(true);
+                await Task.Delay(stroke.Count == 1 ? TapMilliseconds : stepMilliseconds).ConfigureAwait(true);
             }
 
             return true;
@@ -148,21 +151,25 @@ public sealed class KeyboardTouch
     /// The finger paths for a gesture inside a rectangle, in that rectangle's pixels: one stroke
     /// per touch, each a list of points from first contact to release. A rectangle too small to
     /// swipe across yields nothing. The same paths serve the visible surface (screen pixels) and
-    /// the ADB fallback (phone pixels).
+    /// the ADB fallback (phone pixels). <paramref name="length"/> scales how far a swipe travels:
+    /// at 1 it crosses 44% of the height, or 56% of the width, through the middle.
     /// </summary>
-    internal static IReadOnlyList<IReadOnlyList<(int X, int Y)>> Strokes(string action, RECT surface)
+    internal static IReadOnlyList<IReadOnlyList<(int X, int Y)>> Strokes(string action, RECT surface, double length = 1)
     {
         if (surface.Width < 4 || surface.Height < 4)
         {
             return [];
         }
 
+        var scale = Math.Clamp(double.IsFinite(length) ? length : 1, InputSettings.SwipeLengthMin, InputSettings.SwipeLengthMax);
+        var halfHeight = Math.Min(0.45, 0.22 * scale);
+        var halfWidth = Math.Min(0.45, 0.28 * scale);
         var centreX = (surface.Left + surface.Right) / 2;
         var centreY = (surface.Top + surface.Bottom) / 2;
-        var top = surface.Top + (int)Math.Round(surface.Height * 0.28);
-        var bottom = surface.Top + (int)Math.Round(surface.Height * 0.72);
-        var left = surface.Left + (int)Math.Round(surface.Width * 0.22);
-        var right = surface.Left + (int)Math.Round(surface.Width * 0.78);
+        var top = surface.Top + (int)Math.Round(surface.Height * (0.5 - halfHeight));
+        var bottom = surface.Top + (int)Math.Round(surface.Height * (0.5 + halfHeight));
+        var left = surface.Left + (int)Math.Round(surface.Width * (0.5 - halfWidth));
+        var right = surface.Left + (int)Math.Round(surface.Width * (0.5 + halfWidth));
 
         var up = Line((centreX, bottom), (centreX, top));
         var leftwards = Line((right, centreY), (left, centreY));
