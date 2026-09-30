@@ -59,13 +59,13 @@ public static class CommandRouter
                 }
 
                 var direction = request.Arg("direction");
-                var result = window.ApplyAppAction(direction switch
+                var result = await window.ApplyAppActionAsync(direction switch
                 {
                     "in" => "zoom-in",
                     "out" => "zoom-out",
                     "reset" => "zoom-reset",
                     _ => string.Empty,
-                });
+                }).ConfigureAwait(true);
                 return result.Ok
                     ? IpcResponse.Success(new JsonObject { ["zoom"] = Math.Round(window.Host.Zoom, 3) })
                     : IpcResponse.Fail(result.Text);
@@ -74,7 +74,9 @@ public static class CommandRouter
             case "action":
             {
                 var id = request.Arg("name");
-                var result = await session.RunActionAsync(id, appId => window?.ApplyAppAction(appId) ?? AndroidResult.Failure("The window is not available.")).ConfigureAwait(true);
+                var result = await session.RunActionAsync(id, appId => window is null
+                    ? Task.FromResult(AndroidResult.Failure("The window is not available."))
+                    : window.ApplyAppActionAsync(appId)).ConfigureAwait(true);
                 return result.Ok ? IpcResponse.Success(new JsonObject { ["action"] = id, ["text"] = result.Text }) : IpcResponse.Fail(result.Text);
             }
 
@@ -150,7 +152,21 @@ public static class CommandRouter
                 ["visible"] = window.PatternGuideVisible,
                 ["resolving"] = window.PatternGuideResolving,
                 ["source"] = window.PatternGuideSource,
+                // Where the dots sit, as fractions of the picture, so a test can see the guide
+                // move when Android moves the pattern.
+                ["bounds"] = window.PatternGuideBounds is { } bounds ? new JsonObject
+                {
+                    ["left"] = Math.Round(bounds.Left, 4),
+                    ["top"] = Math.Round(bounds.Top, 4),
+                    ["right"] = Math.Round(bounds.Right, 4),
+                    ["bottom"] = Math.Round(bounds.Bottom, 4),
+                } : null,
             } : null,
+            ["keyboard"] = new JsonObject
+            {
+                ["mode"] = session.Scrcpy?.KeyboardMode,
+                ["browse"] = host.Window?.BrowseMode ?? false,
+            },
             ["device"] = session.ActiveDevice is null ? null : new JsonObject
             {
                 ["serial"] = session.ActiveDevice.Serial,

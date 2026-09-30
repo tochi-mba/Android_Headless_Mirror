@@ -225,6 +225,27 @@ public sealed class AdbTests
     }
 
     [Fact]
+    public async Task GesturesAndSettingsScreens_GoThroughAndroidsOwnTools()
+    {
+        var runner = new FakeProcessRunner();
+        var adb = new AdbClient("adb.exe", runner);
+
+        Assert.True((await adb.SwipeAsync("S", 540, 1728, 540, 672, 220, TestContext.Current.CancellationToken)).Ok);
+        Assert.True((await adb.TapAsync("S", 540, 1200, TestContext.Current.CancellationToken)).Ok);
+        Assert.True((await adb.StartActivityAsync("S", "android.settings.HARD_KEYBOARD_SETTINGS", TestContext.Current.CancellationToken)).Ok);
+        Assert.Equal(
+            ["-s S shell input swipe 540 1728 540 672 220", "-s S shell input tap 540 1200", "-s S shell am start -a android.settings.HARD_KEYBOARD_SETTINGS"],
+            runner.Calls.Select(call => string.Join(' ', call.Arguments)));
+
+        // Only settings screens can be opened this way, and coordinates never go negative.
+        Assert.False((await adb.StartActivityAsync("S", "android.intent.action.VIEW", TestContext.Current.CancellationToken)).Ok);
+        Assert.False((await adb.StartActivityAsync("S", "android.settings.X; reboot", TestContext.Current.CancellationToken)).Ok);
+        Assert.Equal(3, runner.Calls.Count);
+        await adb.TapAsync("S", -5, 10, TestContext.Current.CancellationToken);
+        Assert.Contains("input tap 0 10", string.Join(' ', runner.Calls[^1].Arguments), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task DumpUiHierarchy_ExtractsXmlFromTtyOutput()
     {
         var runner = new FakeProcessRunner { Respond = _ => new ProcessResult(0, "UI hierchary dumped to: /dev/tty\n<?xml version='1.0'?><hierarchy rotation=\"0\"><node bounds=\"[0,0][1,1]\"/></hierarchy>\n", "") };

@@ -93,7 +93,10 @@ public sealed class InputHooks : IDisposable
             var ctrl = NativeMethods.IsKeyDown(NativeMethods.VK_CONTROL);
             var alt = NativeMethods.IsKeyDown(NativeMethods.VK_MENU);
             var shift = NativeMethods.IsKeyDown(NativeMethods.VK_SHIFT);
-            if (KeyDown?.Invoke((int)data.vkCode, ctrl, alt, shift) == true)
+            // Windows exposes AltGr as Ctrl+Right-Alt. It is text input, not one of the app's
+            // Ctrl+Alt shortcuts; stealing it breaks characters on many keyboard layouts.
+            var altGr = NativeMethods.IsKeyDown(NativeMethods.VK_RMENU);
+            if (CanOfferHotkey(altGr) && KeyDown?.Invoke((int)data.vkCode, ctrl, alt, shift) == true)
             {
                 _consumedKeys.Add((int)data.vkCode);
                 return new IntPtr(1);
@@ -102,6 +105,8 @@ public sealed class InputHooks : IDisposable
 
         return NativeMethods.CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
     }
+
+    internal static bool CanOfferHotkey(bool rightAltDown) => !rightAltDown;
 
     public void Dispose() => Uninstall();
 }

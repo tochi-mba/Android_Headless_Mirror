@@ -7,6 +7,13 @@ namespace Rex.Tests;
 public sealed class TouchInputTests
 {
     [Fact]
+    public void AltGrIsAlwaysLeftForTextInput()
+    {
+        Assert.True(InputHooks.CanOfferHotkey(rightAltDown: false));
+        Assert.False(InputHooks.CanOfferHotkey(rightAltDown: true));
+    }
+
+    [Fact]
     public void TwoFingers_OverOneOfTheAppsOwnLists_ScrollThatListRatherThanThePhone()
     {
         var config = new RexConfig();
@@ -103,5 +110,90 @@ public sealed class TouchInputTests
         Assert.False(injector.AnyDown);
         Assert.True(injector.Move((100, 200), (300, 200)));
         Assert.All(frames[2], contact => Assert.NotEqual(0u, contact.pointerInfo.pointerFlags & NativeMethods.POINTER_FLAG_DOWN));
+    }
+
+    [Fact]
+    public void OneFingerKeyboardGestureHasACompleteDownMoveUpSequence()
+    {
+        var frames = new List<POINTER_TOUCH_INFO[]>();
+        var injector = new TouchInjector(() => true, contacts => { frames.Add(contacts); return true; });
+
+        Assert.True(injector.MoveOne((100, 500)));
+        Assert.True(injector.MoveOne((100, 300)));
+        Assert.True(injector.ReleaseOne((100, 300)));
+        Assert.False(injector.AnyDown);
+        Assert.All(frames, frame => Assert.Single(frame));
+        Assert.NotEqual(0u, frames[0][0].pointerInfo.pointerFlags & NativeMethods.POINTER_FLAG_DOWN);
+        Assert.NotEqual(0u, frames[1][0].pointerInfo.pointerFlags & NativeMethods.POINTER_FLAG_UPDATE);
+        Assert.NotEqual(0u, frames[2][0].pointerInfo.pointerFlags & NativeMethods.POINTER_FLAG_UP);
+    }
+
+    [Fact]
+    public void KeyboardGesturesStayInsideThePictureAndOppositesReverseExactly()
+    {
+        var surface = new RECT { Left = 100, Top = 200, Right = 500, Bottom = 1000 };
+
+        foreach (var action in MirrorActions.Gestures)
+        {
+            var strokes = KeyboardTouch.Strokes(action, surface);
+            Assert.NotEmpty(strokes);
+            Assert.All(strokes.SelectMany(stroke => stroke), point =>
+            {
+                Assert.InRange(point.X, surface.Left + 1, surface.Right - 1);
+                Assert.InRange(point.Y, surface.Top + 1, surface.Bottom - 1);
+            });
+        }
+
+        var up = Assert.Single(KeyboardTouch.Strokes("swipe-up", surface));
+        var down = Assert.Single(KeyboardTouch.Strokes("swipe-down", surface));
+        var left = Assert.Single(KeyboardTouch.Strokes("swipe-left", surface));
+        var right = Assert.Single(KeyboardTouch.Strokes("swipe-right", surface));
+        Assert.Equal(up.Reverse(), down);
+        Assert.Equal(left.Reverse(), right);
+        Assert.True(up[0].Y > up[^1].Y, "a swipe up starts low and ends high");
+        Assert.True(left[0].X > left[^1].X, "a swipe left starts on the right");
+        Assert.All(up, point => Assert.Equal(300, point.X));
+        Assert.All(left, point => Assert.Equal(600, point.Y));
+
+        Assert.Equal([[(300, 600)]], KeyboardTouch.Strokes("tap", surface));
+        Assert.Equal([[(300, 600)], [(300, 600)]], KeyboardTouch.Strokes("like", surface));
+        Assert.Empty(KeyboardTouch.Strokes("unknown", surface));
+        Assert.Empty(KeyboardTouch.Strokes("swipe-up", new RECT()));
+        Assert.Equal("Liked", KeyboardTouch.Outcome("like"));
+    }
+
+    [Fact]
+    public void BrowseModeKeysAreTheOnesFeedsUseEverywhereElse()
+    {
+        Assert.Equal("swipe-up", KeyboardBrowse.ActionFor(NativeMethods.VK_DOWN));
+        Assert.Equal("swipe-down", KeyboardBrowse.ActionFor(NativeMethods.VK_UP));
+        Assert.Equal("swipe-left", KeyboardBrowse.ActionFor(NativeMethods.VK_RIGHT));
+        Assert.Equal("swipe-right", KeyboardBrowse.ActionFor(NativeMethods.VK_LEFT));
+        Assert.Equal("tap", KeyboardBrowse.ActionFor(NativeMethods.VK_RETURN));
+        Assert.Equal("tap", KeyboardBrowse.ActionFor(NativeMethods.VK_SPACE));
+        Assert.Equal("like", KeyboardBrowse.ActionFor('L'));
+        Assert.Equal("mute", KeyboardBrowse.ActionFor('M'));
+        Assert.Equal("back", KeyboardBrowse.ActionFor(NativeMethods.VK_BACK));
+
+        // Letters keep typing, so a search box still works inside the mode.
+        Assert.Null(KeyboardBrowse.ActionFor('A'));
+        Assert.Null(KeyboardBrowse.ActionFor('1'));
+        Assert.Null(KeyboardBrowse.ActionFor(NativeMethods.VK_ESCAPE));
+
+        // Every key the registry tells people about is one the mode takes, and the other way round.
+        var registry = Shortcuts.BrowseKeys.Select(key => key.Gesture).OrderBy(g => g, StringComparer.Ordinal);
+        var mapped = new Dictionary<string, int>
+        {
+            ["Down"] = NativeMethods.VK_DOWN, ["Up"] = NativeMethods.VK_UP, ["Right"] = NativeMethods.VK_RIGHT, ["Left"] = NativeMethods.VK_LEFT,
+            ["Enter"] = NativeMethods.VK_RETURN, ["L"] = 'L', ["M"] = 'M', ["Backspace"] = NativeMethods.VK_BACK,
+        };
+        Assert.Equal(mapped.Keys.OrderBy(g => g, StringComparer.Ordinal), registry);
+        Assert.All(mapped.Values, key => Assert.NotNull(MirrorActions.Find(KeyboardBrowse.ActionFor(key)!)));
+
+        Assert.True(KeyboardBrowse.Applies(browsing: true, ctrl: false, alt: false, focusInsideControl: false));
+        Assert.False(KeyboardBrowse.Applies(browsing: false, ctrl: false, alt: false, focusInsideControl: false));
+        Assert.False(KeyboardBrowse.Applies(browsing: true, ctrl: true, alt: false, focusInsideControl: false));
+        Assert.False(KeyboardBrowse.Applies(browsing: true, ctrl: false, alt: true, focusInsideControl: false));
+        Assert.False(KeyboardBrowse.Applies(browsing: true, ctrl: false, alt: false, focusInsideControl: true));
     }
 }

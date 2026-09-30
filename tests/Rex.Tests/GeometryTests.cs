@@ -95,6 +95,45 @@ public sealed class GeometryTests
     }
 
     [Fact]
+    public void Effective_OnlyAppliesACalibrationInTheOrientationItWasMadeIn()
+    {
+        var view = new PatternGeometryInfo(PatternGeometry.SourceUiView, 2400, 1080, false, new PatternBounds(0.3, 0.1, 0.7, 0.9));
+        var portrait = PatternGeometry.FromCalibration(new PatternCalibration(0.2, 0.3, 0.8, 0.7))!;
+        var landscape = PatternGeometry.FromCalibration(new PatternCalibration(0.35, 0.1, 0.65, 0.9, Landscape: true))!;
+
+        Assert.False(portrait.Landscape);
+        Assert.True(landscape.Landscape);
+        Assert.Same(portrait, PatternGeometry.Effective(view, portrait, landscape: false));
+        Assert.Same(view, PatternGeometry.Effective(view, portrait, landscape: true));
+        Assert.Same(landscape, PatternGeometry.Effective(view, landscape, landscape: true));
+        Assert.Same(view, PatternGeometry.Effective(view, landscape, landscape: false));
+        Assert.Null(PatternGeometry.Effective(null, portrait, landscape: true));
+
+        // What Android reports carries its own orientation, from the size of the screen it measured.
+        var turned = PatternGeometry.FromUiHierarchy("""
+            <hierarchy rotation="1"><node class="android.widget.FrameLayout" bounds="[0,0][2400,1080]">
+              <node class="com.android.internal.widget.LockPatternView" bounds="[900,140][1500,740]" />
+            </node></hierarchy>
+            """)!;
+        Assert.True(turned.Landscape);
+        Assert.False(PatternGeometry.FromUiHierarchy("""
+            <hierarchy rotation="0"><node class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
+              <node class="com.android.internal.widget.LockPatternView" bounds="[140,820][940,1620]" />
+            </node></hierarchy>
+            """)!.Landscape);
+    }
+
+    [Fact]
+    public void SameBounds_TellsAnUnmovedCalibrationFromAMovedOne()
+    {
+        var bounds = new PatternBounds(0.19, 0.4805, 0.81, 0.7595);
+        Assert.True(PatternGeometry.SameBounds(bounds, bounds));
+        Assert.True(PatternGeometry.SameBounds(bounds, bounds with { Left = 0.1901 }));
+        Assert.False(PatternGeometry.SameBounds(bounds, bounds with { Left = 0.2 }));
+        Assert.False(PatternGeometry.SameBounds(bounds, PatternGeometry.Adjust(bounds, "move-down", 0.01, 0.01)));
+    }
+
+    [Fact]
     public void ClampCalibration_SlidesInsteadOfCollapsing()
     {
         var clamped = PatternGeometry.ClampCalibration(new PatternBounds(-0.1, 0.2, 1.2, 0.8));

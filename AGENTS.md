@@ -126,9 +126,23 @@ docs/                   GitHub Pages site; its download button points at the lat
 - Two fingers over one of the app's own lists scroll that list. The mirror is a child window that
   otherwise takes the whole gesture, so anything scrollable the pointer can rest on has to be
   offered to `TouchpadBridge.PanelAt` or it will be scrolled on the phone instead.
-- scrcpy is launched with `--shortcut-mod=rctrl`, `--mouse=sdk`, `--keyboard=sdk`,
+- scrcpy is launched with `--shortcut-mod=rctrl`, `--mouse=sdk`, `--keyboard=uhid`,
   `--window-borderless` and `--no-window-aspect-ratio-lock`; `Mirror.ExtraArgs` cannot override these
-  and is validated wherever it is written (settings panel, `config set`, `Normalize`).
+  and is validated wherever it is written (settings panel, `config set`, `Normalize`). If Android
+  denies UHID, the session retries once with `--keyboard=sdk --raw-key-events` and remembers it in
+  the device profile (`CompatibilityKeyboard`) so later sessions start there; `Mirror.CompatibilityKeyboard`
+  forces it for every phone. Never fall back to plain SDK mode because an embedded SDL window loses
+  its digit and punctuation text events. `ScrcpyArguments.KeyboardModeFor` is the one place the choice is made.
+- Keyboard-only phone gestures (`MirrorActions.Gestures`) go through `KeyboardTouch`: one-finger
+  Windows touch injection over the visible mirror surface, or Android's own `input swipe`/`input tap`
+  over ADB when there is no picture to touch (window hidden, injection refused). Browse mode
+  (`KeyboardBrowse`, toggled by the `browse` action) is the only time plain keys are taken from the
+  phone, and only while focus is not in one of the app's own controls. Keep ordinary keys for typing
+  otherwise, keep AltGr out of the Ctrl+Alt hotkey path, and add every new chord or browse key to
+  `Shortcuts` so the app and website continue to agree.
+- The pattern guide asks Android where the pattern is every time the lock screen comes up. A saved
+  calibration only applies in the orientation it was made in, and saving one without moving it
+  clears it instead: an unmoved calibration would freeze the automatic placement for good.
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
 - The soft background is a live copy of the on-screen mirror (`LiveCapture`), never a phone
   screenshot: it must not add ADB traffic, and nothing else may poll the phone for pictures either.

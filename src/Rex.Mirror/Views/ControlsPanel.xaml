@@ -50,6 +50,23 @@
       </ItemsControl.ItemTemplate>
     </ItemsControl>
 
+    <TextBlock Text="KEYBOARD" Style="{StaticResource Eyebrow}" />
+    <TextBlock x:Name="KeyboardStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8"
+               Text="Typing goes straight to the phone." />
+    <ItemsControl x:Name="KeyboardTiles">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Columns="3" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <Button Style="{StaticResource ActionTile}" Content="{Binding}" ToolTip="{Binding Detail}" Tag="{Binding Id}" Click="OnTile"
+                  AutomationProperties.Name="{Binding Label}" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
     <TextBlock Text="ZOOM (PC ONLY)" Style="{StaticResource Eyebrow}" />
     <Grid>
       <Grid.ColumnDefinitions>

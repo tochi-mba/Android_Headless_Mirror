@@ -282,6 +282,14 @@ public static class HudIcons
         ["screenshot"] = "IconCamera",
         ["fullscreen"] = "IconFullscreen",
         ["zoom-out"] = "IconZoomOut",
+        ["swipe-up"] = "IconArrowUp",
+        ["swipe-down"] = "IconArrowDown",
+        ["swipe-left"] = "IconArrowLeft",
+        ["swipe-right"] = "IconArrowRight",
+        ["tap"] = "IconTap",
+        ["like"] = "IconHeart",
+        ["browse"] = "IconKeyboard",
+        ["keyboard-layout"] = "IconKeyboard",
     };
 
     public static string? For(string actionId) => Icons.GetValueOrDefault(actionId);

@@ -15,11 +15,12 @@ public sealed class ScrcpyProcess : IDisposable
     private readonly TaskCompletionSource<int> _exit = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly List<string> _stderr = [];
 
-    private ScrcpyProcess(Process process, string serial, string windowTitle)
+    private ScrcpyProcess(Process process, string serial, string windowTitle, string keyboardMode)
     {
         _process = process;
         Serial = serial;
         WindowTitle = windowTitle;
+        KeyboardMode = keyboardMode;
         process.EnableRaisingEvents = true;
         process.Exited += (_, _) => _exit.TrySetResult(SafeExitCode());
         process.ErrorDataReceived += (_, e) =>
@@ -44,6 +45,7 @@ public sealed class ScrcpyProcess : IDisposable
 
     public string Serial { get; }
     public string WindowTitle { get; }
+    public string KeyboardMode { get; }
     public int ProcessId => _process.Id;
     public IntPtr Hwnd { get; private set; }
     public uint ThreadId { get; private set; }
@@ -60,6 +62,7 @@ public sealed class ScrcpyProcess : IDisposable
         IReadOnlyList<string> arguments,
         string serial,
         string windowTitle,
+        string keyboardMode,
         OwnedProcessJob ownedProcesses)
     {
         var start = new ProcessStartInfo
@@ -82,7 +85,7 @@ public sealed class ScrcpyProcess : IDisposable
             // Assign immediately after creation. The Job Object is intentionally scoped
             // to scrcpy-owned session processes; the shared ADB server is never added.
             ownedProcesses.Assign(process);
-            return new ScrcpyProcess(process, serial, windowTitle);
+            return new ScrcpyProcess(process, serial, windowTitle, keyboardMode);
         }
         catch
         {

@@ -30,6 +30,7 @@ public partial class ControlsPanel : UserControl
         PatternCalibrate.ToolTip = Shortcuts.Tip("Line the guide up with the arrow keys", "pattern-calibrate");
         NavigationTiles.ItemsSource = Tiles(["home", "back", "recents", "power", "wake", "sleep", "volume-up", "volume-down", "mute", "notifications", "quick-settings", "collapse"]);
         ViewTiles.ItemsSource = Tiles(["rotate-device", "rotate-left", "rotate-right", "pause", "resume", "reset-capture", "screenshot", "fullscreen", "fps"]);
+        KeyboardTiles.ItemsSource = Tiles(["browse", "swipe-up", "swipe-down", "swipe-left", "swipe-right", "tap", "like", "mute", "keyboard-layout"]);
         Refresh();
     }
 
@@ -59,6 +60,13 @@ public partial class ControlsPanel : UserControl
         "screenshot" => "IconCamera",
         "fullscreen" => "IconFullscreen",
         "fps" => "IconInfo",
+        "swipe-up" => "IconArrowUp",
+        "swipe-down" => "IconArrowDown",
+        "swipe-left" => "IconArrowLeft",
+        "swipe-right" => "IconArrowRight",
+        "tap" => "IconTap",
+        "like" => "IconHeart",
+        "browse" or "keyboard-layout" => "IconKeyboard",
         _ => "IconInfo",
     };
 
@@ -77,6 +85,10 @@ public partial class ControlsPanel : UserControl
         var ready = session.Devices.Any(d => d.IsReady);
         NavigationTiles.IsEnabled = ready;
         ViewTiles.IsEnabled = ready;
+        KeyboardTiles.IsEnabled = ready;
+        KeyboardStatus.Text = _window.BrowseMode
+            ? "Browse mode is on: Up and Down move through a feed, Left and Right turn pages, Enter taps, L likes, M mutes, Backspace goes back. Esc leaves."
+            : $"Typing goes straight to the phone. {Shortcuts.Gesture("browse")} turns on browse mode, where the arrow keys, Enter, L, M and Backspace drive a feed.";
         RotationPortrait.IsEnabled = ready;
         RotationLandscape.IsEnabled = ready;
         RotationAuto.IsEnabled = ready;

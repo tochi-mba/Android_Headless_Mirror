@@ -17,7 +17,12 @@ public readonly record struct PointD(double X, double Y);
 public sealed record PatternBounds(double Left, double Top, double Right, double Bottom);
 
 /// <summary>Where the nine pattern dots are, normalized to the Android screen (0..1).</summary>
-public sealed record PatternGeometryInfo(string Source, double ScreenWidth, double ScreenHeight, bool ExactDots, PatternBounds Bounds);
+/// <param name="Landscape">
+/// The orientation the bounds were measured in. Fractions of a portrait screen mean nothing on a
+/// landscape one, so a saved calibration only applies while the picture has the shape it had
+/// when it was lined up.
+/// </param>
+public sealed record PatternGeometryInfo(string Source, double ScreenWidth, double ScreenHeight, bool ExactDots, PatternBounds Bounds, bool Landscape = false);
 
 public sealed record PatternLayout(string Source, RectD ContentRect, IReadOnlyList<PointD> Points);
 
@@ -265,24 +270,43 @@ public static partial class PatternGeometry
         }
 
         return new PatternGeometryInfo(source, screenWidth, screenHeight, exactDots,
-            new PatternBounds(left / screenWidth, top / screenHeight, right / screenWidth, bottom / screenHeight));
+            new PatternBounds(left / screenWidth, top / screenHeight, right / screenWidth, bottom / screenHeight),
+            Landscape: screenWidth > screenHeight);
     }
 
     public static PatternGeometryInfo? FromCalibration(PatternCalibration? calibration) =>
         calibration is { IsValid: true }
-            ? new PatternGeometryInfo(SourceCalibration, 0, 0, false, new PatternBounds(calibration.Left, calibration.Top, calibration.Right, calibration.Bottom))
+            ? new PatternGeometryInfo(SourceCalibration, 0, 0, false,
+                new PatternBounds(calibration.Left, calibration.Top, calibration.Right, calibration.Bottom), calibration.Landscape)
             : null;
 
-    /// <summary>Exact dots beat calibration, calibration beats the parent view, then nothing.</summary>
-    public static PatternGeometryInfo? Effective(PatternGeometryInfo? discovered, PatternGeometryInfo? calibration)
+    /// <summary>
+    /// Exact dots beat calibration, calibration beats the parent view, then nothing. A calibration
+    /// made in the other orientation is skipped rather than stretched across a screen it was never
+    /// lined up with.
+    /// </summary>
+    public static PatternGeometryInfo? Effective(PatternGeometryInfo? discovered, PatternGeometryInfo? calibration, bool landscape = false)
     {
         if (discovered is { Source: SourceUiDots })
         {
             return discovered;
         }
 
-        return calibration ?? discovered;
+        if (calibration is not null && calibration.Landscape == landscape)
+        {
+            return calibration;
+        }
+
+        return discovered;
     }
+
+    /// <summary>
+    /// Whether two sets of bounds are the same place to the eye. Saving a calibration nobody moved
+    /// would pin the automatic placement in state and stop it ever adjusting again.
+    /// </summary>
+    public static bool SameBounds(PatternBounds a, PatternBounds b, double tolerance = 0.0005) =>
+        Math.Abs(a.Left - b.Left) <= tolerance && Math.Abs(a.Top - b.Top) <= tolerance &&
+        Math.Abs(a.Right - b.Right) <= tolerance && Math.Abs(a.Bottom - b.Bottom) <= tolerance;
 
     public static PatternLayout Layout(PatternGeometryInfo? geometry, double clientWidth, double clientHeight, double fallbackDeviceWidth, double fallbackDeviceHeight, bool allowEstimate)
     {

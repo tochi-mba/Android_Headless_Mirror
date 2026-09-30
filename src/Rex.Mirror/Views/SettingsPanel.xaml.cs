@@ -96,6 +96,7 @@ public partial class SettingsPanel : UserControl
             Wireless.IsChecked = c.Wireless.Enabled;
             WirelessTcpip.IsChecked = c.Wireless.EnableTcpipWhenUsbAvailable;
             ExtraArgs.Text = c.Mirror.ExtraArgs;
+            CompatibilityKeyboard.IsChecked = c.Mirror.CompatibilityKeyboard;
             ScreenshotLocation.Text = _host.Paths.ScreenshotFolder(c.App.ScreenshotDirectory);
             RefreshRestartNotice();
         }
@@ -141,6 +142,7 @@ public partial class SettingsPanel : UserControl
         c.Mirror.Audio = Audio.IsChecked == true;
         c.Mirror.AudioDup = AudioDup.IsChecked == true;
         c.Mirror.RecordOnStart = Record.IsChecked == true;
+        c.Mirror.CompatibilityKeyboard = CompatibilityKeyboard.IsChecked == true;
         c.Session.TurnScreenOff = TurnScreenOff.IsChecked == true;
         c.Session.StayAwake = StayAwake.IsChecked == true;
         c.Session.PowerOffOnClose = PowerOffOnClose.IsChecked == true;

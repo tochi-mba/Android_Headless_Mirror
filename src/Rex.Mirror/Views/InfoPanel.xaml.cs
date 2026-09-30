@@ -17,7 +17,7 @@ public partial class InfoPanel : UserControl
 
         // One list, from the registry the window and the website also read, so it cannot drift.
         ShortcutRows.ItemsSource = Shortcuts.All
-            .Select(shortcut => KeyValuePair.Create(shortcut.Gesture, shortcut.Description))
+            .Select(shortcut => KeyValuePair.Create(Shortcuts.Label(shortcut), shortcut.Description))
             .ToArray();
     }
 

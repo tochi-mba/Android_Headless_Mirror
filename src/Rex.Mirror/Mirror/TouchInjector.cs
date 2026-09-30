@@ -43,6 +43,41 @@ public sealed class TouchInjector
 
     public bool AnyDown => _down[0] || _down[1];
 
+    /// <summary>Starts or moves one synthetic finger without disturbing the real pointer.</summary>
+    public bool MoveOne((int X, int Y) point)
+    {
+        if (!IsAvailable || _down[1])
+        {
+            return false;
+        }
+
+        var contacts = new[]
+        {
+            Contact(0, point.X, point.Y, _down[0] ? NativeMethods.POINTER_FLAG_UPDATE : NativeMethods.POINTER_FLAG_DOWN),
+        };
+        var ok = _inject(contacts);
+        LastError = ok ? 0 : Marshal.GetLastWin32Error();
+        if (ok)
+        {
+            _down[0] = true;
+        }
+
+        return ok;
+    }
+
+    public bool ReleaseOne((int X, int Y) point)
+    {
+        if (!_down[0] || _down[1])
+        {
+            return !_down[1];
+        }
+
+        var ok = _inject([Contact(0, point.X, point.Y, NativeMethods.POINTER_FLAG_UP)]);
+        LastError = ok ? 0 : Marshal.GetLastWin32Error();
+        _down[0] = false;
+        return ok;
+    }
+
     /// <summary>Sends the current position of both contacts. Contacts are pressed on first use.</summary>
     public bool Move((int X, int Y) first, (int X, int Y) second)
     {

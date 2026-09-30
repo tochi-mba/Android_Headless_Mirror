@@ -165,6 +165,15 @@
       </Grid>
       <Slider x:Name="Sensitivity" AutomationProperties.Name="Gesture sensitivity" Minimum="0.25" Maximum="3" Margin="0,2,0,0" ValueChanged="OnSensitivity" />
     </StackPanel>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Compatibility keyboard" />
+          <TextBlock Text="Sends raw keys instead of acting as a plugged-in keyboard. Only if typing misbehaves; applies when the mirror restarts." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="CompatibilityKeyboard" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
+    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Alt + pinch / Alt + wheel zooms the PC view">
       <CheckBox x:Name="HostZoom" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>

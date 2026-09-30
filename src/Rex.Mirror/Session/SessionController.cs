@@ -282,14 +282,16 @@ public sealed class SessionController : IDisposable
         var launchRect = await OnUi(() => LaunchRect?.Invoke()).ConfigureAwait(false);
         var title = $"Android Headless Mirror [{device.Serial}]";
 
-        var args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, launchRect, recordPath);
+    retryScrcpy:
+        var keyboardMode = ScrcpyArguments.KeyboardModeFor(config, _host.State.GetDevice(device.Serial));
+        var args = ScrcpyArguments.Build(config, device.Serial, device.IsTcp, title, launchRect, recordPath, keyboardMode);
         var launchSettings = ScrcpyArguments.LaunchSettings(config, device.IsTcp);
         _host.Log.Info($"Launching scrcpy for {device.Serial} ({device.Transport}): {string.Join(' ', args)}");
 
         ScrcpyProcess scrcpy;
         try
         {
-            scrcpy = ScrcpyProcess.Launch(Tools!.Scrcpy, args, device.Serial, title, _ownedProcesses);
+            scrcpy = ScrcpyProcess.Launch(Tools!.Scrcpy, args, device.Serial, title, keyboardMode, _ownedProcesses);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -306,6 +308,13 @@ public sealed class SessionController : IDisposable
         {
             var reason = ScrcpyFailureText(scrcpy);
             _host.Log.Warn("scrcpy did not open a window: " + reason);
+            if (TryUseCompatibilityKeyboard(scrcpy))
+            {
+                scrcpy.Dispose();
+                await OnUi(() => SetState(SessionPhase.Starting, "This phone needs compatibility keyboard mode. Reconnecting…")).ConfigureAwait(false);
+                goto retryScrcpy;
+            }
+
             scrcpy.Dispose();
             await OnUi(() => SetState(SessionPhase.Waiting, reason)).ConfigureAwait(false);
             _retryAfter = DateTime.UtcNow.AddSeconds(config.Session.RetrySeconds);
@@ -341,6 +350,18 @@ public sealed class SessionController : IDisposable
         Scrcpy = null;
         Battery = null;
         MirrorEnded?.Invoke();
+
+        if (TryUseCompatibilityKeyboard(scrcpy))
+        {
+            _retryAfter = DateTime.MinValue;
+            _restartAttempts = 0;
+            SetState(SessionPhase.Waiting, "This phone needs compatibility keyboard mode. Reconnecting…");
+            scrcpy.Dispose();
+            ActiveDevice = null;
+            Identity = null;
+            Changed?.Invoke();
+            return;
+        }
 
         var config = _host.Config;
         // A briefly visible window does not mean a crash loop recovered.
@@ -387,6 +408,69 @@ public sealed class SessionController : IDisposable
         ActiveDevice = null;
         Identity = null;
         Changed?.Invoke();
+    }
+
+    private bool TryUseCompatibilityKeyboard(ScrcpyProcess scrcpy)
+    {
+        if (scrcpy.KeyboardMode != ScrcpyArguments.FullKeyboardMode ||
+            !ScrcpyArguments.IsUhidPermissionFailure(scrcpy.RecentStderr))
+        {
+            return false;
+        }
+
+        // Remembered per phone: the refusal never changes, and each retry costs a failed launch.
+        _host.State.SetCompatibilityKeyboard(scrcpy.Serial, true);
+        _host.Log.Warn($"UHID keyboard is unavailable on {scrcpy.Serial}; retrying with SDK raw-key compatibility mode, and starting there from now on.");
+        return true;
+    }
+
+    /// <summary>
+    /// Plays a keyboard gesture through Android's own input tool, for when there is no picture to
+    /// touch: the window is in the tray, or Windows refused touch injection. The paths are the
+    /// same ones a finger would take over the mirror, scaled to the phone's screen.
+    /// </summary>
+    public async Task<AndroidResult> PlayGestureOverAdbAsync(string action, bool landscape)
+    {
+        var device = ActiveDevice ?? Devices.FirstOrDefault(d => d.IsReady);
+        if (device is null || Adb is null)
+        {
+            return AndroidResult.Failure("No phone is connected.");
+        }
+
+        var (width, height) = Identity is { DisplayWidth: > 0, DisplayHeight: > 0 } identity
+            ? (identity.DisplayWidth, identity.DisplayHeight)
+            : await Adb.GetDisplaySizeAsync(device.Serial).ConfigureAwait(true);
+        if (width <= 0 || height <= 0)
+        {
+            return AndroidResult.Failure("The phone did not report its screen size.");
+        }
+
+        // wm size is the natural orientation; Android's input tool wants the current one.
+        if (landscape != width > height)
+        {
+            (width, height) = (height, width);
+        }
+
+        var strokes = KeyboardTouch.Strokes(action, new RECT { Left = 0, Top = 0, Right = width, Bottom = height });
+        if (strokes.Count == 0)
+        {
+            return AndroidResult.Failure($"'{action}' is not a gesture.");
+        }
+
+        foreach (var stroke in strokes)
+        {
+            var first = stroke[0];
+            var last = stroke[^1];
+            var result = stroke.Count == 1
+                ? await Adb.TapAsync(device.Serial, first.X, first.Y).ConfigureAwait(true)
+                : await Adb.SwipeAsync(device.Serial, first.X, first.Y, last.X, last.Y, KeyboardTouch.AdbSwipeMilliseconds).ConfigureAwait(true);
+            if (!result.Ok)
+            {
+                return result;
+            }
+        }
+
+        return AndroidResult.Success(KeyboardTouch.Outcome(action));
     }
 
     private static string ScrcpyFailureText(ScrcpyProcess scrcpy)
@@ -458,7 +542,7 @@ public sealed class SessionController : IDisposable
         Changed?.Invoke();
     }
 
-    public async Task<AndroidResult> RunActionAsync(string id, Func<string, AndroidResult>? appActions = null)
+    public async Task<AndroidResult> RunActionAsync(string id, Func<string, Task<AndroidResult>>? appActions = null)
     {
         var action = MirrorActions.Find(id);
         if (action is null)
@@ -477,11 +561,13 @@ public sealed class SessionController : IDisposable
                 }
 
                 var command = MirrorActions.AdbCommand(action.Id)!.Value;
-                return command.Kind == "key"
-                    ? await Adb.KeyEventAsync(device.Serial, command.Argument).ConfigureAwait(true)
-                    : command.Kind == "rotation"
-                    ? await Adb.SetRotationOverrideAsync(device.Serial, command.Argument).ConfigureAwait(true)
-                    : await Adb.StatusBarAsync(device.Serial, command.Argument).ConfigureAwait(true);
+                return command.Kind switch
+                {
+                    "key" => await Adb.KeyEventAsync(device.Serial, command.Argument).ConfigureAwait(true),
+                    "rotation" => await Adb.SetRotationOverrideAsync(device.Serial, command.Argument).ConfigureAwait(true),
+                    "activity" => await Adb.StartActivityAsync(device.Serial, command.Argument).ConfigureAwait(true),
+                    _ => await Adb.StatusBarAsync(device.Serial, command.Argument).ConfigureAwait(true),
+                };
             }
 
             case ActionKind.Scrcpy:
@@ -499,7 +585,9 @@ public sealed class SessionController : IDisposable
             }
 
             default:
-                return appActions?.Invoke(action.Id) ?? AndroidResult.Failure($"'{action.Label}' is only available in the app.");
+                return appActions is null
+                    ? AndroidResult.Failure($"'{action.Label}' is only available in the app.")
+                    : await appActions(action.Id).ConfigureAwait(true);
         }
     }
 

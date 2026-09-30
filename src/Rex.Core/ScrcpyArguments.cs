@@ -10,6 +10,19 @@ namespace Rex.Core;
 /// </summary>
 public static partial class ScrcpyArguments
 {
+    public const string FullKeyboardMode = "uhid";
+    public const string CompatibilityKeyboardMode = "sdk";
+
+    /// <summary>
+    /// The keyboard a session starts with: the hardware one unless the settings or this phone's
+    /// history say otherwise. The history wins because a UHID refusal costs a failed launch every
+    /// time, and it never changes for a given phone.
+    /// </summary>
+    public static string KeyboardModeFor(RexConfig config, DeviceProfile? profile) =>
+        config.Mirror.CompatibilityKeyboard || profile?.CompatibilityKeyboard == true
+            ? CompatibilityKeyboardMode
+            : FullKeyboardMode;
+
     public static IReadOnlyList<string> LaunchSettings(RexConfig config, bool isTcp) =>
         Build(config, "", isTcp, "", null,
             config.Mirror.RecordOnStart ? config.Mirror.RecordDirectory : null);
@@ -19,15 +32,6 @@ public static partial class ScrcpyArguments
     /// modifiers, so use the rarely pressed Right Ctrl key and send that same key from the app.
     /// </summary>
     public const string ShortcutModifier = "rctrl";
-
-    private static readonly string[] FixedFlags =
-    [
-        "--window-borderless",
-        "--no-window-aspect-ratio-lock",
-        "--mouse=sdk",
-        "--keyboard=sdk",
-        "--shortcut-mod=" + ShortcutModifier,
-    ];
 
     [GeneratedRegex(@"^\d+(K|M)?$", RegexOptions.IgnoreCase)]
     private static partial Regex BitRatePattern();
@@ -41,14 +45,32 @@ public static partial class ScrcpyArguments
         bool isTcp,
         string windowTitle,
         (int X, int Y, int Width, int Height)? window,
-        string? recordPath)
+        string? recordPath,
+        string? keyboardMode = null)
     {
+        keyboardMode ??= KeyboardModeFor(config, null);
+        if (keyboardMode is not (FullKeyboardMode or CompatibilityKeyboardMode))
+        {
+            throw new ArgumentException("Keyboard mode must be uhid or sdk.", nameof(keyboardMode));
+        }
+
         var args = new List<string>
         {
             "--serial=" + serial,
             "--window-title=" + windowTitle,
+            "--window-borderless",
+            "--no-window-aspect-ratio-lock",
+            "--mouse=sdk",
+            "--keyboard=" + keyboardMode,
+            "--shortcut-mod=" + ShortcutModifier,
         };
-        args.AddRange(FixedFlags);
+        if (keyboardMode == CompatibilityKeyboardMode)
+        {
+            // The embedded SDL window cannot become a top-level foreground window. In SDK mode,
+            // SDL consequently drops text events (the path scrcpy normally uses for digits and
+            // punctuation). Raw key events take the same working path as letters.
+            args.Add("--raw-key-events");
+        }
 
         if (window is { } w)
         {
@@ -122,6 +144,24 @@ public static partial class ScrcpyArguments
 
         args.AddRange(SplitExtraArgs(mirror.ExtraArgs));
         return args;
+    }
+
+    /// <summary>
+    /// UHID is the only scrcpy keyboard mode with complete layout-aware typing, but a few old
+    /// Android builds deny access to /dev/uhid. Recognize that narrow failure so the session may
+    /// retry once with SDK raw-key compatibility without hiding unrelated startup failures.
+    /// </summary>
+    public static bool IsUhidPermissionFailure(IEnumerable<string> stderr)
+    {
+        var text = string.Join('\n', stderr);
+        var mentionsUhid = text.Contains("UhidManager", StringComparison.OrdinalIgnoreCase) ||
+                           text.Contains("UHID", StringComparison.OrdinalIgnoreCase) ||
+                           text.Contains("/dev/uhid", StringComparison.OrdinalIgnoreCase);
+        var denied = text.Contains("EACCES", StringComparison.OrdinalIgnoreCase) ||
+                     text.Contains("Permission denied", StringComparison.OrdinalIgnoreCase) ||
+                     text.Contains("Failed to enable", StringComparison.OrdinalIgnoreCase) ||
+                     text.Contains("not permitted", StringComparison.OrdinalIgnoreCase);
+        return mentionsUhid && denied;
     }
 
     /// <summary>
