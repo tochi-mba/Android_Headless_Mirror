@@ -55,14 +55,26 @@ public sealed record PhoneSetting
     public string OnValue { get; init; } = "1";
     public string OffValue { get; init; } = "0";
 
+    /// <summary>What an empty text box shows before anything is typed into it, like "e.g. 1080x2400".</summary>
+    public string Hint { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Read out as a share of the slider's range instead of the number Android stores: brightness is
+    /// written as 1-255, and nobody thinks of a screen as 128 bright.
+    /// </summary>
+    public bool ShowsPercent { get; init; }
+
     /// <summary>Overrides the namespace-based risk for keys that deserve a warning of their own.</summary>
     public string? RiskOverride { get; init; }
 
     /// <summary>Settings with their own writer are always offered; provider keys appear only when the phone has them.</summary>
     public bool AlwaysAvailable => Source != PhoneSettingSource.SettingsProvider;
 
-    /// <summary>Deleting the key makes Android fall back to its own default.</summary>
-    public bool CanReset => Source == PhoneSettingSource.SettingsProvider;
+    /// <summary>
+    /// Whether the phone's own default can be put back: a provider key is deleted, and a display size
+    /// or density override is reset, which is what <c>wm size reset</c> is for.
+    /// </summary>
+    public bool CanReset => Source is PhoneSettingSource.SettingsProvider or PhoneSettingSource.DisplaySize or PhoneSettingSource.DisplayDensity;
 
     public string Risk => RiskOverride ?? AndroidSettings.Risk(Namespace, Key);
 
@@ -77,11 +89,38 @@ public sealed record PhoneSetting
         return Kind switch
         {
             PhoneSettingKind.Toggle => value == OnValue ? "On" : value == OffValue ? "Off" : value,
-            PhoneSettingKind.Choice => Choices.FirstOrDefault(c => c.Value == value)?.Label ?? value,
-            PhoneSettingKind.Slider => Unit.Length > 0 ? value + " " + Unit : value,
+            PhoneSettingKind.Choice => ChoiceLabel(value),
+            PhoneSettingKind.Slider => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? Readout(number) : value,
             _ => value,
         };
     }
+
+    /// <summary>
+    /// The label of a stored choice. A value the catalogue does not list is still shown, but as
+    /// what it is, so a raw "3" is never mistaken for one of the choices.
+    /// </summary>
+    public string ChoiceLabel(string value) => Choices.FirstOrDefault(c => c.Value == value)?.Label ?? $"Other ({value})";
+
+    /// <summary>What a slider's readout says for a position: a percentage, or the number and its unit.</summary>
+    public string Readout(double number)
+    {
+        if (ShowsPercent)
+        {
+            var share = Maximum > Minimum ? (Math.Clamp(number, Minimum, Maximum) - Minimum) / (Maximum - Minimum) : 0;
+            return (Math.Round(share * 100)).ToString("0", CultureInfo.InvariantCulture) + "%";
+        }
+
+        var text = SliderValue(number);
+        return Unit.Length > 0 ? text + " " + Unit : text;
+    }
+
+    /// <summary>The value a slider position writes, which stays the number Android stores.</summary>
+    public string SliderValue(double number) => Step >= 1
+        ? ((long)Math.Round(number)).ToString(CultureInfo.InvariantCulture)
+        : number.ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>The line under a display size or density box: what the screen itself is.</summary>
+    public static string NativeLabel(string native) => string.IsNullOrWhiteSpace(native) ? string.Empty : "Native: " + native.Trim();
 }
 
 /// <summary>
@@ -118,7 +157,7 @@ public static class PhoneSettings
             Id = "brightness", Group = GroupDisplay, Label = "Brightness",
             Description = "Screen brightness while automatic brightness is off.",
             Kind = PhoneSettingKind.Slider, Namespace = "system", Key = "screen_brightness",
-            Minimum = 1, Maximum = 255, Step = 1,
+            Minimum = 1, Maximum = 255, Step = 1, ShowsPercent = true,
         },
         new()
         {
@@ -169,14 +208,16 @@ public static class PhoneSettings
         new()
         {
             Id = "display-size", Group = GroupDisplay, Label = "Display size",
-            Description = "Resolution Android renders at, like 1080x2400. Use reset for the panel's own size.",
+            Description = "The resolution Android draws at. Leave it empty for the screen's own; Reset puts that back.",
             Kind = PhoneSettingKind.Text, Source = PhoneSettingSource.DisplaySize, RiskOverride = AndroidSettings.RiskAdvanced,
+            Hint = "e.g. 1080x2400",
         },
         new()
         {
             Id = "display-density", Group = GroupDisplay, Label = "Display density",
-            Description = "Dots per inch Android draws with; higher makes everything smaller. Use reset for the default.",
+            Description = "Dots per inch Android draws with; a higher number makes everything larger. Reset puts the phone's own back.",
             Kind = PhoneSettingKind.Text, Source = PhoneSettingSource.DisplayDensity, RiskOverride = AndroidSettings.RiskAdvanced,
+            Hint = "e.g. 420",
         },
         new()
         {
@@ -324,6 +365,7 @@ public static class PhoneSettings
             Id = "lock-screen-owner-info", Group = GroupNotifications, Label = "Lock screen message",
             Description = "Text shown on the lock screen.",
             Kind = PhoneSettingKind.Text, Namespace = "secure", Key = "lock_screen_owner_info",
+            Hint = "No message",
         },
 
         // ----- Input & gestures -----
@@ -593,6 +635,30 @@ public static class PhoneSettings
         _ => AndroidResult.Success(value),
     };
 
+    /// <summary>
+    /// The value for the phone's UI from what its settings provider stores. Dark mode is read with
+    /// <c>cmd uimode night</c>, which names it; when that says nothing, the stored ui_night_mode is a
+    /// number (UiModeManager: 0 automatic, 1 off, 2 on), which none of the choices would match.
+    /// </summary>
+    public static string StoredValue(PhoneSetting setting, string stored) => setting.Source switch
+    {
+        PhoneSettingSource.DarkMode => stored.Trim() switch
+        {
+            "0" => "auto",
+            "1" => "no",
+            "2" => "yes",
+            var other => other,
+        },
+        _ => stored,
+    };
+
+    /// <summary>The ADB shell command that puts back the phone's own display size or density.</summary>
+    public static IReadOnlyList<string> ResetCommand(PhoneSetting setting) => setting.Source switch
+    {
+        PhoneSettingSource.DisplaySize or PhoneSettingSource.DisplayDensity => WriteCommand(setting, "reset"),
+        _ => ["settings", "delete", setting.Namespace, setting.Key],
+    };
+
     /// <summary>The ADB shell command that writes a validated value.</summary>
     public static IReadOnlyList<string> WriteCommand(PhoneSetting setting, string value) => setting.Source switch
     {
@@ -620,27 +686,34 @@ public static class PhoneSettings
         ("display-density", ["sh", "-c", "wm density | tr '\\n' ' '"]),
     ];
 
-    /// <summary>Turns a probe's output into the value the UI shows.</summary>
+    /// <summary>
+    /// Turns a probe's output into the value the UI shows. For display size and density that is
+    /// the override, if there is one: without it the phone draws at its native size, which
+    /// <see cref="ParseNative"/> reads, and an empty value is what offers no reset.
+    /// </summary>
     public static string ParseProbe(string id, string output)
     {
         var text = output.Trim();
         return id switch
         {
-            // "Night mode: yes"
-            "dark-mode" => text.Contains("yes", StringComparison.OrdinalIgnoreCase) ? "yes"
-                : text.Contains("auto", StringComparison.OrdinalIgnoreCase) ? "auto"
-                : text.Contains("no", StringComparison.OrdinalIgnoreCase) ? "no" : string.Empty,
+            // "Night mode: yes". Only the word after the colon counts: "Unknown command" contains "no".
+            "dark-mode" => System.Text.RegularExpressions.Regex.Match(text, @"Night mode:\s*(\w+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase) is { Success: true } night
+                ? night.Groups[1].Value.ToLowerInvariant()
+                : string.Empty,
             // "Physical size: 1440x3200 Override size: 1080x2400"
-            "display-size" or "display-density" => LastValue(text),
+            "display-size" or "display-density" => Labelled(text, "Override"),
             _ => text,
         };
     }
 
-    private static string LastValue(string text)
-    {
-        var parts = text.Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length == 0 ? string.Empty : parts[^1];
-    }
+    /// <summary>The screen's own size or density from the same probe: its "Physical" line.</summary>
+    public static string ParseNative(string id, string output) =>
+        id is "display-size" or "display-density" ? Labelled(output, "Physical") : string.Empty;
+
+    private static string Labelled(string text, string label) =>
+        System.Text.RegularExpressions.Regex.Match(text, label + @" (?:size|density):\s*(\S+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase) is { Success: true } match
+            ? match.Groups[1].Value
+            : string.Empty;
 }
 
 /// <summary>One catalogue entry with the value the phone currently has.</summary>
@@ -649,5 +722,8 @@ public sealed record PhoneSettingValue(PhoneSetting Setting, string Value)
     /// <summary>True when the key is missing, so Android is using its own default.</summary>
     public bool IsDefault => string.IsNullOrWhiteSpace(Value);
 
-    public string Display => Setting.Describe(Value);
+    /// <summary>For display size and density, what the screen itself is, like 1440x3200.</summary>
+    public string Native { get; init; } = string.Empty;
+
+    public string Display => IsDefault && Native.Length > 0 ? $"default ({Native})" : Setting.Describe(Value);
 }

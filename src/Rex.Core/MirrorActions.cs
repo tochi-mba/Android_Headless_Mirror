@@ -12,6 +12,10 @@ public enum ActionKind
     App,
 }
 
+/// <param name="Detail">
+/// What the action does, in the words a person would use. Key codes stay in <see cref="MirrorActions.AdbCommand"/>
+/// and shortcuts in <see cref="Shortcuts"/>; tooltips add the shortcut from there.
+/// </param>
 public sealed record MirrorAction(string Id, string Label, ActionKind Kind, string Detail);
 
 /// <summary>The one list of user-facing actions, shared by the sidebar, the tray, the CLI and machine mode.</summary>
@@ -19,24 +23,24 @@ public static class MirrorActions
 {
     public static readonly IReadOnlyList<MirrorAction> All =
     [
-        new("home", "Home", ActionKind.Adb, "KEYCODE_HOME"),
-        new("back", "Back", ActionKind.Adb, "KEYCODE_BACK"),
-        new("recents", "Recents", ActionKind.Adb, "KEYCODE_APP_SWITCH"),
-        new("power", "Power", ActionKind.Adb, "KEYCODE_POWER"),
-        new("wake", "Wake", ActionKind.Adb, "KEYCODE_WAKEUP"),
+        new("home", "Home", ActionKind.Adb, "Go to the home screen"),
+        new("back", "Back", ActionKind.Adb, "Go back"),
+        new("recents", "Recents", ActionKind.Adb, "Show recent apps"),
+        new("power", "Power", ActionKind.Adb, "Press the power button"),
+        new("wake", "Wake", ActionKind.Adb, "Turn the screen on"),
         new("sleep", "Screen off", ActionKind.Scrcpy, "Turn the phone screen off while the mirror keeps running"),
-        new("volume-up", "Volume up", ActionKind.Adb, "KEYCODE_VOLUME_UP"),
-        new("volume-down", "Volume down", ActionKind.Adb, "KEYCODE_VOLUME_DOWN"),
-        new("mute", "Mute", ActionKind.Adb, "KEYCODE_VOLUME_MUTE"),
-        new("notifications", "Notifications", ActionKind.Adb, "Expand the notification shade"),
-        new("quick-settings", "Quick settings", ActionKind.Adb, "Expand quick settings"),
-        new("collapse", "Collapse", ActionKind.Adb, "Collapse the shade"),
-        new("rotate-device", "Rotate", ActionKind.Scrcpy, "Ask Android to rotate the display"),
-        new("rotation-portrait", "Portrait", ActionKind.Adb, "Lock Android to portrait · Ctrl+Alt+U"),
-        new("rotation-landscape", "Landscape", ActionKind.Adb, "Lock Android to landscape · Ctrl+Alt+L"),
-        new("rotation-auto", "Auto rotate", ActionKind.Adb, "Restore Android sensor rotation · Ctrl+Alt+A"),
-        new("rotate-left", "Turn left", ActionKind.Scrcpy, "Rotate the mirror image 90° counter-clockwise"),
-        new("rotate-right", "Turn right", ActionKind.Scrcpy, "Rotate the mirror image 90° clockwise"),
+        new("volume-up", "Volume up", ActionKind.Adb, "Raise the volume"),
+        new("volume-down", "Volume down", ActionKind.Adb, "Lower the volume"),
+        new("mute", "Mute", ActionKind.Adb, "Mute or unmute"),
+        new("notifications", "Notifications", ActionKind.Adb, "Pull down the notifications"),
+        new("quick-settings", "Quick settings", ActionKind.Adb, "Pull down quick settings"),
+        new("collapse", "Collapse", ActionKind.Adb, "Close the notifications and quick settings"),
+        new("rotate-device", "Rotate the phone", ActionKind.Scrcpy, "Ask Android to turn the screen a quarter turn"),
+        new("rotation-portrait", "Portrait", ActionKind.Adb, "Lock the phone to portrait"),
+        new("rotation-landscape", "Landscape", ActionKind.Adb, "Lock the phone to landscape"),
+        new("rotation-auto", "Auto rotate", ActionKind.Adb, "Let the phone rotate by itself"),
+        new("rotate-left", "Turn view left", ActionKind.Scrcpy, "Turn the picture on this PC 90° counter-clockwise; the phone stays as it is"),
+        new("rotate-right", "Turn view right", ActionKind.Scrcpy, "Turn the picture on this PC 90° clockwise; the phone stays as it is"),
         new("pause", "Pause", ActionKind.Scrcpy, "Freeze the mirror image"),
         new("resume", "Resume", ActionKind.Scrcpy, "Resume the mirror image"),
         new("reset-capture", "Recapture", ActionKind.Scrcpy, "Restart video capture if the image is stuck"),
@@ -57,7 +61,7 @@ public static class MirrorActions
         new("zoom-in", "Zoom in", ActionKind.App, "Magnify the PC view"),
         new("zoom-out", "Zoom out", ActionKind.App, "Shrink the PC view"),
         new("zoom-reset", "Reset zoom", ActionKind.App, "Back to 100%"),
-        new("fullscreen", "Fullscreen", ActionKind.App, "Toggle fullscreen (F11)"),
+        new("fullscreen", "Fullscreen", ActionKind.App, "Fill the display, or go back to the window"),
     ];
 
     public static MirrorAction? Find(string id) =>

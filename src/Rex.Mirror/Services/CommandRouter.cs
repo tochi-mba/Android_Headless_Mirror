@@ -77,6 +77,7 @@ public static class CommandRouter
                 var result = await session.RunActionAsync(id, appId => window is null
                     ? Task.FromResult(AndroidResult.Failure("The window is not available."))
                     : window.ApplyAppActionAsync(appId)).ConfigureAwait(true);
+                window?.NoteAction(id, result.Ok);
                 return result.Ok ? IpcResponse.Success(new JsonObject { ["action"] = id, ["text"] = result.Text }) : IpcResponse.Fail(result.Text);
             }
 
@@ -98,6 +99,7 @@ public static class CommandRouter
             ["mirroring"] = session.IsMirroring,
             ["visibleDevices"] = session.Devices.Count,
             ["restartRequired"] = session.NeedsRestart,
+            ["paused"] = host.Window?.MirrorPaused ?? false,
             ["sidebarScrollOffset"] = host.Window?.SidebarScrollOffset ?? 0,
             ["ambientFrame"] = host.Window?.AmbientFrameAvailable ?? false,
             ["sidebarTab"] = host.Window?.SidebarTab,

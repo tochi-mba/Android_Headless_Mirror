@@ -158,13 +158,13 @@ public sealed class FullscreenHud : Border
 
     private Button Create(MirrorAction action)
     {
-        var icon = HudIcons.For(action.Id);
+        var icon = Views.ActionIcons.For(action.Id);
         var button = new Button
         {
             Style = (Style)FindResource("GhostButton"),
             Focusable = false,
             Margin = new Thickness(2),
-            ToolTip = action.Label + " · " + action.Detail,
+            ToolTip = Shortcuts.Tip(action.Label + " · " + action.Detail, action.Id),
             MinHeight = 36,
         };
 
@@ -251,46 +251,4 @@ public sealed class FullscreenHud : Border
         IsHitTestVisible = show;
         BeginAnimation(OpacityProperty, new DoubleAnimation(show ? 1 : 0, TimeSpan.FromMilliseconds(160)));
     }
-}
-
-/// <summary>The icon each action shows in the HUD; actions without one use their label.</summary>
-public static class HudIcons
-{
-    private static readonly Dictionary<string, string> Icons = new(StringComparer.Ordinal)
-    {
-        ["home"] = "IconHome",
-        ["back"] = "IconBack",
-        ["recents"] = "IconRecents",
-        ["power"] = "IconPower",
-        ["wake"] = "IconSun",
-        ["sleep"] = "IconMoon",
-        ["volume-up"] = "IconVolumeUp",
-        ["volume-down"] = "IconVolumeDown",
-        ["mute"] = "IconVolumeDown",
-        ["notifications"] = "IconBell",
-        ["quick-settings"] = "IconSliders",
-        ["rotate-device"] = "IconRotate",
-        ["rotate-left"] = "IconRotate",
-        ["rotate-right"] = "IconRotate",
-        ["pause"] = "IconPause",
-        ["resume"] = "IconPlay",
-        ["reset-capture"] = "IconRefresh",
-        ["copy"] = "IconClipboard",
-        ["cut"] = "IconClipboard",
-        ["paste"] = "IconClipboard",
-        ["paste-text"] = "IconKeyboard",
-        ["screenshot"] = "IconCamera",
-        ["fullscreen"] = "IconFullscreen",
-        ["zoom-out"] = "IconZoomOut",
-        ["swipe-up"] = "IconArrowUp",
-        ["swipe-down"] = "IconArrowDown",
-        ["swipe-left"] = "IconArrowLeft",
-        ["swipe-right"] = "IconArrowRight",
-        ["tap"] = "IconTap",
-        ["like"] = "IconHeart",
-        ["browse"] = "IconKeyboard",
-        ["keyboard-layout"] = "IconKeyboard",
-    };
-
-    public static string? For(string actionId) => Icons.GetValueOrDefault(actionId);
 }

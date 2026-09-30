@@ -9,7 +9,7 @@ namespace Rex.Tests;
 /// against the fake phone: tabs, toggles, sliders, combos, buttons, the close button, Alt+wheel.
 /// </summary>
 [Collection("desktop")]
-public sealed class AppUiTests
+public sealed partial class AppUiTests
 {
     private static readonly TimeSpan Startup = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan Soon = TimeSpan.FromSeconds(8);

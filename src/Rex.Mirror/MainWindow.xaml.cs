@@ -379,6 +379,8 @@ public partial class MainWindow : Window
 
         Host.SetShown(true);
         Host.Attach(scrcpy.Hwnd, scrcpy.ThreadId, (uint)scrcpy.ProcessId);
+        // A new mirror shows a live picture, whatever the last one was left at.
+        SetPaused(false);
 
         // scrcpy says what shape the video is every time it changes. Its own window resize is the
         // other signal, but it is sent once and can be lost to a layout pass that lands first,
@@ -432,6 +434,7 @@ public partial class MainWindow : Window
         _overlay.Track(default, visible: false);
         // Browse mode is about the picture that just went away; the next session starts typing.
         _browse = false;
+        SetPaused(false);
         OnSessionChanged();
     }
 
@@ -641,6 +644,7 @@ public partial class MainWindow : Window
     public async Task RunActionAsync(string id)
     {
         var result = await _host.Session.RunActionAsync(id, ApplyAppActionAsync);
+        NoteAction(id, result.Ok);
         SetStatus(result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? MirrorActions.Find(id)?.Label ?? id : result.Text) : result.Text, !result.Ok);
         if (Host.HasChild)
         {

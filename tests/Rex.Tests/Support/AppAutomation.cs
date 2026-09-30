@@ -28,6 +28,30 @@ public sealed class AppAutomation(IntPtr window)
     public bool Exists(string automationId) =>
         Bounded(() => FindBy(AutomationElement.AutomationIdProperty, automationId), $"look for '{automationId}'") is not null;
 
+    /// <summary>Reads one current property of an element: its name, whether it is enabled, its help text.</summary>
+    public T Read<T>(string automationId, Func<AutomationElement.AutomationElementInformation, T> read)
+    {
+        var element = Find(automationId);
+        return Bounded(() => read(element.Current), $"read '{automationId}'");
+    }
+
+    /// <summary>A piece of text in the window, as opposed to a control that carries the same words as its name.</summary>
+    public AutomationElement FindText(string text) =>
+        Wait(() => AutomationElement.FromHandle(window).FindFirst(TreeScope.Descendants, new AndCondition(
+            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text),
+            new PropertyCondition(AutomationElement.NameProperty, text))), $"the text '{text}'");
+
+    /// <summary>Whether a toggle (a switch, a toggle button) is on.</summary>
+    public bool IsOn(string automationId) =>
+        Bounded(() => Pattern<TogglePattern>(Find(automationId), TogglePattern.Pattern, automationId).Current.ToggleState, $"read '{automationId}'") == ToggleState.On;
+
+    /// <summary>The middle of an element on screen, in the physical pixels the pointer moves in.</summary>
+    public (int X, int Y) Centre(AutomationElement element)
+    {
+        var bounds = Bounded(() => element.Current.BoundingRectangle, "read where an element is");
+        return ((int)(bounds.Left + bounds.Width / 2), (int)(bounds.Top + bounds.Height / 2));
+    }
+
     public void Invoke(string automationId) =>
         Act(automationId, e => Pattern<InvokePattern>(e, InvokePattern.Pattern, automationId).Invoke(), "invoke");
 

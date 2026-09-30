@@ -19,4 +19,6 @@
   <SolidColorBrush x:Key="Live" Color="{x:Static SystemColors.HotTrackColor}" />
   <SolidColorBrush x:Key="LiveWash" Color="{x:Static SystemColors.ControlColor}" />
   <SolidColorBrush x:Key="Hover" Color="{x:Static SystemColors.HighlightColor}" />
+  <SolidColorBrush x:Key="Field" Color="{x:Static SystemColors.WindowTextColor}" />
+  <SolidColorBrush x:Key="TrackHover" Color="{x:Static SystemColors.GrayTextColor}" />
 </ResourceDictionary>

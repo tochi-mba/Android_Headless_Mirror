@@ -135,14 +135,18 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
-          <UniformGrid x:Name="SidebarTabs" Rows="1" Margin="8,8,8,4">
+          <!-- The tabs line up with the content below: 16 DIP in from the left, and clear of the
+               scroll bar on the right, which is always there so the edge never moves. -->
+          <UniformGrid x:Name="SidebarTabs" Rows="1" Margin="14,8,22,4">
             <RadioButton x:Name="TabControls" Style="{StaticResource SidebarTab}" Content="Controls" Tag="{StaticResource IconSliders}" IsChecked="True" Checked="OnTabChecked" />
             <RadioButton x:Name="TabPhone" Style="{StaticResource SidebarTab}" Content="Phone" Tag="{StaticResource IconPhone}" Checked="OnTabChecked" />
             <RadioButton x:Name="TabSettings" Style="{StaticResource SidebarTab}" Content="Settings" Tag="{StaticResource IconSettings}" Checked="OnTabChecked" />
             <RadioButton x:Name="TabInfo" Style="{StaticResource SidebarTab}" Content="Info" Tag="{StaticResource IconInfo}" Checked="OnTabChecked" />
           </UniformGrid>
-          <ScrollViewer x:Name="SidebarScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,4,16,16">
-            <Grid>
+          <!-- Half the 16 DIP gutter is padding and half is margin inside the scrolled area, so a focus
+               ring may reach past the content's edge without being clipped. -->
+          <ScrollViewer x:Name="SidebarScroll" Grid.Row="1" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,16">
+            <Grid Margin="8,0">
               <views:ControlsPanel x:Name="ControlsPanel" />
               <views:PhonePanel x:Name="PhonePanel" Visibility="Collapsed" />
               <views:SettingsPanel x:Name="SettingsPanel" Visibility="Collapsed" />
