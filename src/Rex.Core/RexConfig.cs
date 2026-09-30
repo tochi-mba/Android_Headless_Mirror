@@ -17,6 +17,7 @@ public sealed record RexConfig
     public SessionSettings Session { get; set; } = new();
     public WirelessSettings Wireless { get; set; } = new();
     public TouchpadSettings Touchpad { get; set; } = new();
+    public InputSettings Input { get; set; } = new();
     public ZoomSettings Zoom { get; set; } = new();
     public CopiesSettings Copies { get; set; } = new();
     public AmbientSettings Ambient { get; set; } = new();
@@ -33,6 +34,7 @@ public sealed record RexConfig
         Session.Normalize();
         Wireless.Normalize();
         Touchpad.Normalize();
+        Input.Normalize();
         Zoom.Normalize();
         Copies.Normalize();
         Ambient.Normalize();
@@ -48,6 +50,7 @@ public sealed record RexConfig
         Session = Session.Copy(),
         Wireless = Wireless.Copy(),
         Touchpad = Touchpad.Copy(),
+        Input = Input.Copy(),
         Zoom = Zoom.Copy(),
         Copies = Copies.Copy(),
         Ambient = Ambient.Copy(),
@@ -61,10 +64,33 @@ public sealed record RexConfig
 /// <summary>Video, audio and recording options passed to scrcpy at launch.</summary>
 public sealed record MirrorSettings
 {
+    /// <summary>The value if it is one of the choices (compared without case), else the fallback.</summary>
+    internal static string OneOf(IReadOnlyList<string> choices, string? value, string fallback)
+    {
+        var text = value?.Trim() ?? string.Empty;
+        return choices.FirstOrDefault(choice => string.Equals(choice, text, StringComparison.OrdinalIgnoreCase)) ?? fallback;
+    }
+
     public const int MaxSizeUpperBound = 8192;
     public const int FpsUpperBound = 240;
     public static readonly string[] VideoCodecs = ["h264", "h265", "av1"];
     public static readonly string[] AudioCodecs = ["opus", "aac", "flac", "raw"];
+    public const int VideoBufferUpperBound = 1000;
+
+    /// <summary>What scrcpy may capture as audio (--audio-source); "auto" is scrcpy's own choice.</summary>
+    public static readonly string[] AudioSources =
+    [
+        "auto", "output", "playback", "mic", "mic-unprocessed", "mic-camcorder", "mic-voice-recognition",
+        "mic-voice-communication", "voice-call", "voice-call-uplink", "voice-call-downlink", "voice-performance",
+    ];
+
+    public const string DefaultAudioBitRate = "128K";
+
+    /// <summary>Renderers SDL can be asked for (--render-driver); empty lets it choose.</summary>
+    public static readonly string[] RenderDrivers = ["", "direct3d", "opengl", "opengles2", "software"];
+
+    /// <summary>Containers a recording can be written in; scrcpy picks the format from the file's extension.</summary>
+    public static readonly string[] RecordFormats = ["mp4", "mkv"];
 
     /// <summary>Longest side of the encoded video in pixels. 0 keeps the device resolution.</summary>
     public int MaxSize { get; set; } = 1920;
@@ -82,6 +108,31 @@ public sealed record MirrorSettings
 
     /// <summary>Keep playing audio on the phone too (Android 13+).</summary>
     public bool AudioDup { get; set; }
+
+    /// <summary>
+    /// What is captured as audio: "auto" (everything the phone plays, or the playback when it keeps
+    /// playing on the phone too), the whole output, the playback apps allow, a microphone, or a call.
+    /// </summary>
+    public string AudioSource { get; set; } = "auto";
+
+    /// <summary>scrcpy bit-rate expression for the audio, for example 128K.</summary>
+    public string AudioBitRate { get; set; } = DefaultAudioBitRate;
+
+    /// <summary>Delay before each frame is shown, in milliseconds, to even out a shaky connection. 0 shows frames at once.</summary>
+    public int VideoBufferMs { get; set; }
+
+    /// <summary>When the phone's encoder fails, let scrcpy try again at a lower resolution rather than stop.</summary>
+    public bool DownsizeOnError { get; set; } = true;
+
+    /// <summary>The renderer scrcpy asks SDL for; empty lets SDL choose.</summary>
+    public string RenderDriver { get; set; } = string.Empty;
+
+    /// <summary>The container recordings are written in: mp4 or mkv (which survives a recording cut short).</summary>
+    public string RecordFormat { get; set; } = "mp4";
+
+    /// <summary>Whether the audio source allows the audio to keep playing on the phone (scrcpy only duplicates the playback).</summary>
+    [JsonIgnore]
+    public bool AudioDupPossible => AudioSource is "auto" or "playback";
 
     /// <summary>Record every session to <see cref="RecordDirectory"/>.</summary>
     public bool RecordOnStart { get; set; }
@@ -108,6 +159,11 @@ public sealed record MirrorSettings
         VideoCodec = VideoCodecs.Contains(VideoCodec, StringComparer.OrdinalIgnoreCase) ? VideoCodec.ToLowerInvariant() : "h264";
         AudioCodec = AudioCodecs.Contains(AudioCodec, StringComparer.OrdinalIgnoreCase) ? AudioCodec.ToLowerInvariant() : "opus";
         AudioBufferMs = Math.Clamp(AudioBufferMs, 0, 5000);
+        AudioSource = OneOf(AudioSources, AudioSource, "auto");
+        AudioBitRate = ScrcpyArguments.IsValidBitRate(AudioBitRate) ? AudioBitRate.Trim().ToUpperInvariant() : DefaultAudioBitRate;
+        VideoBufferMs = Math.Clamp(VideoBufferMs, 0, VideoBufferUpperBound);
+        RenderDriver = OneOf(RenderDrivers, RenderDriver, string.Empty);
+        RecordFormat = OneOf(RecordFormats, RecordFormat, "mp4");
         RecordDirectory = PathRules.IsSafeRelativePath(RecordDirectory) ? RecordDirectory.Trim() : "captures/recordings";
         ExtraArgs = (ExtraArgs ?? string.Empty).Trim();
         if (ExtraArgs.Length > 4096 || ExtraArgs.IndexOfAny(['\r', '\n', '\0']) >= 0)
@@ -131,6 +187,9 @@ public sealed record MirrorSettings
 /// <summary>How a mirror session behaves on the phone and what happens when it ends.</summary>
 public sealed record SessionSettings
 {
+    public const int ScreenOffTimeoutUpperBound = 86_400;
+    public const int StartAppMaxLength = 200;
+
     /// <summary>Turn the physical display off while mirroring (scrcpy --turn-screen-off).</summary>
     public bool TurnScreenOff { get; set; } = true;
 
@@ -152,6 +211,22 @@ public sealed record SessionSettings
     /// <summary>Relaunch scrcpy after an unexpected exit while the device stays connected.</summary>
     public bool RestartOnUnexpectedExit { get; set; } = true;
 
+    /// <summary>
+    /// How long the phone waits before turning its screen off while it is mirrored, in seconds
+    /// (scrcpy --screen-off-timeout, which puts the phone's own back when the mirror ends). 0 leaves
+    /// the phone's setting alone.
+    /// </summary>
+    public int ScreenOffTimeoutSeconds { get; set; }
+
+    /// <summary>Keep this PC from sleeping or starting its screen saver while it shows the phone (scrcpy --disable-screensaver).</summary>
+    public bool KeepPcAwake { get; set; }
+
+    /// <summary>
+    /// An app to open on the phone when the mirror starts (scrcpy --start-app): its package name,
+    /// "?name" to find it by the start of its name, and a leading "+" to restart it. Empty opens nothing.
+    /// </summary>
+    public string StartApp { get; set; } = string.Empty;
+
     /// <summary>Prefer a USB device over a wireless one when both are ready.</summary>
     public bool PreferUsb { get; set; } = true;
 
@@ -163,9 +238,27 @@ public sealed record SessionSettings
 
     public SessionSettings Copy() => this with { };
 
+    /// <summary>
+    /// Whether a start-app value is one scrcpy can use: a name of printable characters that is not
+    /// itself an option (it is passed as one argument, never through a shell).
+    /// </summary>
+    public static bool IsValidStartApp(string? value)
+    {
+        var text = value?.Trim() ?? string.Empty;
+        if (text.Length is 0 or > StartAppMaxLength || text.StartsWith('-') || text.Any(char.IsControl))
+        {
+            return false;
+        }
+
+        // What remains once the prefixes are taken off must still name something.
+        return text.TrimStart('+').TrimStart('?').Trim().Length > 0;
+    }
+
     public void Normalize()
     {
         PreferredSerial = (PreferredSerial ?? string.Empty).Trim();
+        ScreenOffTimeoutSeconds = ScreenOffTimeoutSeconds <= 0 ? 0 : Math.Clamp(ScreenOffTimeoutSeconds, 5, ScreenOffTimeoutUpperBound);
+        StartApp = IsValidStartApp(StartApp) ? StartApp.Trim() : string.Empty;
         PollSeconds = Math.Clamp(PollSeconds, 1, 30);
         RetrySeconds = Math.Clamp(RetrySeconds, 1, 60);
     }
@@ -193,6 +286,84 @@ public sealed record WirelessSettings
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+}
+
+/// <summary>
+/// How the mouse buttons, the keyboard, the clipboard and game controllers reach the phone. Every
+/// one is a scrcpy option at launch, and applies to every copy of the phone as well, except game
+/// controllers: each session would add a controller of its own to the phone.
+/// </summary>
+public sealed record InputSettings
+{
+    /// <summary>What a secondary mouse button can do, in the words config.json uses.</summary>
+    public static readonly string[] ButtonActions = ["click", "nothing", "back", "home", "recents", "notifications"];
+
+    public static readonly string[] GamepadModes = ["disabled", "uhid"];
+
+    /// <summary>What the right button does: back (scrcpy's own choice), home, recents, notifications, click (on the phone) or nothing.</summary>
+    public string RightClick { get; set; } = "back";
+
+    /// <summary>What the middle button (the wheel pressed) does.</summary>
+    public string MiddleClick { get; set; } = "home";
+
+    /// <summary>What the mouse's back button (the fourth) does.</summary>
+    public string BackButton { get; set; } = "recents";
+
+    /// <summary>What the mouse's forward button (the fifth) does.</summary>
+    public string ForwardButton { get; set; } = "notifications";
+
+    /// <summary>With Shift held, every button clicks on the phone instead, whatever it is set to do.</summary>
+    public bool ShiftClicks { get; set; } = true;
+
+    /// <summary>Send a held key again and again, as a keyboard does (off: --no-key-repeat, compatibility keyboard only).</summary>
+    public bool KeyRepeat { get; set; } = true;
+
+    /// <summary>Send mouse movement without a click, for apps that react to hovering (off: --no-mouse-hover).</summary>
+    public bool MouseHover { get; set; } = true;
+
+    /// <summary>Keep the PC and phone clipboards in step (off: --no-clipboard-autosync).</summary>
+    public bool ClipboardAutosync { get; set; } = true;
+
+    /// <summary>Paste by typing the text out, for phones that ignore a pasted clipboard (--legacy-paste).</summary>
+    public bool LegacyPaste { get; set; }
+
+    /// <summary>Game controllers on this PC: "disabled", or "uhid" to hand them to the phone as real controllers.</summary>
+    public string Gamepad { get; set; } = "disabled";
+
+    /// <summary>
+    /// The buttons as scrcpy's --mouse-bind: a letter per button (right, middle, back, forward),
+    /// then the same four with Shift held. scrcpy's own default is "bhsn:++++".
+    /// </summary>
+    [JsonIgnore]
+    public string MouseBind
+    {
+        get
+        {
+            var plain = string.Concat(new[] { RightClick, MiddleClick, BackButton, ForwardButton }.Select(Letter));
+            return ShiftClicks ? plain + ":++++" : plain;
+        }
+    }
+
+    public InputSettings Copy() => this with { };
+
+    public void Normalize()
+    {
+        RightClick = MirrorSettings.OneOf(ButtonActions, RightClick, "back");
+        MiddleClick = MirrorSettings.OneOf(ButtonActions, MiddleClick, "home");
+        BackButton = MirrorSettings.OneOf(ButtonActions, BackButton, "recents");
+        ForwardButton = MirrorSettings.OneOf(ButtonActions, ForwardButton, "notifications");
+        Gamepad = MirrorSettings.OneOf(GamepadModes, Gamepad, "disabled");
+    }
+
+    private static char Letter(string action) => action switch
+    {
+        "click" => '+',
+        "nothing" => '-',
+        "home" => 'h',
+        "recents" => 's',
+        "notifications" => 'n',
+        _ => 'b',
+    };
 }
 
 /// <summary>Windows Precision Touchpad bridging. Two fingers on the touchpad become two fingers on the phone.</summary>
