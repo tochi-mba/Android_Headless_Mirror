@@ -287,7 +287,7 @@ public sealed class UsbTests
         // An extra action is as bad as a changed one.
         var extra = XDocument.Parse(current);
         XNamespace ns = extra.Root!.Name.Namespace;
-        extra.Root.Element(ns + "Actions")!.Add(new XElement(ns + "Exec", new XElement(ns + "Command", @"C:\Users\x\evil.exe")));
+        extra.Root.Element(ns + "Actions")!.Add(new XElement(ns + "Exec", new XElement(ns + "Command", @"D:\Downloads\evil.exe")));
         Assert.False(UsbAutoRepairTask.IsCurrent(extra.ToString(), system));
 
         var scheduler = new MemoryScheduler { Xml = current.Replace("pnputil.exe", "cmd.exe", StringComparison.Ordinal) };

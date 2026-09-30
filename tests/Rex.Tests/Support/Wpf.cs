@@ -42,6 +42,15 @@ public static class Wpf
     /// <summary>Measures and arranges an element that is in no window, so its template exists and it has a size.</summary>
     public static T Layout<T>(T element, double width = 320, double height = double.PositiveInfinity) where T : FrameworkElement
     {
+        // WPF looks up an element's implicit style (the theme's TextBox, CheckBox, ScrollBar...)
+        // when the element is initialized, which a control made in code only is once it joins a
+        // tree or ends an initialisation of its own. Without this it would be measured bare.
+        if (!element.IsInitialized)
+        {
+            element.BeginInit();
+            element.EndInit();
+        }
+
         element.Measure(new Size(width, height));
         var size = element.DesiredSize;
         element.Arrange(new Rect(0, 0, width, double.IsInfinity(height) ? size.Height : height));
