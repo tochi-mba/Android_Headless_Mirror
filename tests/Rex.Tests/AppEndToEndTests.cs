@@ -164,19 +164,72 @@ public sealed class AppEndToEndTests
             StartupTimeout,
             "soft background");
         await app.FocusAsync();
-        using var lit = await app.CaptureWindowAsync();
+
+        // A frame being attached is not the same as one being on screen: the first copy can be
+        // taken before the fake phone has painted its picture (all black, which blurs to nothing),
+        // and the layered window that draws the background composes a beat after the app does,
+        // on the way in and on the way out. The picture is a blue-to-orange gradient, so the strip
+        // of mirror area left of the phone has colour in it exactly while the background is drawn;
+        // the app's own chrome there is grey and dark.
+        using var lit = await CaptureWhenAsync(app, bitmap => MarginColour(bitmap) > 0.5, "the soft background to be on screen");
 
         // Turning it off in the config file also exercises the live reload the settings panel uses.
         var config = ConfigFile.Load(package.Paths.Config);
         config.Ambient.Enabled = false;
         ConfigFile.Save(package.Paths.Config, config);
         await app.WaitForStatusAsync(s => !s["ambientVisible"]!.GetValue<bool>(), StartupTimeout, "soft background off");
-        using var dark = await app.CaptureWindowAsync();
+        using var dark = await CaptureWhenAsync(app, bitmap => MarginColour(bitmap) < 0.1, "the soft background to leave the screen");
 
         var painted = PaintedFraction(lit, dark);
         Assert.True(painted > 0.15,
             $"The soft background must fill the space around the phone; only {painted:P0} of the window changed when it was switched off.");
         await app.QuitAsync();
+    }
+
+    /// <summary>Captures the window once it looks the way a test is waiting for, or fails saying what it waited for.</summary>
+    private static async Task<System.Drawing.Bitmap> CaptureWhenAsync(AppProcess app, Func<System.Drawing.Bitmap, bool> ready, string description)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
+        while (true)
+        {
+            var bitmap = await app.CaptureWindowAsync();
+            if (ready(bitmap))
+            {
+                return bitmap;
+            }
+
+            var margin = MarginColour(bitmap);
+            bitmap.Dispose();
+            Assert.True(DateTime.UtcNow < deadline, $"Timed out waiting for {description}; {margin:P0} of the margin left of the phone has colour in it.");
+            await Task.Delay(250, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// How much of the strip left of the phone carries colour rather than the app's grey and black.
+    /// The phone sits in the middle of the mirror area with the side panel on the right, so the
+    /// left fifth of the window, away from the title and status bars, is soft background or nothing.
+    /// </summary>
+    private static double MarginColour(System.Drawing.Bitmap bitmap)
+    {
+        var colourful = 0;
+        var count = 0;
+        for (var y = bitmap.Height / 5; y < bitmap.Height * 4 / 5; y += 4)
+        {
+            for (var x = bitmap.Width / 20; x < bitmap.Width / 5; x += 4)
+            {
+                var pixel = bitmap.GetPixel(x, y);
+                var spread = Math.Max(pixel.R, Math.Max(pixel.G, pixel.B)) - Math.Min(pixel.R, Math.Min(pixel.G, pixel.B));
+                if (spread > 20)
+                {
+                    colourful++;
+                }
+
+                count++;
+            }
+        }
+
+        return count == 0 ? 0 : (double)colourful / count;
     }
 
     /// <summary>
