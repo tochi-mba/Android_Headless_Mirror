@@ -401,6 +401,23 @@
     </Setter>
   </Style>
 
+  <!-- A row whose choices are too long to share a line with their label: the label above, the
+       control below at full width, so neither is squeezed into a sliver. -->
+  <Style x:Key="SettingRowStacked" TargetType="HeaderedContentControl" BasedOn="{StaticResource SettingRow}">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="HeaderedContentControl">
+          <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,10">
+            <StackPanel>
+              <ContentPresenter ContentSource="Header" Margin="0,0,0,6" />
+              <ContentPresenter />
+            </StackPanel>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- Inputs -->
   <Style TargetType="TextBox">
     <Setter Property="Foreground" Value="{StaticResource Text}" />
