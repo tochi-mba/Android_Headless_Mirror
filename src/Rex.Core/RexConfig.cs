@@ -18,6 +18,7 @@ public sealed record RexConfig
     public WirelessSettings Wireless { get; set; } = new();
     public TouchpadSettings Touchpad { get; set; } = new();
     public ZoomSettings Zoom { get; set; } = new();
+    public CopiesSettings Copies { get; set; } = new();
     public AmbientSettings Ambient { get; set; } = new();
     public HudSettings Hud { get; set; } = new();
     public PatternGuideSettings PatternGuide { get; set; } = new();
@@ -33,6 +34,7 @@ public sealed record RexConfig
         Wireless.Normalize();
         Touchpad.Normalize();
         Zoom.Normalize();
+        Copies.Normalize();
         Ambient.Normalize();
         Hud.Normalize();
         PatternGuide.Normalize();
@@ -47,6 +49,7 @@ public sealed record RexConfig
         Wireless = Wireless.Copy(),
         Touchpad = Touchpad.Copy(),
         Zoom = Zoom.Copy(),
+        Copies = Copies.Copy(),
         Ambient = Ambient.Copy(),
         Hud = Hud.Copy(),
         PatternGuide = PatternGuide.Copy(),
@@ -336,6 +339,39 @@ public sealed record AmbientSettings
         TintStrength = double.IsFinite(TintStrength) ? Math.Clamp(TintStrength, 0, 1) : 0;
         TintHue = double.IsFinite(TintHue) ? Math.Clamp(TintHue, 0, 360) : 75;
         FrameRate = double.IsFinite(FrameRate) ? Math.Clamp(FrameRate, 1, 60) : 15;
+    }
+}
+
+/// <summary>
+/// Copies of the phone: extra live views of the same phone beside the first, each one fully
+/// controllable. Every copy is its own scrcpy session, so each costs the phone an encoder and the
+/// PC a decoder; the settings bound how many and how heavy.
+/// </summary>
+public sealed record CopiesSettings
+{
+    public const int MostUpperBound = 5;
+    public const double GapUpperBound = 48;
+    public const int SmallestMaxSize = 480;
+
+    /// <summary>The most copies that may be added, not counting the phone's own view (1 to 5).</summary>
+    public int Most { get; set; } = 3;
+
+    /// <summary>Space between the views, in device-independent pixels (0 to 48).</summary>
+    public double Gap { get; set; } = 12;
+
+    /// <summary>Longest side of each copy's video in pixels; 0 matches the main picture.</summary>
+    public int MaxSize { get; set; }
+
+    /// <summary>Bring the copies back the next time the phone is mirrored.</summary>
+    public bool Remember { get; set; } = true;
+
+    public CopiesSettings Copy() => this with { };
+
+    public void Normalize()
+    {
+        Most = Math.Clamp(Most, 1, MostUpperBound);
+        Gap = double.IsFinite(Gap) ? Math.Clamp(Gap, 0, GapUpperBound) : 12;
+        MaxSize = MaxSize <= 0 ? 0 : Math.Clamp(MaxSize, SmallestMaxSize, MirrorSettings.MaxSizeUpperBound);
     }
 }
 

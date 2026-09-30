@@ -722,9 +722,26 @@ public sealed class AppProcess : IDisposable
     /// <summary>Alt + mouse wheel over the mirror, as real input, so the low-level hook path is exercised.</summary>
     public async Task AltWheelOverMirrorAsync(int notches, Func<Task>? whileHeld = null)
     {
-        await FocusAsync();
         var bounds = WindowBounds();
-        MovePointer(bounds.Left + (bounds.Width / 3), bounds.Top + (bounds.Height / 2));
+        await AltWheelAtAsync(bounds.Left + (bounds.Width / 3), bounds.Top + (bounds.Height / 2), notches, whileHeld);
+    }
+
+    /// <summary>A left click at a point in physical pixels, as real input.</summary>
+    public async Task ClickAtAsync(int x, int y)
+    {
+        await FocusAsync();
+        MovePointer(x, y);
+        await Task.Delay(120, TestContext.Current.CancellationToken);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+        mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+        await Task.Delay(250, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Alt + mouse wheel at a point in physical pixels, as real input.</summary>
+    public async Task AltWheelAtAsync(int x, int y, int notches, Func<Task>? whileHeld = null)
+    {
+        await FocusAsync();
+        MovePointer(x, y);
         await Task.Delay(150, TestContext.Current.CancellationToken);
         keybd_event(0x12, 0, 0, UIntPtr.Zero);
         try

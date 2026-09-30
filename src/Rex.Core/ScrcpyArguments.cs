@@ -17,6 +17,16 @@ public static partial class ScrcpyArguments
     /// </summary>
     public const string LetterboxColour = "#080A09";
 
+    /// <summary>
+    /// The local port the main session's tunnel listens on. Every session gets a port of its own:
+    /// on Windows scrcpy binds with SO_REUSEADDR, so two sessions starting together on the default
+    /// port can each accept the other's connection.
+    /// </summary>
+    public const int MainPort = 27183;
+
+    /// <summary>The port for copy number <paramref name="index"/> (0-based), after the main session's.</summary>
+    public static int CopyPort(int index) => MainPort + 1 + Math.Max(0, index);
+
     public const string FullKeyboardMode = "uhid";
     public const string CompatibilityKeyboardMode = "sdk";
 
@@ -53,9 +63,11 @@ public static partial class ScrcpyArguments
         string windowTitle,
         (int X, int Y, int Width, int Height)? window,
         string? recordPath,
-        string? keyboardMode = null)
+        string? keyboardMode = null,
+        int? copyIndex = null)
     {
         keyboardMode ??= KeyboardModeFor(config, null);
+        var isCopy = copyIndex is not null;
         if (keyboardMode is not (FullKeyboardMode or CompatibilityKeyboardMode))
         {
             throw new ArgumentException("Keyboard mode must be uhid or sdk.", nameof(keyboardMode));
@@ -80,6 +92,18 @@ public static partial class ScrcpyArguments
             args.Add("--raw-key-events");
         }
 
+        args.Add("--port=" + (isCopy ? CopyPort(copyIndex!.Value) : MainPort).ToString(CultureInfo.InvariantCulture));
+        if (isCopy)
+        {
+            // A copy leaves the phone exactly as it found it. Every scrcpy session restores what
+            // it changed when it exits, knowing nothing of the others: a copy that had turned the
+            // screen off or kept it awake would, on closing, undo that for the main session still
+            // running. So copies change nothing (no cleanup, no power-on, none of the power
+            // options below), carry no audio (the main session plays it) and record nothing.
+            args.Add("--no-cleanup");
+            args.Add("--no-power-on");
+        }
+
         if (window is { } w)
         {
             args.Add("--window-x=" + w.X.ToString(CultureInfo.InvariantCulture));
@@ -89,30 +113,31 @@ public static partial class ScrcpyArguments
         }
 
         var session = config.Session;
-        if (session.TurnScreenOff)
+        if (session.TurnScreenOff && !isCopy)
         {
             args.Add("--turn-screen-off");
         }
 
-        if (session.StayAwake && !isTcp)
+        if (session.StayAwake && !isTcp && !isCopy)
         {
             args.Add("--stay-awake");
         }
 
-        if (session.KeepActive)
+        if (session.KeepActive && !isCopy)
         {
             args.Add("--keep-active");
         }
 
-        if (session.PowerOffOnClose)
+        if (session.PowerOffOnClose && !isCopy)
         {
             args.Add("--power-off-on-close");
         }
 
         var mirror = config.Mirror;
-        if (mirror.MaxSize > 0)
+        var maxSize = isCopy && config.Copies.MaxSize > 0 ? config.Copies.MaxSize : mirror.MaxSize;
+        if (maxSize > 0)
         {
-            args.Add("--max-size=" + mirror.MaxSize.ToString(CultureInfo.InvariantCulture));
+            args.Add("--max-size=" + maxSize.ToString(CultureInfo.InvariantCulture));
         }
 
         if (mirror.MaxFps > 0)
@@ -127,7 +152,7 @@ public static partial class ScrcpyArguments
 
         args.Add("--video-codec=" + mirror.VideoCodec);
 
-        if (!mirror.Audio)
+        if (!mirror.Audio || isCopy)
         {
             args.Add("--no-audio");
         }
@@ -145,7 +170,7 @@ public static partial class ScrcpyArguments
             }
         }
 
-        if (recordPath is not null)
+        if (recordPath is not null && !isCopy)
         {
             args.Add("--record=" + recordPath);
         }
@@ -154,11 +179,6 @@ public static partial class ScrcpyArguments
         return args;
     }
 
-    /// <summary>
-    /// UHID is the only scrcpy keyboard mode with complete layout-aware typing, but a few old
-    /// Android builds deny access to /dev/uhid. Recognize that narrow failure so the session may
-    /// retry once with SDK raw-key compatibility without hiding unrelated startup failures.
-    /// </summary>
     [GeneratedRegex(@"\bTexture:\s*(\d{1,5})x(\d{1,5})\b")]
     private static partial Regex TexturePattern();
 
@@ -185,6 +205,11 @@ public static partial class ScrcpyArguments
         return width > 0 && height > 0 ? (width, height) : null;
     }
 
+    /// <summary>
+    /// UHID is the only scrcpy keyboard mode with complete layout-aware typing, but a few old
+    /// Android builds deny access to /dev/uhid. Recognize that narrow failure so the session may
+    /// retry once with SDK raw-key compatibility without hiding unrelated startup failures.
+    /// </summary>
     public static bool IsUhidPermissionFailure(IEnumerable<string> stderr)
     {
         var text = string.Join('\n', stderr);
@@ -280,7 +305,7 @@ public static partial class ScrcpyArguments
 
     public static bool IsForbiddenExtra(string token) =>
         Regex.IsMatch(token, @"^(-s|-S|-n|-f|-r)$") ||
-        Regex.IsMatch(token, @"^--(serial|window-title|window-borderless|window-x|window-y|window-width|window-height|mouse|keyboard|shortcut-mod|fullscreen|record|no-window-aspect-ratio-lock|background-color)(=|$)") ||
+        Regex.IsMatch(token, @"^--(serial|window-title|window-borderless|window-x|window-y|window-width|window-height|mouse|keyboard|shortcut-mod|fullscreen|record|no-window-aspect-ratio-lock|background-color|port|no-cleanup|no-power-on)(=|$)") ||
         token is "--no-control" or "--no-window" or "--no-video" or "--otg" or "--no-video-playback";
 
     private static void Flush(List<string> tokens, StringBuilder builder)

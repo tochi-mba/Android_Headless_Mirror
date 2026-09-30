@@ -394,7 +394,9 @@ public sealed class PatternGuide : IDisposable
             return;
         }
 
-        var surface = _mirror.SurfaceRect;
+        // The overlay covers the whole mirror area; the main view may be one cell of it when the
+        // phone has copies beside it, so the dots are placed on the main view's picture there.
+        var surface = _mirror.AreaSurfaceRect;
         var geometry = _draft is not null
             ? new PatternGeometryInfo("calibration-draft", 0, 0, false, _draft)
             : PatternGeometry.Effective(_discovered, _calibration, IsLandscape);
@@ -440,7 +442,8 @@ public sealed class PatternGuide : IDisposable
             if (NativeMethods.GetCursorPos(out var cursor) &&
                 cursor.X >= viewport.Left && cursor.X < viewport.Right && cursor.Y >= viewport.Top && cursor.Y < viewport.Bottom)
             {
-                var pointer = new PointD(cursor.X - viewport.Left, cursor.Y - viewport.Top);
+                var area = _overlay.ScreenPixels;
+                var pointer = new PointD(cursor.X - area.Left, cursor.Y - area.Top);
                 var hit = PatternPath.HitTest(_patternPoints, pointer, Math.Max(18, _patternRadius * 2.4));
                 if (hit is { } index)
                 {

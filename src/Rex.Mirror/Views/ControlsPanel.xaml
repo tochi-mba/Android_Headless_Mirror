@@ -93,6 +93,14 @@
     <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0"
                Text="Two fingers on the touchpad act on the phone (pinch, rotate, pan). Hold Alt to zoom or pan the PC view instead; Alt + wheel and Alt + drag work with a mouse." />
 
+    <TextBlock Text="COPIES" Style="{StaticResource Eyebrow}" />
+    <UniformGrid x:Name="CopyButtons" Columns="2" Margin="-3,0">
+      <Button x:Name="CopyAdd" Content="Add a copy" Margin="3,0" Tag="copy-add" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+      <Button x:Name="CopyRemove" Content="Remove a copy" Margin="3,0" Tag="copy-remove" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+    </UniformGrid>
+    <TextBlock x:Name="CopiesStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,8,0,0"
+               AutomationProperties.LiveSetting="Polite" />
+
     <TextBlock Text="CLIPBOARD" Style="{StaticResource Eyebrow}" />
     <UniformGrid x:Name="ClipboardButtons" Columns="4" Margin="-3,0">
       <Button x:Name="ClipboardCopy" Content="Copy" Margin="3,0" Tag="copy" Click="OnTile" ToolTipService.ShowOnDisabled="True" />

@@ -40,7 +40,7 @@ public sealed class ThemeTests
             Wpf.Layout(combo, 240);
 
             var text = Wpf.Visuals(combo).OfType<TextBlock>().Single(t => t.Text == "Native");
-            var chevron = Wpf.Visuals(combo).OfType<Path>().Single();
+            var chevron = Wpf.Visuals(combo).OfType<System.Windows.Shapes.Path>().Single();
             var textLeft = text.TransformToAncestor(combo).Transform(new Point()).X;
             var chevronRight = chevron.TransformToAncestor(combo).Transform(new Point(chevron.ActualWidth, 0)).X;
 
@@ -53,7 +53,7 @@ public sealed class ThemeTests
     [Fact]
     public void EmptyTextBoxesAreOutlinedClearlyEnoughToSee()
     {
-        var theme = File.ReadAllText(Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "Theme.xaml"));
+        var theme = File.ReadAllText(System.IO.Path.Combine(RepoPaths.Root, "src", "Rex.Mirror", "Theme.xaml"));
         var field = Brush(theme, "Field");
         Assert.True(Contrast(field, Colour(theme, "PanelColor")) >= 3, "A text box's outline must be 3:1 against the panel.");
         Assert.True(Contrast(field, Colour(theme, "InkColor")) >= 3, "A text box's outline must be 3:1 against its own fill.");

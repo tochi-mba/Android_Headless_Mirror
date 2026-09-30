@@ -89,6 +89,42 @@ public static class CommandRouter
     public static string AppVersion =>
         typeof(CommandRouter).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
+    private static JsonObject CopiesStatus(MainWindow window)
+    {
+        var state = window.CopiesState;
+        return new JsonObject
+        {
+            ["wanted"] = state.Wanted,
+            ["running"] = state.Running,
+            ["starting"] = state.Starting,
+            ["shown"] = state.ShownViews,
+            ["hidden"] = state.Hidden,
+            ["canAdd"] = state.CanAdd,
+            ["canRemove"] = state.CanRemove,
+            ["reason"] = state.WhyNoMore,
+            ["summary"] = state.Summary,
+            ["processes"] = new JsonArray(window.Copies.Processes.Select(p => (JsonNode)p.ProcessId).ToArray()),
+            ["views"] = new JsonArray(window.AllViews.Select(view =>
+            {
+                var rect = view.ViewportScreenRect;
+                var surface = view.SurfaceRect;
+                return (JsonNode)new JsonObject
+                {
+                    ["x"] = rect.Left,
+                    ["y"] = rect.Top,
+                    ["width"] = rect.Width,
+                    ["height"] = rect.Height,
+                    ["shown"] = view.IsShown,
+                    ["zoom"] = Math.Round(view.Zoom, 3),
+                    ["surfaceX"] = Math.Round(surface.X),
+                    ["surfaceY"] = Math.Round(surface.Y),
+                    ["surfaceWidth"] = Math.Round(surface.Width),
+                    ["surfaceHeight"] = Math.Round(surface.Height),
+                };
+            }).ToArray()),
+        };
+    }
+
     public static JsonObject Status(AppHost host)
     {
         var session = host.Session;
@@ -173,11 +209,14 @@ public static class CommandRouter
                 ["width"] = video.Width,
                 ["height"] = video.Height,
             } : null,
+            // The copies of the phone: how many are wanted, running and given room, and where each
+            // view is on screen with its zoom, so a test can see them side by side and in step.
+            ["copies"] = host.Window is { } copies ? CopiesStatus(copies) : null,
             ["keyboard"] = new JsonObject
             {
                 ["mode"] = session.Scrcpy?.KeyboardMode,
                 ["browse"] = host.Window?.BrowseMode ?? false,
-                ["altHeldForPc"] = host.Window?.Host.HoldingKeyboard ?? false,
+                ["altHeldForPc"] = host.Window?.AllViews.Any(view => view.HoldingKeyboard) ?? false,
             },
             ["device"] = session.ActiveDevice is null ? null : new JsonObject
             {

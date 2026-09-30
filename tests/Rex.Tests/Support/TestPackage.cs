@@ -44,6 +44,9 @@ public sealed class TestPackage : IDisposable
     public string DenyUhidMarker => Path.Combine(ToolsFolder, "deny-uhid");
     public string AnimateMarker => Path.Combine(ToolsFolder, "animate");
     public string KeepWindowMarker => Path.Combine(ToolsFolder, "keep-window");
+
+    /// <summary>With this present, every copy of the phone fails as if it had no video encoder left.</summary>
+    public string FailCopiesMarker => Path.Combine(ToolsFolder, "fail-copies");
     public string FakeAdbScenario => Path.Combine(ToolsFolder, "fake-adb.json");
 
     public string[] AdbCalls() => ReadLiveLog(FakeAdbLog);

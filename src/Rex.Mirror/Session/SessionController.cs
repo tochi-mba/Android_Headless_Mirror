@@ -31,7 +31,7 @@ public enum SessionPhase
 /// and restarts or waits when it ends. State is only mutated on the UI thread, so the window
 /// can bind to it directly.
 /// </summary>
-public sealed class SessionController : IDisposable
+public sealed partial class SessionController : IDisposable
 {
     private const int MaxConsecutiveRestarts = 4;
 

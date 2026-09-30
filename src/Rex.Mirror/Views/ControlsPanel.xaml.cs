@@ -96,6 +96,8 @@ public partial class ControlsPanel : UserControl
         ZoomOut.ToolTip = Shortcuts.Tip("Zoom the PC view out", "zoom-out");
         ZoomIn.ToolTip = Shortcuts.Tip("Zoom the PC view in", "zoom-in");
         ZoomReset.ToolTip = Shortcuts.Tip("Fit the whole phone screen in the window", "zoom-reset");
+        CopyAdd.ToolTip = Shortcuts.Tip("Show another live view of the phone beside this one", "copy-add");
+        CopyRemove.ToolTip = Shortcuts.Tip("Close the last copy", "copy-remove");
         Refresh();
     }
 
@@ -157,6 +159,12 @@ public partial class ControlsPanel : UserControl
 
         ZoomLabel.Text = $"{_window.Host.Zoom * 100:0}%";
         ZoomReset.IsEnabled = _window.Host.View.IsZoomed;
+
+        // A disabled Add says why in the line under it: no room, the limit, or a phone on its side.
+        var copies = _window.CopiesState;
+        CopyAdd.IsEnabled = copies.CanAdd;
+        CopyRemove.IsEnabled = copies.CanRemove;
+        CopiesStatus.Text = copies.Summary;
 
         var guide = _window.Guide;
         PatternSection.Visibility = guide is not null ? Visibility.Visible : Visibility.Collapsed;

@@ -57,6 +57,8 @@ public static class MirrorActions
         new("like", "Like", ActionKind.App, "Double-tap the centre of the screen"),
         new("browse", "Browse mode", ActionKind.App, "Plain keys swipe and tap the phone until Esc"),
         new("keyboard-layout", "Keyboard layout", ActionKind.Adb, "Open Android's physical keyboard settings, where the layout typing follows is chosen"),
+        new("copy-add", "Add a copy", ActionKind.App, "Show another live, fully controllable copy of the phone beside it"),
+        new("copy-remove", "Remove a copy", ActionKind.App, "Close the last copy of the phone"),
         new("screenshot", "Screenshot", ActionKind.App, "Save a PNG of the phone screen"),
         new("zoom-in", "Zoom in", ActionKind.App, "Magnify the PC view"),
         new("zoom-out", "Zoom out", ActionKind.App, "Shrink the PC view"),

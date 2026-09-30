@@ -36,6 +36,8 @@ public static class Shortcuts
         new("swipe-up", "Ctrl+Alt+Down", "Next item in a feed (swipe up)"),
         new("tap", "Ctrl+Alt+Enter", "Tap the centre: open, play or pause"),
         new("browse", "Ctrl+Alt+K", "Browse mode on or off: plain keys drive the phone"),
+        new("copy-add", "Ctrl+Alt+N", "Add a copy of the phone beside it"),
+        new("copy-remove", "Ctrl+Alt+W", "Remove the last copy"),
         new("screenshot", "Ctrl+Alt+S", "Save a screenshot"),
         new("zoom-in", "Ctrl+Alt+Plus", "Zoom the PC view in"),
         new("zoom-out", "Ctrl+Alt+Minus", "Zoom the PC view out"),
