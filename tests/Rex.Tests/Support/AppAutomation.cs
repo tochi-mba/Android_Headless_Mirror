@@ -45,6 +45,15 @@ public sealed class AppAutomation(IntPtr window)
     public bool IsOn(string automationId) =>
         Bounded(() => Pattern<TogglePattern>(Find(automationId), TogglePattern.Pattern, automationId).Current.ToggleState, $"read '{automationId}'") == ToggleState.On;
 
+    /// <summary>The text of the selected row in a choice control.</summary>
+    public string SelectedName(string automationId)
+    {
+        var selected = Bounded(
+            () => Pattern<SelectionPattern>(Find(automationId), SelectionPattern.Pattern, automationId).Current.GetSelection(),
+            $"read the selection of '{automationId}'");
+        return selected.Length == 0 ? string.Empty : Bounded(() => selected[0].Current.Name, $"read the selected item in '{automationId}'");
+    }
+
     /// <summary>The middle of an element on screen, in the physical pixels the pointer moves in.</summary>
     public (int X, int Y) Centre(AutomationElement element)
     {

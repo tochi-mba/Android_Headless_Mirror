@@ -6,6 +6,21 @@ namespace Rex.Tests;
 public sealed class AdbTests
 {
     [Fact]
+    public async Task BundledFakeAdb_PersistsChangesFromItsDefaultScenario()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        var adb = new AdbClient(Path.Combine(package.ToolsFolder, "adb.exe"), new ProcessRunner());
+
+        Assert.True((await adb.ApplyPhoneSettingAsync("FAKE123", "show-touches", "1", TestContext.Current.CancellationToken)).Ok);
+        Assert.Equal("1", (await adb.ReadPhoneSettingsAsync("FAKE123", TestContext.Current.CancellationToken))
+            .Single(value => value.Setting.Id == "show-touches").Value);
+
+        Assert.True((await adb.ResetPhoneSettingAsync("FAKE123", "show-touches", TestContext.Current.CancellationToken)).Ok);
+        Assert.DoesNotContain(await adb.ReadPhoneSettingsAsync("FAKE123", TestContext.Current.CancellationToken),
+            value => value.Setting.Id == "show-touches");
+    }
+
+    [Fact]
     public void ParseDevices_HandlesEveryState()
     {
         var devices = AdbParsing.ParseDevices("""

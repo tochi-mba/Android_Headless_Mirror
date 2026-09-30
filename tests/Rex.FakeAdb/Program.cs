@@ -350,6 +350,10 @@ internal sealed class Scenario
         else
         {
             scenario = Default();
+            // The first mutating command must create the scenario file. Without a path, every
+            // adb process started again from Default(), so a put or delete appeared to succeed
+            // but the following read resurrected the old value.
+            scenario.Path = string.IsNullOrWhiteSpace(path) ? null : path;
         }
 
         return scenario;
