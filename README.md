@@ -68,6 +68,11 @@ until you delete that folder.
   letters still typing so a search box works. Esc returns to typing. The same gestures are buttons
   in Controls and the HUD, and `rex action swipe-up` from the command line, working over ADB
   even while the window is in the tray.
+- **Copies side by side.** While the phone is upright, **Add a copy** in Controls (Ctrl+Alt+N)
+  puts another live view of it beside the first, as many as fit the window at full height (up to
+  the limit in Settings → Copies of the phone). Every copy takes touch, typing and gestures, and
+  Alt + wheel or Alt + pinch over any of them zooms them all to the same place. Copies step aside
+  while the phone is on its side and come back when it is upright; Ctrl+Alt+W closes the last one.
 - **Command line and agent mode.** `rex.exe` (on your PATH after installing) scripts everything;
   `rex agent ...` and `rex --json ...` emit exactly one JSON document and never prompt.
 
@@ -86,6 +91,7 @@ until you delete that folder.
 | Take a screenshot              | Ctrl+Alt+S, or the camera in the top bar                       |
 | Browse a feed without the mouse| Ctrl+Alt+K, then Up / Down, Left / Right, Enter, L, M, Backspace |
 | One gesture while typing       | Ctrl+Alt+Up / Down; Ctrl+Alt+Enter taps the centre             |
+| See the phone twice or more    | Ctrl+Alt+N adds a copy beside it; Ctrl+Alt+W closes the last   |
 | Go back / show recent apps     | Ctrl+Alt+Backspace / Ctrl+Alt+R                                |
 | See the window explained again | F1, or Info → **Take the tour**                                 |
 | Find a setting                 | The search box at the top of Settings                          |

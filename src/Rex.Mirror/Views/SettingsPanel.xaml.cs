@@ -89,6 +89,13 @@ public partial class SettingsPanel : UserControl
             ShowAmbientValues(c);
             MaximumZoom.Value = c.Zoom.MaxZoom;
             WheelSpeed.Value = c.Zoom.WheelStep;
+            CopiesMost.Maximum = CopiesSettings.MostUpperBound;
+            CopiesGap.Maximum = CopiesSettings.GapUpperBound;
+            CopiesMost.Value = c.Copies.Most;
+            CopiesGap.Value = c.Copies.Gap;
+            SelectTag(CopiesMaxSize, c.Copies.MaxSize.ToString(CultureInfo.InvariantCulture));
+            CopiesRemember.IsChecked = c.Copies.Remember;
+            ShowCopiesValues();
             AudioDup.IsEnabled = c.Mirror.Audio;
             PatternEnabled.IsChecked = c.PatternGuide.Enabled;
             PatternAuto.IsChecked = c.PatternGuide.AutoShowOnKeyguard;
@@ -349,6 +356,34 @@ public partial class SettingsPanel : UserControl
 
     private void OnResetAmbient(object sender, RoutedEventArgs e) => Save(c => c.Ambient = new AmbientSettings());
 
+    /// <summary>The copies' sliders preview live (the gap moves as it is dragged) and are written after the drag.</summary>
+    private void OnCopiesSlider(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_host is null) return;
+        ShowCopiesValues();
+        if (_loading) return;
+        var most = (int)Math.Round(CopiesMost.Value);
+        var gap = Math.Round(CopiesGap.Value);
+        _host.PreviewConfig(c =>
+        {
+            c.Copies.Most = most;
+            c.Copies.Gap = gap;
+        });
+    }
+
+    private void OnCopiesOption(object sender, RoutedEventArgs e) => Save(c =>
+    {
+        c.Copies.MaxSize = int.TryParse(SelectedTag(CopiesMaxSize, "0"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var size) ? size : 0;
+        c.Copies.Remember = CopiesRemember.IsChecked == true;
+    });
+
+    private void ShowCopiesValues()
+    {
+        var most = (int)Math.Round(CopiesMost.Value);
+        CopiesMostValue.Text = most == 1 ? "1 copy" : $"{most} copies";
+        CopiesGapValue.Text = CopiesGap.Value < 0.5 ? "none" : $"{CopiesGap.Value:0} px";
+    }
+
     /// <summary>
     /// Narrows the panel to the groups that mention what was typed, and opens them.
     ///
@@ -375,7 +410,7 @@ public partial class SettingsPanel : UserControl
     }
 
     private IEnumerable<Expander> Groups() =>
-        [GroupDisplay, GroupAudio, GroupSession, GroupControls, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
+        [GroupDisplay, GroupAudio, GroupSession, GroupControls, GroupCopies, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
 
     /// <summary>Whether a group says the words somewhere: its header, a label, a hint or an option.</summary>
     private static bool Mentions(Expander group, string query)
@@ -441,6 +476,7 @@ public partial class SettingsPanel : UserControl
             c.Session = fresh.Session;
             c.Touchpad = fresh.Touchpad;
             c.Zoom = fresh.Zoom;
+            c.Copies = fresh.Copies;
             c.Ambient = fresh.Ambient;
             c.Hud = fresh.Hud;
             c.PatternGuide = fresh.PatternGuide;

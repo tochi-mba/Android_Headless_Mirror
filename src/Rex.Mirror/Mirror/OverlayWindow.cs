@@ -331,6 +331,9 @@ public sealed class OverlayWindow : Window
 
     public double DpiScale => _dpiScale;
 
+    /// <summary>The screen rectangle the overlay covers: the whole mirror area.</summary>
+    public RECT ScreenPixels => _screenPixels;
+
     // ----- Pattern guide drawing -----
 
     public void ClearPattern()

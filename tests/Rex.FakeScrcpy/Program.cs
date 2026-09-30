@@ -43,6 +43,15 @@ internal static class Program
             return 1;
         }
 
+        // A phone with no video encoder left: every copy fails the way real scrcpy reports it.
+        var failCopies = Path.Combine(Path.GetDirectoryName(LogPath) ?? AppContext.BaseDirectory, "fail-copies");
+        if (args.Contains("--no-cleanup") && File.Exists(failCopies))
+        {
+            Console.Error.WriteLine("[server] ERROR: Could not create default video encoder for h264");
+            Console.Error.WriteLine("[server] ERROR: Exception on thread Thread[video,5,main]");
+            return 1;
+        }
+
         var shortcutModifier = args.FirstOrDefault(a => a.StartsWith("--shortcut-mod=", StringComparison.Ordinal));
         if (shortcutModifier?.Contains('+', StringComparison.Ordinal) == true)
         {
@@ -93,12 +102,20 @@ internal sealed class MirrorForm : Form
     private const int WmSyskeydown = 0x0104;
     private const int WmPointerdown = 0x0246;
     private const int WmPointerup = 0x0247;
+    private const int WmLbuttondown = 0x0201;
 
     private readonly string[] _args;
+
+    /// <summary>
+    /// The session's port, which says which one it is: the main session's, or a copy's. Every input
+    /// line in the log carries it, so a test can tell which view a click or a key reached.
+    /// </summary>
+    private readonly string _port;
 
     public MirrorForm(string[] args)
     {
         _args = args;
+        _port = Option("--port") ?? "27183";
         Text = Option("--window-title") ?? "scrcpy";
         FormBorderStyle = args.Contains("--window-borderless") ? FormBorderStyle.None : FormBorderStyle.Sizable;
         StartPosition = FormStartPosition.Manual;
@@ -113,14 +130,18 @@ internal sealed class MirrorForm : Form
         KeyPreview = true;
 
         // The window starts in the shape it was asked for. Anything a previous run left behind
-        // would otherwise turn it before the test that owns it has begun.
-        try
+        // would otherwise turn it before the test that owns it has begun. A copy joins a phone that
+        // is already mirrored, in whatever way it is turned, so it leaves the phone's state alone.
+        if (!args.Contains("--no-cleanup"))
         {
-            File.Delete(RotationFile);
-        }
-        catch (IOException)
-        {
-            // Another process has it open; the value below is read as the starting point instead.
+            try
+            {
+                File.Delete(RotationFile);
+            }
+            catch (IOException)
+            {
+                // Another process has it open; the value below is read as the starting point instead.
+            }
         }
 
         _rotationWatch = new System.Windows.Forms.Timer { Interval = 100 };
@@ -261,7 +282,8 @@ internal sealed class MirrorForm : Form
         g.DrawRectangle(pen, rect.X + 6, rect.Y + 6, rect.Width - 12, rect.Height - 12);
 
         using var font = new Font("Segoe UI", 14f, FontStyle.Bold);
-        g.DrawString($"fake scrcpy\n{rect.Width}×{rect.Height}", font, Brushes.White, 20, 20);
+        var copy = _port == "27183" ? string.Empty : " · copy " + (int.Parse(_port, CultureInfo.InvariantCulture) - 27183).ToString(CultureInfo.InvariantCulture);
+        g.DrawString($"fake scrcpy{copy}\n{rect.Width}×{rect.Height}", font, Brushes.White, 20, 20);
     }
 
     protected override void OnResize(EventArgs e)
@@ -272,18 +294,22 @@ internal sealed class MirrorForm : Form
 
     protected override void WndProc(ref Message m)
     {
-        if (m.Msg == 0x020A) Program.Log("mousewheel");
+        if (m.Msg == 0x020A) Program.Log($"mousewheel at={_port}");
         if (m.Msg is WmKeydown or WmSyskeydown)
         {
-            Program.Log($"key vk={(int)m.WParam} scan=0x{((int)m.LParam >> 16) & 0xFF:X2} ext={(((int)m.LParam >> 24) & 1)}");
+            Program.Log($"key vk={(int)m.WParam} scan=0x{((int)m.LParam >> 16) & 0xFF:X2} ext={(((int)m.LParam >> 24) & 1)} at={_port}");
         }
         else if (m.Msg == WmPointerdown)
         {
-            Program.Log($"pointerdown id={(int)m.WParam & 0xFFFF}");
+            Program.Log($"pointerdown id={(int)m.WParam & 0xFFFF} at={_port}");
         }
         else if (m.Msg == WmPointerup)
         {
-            Program.Log($"pointerup id={(int)m.WParam & 0xFFFF}");
+            Program.Log($"pointerup id={(int)m.WParam & 0xFFFF} at={_port}");
+        }
+        else if (m.Msg == WmLbuttondown)
+        {
+            Program.Log($"click at={_port}");
         }
 
         base.WndProc(ref m);

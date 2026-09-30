@@ -31,6 +31,9 @@ public sealed class TouchpadBridge
     private POINT _savedCursor;
     private bool _cursorSaved;
 
+    /// <summary>Maps a screen point over any view of the phone to the same place on the main view.</summary>
+    public Func<int, int, (int X, int Y)?>? MapToMain { get; set; }
+
     public TouchpadBridge(MirrorHost host, TouchInjector injector, Func<RexConfig> config, Action<string> log)
     {
         _host = host;
@@ -132,8 +135,10 @@ public sealed class TouchpadBridge
             var scale = ZoomMath.SensitivityAdjustedScale(distance / _startDistance, HostZoomSensitivity);
             var viewport = _host.ViewportScreenRect;
             NativeMethods.GetCursorPos(out var cursor);
-            var anchorX = Math.Clamp(cursor.X - viewport.Left, 0, Math.Max(0, viewport.Width));
-            var anchorY = Math.Clamp(cursor.Y - viewport.Top, 0, Math.Max(0, viewport.Height));
+            // Over a copy, the same spot of the main view: every copy follows its zoom.
+            var at = MapToMain?.Invoke(cursor.X, cursor.Y) ?? (cursor.X, cursor.Y);
+            var anchorX = Math.Clamp(at.X - viewport.Left, 0, Math.Max(0, viewport.Width));
+            var anchorY = Math.Clamp(at.Y - viewport.Top, 0, Math.Max(0, viewport.Height));
             _host.SetZoom(_startZoom * scale, anchorX, anchorY);
 
             var pan = ToPixels(centroid.Item1 - _lastCentroid.X, centroid.Item2 - _lastCentroid.Y, config.Touchpad.Sensitivity);
@@ -186,12 +191,14 @@ public sealed class TouchpadBridge
         _cursorSaved = NativeMethods.GetCursorPos(out _savedCursor);
 
         // Start the phone fingers where the mouse is (inside the mirror), else at the mirror centre.
+        // Over a copy of the phone, the same spot on the main view is used: it is the same phone.
         var centerX = (surface.Left + surface.Right) / 2;
         var centerY = (surface.Top + surface.Bottom) / 2;
-        if (_cursorSaved && _savedCursor.X > surface.Left && _savedCursor.X < surface.Right && _savedCursor.Y > surface.Top && _savedCursor.Y < surface.Bottom)
+        var pointer = _cursorSaved ? MapToMain?.Invoke(_savedCursor.X, _savedCursor.Y) ?? (_savedCursor.X, _savedCursor.Y) : default((int, int)?);
+        if (pointer is { } at && at.Item1 > surface.Left && at.Item1 < surface.Right && at.Item2 > surface.Top && at.Item2 < surface.Bottom)
         {
-            centerX = _savedCursor.X;
-            centerY = _savedCursor.Y;
+            centerX = at.Item1;
+            centerY = at.Item2;
         }
 
         _touchCenter = (centerX, centerY);

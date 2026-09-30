@@ -212,6 +212,35 @@
     <Grid Margin="0,8,0,0"><TextBlock Text="Wheel zoom speed" /><TextBlock x:Name="WheelSpeedValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="WheelSpeed" AutomationProperties.Name="Wheel zoom speed" Minimum="0.05" Maximum="0.5" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
     </StackPanel></Expander>
+    <Expander x:Name="GroupCopies" Header="Copies of the phone" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="Extra live views of an upright phone, side by side, added from the Controls tab. Each copy is a session of its own, so each one asks the phone for another video encoder." />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="CopiesMostLabel" Text="Most copies" /><TextBlock x:Name="CopiesMostValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="CopiesMost" AutomationProperties.LabeledBy="{Binding ElementName=CopiesMostLabel}" Minimum="1" Maximum="5" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnCopiesSlider"
+            ToolTip="Only as many as fit the window at full height can be open, whatever this says." />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="CopiesGapLabel" Text="Space between copies" /><TextBlock x:Name="CopiesGapValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="CopiesGap" AutomationProperties.LabeledBy="{Binding ElementName=CopiesGapLabel}" Minimum="0" Maximum="48" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnCopiesSlider" />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
+          <TextBlock Text="Copy resolution" />
+          <TextBlock Text="A lower one is lighter on the phone and the PC. Open copies restart with it." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <ComboBox x:Name="CopiesMaxSize" SelectionChanged="OnCopiesOption" AutomationProperties.Name="Copy resolution">
+        <ComboBoxItem Content="Same as the mirror" Tag="0" />
+        <ComboBoxItem Content="1920 px" Tag="1920" />
+        <ComboBoxItem Content="1600 px" Tag="1600" />
+        <ComboBoxItem Content="1280 px" Tag="1280" />
+        <ComboBoxItem Content="1024 px" Tag="1024" />
+        <ComboBoxItem Content="800 px" Tag="800" />
+        <ComboBoxItem Content="480 px" Tag="480" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Open the same copies next time">
+      <CheckBox x:Name="CopiesRemember" Checked="OnCopiesOption" Unchecked="OnCopiesOption" AutomationProperties.Name="Open the same copies next time" />
+    </HeaderedContentControl>
+    </StackPanel></Expander>
     <Expander x:Name="GroupHud" Header="Fullscreen HUD" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
                Text="In fullscreen the controls hide themselves. Move the pointer to where you put them and they come back. Drag them anywhere by the dotted grip on their left." />

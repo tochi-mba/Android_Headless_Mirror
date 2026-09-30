@@ -106,6 +106,7 @@ public partial class MainWindow : Window
         {
             PanelAt = (x, y) => SidebarScroll.IsVisible && _sidebarWheelBounds.Contains(x, y),
             ScrollPanel = delta => SidebarScroll.ScrollToVerticalOffset(SidebarScroll.VerticalOffset - delta),
+            MapToMain = OnMainView,
         };
         _keyboardTouch = new KeyboardTouch(Host, _injector, host.Log.Warn)
         {
@@ -119,6 +120,7 @@ public partial class MainWindow : Window
         _ambientTimer.Tick += (_, _) => CaptureAmbientFrame();
 
         Host.ViewChanged += _ => OnViewChanged();
+        InitCopies();
         Host.ChildFocused += () => _overlay.ClearTrail();
 
         // WPF IsActive can lag when focus crosses into the embedded scrcpy HWND.
@@ -130,13 +132,17 @@ public partial class MainWindow : Window
         _hooks.KeyDown = OnHotkey;
         _hooks.PcAlt = down =>
         {
-            if (down)
+            // Whichever view has the keyboard: the main one or a copy.
+            foreach (var view in AllViews)
             {
-                Host.HoldKeyboard();
-            }
-            else
-            {
-                Host.ReleaseKeyboard();
+                if (down)
+                {
+                    view.HoldKeyboard();
+                }
+                else
+                {
+                    view.ReleaseKeyboard();
+                }
             }
         };
 
@@ -151,7 +157,7 @@ public partial class MainWindow : Window
         host.Session.MirrorEnded += OnMirrorEnded;
         host.Session.LaunchRect = LaunchRect;
         host.ConfigChanged += OnConfigChanged;
-        host.ConfigPreviewed += () => { Host.MaxZoom = _host.Config.Zoom.MaxZoom; TrackOverlay(); };
+        host.ConfigPreviewed += () => { Host.MaxZoom = _host.Config.Zoom.MaxZoom; PreviewCopies(); TrackOverlay(); };
 
         SourceInitialized += (_, _) =>
         {
@@ -165,7 +171,7 @@ public partial class MainWindow : Window
         LocationChanged += (_, _) => TrackOverlay();
         SizeChanged += (_, _) => TrackOverlay();
         StateChanged += (_, _) => TrackOverlay();
-        Activated += (_, _) => { if (Host.HasChild) { Host.FocusChild(); } };
+        Activated += (_, _) => { if (ActiveView.HasChild) { ActiveView.FocusChild(); } };
         Deactivated += (_, _) => _overlay.ClearTrail();
         Closing += OnClosing;
 
@@ -223,6 +229,7 @@ public partial class MainWindow : Window
             _liveCapture.Dispose();
             _overlay.Close();
             _hooks.Dispose();
+            _copies?.Dispose();
             return;
         }
 
@@ -295,6 +302,7 @@ public partial class MainWindow : Window
         MirrorArea.Visibility = onboarding ? Visibility.Collapsed : Visibility.Visible;
         Sidebar.Visibility = onboarding ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);
         Host.SetShown(mirroring && !onboarding);
+        UpdateCopiesShown();
         if (onboarding)
         {
             Onboarding.Refresh();
@@ -416,6 +424,9 @@ public partial class MainWindow : Window
 
         OnSessionChanged();
         TrackOverlay();
+
+        // Copies follow the main picture: they start once it is up, one at a time.
+        _copies?.Pump();
     }
 
     private void OnMirrorEnded()
@@ -432,6 +443,8 @@ public partial class MainWindow : Window
         _overlay.Track(default, visible: false);
         // Browse mode is about the picture that just went away; the next session starts typing.
         _browse = false;
+        // Nothing to copy without the main picture: the copies close, and come back with it.
+        _copies?.Pump();
         OnSessionChanged();
     }
 
@@ -474,6 +487,7 @@ public partial class MainWindow : Window
             StartPatternGuideIfNeeded();
         }
 
+        ApplyCopiesConfig();
         SettingsPanel.Refresh();
         OnSessionChanged();
     }
@@ -505,11 +519,15 @@ public partial class MainWindow : Window
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         if (visible)
         {
-            Host.SyncChildShape();
+            foreach (var view in AllViews)
+            {
+                view.SyncChildShape();
+            }
         }
 
         _overlay.ReleaseStuckDrags();
-        _overlay.Track(visible ? Host.ViewportScreenRect : default, visible);
+        // The overlay covers the whole mirror area: with copies the main view is only one cell of it.
+        _overlay.Track(visible ? AreaScreenRect() : default, visible);
         _overlay.UpdateHud(_fullscreen && visible, Host.Zoom, _host.Config.Hud);
         if (visible)
         {
@@ -540,7 +558,7 @@ public partial class MainWindow : Window
         _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction(), zoom);
         // A blurred wash is the opposite of what High Contrast is for, so it stands down there.
         var ambient = _host.Config.Ambient.Enabled && Host.HasChild && !SystemParameters.HighContrast;
-        Ambient.Update(ambient, Host.SurfaceRect, _host.Config.Ambient);
+        Ambient.Update(ambient, PicturesInArea(), _host.Config.Ambient);
         _ambientWanted = ambient;
         _previewWanted = show && zoom.NavigatorPicture;
 
@@ -633,6 +651,10 @@ public partial class MainWindow : Window
             case "screenshot":
                 _ = SaveScreenshotAsync();
                 return AndroidResult.Success("Saving…");
+            case "copy-add":
+                return Copies.Add();
+            case "copy-remove":
+                return Copies.Remove();
             default:
                 return AndroidResult.Failure($"Unknown app action '{id}'.");
         }
@@ -642,9 +664,10 @@ public partial class MainWindow : Window
     {
         var result = await _host.Session.RunActionAsync(id, ApplyAppActionAsync);
         SetStatus(result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? MirrorActions.Find(id)?.Label ?? id : result.Text) : result.Text, !result.Ok);
-        if (Host.HasChild)
+        // Back to whichever view was being used, the main one or a copy.
+        if (ActiveView.HasChild)
         {
-            Host.FocusChild();
+            ActiveView.FocusChild();
         }
     }
 
