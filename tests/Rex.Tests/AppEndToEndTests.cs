@@ -299,6 +299,27 @@ public sealed partial class AppEndToEndTests
         await app.QuitAsync();
     }
 
+    /// <summary>
+    /// Whether a picture is exactly the video's shape, to the pixel it is rounded to. A picture the
+    /// shape of whatever scrcpy's window opened at is letterboxed inside by real scrcpy, and was
+    /// only caught by eye before this.
+    /// </summary>
+    private static bool HasTheVideosShape(JsonObject status, double width, double height)
+    {
+        if (status["video"] is not { } video || width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        var aspect = video["width"]!.GetValue<double>() / video["height"]!.GetValue<double>();
+        return aspect < 1
+            ? Math.Abs(width - height * aspect) <= 1.5
+            : Math.Abs(height - width / aspect) <= 1.5;
+    }
+
+    private static bool PictureHasTheVideosShape(JsonObject status) =>
+        HasTheVideosShape(status, status["surface"]!["width"]!.GetValue<double>(), status["surface"]!["height"]!.GetValue<double>());
+
     private static async Task<(double Width, double Height, double ViewportWidth, double ViewportHeight)> Surface(AppProcess app)
     {
         var status = await app.SendAsync(new IpcRequest("status"));
@@ -545,6 +566,13 @@ public sealed partial class AppEndToEndTests
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         var status = await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+
+        // The picture is the video's shape, whatever size scrcpy's window opened at.
+        await app.WaitForStatusAsync(PictureHasTheVideosShape, TimeSpan.FromSeconds(10), "the picture to take the video's shape");
+        // A moment later it has not drifted: the launch shape used to be taken up on a later tick.
+        await Task.Delay(500, TestContext.Current.CancellationToken);
+        var settled = await app.SendAsync(new IpcRequest("status"));
+        Assert.True(PictureHasTheVideosShape(settled.Data!.AsObject()), $"The picture drifted from the video's shape: {settled.Data!["surface"]!.ToJsonString()}");
 
         Assert.Equal("FAKE123", status["device"]!["serial"]!.GetValue<string>());
         Assert.Equal("Galaxy S21 Ultra", status["device"]!["name"]!.GetValue<string>());

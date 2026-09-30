@@ -52,6 +52,9 @@ public sealed partial class AppEndToEndTests
         Assert.True(views[1]!["x"]!.GetValue<int>() >= views[0]!["x"]!.GetValue<int>() + views[0]!["width"]!.GetValue<int>());
         Assert.InRange(views[1]!["width"]!.GetValue<int>(), views[0]!["width"]!.GetValue<int>() - 2, views[0]!["width"]!.GetValue<int>() + 2);
         Assert.InRange(views[1]!["height"]!.GetValue<int>(), views[0]!["height"]!.GetValue<int>() - 2, views[0]!["height"]!.GetValue<int>() + 2);
+        Assert.All(views, view => Assert.True(
+            HasTheVideosShape(status, view!["surfaceWidth"]!.GetValue<double>(), view["surfaceHeight"]!.GetValue<double>()),
+            "Every view shows the picture in the video's shape: " + view.ToJsonString()));
         await app.SaveScreenshotAsync("copies-two.png");
 
         // A click on the copy reaches the copy's own session.

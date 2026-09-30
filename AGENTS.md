@@ -159,6 +159,11 @@ docs/                   GitHub Pages site; its download button points at the lat
 - The pattern guide asks Android where the pattern is every time the lock screen comes up. A saved
   calibration only applies in the orientation it was made in, and saving one without moving it
   clears it instead: an unmoved calibration would freeze the automatic placement for good.
+- The picture's shape comes from scrcpy's own report of the video size (`INFO: Texture: WxH` on
+  stdout, `ScrcpyProcess.VideoSizeChanged`). scrcpy's window size is only a fallback signal, and
+  only counted against the size the app last gave it (`ChildShape`): a window that has not been
+  laid out yet still has the shape it opened with, and once the video has been reported a window
+  that changes size by itself is given its size back rather than believed.
 - Zoom scales the embedded surface. Never reintroduce a magnifier or a second window for zoom.
 - Copies of the phone are extra scrcpy sessions, each embedded in its own `MirrorHost` beside the
   main one. The main view leads: zoom, pan, the navigator, the pattern guide and the soft

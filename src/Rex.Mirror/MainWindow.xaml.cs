@@ -399,7 +399,7 @@ public partial class MainWindow : Window
         var session = _host.Session;
         if (session.Identity is { DisplayWidth: > 0, DisplayHeight: > 0 } identity)
         {
-            Host.SetVideoSize(identity.DisplayWidth, identity.DisplayHeight);
+            Host.SetVideoSize(identity.DisplayWidth, identity.DisplayHeight, reported: false);
         }
 
         Host.SetShown(true);
