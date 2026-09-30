@@ -83,15 +83,27 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>
+    /// Appends one line. The main session and every copy are processes of their own writing the
+    /// same log, so a writer that finds it held by another waits its turn instead of dropping the
+    /// line: a test waiting for that line would otherwise wait in vain. One writer at a time, so
+    /// no two lines land on the same spot; the tests read alongside without getting in the way.
+    /// </summary>
     public static void Log(string line)
     {
-        try
+        var bytes = Encoding.UTF8.GetBytes(line + Environment.NewLine);
+        for (var attempt = 0; attempt < 200; attempt++)
         {
-            File.AppendAllText(LogPath, line + Environment.NewLine, Encoding.UTF8);
-        }
-        catch (IOException)
-        {
-            // The test is reading the file; drop the line.
+            try
+            {
+                using var stream = new FileStream(LogPath, FileMode.Append, FileAccess.Write, FileShare.Read | FileShare.Delete);
+                stream.Write(bytes);
+                return;
+            }
+            catch (IOException)
+            {
+                Thread.Sleep(5);
+            }
         }
     }
 }
