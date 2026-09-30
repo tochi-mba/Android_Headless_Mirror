@@ -22,7 +22,8 @@ public partial class PhonePanel : UserControl
     private MainWindow? _window;
     private AppHost? _host;
     private bool _loading;
-    private bool _busy;
+    private Task? _load;
+    private bool _loadAgain;
     private string _loadedSerial = string.Empty;
 
     public PhonePanel()
@@ -63,23 +64,39 @@ public partial class PhonePanel : UserControl
         _ = LoadAsync(target.Value.Adb, target.Value.Serial);
     }
 
-    private async Task LoadAsync(AdbClient adb, string serial)
+    /// <summary>
+    /// Reads the phone's settings and rebuilds the rows. A reload asked for while one is running
+    /// is not dropped: the running one reads again when it finishes, and both callers wait for
+    /// that. Dropping it left the rows showing what the phone held before the latest change.
+    /// </summary>
+    private Task LoadAsync(AdbClient adb, string serial)
     {
-        if (_busy)
+        if (_load is { IsCompleted: false } running)
         {
-            return;
+            _loadAgain = true;
+            return running;
         }
 
-        _busy = true;
+        _load = LoadUntilCurrentAsync(adb, serial);
+        return _load;
+    }
+
+    private async Task LoadUntilCurrentAsync(AdbClient adb, string serial)
+    {
         ReloadButton.IsEnabled = false;
         ReloadButton.Content = "Reading…";
         LoadingText.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         try
         {
-            var values = await adb.ReadPhoneSettingsAsync(serial);
-            _loadedSerial = serial;
-            Build(values);
-            ShowStatus(string.Empty);
+            do
+            {
+                _loadAgain = false;
+                var values = await adb.ReadPhoneSettingsAsync(serial);
+                _loadedSerial = serial;
+                Build(values);
+                ShowStatus(string.Empty);
+            }
+            while (_loadAgain);
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
@@ -87,7 +104,6 @@ public partial class PhonePanel : UserControl
         }
         finally
         {
-            _busy = false;
             ReloadButton.IsEnabled = true;
             ReloadButton.Content = "Reload";
             LoadingText.Visibility = Visibility.Collapsed;
