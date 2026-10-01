@@ -485,6 +485,15 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
+          <TextBlock Text="Say what is new after an update" />
+          <TextBlock Text="Once per version, in the bar above the mirror." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </HeaderedContentControl.Header>
+      <CheckBox x:Name="ShowWhatsNew" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Say what is new after an update" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header>
+        <StackPanel>
           <TextBlock Text="Frame rate in the status bar" />
           <TextBlock Text="Live, from scrcpy's own counter." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
         </StackPanel>

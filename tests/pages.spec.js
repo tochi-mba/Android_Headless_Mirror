@@ -12,6 +12,9 @@ const REX = {
   live: '#FF774D',
 };
 
+const SITE_PAGES = ['index.html', 'features.html', 'guide.html', 'shortcuts.html', 'settings.html', 'cli.html', 'help.html', 'changelog.html'];
+const ALL_PAGES = [...SITE_PAGES, '404.html'];
+
 const REMOVED_FEATURES = [/root v1/i, /privileged/i, /miracast/i, /wireless display/i, /control center/i, /stop\.flag/i, /START_NOW/i, /supervisor/i];
 
 test.describe('Android Headless Mirror site', () => {
@@ -72,8 +75,14 @@ test.describe('Android Headless Mirror site', () => {
     }
   });
 
-  test('every navigation anchor resolves to a section', async ({ page }) => {
-    const anchors = await page.locator('.site-nav a[href^="#"]').evaluateAll(links => links.map(link => link.getAttribute('href')));
+  test('every header link leads to a page, and every in-page link to a section', async ({ page, request }) => {
+    const pages = await page.locator('.site-nav a:not([target])').evaluateAll(links => links.map(link => link.getAttribute('href')));
+    expect(pages).toEqual(SITE_PAGES.filter(name => name !== 'index.html'));
+    for (const href of pages) {
+      expect((await request.get('/' + href)).status(), href).toBe(200);
+    }
+
+    const anchors = await page.locator('.page-index a[href^="#"]').evaluateAll(links => links.map(link => link.getAttribute('href')));
     expect(anchors.length).toBeGreaterThanOrEqual(6);
     for (const anchor of anchors) {
       await expect(page.locator(anchor)).toHaveCount(1);
@@ -198,7 +207,8 @@ test.describe('mobile behaviour', () => {
     await expect(button).toHaveAttribute('aria-expanded', 'true');
     await expect(nav).toBeVisible();
 
-    await nav.locator('a[href="#faq"]').click();
+    await nav.locator('a[href="help.html"]').click();
+    await expect(page).toHaveURL(/help\.html$/);
     await expect(button).toHaveAttribute('aria-expanded', 'false');
     await expect(nav).toBeHidden();
 
@@ -261,7 +271,7 @@ test.describe('the rest of the site', () => {
   test('the navigation marks the section being read', async ({ page }) => {
     await page.goto('/');
     await page.locator('#faq').scrollIntoViewIfNeeded();
-    await expect(page.locator('.site-nav a[href="#faq"]')).toHaveAttribute('aria-current', 'true');
+    await expect(page.locator('.page-index a[href="#faq"]')).toHaveAttribute('aria-current', 'true');
   });
 });
 
@@ -284,6 +294,139 @@ test('no-JavaScript fallback keeps content and navigation available', async ({ b
   await expect(page.locator('h1')).toBeVisible();
   await expect(page.locator('#install')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('#site-nav a[href="#faq"]')).toBeVisible();
+  await expect(page.locator('#site-nav a[href="help.html"]')).toBeVisible();
   await context.close();
+});
+
+test.describe('every page of the site', () => {
+  for (const name of ALL_PAGES) {
+    test(`${name} loads without errors, has one header and passes axe`, async ({ page }) => {
+      const pageErrors = [];
+      const failedLocal = [];
+      page.on('pageerror', error => pageErrors.push(error.message));
+      page.on('response', response => {
+        const url = new URL(response.url());
+        if (url.origin === 'http://127.0.0.1:4173' && response.status() >= 400) failedLocal.push(`${response.status()} ${url.pathname}`);
+      });
+      await page.goto('/' + name);
+      await page.waitForLoadState('networkidle');
+      expect(pageErrors).toEqual([]);
+      expect(failedLocal).toEqual([]);
+      await expect(page).toHaveTitle(/Android Headless Mirror/);
+      await expect(page.locator('h1')).toHaveCount(1);
+
+      // The current page is marked in the header, and only the current page.
+      const current = await page.locator('.site-nav a[aria-current="page"]').evaluateAll(links => links.map(link => link.getAttribute('href')));
+      expect(current).toEqual(SITE_PAGES.includes(name) && name !== 'index.html' ? [name] : []);
+
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      const serious = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
+      expect(serious.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
+    });
+
+    test(`${name} never scrolls sideways at 320, 390 or 1280 pixels`, async ({ page }) => {
+      for (const width of [320, 390, 1280]) {
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto('/' + name);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow, `${name} at ${width}px`).toBeLessThanOrEqual(0);
+      }
+    });
+  }
+
+  test('pictures say what they show, have a size, and wait until they are needed', async ({ page }) => {
+    for (const name of ALL_PAGES) {
+      await page.goto('/' + name);
+      const images = await page.locator('main img').evaluateAll(nodes => nodes.map(img => ({
+        alt: img.getAttribute('alt'), width: img.getAttribute('width'), height: img.getAttribute('height'), loading: img.getAttribute('loading'),
+      })));
+      images.forEach((image, i) => {
+        expect(image.alt, name).not.toBeNull();
+        expect(image.width && image.height, name).toBeTruthy();
+        if (i > 0) expect(image.loading, name).toBe('lazy');
+      });
+    }
+  });
+
+  test('the checker that runs before publishing finds nothing wrong', async () => {
+    const { checkSite } = await import('../scripts/check-site.mjs');
+    expect(checkSite(require('node:path').join(__dirname, '..', 'docs'))).toEqual([]);
+  });
+});
+
+test.describe('the reference pages', () => {
+  test('the settings filter narrows the rows, counts them, and Escape clears it', async ({ page }) => {
+    await page.goto('/settings.html');
+    const rows = page.locator('.ref-row');
+    const total = await rows.count();
+    expect(total).toBeGreaterThan(100);
+    const filter = page.locator('#settings-filter');
+
+    await filter.fill('Mirror.MaxFps');
+    await expect(page.locator('#settings-filter-count')).toHaveText('1 setting matches');
+    await expect(page.locator('[id="Mirror.MaxFps"]')).toBeVisible();
+    await filter.fill('maxfps');
+    await expect(page.locator('#settings-filter-count')).toHaveText('1 setting matches');
+    await filter.fill('copies');
+    await expect(page.locator('#settings-filter-count')).toHaveText(/settings match$/);
+    await expect(page.locator('#group-display')).toBeHidden();
+    await filter.fill('nothing at all mentions this');
+    await expect(page.locator('#settings-filter-count')).toHaveText('No setting mentions that.');
+
+    await filter.press('Escape');
+    await expect(filter).toHaveValue('');
+    await expect(page.locator('.ref-row:visible')).toHaveCount(total);
+  });
+
+  test('a link to one setting lands on it', async ({ page }) => {
+    await page.goto('/settings.html#Session.TurnScreenOff');
+    await expect(page.locator('[id="Session.TurnScreenOff"] h3')).toHaveText('Phone screen off while mirroring');
+    await expect(page.locator('[id="Session.TurnScreenOff"]')).toBeInViewport();
+  });
+
+  test('the shortcuts filter finds a key by what it does', async ({ page }) => {
+    await page.goto('/shortcuts.html');
+    await page.locator('#shortcuts-filter').fill('screenshot');
+    await expect(page.locator('.key-row:visible')).toHaveCount(1);
+    await expect(page.locator('.key-row:visible kbd')).toHaveText('Ctrl+Alt+S');
+  });
+
+  test('every command can be copied', async ({ page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'clipboard permissions are only granted on Chromium');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/cli.html');
+    const row = page.locator('#cmd-config-list-get-set-restore-path-value');
+    await row.locator('.copy-button').click();
+    await expect(page.locator('#copy-status')).toHaveText(/copied/i);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('rex config set Mirror.MaxFps 90');
+  });
+
+  test('the changelog lists versions newest first, and the download stays the stable asset', async ({ page }) => {
+    await page.goto('/changelog.html');
+    const versions = await page.locator('.changelog h2').evaluateAll(nodes => nodes.map(node => node.id));
+    expect(versions.length).toBeGreaterThan(10);
+    const numbers = versions.map(id => id.slice(1).split('-').map(Number));
+    for (let i = 1; i < numbers.length; i++) {
+      const [a, b] = [numbers[i - 1], numbers[i]];
+      expect(a[0] * 1e6 + a[1] * 1e3 + a[2]).toBeGreaterThan(b[0] * 1e6 + b[1] * 1e3 + b[2]);
+    }
+
+    await page.goto('/');
+    await expect(page.locator('#download')).toHaveAttribute('href', 'https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest/download/AndroidHeadlessMirror-Setup.exe');
+  });
+
+  test('without JavaScript every setting, every answer and every page is reachable', async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto('/settings.html');
+    await expect(page.locator('.filter')).toBeHidden();
+    const rows = page.locator('.ref-row');
+    expect(await rows.count()).toBeGreaterThan(100);
+    await expect(rows.last()).toBeAttached();
+    expect(await page.locator('.ref-row[hidden]').count()).toBe(0);
+    await page.goto('/');
+    await page.locator('#faq details').first().locator('summary').click();
+    await expect(page.locator('#faq details').first().locator('p')).toBeVisible();
+    await context.close();
+  });
 });

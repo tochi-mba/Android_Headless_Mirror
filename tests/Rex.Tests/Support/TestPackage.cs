@@ -43,6 +43,9 @@ public sealed class TestPackage : IDisposable
     public string FakeScrcpyLog => Path.Combine(ToolsFolder, "fake-scrcpy.log");
     public string DenyUhidMarker => Path.Combine(ToolsFolder, "deny-uhid");
     public string AnimateMarker => Path.Combine(ToolsFolder, "animate");
+
+    /// <summary>While this exists, the fake phone shows a made-up home screen instead of its test card.</summary>
+    public string HomeScreenMarker => Path.Combine(ToolsFolder, "home-screen");
     public string KeepWindowMarker => Path.Combine(ToolsFolder, "keep-window");
 
     /// <summary>With this present, every copy of the phone fails as if it had no video encoder left.</summary>
@@ -54,6 +57,11 @@ public sealed class TestPackage : IDisposable
 
     /// <summary>Where the app records Task Scheduler and administrator-prompt calls instead of making them.</summary>
     public string UsbRepairLog => Path.Combine(Root, "usb-repair.log");
+
+    /// <summary>Where the app writes the web addresses it would have opened in a browser.</summary>
+    public string BrowserLog => Path.Combine(Root, "browser.log");
+
+    public string[] OpenedPages() => ReadLiveLog(BrowserLog);
 
     public string[] UsbRepairCalls() => ReadLiveLog(UsbRepairLog);
 

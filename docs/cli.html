@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Every rex command: what it does, an example, and how scripts and coding agents use its JSON mode.">
+<meta name="robots" content="index,follow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080A09">
+<meta property="og:title" content="Command line - Android Headless Mirror - REX Technologies">
+<meta property="og:description" content="Every rex command: what it does, an example, and how scripts and coding agents use its JSON mode.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/cli.html">
+<meta property="og:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Android Headless Mirror: your phone, one window.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
+<link rel="canonical" href="https://tochi-mba.github.io/Android_Headless_Mirror/cli.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.classList.replace("no-js","js");</script>
+<noscript><style>@media(max-width:1040px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
+<title>Command line - Android Headless Mirror - REX Technologies</title>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ambient ambient-one" aria-hidden="true"></div>
+<div class="ambient ambient-two" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a class="brand" href="./" aria-label="Android Headless Mirror, by REX Technologies, home">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span>
+      <span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span><span></span><span></span></button>
+    <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="shortcuts.html">Shortcuts</a>
+      <a href="settings.html">Settings</a>
+      <a href="cli.html" aria-current="page">Command line</a>
+      <a href="help.html">Help</a>
+      <a href="changelog.html">What's new</a>
+      <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-hero container">
+    <p class="eyebrow signal"><span class="pulse-dot"></span> Command line</p>
+    <h1>Everything from a terminal.</h1>
+    <p class="hero-lede"><code>rex.exe</code> is on your PATH after installing. In a checkout, use <code>REX.bat</code> the same way.</p>
+  </section>
+  <div class="container page-body">
+    <section class="ref-group" id="machine-mode" aria-labelledby="machine-mode-title">
+      <h2 id="machine-mode-title">For scripts and coding agents</h2>
+      <p class="ref-intro">Start with <code>rex agent</code>, or add <code>--json</code> anywhere. Every command then writes exactly one JSON document, never prompts, contains no colour codes, and exits 0 on success and 1 on failure.</p>
+      <pre class="console" tabindex="0" aria-label="The two shapes a JSON answer takes"><code>{"ok":true,"protocolVersion":2,"command":"status","data":{...}}
+{"ok":false,"protocolVersion":2,"command":"action","error":{"type":"InvalidOperationException","message":"..."}}</code></pre>
+      <p class="ref-intro">Ask <code>rex agent capabilities</code> first: it lists every command, action, phone setting and config path this version knows. With more than one phone connected, pass <code>--serial</code>; the command line never guesses between phones.</p>
+    </section>
+<!-- generated:cli -->
+<section class="ref-group" id="commands" aria-labelledby="commands-title">
+  <h2 id="commands-title">Every command</h2>
+  <p class="ref-intro">Commands marked <em>needs the app</em> act on the open window; start it with <code>rex open</code> first. The rest work on their own, over ADB.</p>
+  <article class="ref-row cli-row" id="cmd-open">
+    <h3><code>rex open</code></h3>
+    <p class="ref-hint">Open the app, or bring it to the front.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex open</code><button class="copy-button" type="button" data-copy="rex open">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-status">
+    <h3><code>rex status</code></h3>
+    <p class="ref-hint">App, mirror and phone state.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex status</code><button class="copy-button" type="button" data-copy="rex status">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-devices">
+    <h3><code>rex devices</code></h3>
+    <p class="ref-hint">Phones visible to ADB.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex devices</code><button class="copy-button" type="button" data-copy="rex devices">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-stop">
+    <h3><code>rex stop</code></h3>
+    <p class="ref-hint">Stop the mirror. The app stays in the tray.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>Yes</dd></div>
+    </dl>
+    <div class="command-row"><code>rex stop</code><button class="copy-button" type="button" data-copy="rex stop">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-quit">
+    <h3><code>rex quit</code></h3>
+    <p class="ref-hint">Exit the app completely.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>Yes</dd></div>
+    </dl>
+    <div class="command-row"><code>rex quit</code><button class="copy-button" type="button" data-copy="rex quit">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-action-name-serial-s">
+    <h3><code>rex action &lt;name&gt; [--serial S]</code></h3>
+    <p class="ref-hint">Send an action: home, back, sleep, volume, rotation and the rest. rex action list shows the names.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex action sleep</code><button class="copy-button" type="button" data-copy="rex action sleep">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-zoom-in-out-reset">
+    <h3><code>rex zoom &lt;in|out|reset&gt;</code></h3>
+    <p class="ref-hint">Zoom the PC view of the open mirror.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>Yes</dd></div>
+    </dl>
+    <div class="command-row"><code>rex zoom in</code><button class="copy-button" type="button" data-copy="rex zoom in">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-screenshot-serial-s">
+    <h3><code>rex screenshot [--serial S]</code></h3>
+    <p class="ref-hint">Save a picture of the phone screen.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex screenshot</code><button class="copy-button" type="button" data-copy="rex screenshot">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-phone-list-get-filter">
+    <h3><code>rex phone list|get [filter]</code></h3>
+    <p class="ref-hint">Every phone setting this phone offers, with its value.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex phone list bright</code><button class="copy-button" type="button" data-copy="rex phone list bright">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-phone-set-setting-value">
+    <h3><code>rex phone set &lt;setting&gt; &lt;value&gt;</code></h3>
+    <p class="ref-hint">Change one phone setting (rex phone list shows the ids).</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex phone set brightness 180</code><button class="copy-button" type="button" data-copy="rex phone set brightness 180">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-phone-reset-setting">
+    <h3><code>rex phone reset &lt;setting&gt;</code></h3>
+    <p class="ref-hint">Let Android use its own default for a phone setting again.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex phone reset font_scale</code><button class="copy-button" type="button" data-copy="rex phone reset font_scale">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-android-list-get-set-delete-system-secure-global-key-value-filter-text">
+    <h3><code>rex android list|get|set|delete &lt;system|secure|global&gt; [key] [value] [--filter text]</code></h3>
+    <p class="ref-hint">Raw Android settings. Keys that could cut off ADB are refused.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex android list global --filter animation</code><button class="copy-button" type="button" data-copy="rex android list global --filter animation">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-config-list-get-set-restore-path-value">
+    <h3><code>rex config list|get|set|restore [path] [value]</code></h3>
+    <p class="ref-hint">The app's own settings in config.json. set keeps a backup; restore swaps it back.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex config set Mirror.MaxFps 90</code><button class="copy-button" type="button" data-copy="rex config set Mirror.MaxFps 90">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-autostart-on-off">
+    <h3><code>rex autostart &lt;on|off&gt;</code></h3>
+    <p class="ref-hint">Start with Windows, or not.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex autostart on</code><button class="copy-button" type="button" data-copy="rex autostart on">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-lock-mode-serial-pattern-other-none">
+    <h3><code>rex lock-mode &lt;serial&gt; &lt;pattern|other|none&gt;</code></h3>
+    <p class="ref-hint">Say what kind of lock screen a phone has.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex lock-mode R3CR... pattern</code><button class="copy-button" type="button" data-copy="rex lock-mode R3CR... pattern">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-reset-lock-serial-all">
+    <h3><code>rex reset-lock [serial|ALL]</code></h3>
+    <p class="ref-hint">Forget the lock-screen answers for one phone, or all.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex reset-lock ALL</code><button class="copy-button" type="button" data-copy="rex reset-lock ALL">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-setup">
+    <h3><code>rex setup</code></h3>
+    <p class="ref-hint">Download and check the official scrcpy without opening the app.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Plain text only</dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex setup</code><button class="copy-button" type="button" data-copy="rex setup">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-usb-list-status">
+    <h3><code>rex usb [list|status]</code></h3>
+    <p class="ref-hint">ADB interfaces, and USB devices Windows could not read.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex usb</code><button class="copy-button" type="button" data-copy="rex usb">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-usb-repair-dry-run">
+    <h3><code>rex usb repair [--dry-run]</code></h3>
+    <p class="ref-hint">Repair both. Asks for administrator approval; --dry-run only says what it would do.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex usb repair --dry-run</code><button class="copy-button" type="button" data-copy="rex usb repair --dry-run">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-usb-enable-auto-repair-disable-auto-repair-dry-run">
+    <h3><code>rex usb enable-auto-repair|disable-auto-repair [--dry-run]</code></h3>
+    <p class="ref-hint">Fix &quot;USB device not recognised&quot; without asking each time, or stop doing so. Asks once.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex usb enable-auto-repair</code><button class="copy-button" type="button" data-copy="rex usb enable-auto-repair">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-usb-run-auto-repair">
+    <h3><code>rex usb run-auto-repair</code></h3>
+    <p class="ref-hint">Start the installed auto-repair now. Needs no approval.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex usb run-auto-repair</code><button class="copy-button" type="button" data-copy="rex usb run-auto-repair">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-diagnostics">
+    <h3><code>rex diagnostics</code></h3>
+    <p class="ref-hint">A full report: versions, files, startup, tools, phones and the recent log.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex diagnostics</code><button class="copy-button" type="button" data-copy="rex diagnostics">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-capabilities">
+    <h3><code>rex agent capabilities</code></h3>
+    <p class="ref-hint">The machine-readable contract: commands, actions, settings and paths.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>JSON only</dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex agent capabilities</code><button class="copy-button" type="button" data-copy="rex agent capabilities">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-help">
+    <h3><code>rex help</code></h3>
+    <p class="ref-hint">This list.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Plain text only</dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex help</code><button class="copy-button" type="button" data-copy="rex help">Copy</button></div>
+  </article>
+</section>
+<!-- /generated:cli -->
+    <p class="sr-only" id="copy-status" role="status" aria-live="polite"></p>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-wrap">
+    <span>© <span id="year">2026</span> REX Technologies · Android Headless Mirror</span>
+    <span>Built on <a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a> and Android Debug Bridge.</span>
+    <nav class="footer-links" aria-label="More">
+      <a href="changelog.html">What's new</a>
+      <a href="help.html">Help</a>
+      <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases" target="_blank" rel="noopener noreferrer">Releases <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</footer>
+<script src="app.js" defer></script>
+</body>
+</html>

@@ -169,7 +169,7 @@ public partial class MainWindow : Window
             _source.AddHook(WindowHook);
             NativeMethods.TryRegisterTouchpadWindow(_source.Handle, true);
         };
-        Loaded += (_, _) => { _hooks.Install(); OnSessionChanged(); };
+        Loaded += (_, _) => { _hooks.Install(); OnSessionChanged(); OfferWhatsNew(); };
         LocationChanged += (_, _) => TrackOverlay();
         SizeChanged += (_, _) => TrackOverlay();
         StateChanged += (_, _) => TrackOverlay();

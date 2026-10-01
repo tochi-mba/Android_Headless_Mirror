@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Help for Android Headless Mirror by symptom: no phone, USB not recognised, a black lock screen, no sound, a choppy picture, typing, where files live, resetting and uninstalling.">
+<meta name="robots" content="index,follow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080A09">
+<meta property="og:title" content="Help - Android Headless Mirror - REX Technologies">
+<meta property="og:description" content="Help for Android Headless Mirror by symptom: no phone, USB not recognised, a black lock screen, no sound, a choppy picture, typing, where files live, resetting and uninstalling.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/help.html">
+<meta property="og:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Android Headless Mirror: your phone, one window.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
+<link rel="canonical" href="https://tochi-mba.github.io/Android_Headless_Mirror/help.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.classList.replace("no-js","js");</script>
+<noscript><style>@media(max-width:1040px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
+<title>Help - Android Headless Mirror - REX Technologies</title>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ambient ambient-one" aria-hidden="true"></div>
+<div class="ambient ambient-two" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a class="brand" href="./" aria-label="Android Headless Mirror, by REX Technologies, home">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span>
+      <span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span><span></span><span></span></button>
+    <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="shortcuts.html">Shortcuts</a>
+      <a href="settings.html">Settings</a>
+      <a href="cli.html">Command line</a>
+      <a href="help.html" aria-current="page">Help</a>
+      <a href="changelog.html">What's new</a>
+      <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-hero container">
+    <p class="eyebrow signal"><span class="pulse-dot"></span> Help</p>
+    <h1>When something is not right.</h1>
+    <p class="hero-lede">Find the symptom, then the fix. If none of these is it, the last one says how to tell us.</p>
+  </section>
+  <div class="container page-body">
+    <nav class="page-index" aria-label="Topics">
+      <a href="#no-phone">No phone</a>
+      <a href="#usb-not-recognised">USB not recognised</a>
+      <a href="#black-lock-screen">Black lock screen</a>
+      <a href="#no-sound">No sound</a>
+      <a href="#choppy-picture">Choppy picture</a>
+      <a href="#typing">Typing</a>
+      <a href="#copies">Copies</a>
+      <a href="#does-not-start">Does not start</a>
+      <a href="#files">Files</a>
+      <a href="#reset">Reset</a>
+      <a href="#uninstall">Uninstall</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#report">Report a problem</a>
+    </nav>
+    <section class="help-topic" id="no-phone" aria-labelledby="no-phone-title">
+      <h2 id="no-phone-title">The app says no phone is connected</h2>
+      <p>Check the cable first: charge-only cables have no data lines. Try a port on the PC itself rather than a hub.</p>
+      <p>Unlock the phone. If it asks to allow USB debugging, tick <em>Always allow from this computer</em> and tap <strong>Allow</strong>.</p>
+      <p>If Windows sees the phone but the app does not, the app offers <strong>Repair USB driver</strong> in the bar above the mirror. See <a href="guide.html#usb-repair">Fix a phone Windows will not read</a>.</p>
+    </section>
+    <section class="help-topic" id="usb-not-recognised" aria-labelledby="usb-not-recognised-title">
+      <h2 id="usb-not-recognised-title">Windows says "USB device not recognised"</h2>
+      <p>Windows gave up reading the phone. The app notices within a few seconds and offers <strong>Fix USB</strong>, which resets the device after one administrator approval, and <strong>Fix automatically from now on</strong>.</p>
+      <p>If it keeps happening, try another cable, turn off USB selective suspend in Windows' power options, and choose <em>File transfer</em> in the phone's USB options. <code>rex usb status</code> shows what Windows reports.</p>
+    </section>
+    <section class="help-topic" id="black-lock-screen" aria-labelledby="black-lock-screen-title">
+      <h2 id="black-lock-screen-title">The lock screen is black</h2>
+      <p>Some phones mark their secure lock screen as protected, and Android will not stream it. After a restart you may need to unlock on the phone once.</p>
+      <p>For a pattern lock, the app draws a guide so you can unlock from the PC: see <a href="guide.html#pattern-guide">Unlock a phone whose lock screen is black</a>. The pattern is never stored or replayed.</p>
+    </section>
+    <section class="help-topic" id="no-sound" aria-labelledby="no-sound-title">
+      <h2 id="no-sound-title">There is no sound from the phone</h2>
+      <p>Phone audio needs Android 11 or later. Check that <a href="settings.html#Mirror.Audio">Phone audio on this PC</a> is on, then restart the mirror: audio settings apply the next time it starts.</p>
+      <p>Only the main view plays sound; copies are always silent. Some apps refuse to let their sound be captured.</p>
+    </section>
+    <section class="help-topic" id="choppy-picture" aria-labelledby="choppy-picture-title">
+      <h2 id="choppy-picture-title">The picture stutters or lags</h2>
+      <p>Lower the <a href="settings.html#Mirror.MaxSize">resolution</a> or the <a href="settings.html#Mirror.MaxFps">frame rate</a>, and use USB rather than Wi-Fi. Each copy of the phone asks the phone for another video encoder, so close copies you do not need.</p>
+      <p>If the picture flickers or stays black, try another <a href="settings.html#Mirror.RenderDriver">renderer</a>.</p>
+    </section>
+    <section class="help-topic" id="typing" aria-labelledby="typing-title">
+      <h2 id="typing-title">Keys type the wrong characters</h2>
+      <p>The phone uses its own hardware keyboard layout. <strong>Keyboard layout</strong> in Controls opens the Android screen where you pick it.</p>
+      <p>If typing still misbehaves, turn on the <a href="settings.html#Mirror.CompatibilityKeyboard">compatibility keyboard</a> and restart the mirror.</p>
+    </section>
+    <section class="help-topic" id="copies" aria-labelledby="copies-title">
+      <h2 id="copies-title">A copy will not open</h2>
+      <p>Copies need the phone upright and enough room beside it at full height. Make the window wider or close the side panel with <kbd>Ctrl+Alt+B</kbd>.</p>
+      <p>A copy that fails twice is given up on: the phone may have no video encoder left for it.</p>
+    </section>
+    <section class="help-topic" id="does-not-start" aria-labelledby="does-not-start-title">
+      <h2 id="does-not-start-title">The app does not start, or closes</h2>
+      <p>The log says exactly why. Open it from the folder below, or run <code>rex diagnostics</code>: it reports the version, the program Windows starts at sign-in and whether it is this one, whether the settings files can be read, and whether scrcpy and ADB run.</p>
+      <p>Then <a href="#report">report the problem</a> with that report attached.</p>
+    </section>
+    <section class="help-topic" id="files" aria-labelledby="files-title">
+      <h2 id="files-title">Where the app keeps its files</h2>
+      <p>Installed, the app's own files are in <code>%LocalAppData%\Programs\Android Headless Mirror</code>, and your settings, logs, screenshots and recordings are in <code>%LocalAppData%\REX\Android Headless Mirror</code>.</p>
+      <p><code>config.json</code> holds the app's settings, <code>state.json</code> what it remembers about your phones and the window, and <code>logs\mirror.log</code> what happened.</p>
+    </section>
+    <section class="help-topic" id="reset" aria-labelledby="reset-title">
+      <h2 id="reset-title">Put every setting back</h2>
+      <p>Settings → Connection &amp; advanced → <strong>Reset every app setting</strong>. From a terminal, <code>rex config restore</code> undoes the last change made with <code>rex config set</code>.</p>
+    </section>
+    <section class="help-topic" id="uninstall" aria-labelledby="uninstall-title">
+      <h2 id="uninstall-title">Uninstall</h2>
+      <p>Windows Settings → Apps → Android Headless Mirror → Uninstall. Your settings stay in <code>%LocalAppData%\REX</code> until you delete that folder.</p>
+    </section>
+    <section class="help-topic" id="privacy" aria-labelledby="privacy-title">
+      <h2 id="privacy-title">Privacy and security</h2>
+      <p>There is no account and no telemetry. The app does not upload the mirrored screen, what you type, lock information or anything on the phone. It connects to GitHub only to download itself and the official scrcpy.</p>
+      <p>USB debugging gives this PC full control of the phone, so only allow computers you trust. The app never stores or types a PIN, password or pattern, and asks for administrator approval only for the USB repairs, through the Windows prompt.</p>
+    </section>
+    <section class="help-topic" id="report" aria-labelledby="report-title">
+      <h2 id="report-title">Report a problem</h2>
+      <p>Open a <a href="https://github.com/tochi-mba/Android_Headless_Mirror/issues/new" target="_blank" rel="noopener noreferrer">new issue on GitHub</a>, or use <strong>Report a problem</strong> in the Info tab, which fills in the version. Attach the output of <strong>Copy diagnostics</strong> (Info tab) or <code>rex diagnostics</code>.</p>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-wrap">
+    <span>© <span id="year">2026</span> REX Technologies · Android Headless Mirror</span>
+    <span>Built on <a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a> and Android Debug Bridge.</span>
+    <nav class="footer-links" aria-label="More">
+      <a href="changelog.html">What's new</a>
+      <a href="help.html">Help</a>
+      <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases" target="_blank" rel="noopener noreferrer">Releases <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</footer>
+<script src="app.js" defer></script>
+</body>
+</html>

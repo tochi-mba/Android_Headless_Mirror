@@ -148,7 +148,8 @@
     "NotifyConnections": false,
     "ShowFrameRate": false,
     "ScreenshotFormat": "png",
-    "CopyScreenshots": false
+    "CopyScreenshots": false,
+    "ShowWhatsNew": true
   },
   "Logging": {
     "Enabled": true,

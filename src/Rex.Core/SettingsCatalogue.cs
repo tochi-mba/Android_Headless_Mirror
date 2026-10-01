@@ -1,7 +1,11 @@
-namespace Rex.Mirror.Views.Settings;
+namespace Rex.Core;
 
-/// <summary>The setting-to-control contract used by search, tests and the generated settings reference.</summary>
-internal static class SettingsCatalogue
+/// <summary>
+/// Every value in config.json and where a person changes it: the Settings tab control that edits it,
+/// a reason it is set somewhere else, or (until each gets one) no control yet. Search, the tests and
+/// the site's settings page read it.
+/// </summary>
+public static class SettingsCatalogue
 {
     public static readonly IReadOnlyDictionary<string, string> Controls = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -105,7 +109,30 @@ internal static class SettingsCatalogue
         ["App.ShowFrameRate"] = "ShowFrameRate",
         ["App.ScreenshotFormat"] = "ScreenshotFormat",
         ["App.CopyScreenshots"] = "CopyScreenshots",
+        ["App.ShowWhatsNew"] = "ShowWhatsNew",
     };
+
+    /// <summary>
+    /// The settings that are passed to scrcpy, so they apply the next time the mirror starts (the
+    /// app offers a restart); every other setting applies at once. A test changes each setting and
+    /// checks this against the arguments scrcpy would be started with.
+    /// </summary>
+    public static readonly IReadOnlySet<string> NextStart = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "Mirror.MaxSize", "Mirror.MaxFps", "Mirror.VideoBitRate", "Mirror.VideoCodec",
+        "Mirror.Audio", "Mirror.AudioDup", "Mirror.AudioSource", "Mirror.AudioBitRate",
+        "Mirror.VideoBufferMs", "Mirror.DownsizeOnError", "Mirror.RenderDriver", "Mirror.RecordFormat",
+        "Mirror.RecordOnStart", "Mirror.ExtraArgs", "Mirror.CompatibilityKeyboard",
+        "Session.TurnScreenOff", "Session.StayAwake", "Session.PowerOffOnClose",
+        "Mirror.AudioCodec", "Mirror.AudioBufferMs", "Mirror.RecordDirectory",
+        "Session.ScreenOffTimeoutSeconds", "Session.KeepPcAwake", "Session.StartApp", "Session.KeepActive",
+        "Input.RightClick", "Input.MiddleClick", "Input.BackButton", "Input.ForwardButton",
+        "Input.ShiftClicks", "Input.KeyRepeat", "Input.MouseHover", "Input.ClipboardAutosync",
+        "Input.LegacyPaste", "Input.Gamepad",
+    };
+
+    /// <summary>Whether a setting applies at once, or the next time the mirror starts.</summary>
+    public static bool AppliesAtNextStart(string path) => NextStart.Contains(path);
 
     public static readonly IReadOnlyDictionary<string, string> Elsewhere = new Dictionary<string, string>(StringComparer.Ordinal)
     {

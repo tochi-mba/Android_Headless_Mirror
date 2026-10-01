@@ -76,6 +76,8 @@ public sealed partial class AppProcess : IDisposable
         // Never the PC's real USB devices, Task Scheduler or administrator prompt.
         start.Environment[UsbDeviceSource.FakeVariable] = _package.UsbProblemsFile;
         start.Environment[UsbSystem.FakeRepairLogVariable] = _package.UsbRepairLog;
+        // Never the PC's real browser.
+        start.Environment[Rex.Mirror.Services.UrlOpener.FakeBrowserVariable] = _package.BrowserLog;
         start.Environment.Remove(ToolLocator.AdbOverride);
         start.Environment.Remove(ToolLocator.ScrcpyOverride);
         var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start RexMirror.exe.");

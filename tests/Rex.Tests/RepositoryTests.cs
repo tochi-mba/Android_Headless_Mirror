@@ -124,7 +124,7 @@ public sealed class RepositoryTests
     [Fact]
     public void TheSiteAndTheAppAgreeOnEveryShortcut()
     {
-        var html = File.ReadAllText(Path.Combine(RepoPaths.Root, "docs", "index.html"));
+        var html = File.ReadAllText(Path.Combine(RepoPaths.Root, "docs", "shortcuts.html"));
         foreach (var shortcut in Shortcuts.All)
         {
             Assert.True(
@@ -224,19 +224,28 @@ public sealed class RepositoryTests
     public void PagesSiteHasNoBrokenLocalAnchorsOrAssets()
     {
         var docs = Path.Combine(RepoPaths.Root, "docs");
-        var html = File.ReadAllText(Path.Combine(docs, "index.html"));
+        var pages = Directory.EnumerateFiles(docs, "*.html").Select(Path.GetFileName).Where(name => !name!.StartsWith('_')).ToArray();
+        Assert.Contains("index.html", pages);
+        var ids = pages.ToDictionary(page => page!, page => Regex.Matches(File.ReadAllText(Path.Combine(docs, page!)), " id=\"([^\"]+)\"")
+            .Select(m => m.Groups[1].Value).ToArray());
 
-        var ids = Regex.Matches(html, "id=\"([^\"]+)\"").Select(m => m.Groups[1].Value).ToHashSet(StringComparer.Ordinal);
-        Assert.Equal(ids.Count, Regex.Matches(html, "id=\"([^\"]+)\"").Count);
+        foreach (var page in pages)
+        {
+            var html = File.ReadAllText(Path.Combine(docs, page!));
+            Assert.True(ids[page!].Length == ids[page!].Distinct(StringComparer.Ordinal).Count(), $"docs/{page} uses an id twice");
 
-        var anchors = Regex.Matches(html, "href=\"#([^\"]+)\"").Select(m => m.Groups[1].Value).ToArray();
-        Assert.All(anchors, a => Assert.Contains(a, ids));
+            foreach (var link in Regex.Matches(html, "(?:href|src)=\"([^\"]+)\"").Select(m => m.Groups[1].Value).Where(a => !a.Contains("://", StringComparison.Ordinal) && !a.StartsWith("mailto:", StringComparison.Ordinal)))
+            {
+                var parts = link.Split('#', 2);
+                var target = parts[0] switch { "" => page!, "./" => "index.html", var file => file.Split('?')[0] };
+                Assert.True(File.Exists(Path.Combine(docs, target)), $"docs/{page} links to {link}, which is missing");
+                if (parts.Length == 2 && ids.TryGetValue(target, out var targetIds))
+                {
+                    Assert.True(targetIds.Contains(parts[1]), $"docs/{page} links to {link}, but {target} has no such id");
+                }
+            }
 
-        var assets = Regex.Matches(html, "(?:href|src)=\"([^\"#]+)\"").Select(m => m.Groups[1].Value)
-            .Where(a => !a.Contains("://", StringComparison.Ordinal))
-            .ToArray();
-        Assert.All(assets, a => Assert.True(File.Exists(Path.Combine(docs, a.Split('?')[0])), $"docs/{a} is referenced but missing"));
-
-        Assert.DoesNotMatch("(?i)on(click|load|error)=", html);
+            Assert.DoesNotMatch("(?i)<[^>]+\\son[a-z]+=\"", html);
+        }
     }
 }

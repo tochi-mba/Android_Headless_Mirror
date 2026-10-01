@@ -34,6 +34,22 @@
     <Button Content="Copy diagnostics" Margin="0,6,0,0" Click="OnCopyDiagnostics"
             ToolTip="Copy a report of the app, the tools and the phone, for pasting into an issue" />
 
+    <!-- The website's pages, from where questions come up. Each opens the default browser. -->
+    <TextBlock Text="HELP" Style="{StaticResource Eyebrow}" />
+    <UniformGrid Columns="2">
+      <Button x:Name="HelpGuide" Content="User guide" Margin="0,0,3,0" Click="OnHelpLink" Tag="guide"
+              ToolTip="Step-by-step recipes, on the website" />
+      <Button x:Name="HelpSettings" Content="All settings" Margin="3,0,0,0" Click="OnHelpLink" Tag="settings"
+              AutomationProperties.Name="Every setting explained" ToolTip="Every setting explained, on the website" />
+    </UniformGrid>
+    <UniformGrid Columns="2" Margin="0,6,0,0">
+      <Button x:Name="HelpShortcuts" Content="Shortcuts" Margin="0,0,3,0" Click="OnHelpLink" Tag="shortcuts"
+              AutomationProperties.Name="Keyboard shortcuts" ToolTip="Every key and gesture, on the website" />
+      <Button x:Name="HelpWhatsNew" Content="What's new" Margin="3,0,0,0" Click="OnHelpLink" Tag="changelog" />
+    </UniformGrid>
+    <Button x:Name="HelpReport" Content="Report a problem" Margin="0,6,0,0" Click="OnHelpLink" Tag="report"
+            ToolTip="Open a new GitHub issue with this version filled in. Copy diagnostics above and paste it in." />
+
     <TextBlock Text="LEARNING" Style="{StaticResource Eyebrow}" />
     <UniformGrid Columns="2">
       <Button x:Name="TourButton" Content="Take the tour" Margin="0,0,3,0" Click="OnTour" ToolTip="Walk through the window again · F1" />

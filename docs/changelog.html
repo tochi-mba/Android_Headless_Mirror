@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="What changed in each version of Android Headless Mirror, newest first.">
+<meta name="robots" content="index,follow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080A09">
+<meta property="og:title" content="What's new - Android Headless Mirror - REX Technologies">
+<meta property="og:description" content="What changed in each version of Android Headless Mirror, newest first.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/changelog.html">
+<meta property="og:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Android Headless Mirror: your phone, one window.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
+<link rel="canonical" href="https://tochi-mba.github.io/Android_Headless_Mirror/changelog.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.classList.replace("no-js","js");</script>
+<noscript><style>@media(max-width:1040px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
+<title>What's new - Android Headless Mirror - REX Technologies</title>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="ambient ambient-one" aria-hidden="true"></div>
+<div class="ambient ambient-two" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a class="brand" href="./" aria-label="Android Headless Mirror, by REX Technologies, home">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span>
+      <span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span>
+    </a>
+    <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span><span></span><span></span></button>
+    <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="shortcuts.html">Shortcuts</a>
+      <a href="settings.html">Settings</a>
+      <a href="cli.html">Command line</a>
+      <a href="help.html">Help</a>
+      <a href="changelog.html" aria-current="page">What's new</a>
+      <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-hero container">
+    <p class="eyebrow signal"><span class="pulse-dot"></span> What's new</p>
+    <h1>Every version, newest first.</h1>
+    <p class="hero-lede">The installer for each published version is on the <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases" target="_blank" rel="noopener noreferrer">releases page</a>.</p>
+  </section>
+  <div class="container page-body changelog">
+<!-- generated:changelog -->
+<h2 id="v2-3-3">2.3.3 - 2026-10-01</h2>
+<h3>Added</h3>
+<ul>
+<li>The website is now nine pages: features, a guide, every keyboard shortcut, every setting, every command, help by symptom and this list of changes. The shortcut, settings and command pages are made from the app itself, so they always match it.</li>
+<li>The Info tab has a <strong>Help</strong> section: the guide, every setting explained, the shortcuts, what is new in this version, and a way to report a problem with the version already filled in.</li>
+<li>After an update, the bar above the mirror says once what version you are on, with a link to what changed. <strong>Say what is new after an update</strong> in Settings turns it off.</li>
+<li><code>rex help</code> points at the command line page, and lists exactly the commands <code>rex</code> accepts.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>The site is checked before it publishes: every link, picture, title and heading.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li>Changing the recording format while every session is recorded now offers to restart the mirror, as the other settings that apply at the next start do.</li>
+</ul>
+<h2 id="v2-3-2">2.3.2 - 2026-10-01</h2>
+<h3>Fixed</h3>
+<ul>
+<li><code>rex action keyboard-layout</code> opens the phone's keyboard settings, as the button in the window does.</li>
+<li>A command whose output arrives late on a busy PC is no longer read as empty.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>Settings remember which groups you left open.</li>
+<li><strong>Find a setting</strong> also finds a setting by its name in config.json, such as <code>Mirror.MaxFps</code>.</li>
+<li><strong>Reset every app setting</strong> resets every setting, including any added later.</li>
+<li>The log names each step of starting up, and a failure is written with its real cause in full, even when logging is off. <code>rex diagnostics</code> adds the version, Windows and .NET, the program Windows starts at sign-in (and a warning when it is not this one), whether config.json and state.json can be read, and whether scrcpy and adb run.</li>
+<li>An unexpected problem while the window is open is reported once and the app carries on.</li>
+</ul>
+<h2 id="v2-3-1">2.3.1 - 2026-10-01</h2>
+<h3>Changed</h3>
+<ul>
+<li>Copies of the phone that cannot be seen (window hidden or minimised, phone on its side, window too narrow) are paused after five seconds and start again as soon as there is room. Two copies in the tray went from about 22 % of the PC to under 8 %.</li>
+</ul>
+<h2 id="v2-3-0">2.3.0 - 2026-10-01</h2>
+<h3>Changed</h3>
+<ul>
+<li>The Settings tab is finished: the restart offer stays in sight above every tab, rows line up, and <strong>Find a setting</strong> filters row by row.</li>
+<li>Settings whose parent is off are greyed out with the reason, instead of doing nothing.</li>
+</ul>
+<h2 id="v2-2-1">2.2.1 - 2026-10-01</h2>
+<h3>Changed</h3>
+<ul>
+<li>The Phone tab's <strong>Reset</strong> only appears on a setting that can be reset and has been changed, slider values sit on their label's line, and keyboard focus stays where it was after a change.</li>
+<li>The Info tab lists every shortcut in one column with plain names.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li>Holding left Alt for the PC view can no longer get stuck if Windows misses the key coming up.</li>
+<li>A Phone tab change made while another was still being read is no longer lost.</li>
+</ul>
+<h2 id="v2-2-0">2.2.0 - not published</h2>
+<p>This version was built but never released; its changes shipped in 2.2.1.</p>
+<h3>Added</h3>
+<ul>
+<li>The window can stay on top, the side panel can sit on the left, and you choose which phone buttons the top bar shows.</li>
+<li>The status bar can show the frame rate and say when a phone connects or leaves.</li>
+<li>Settings for the keyboard swipes: how far and how fast they go.</li>
+</ul>
+<h2 id="v2-1-0">2.1.0 - 2026-09-30</h2>
+<h3>Added</h3>
+<ul>
+<li>Settings for the video (buffer, renderer, trying a lower resolution), the audio (what to capture, its quality, keeping it playing on the phone), the session (the phone's screen timeout while mirrored, keeping this PC awake, an app to open), every mouse button, key repeat, hover, the clipboard, game controllers and the recording format.</li>
+</ul>
+<h2 id="v2-0-9">2.0.9 - 2026-09-30</h2>
+<h3>Fixed</h3>
+<ul>
+<li>The picture keeps the video's shape from the moment it appears, instead of briefly taking the window's.</li>
+</ul>
+<h2 id="v2-0-8">2.0.8 - 2026-09-30</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Copies of the phone pause, turn and flip together with the main view.</li>
+</ul>
+<h2 id="v2-0-7">2.0.7 - 2026-09-30</h2>
+<h3>Added</h3>
+<ul>
+<li>Copies of the phone, side by side: extra live views you can touch and type into.</li>
+<li><strong>Repair USB driver</strong> fixes &quot;USB device not recognised&quot; from the app, and can do it by itself.</li>
+<li>The Phone tab shows dark mode, display size and brightness in words.</li>
+</ul>
+<h2 id="v2-0-6">2.0.6 - not published</h2>
+<p>This version was built but never released; its changes shipped in 2.0.7.</p>
+<h3>Changed</h3>
+<ul>
+<li>The soft background and the navigator read the picture on the graphics card, which costs far less, and every control is drawn in the app's own style.</li>
+</ul>
+<h2 id="v2-0-5">2.0.5 - 2026-09-30</h2>
+<h3>Added</h3>
+<ul>
+<li>Every key types on the phone, including digits, symbols and AltGr.</li>
+<li>Browse mode (<strong>Ctrl+Alt+K</strong>): the arrow keys, Enter, L and M move through a feed.</li>
+<li>The window teaches itself with a short tour, and every control has a name a screen reader reads.</li>
+<li>The fullscreen controls can be dragged anywhere.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>The soft background costs much less, and the pattern guide follows where Android puts the dots.</li>
+</ul>
+<h2 id="v2-0-4">2.0.4 - 2026-09-23</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Tests and the release pipeline are reliable again; no change to the app itself.</li>
+</ul>
+<h2 id="v2-0-3">2.0.3 - 2026-09-23</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Steadier fullscreen and pattern-guide tests; no change to the app itself.</li>
+</ul>
+<h2 id="v2-0-2">2.0.2 - 2026-09-23</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Updating stops the app's own processes first, so the installer never finds its files in use.</li>
+</ul>
+<h2 id="v2-0-1">2.0.1 - 2026-09-23</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Mirroring works again after the first installer release, and the pattern guide is clearer.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>A new version is published automatically once it passes every test.</li>
+</ul>
+<h2 id="v2-0-0">2.0.0 - 2026-09-23</h2>
+<h3>Added</h3>
+<ul>
+<li>The first installer: per-user, no administrator prompt, with scrcpy included.</li>
+<li>A guided first run inside the window that shows the exact taps to allow USB debugging.</li>
+<li>The command line, <code>rex</code>, for people and for scripts.</li>
+</ul>
+<!-- /generated:changelog -->
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-wrap">
+    <span>© <span id="year">2026</span> REX Technologies · Android Headless Mirror</span>
+    <span>Built on <a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a> and Android Debug Bridge.</span>
+    <nav class="footer-links" aria-label="More">
+      <a href="changelog.html">What's new</a>
+      <a href="help.html">Help</a>
+      <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases" target="_blank" rel="noopener noreferrer">Releases <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</footer>
+<script src="app.js" defer></script>
+</body>
+</html>

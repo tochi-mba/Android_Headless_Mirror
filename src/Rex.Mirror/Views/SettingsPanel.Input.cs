@@ -12,17 +12,6 @@ namespace Rex.Mirror.Views;
 /// </summary>
 public partial class SettingsPanel
 {
-    /// <summary>What a mouse button can be set to do, in the words the choices show.</summary>
-    private static readonly (string Action, string Label)[] ButtonChoices =
-    [
-        ("back", "Back"),
-        ("home", "Home"),
-        ("recents", "Recent apps"),
-        ("notifications", "Notifications"),
-        ("click", "Click on the phone"),
-        ("nothing", "Nothing"),
-    ];
-
     private IEnumerable<ComboBox> ButtonCombos => [RightClick, MiddleClick, BackButton, ForwardButton];
 
     /// <summary>Each button's choices, made once; the same list four times over in the markup would drift apart.</summary>
@@ -35,7 +24,7 @@ public partial class SettingsPanel
                 continue;
             }
 
-            foreach (var (action, label) in ButtonChoices)
+            foreach (var (action, label) in InputSettings.ButtonChoices)
             {
                 combo.Items.Add(new ComboBoxItem { Content = label, Tag = action });
             }

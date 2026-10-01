@@ -70,18 +70,54 @@ if (!reduced && 'IntersectionObserver' in window) {
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 }
 
-// Mark the section being read in the navigation, so long scrolls keep their place.
-const sections = [...document.querySelectorAll('main section[id]')];
-const navLinks = new Map([...document.querySelectorAll('.site-nav a[href^="#"]')].map(a => [a.getAttribute('href').slice(1), a]));
-if (sections.length && navLinks.size && 'IntersectionObserver' in window) {
+// Mark the section being read in the page's own index, so long scrolls keep their place.
+const indexLinks = new Map([...document.querySelectorAll('.page-index a[href^="#"], .doc-contents a[href^="#"]')]
+  .map(a => [a.getAttribute('href').slice(1), a]));
+const indexed = [...indexLinks.keys()].map(id => document.getElementById(id)).filter(Boolean);
+if (indexed.length && 'IntersectionObserver' in window) {
   const spy = new IntersectionObserver(entries => {
     entries.filter(entry => entry.isIntersecting).forEach(entry => {
-      navLinks.forEach(link => link.removeAttribute('aria-current'));
-      navLinks.get(entry.target.id)?.setAttribute('aria-current', 'true');
+      indexLinks.forEach(link => link.removeAttribute('aria-current'));
+      indexLinks.get(entry.target.id)?.setAttribute('aria-current', 'true');
     });
   }, { rootMargin: '-45% 0px -50% 0px' });
-  sections.forEach(section => spy.observe(section));
+  indexed.forEach(section => spy.observe(section));
 }
+
+// The filter on the settings and shortcuts pages. Without JavaScript every row simply shows.
+const squash = text => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+document.querySelectorAll('.filter-input').forEach(input => {
+  const rows = [...document.querySelectorAll(input.dataset.filter)];
+  const groups = [...document.querySelectorAll(input.dataset.filterGroups)];
+  const count = document.getElementById(input.dataset.filterCount);
+  const noun = input.dataset.filterNoun;
+  // A row matches by its words, or by its name in config.json typed any way (maxfps, Mirror.MaxFps).
+  const words = rows.map(row => [row.textContent.toLowerCase(), squash(row.textContent + ' ' + row.id)]);
+  const apply = () => {
+    const query = input.value.trim().toLowerCase();
+    const squashed = squash(query);
+    let shown = 0;
+    rows.forEach((row, i) => {
+      const hit = !query || words[i][0].includes(query) || (squashed.length > 0 && words[i][1].includes(squashed));
+      row.hidden = !hit;
+      if (hit) shown++;
+    });
+    groups.forEach(group => {
+      group.hidden = query.length > 0 && !rows.some(row => !row.hidden && group.contains(row));
+    });
+    if (count) {
+      count.textContent = !query ? '' : shown === 0 ? `No ${noun} mentions that.` : shown === 1 ? `1 ${noun} matches` : `${shown} ${noun}s match`;
+    }
+  };
+  input.addEventListener('input', apply);
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && input.value) {
+      input.value = '';
+      apply();
+      event.stopPropagation();
+    }
+  });
+});
 
 const year = document.getElementById('year');
 if (year) year.textContent = String(new Date().getFullYear());

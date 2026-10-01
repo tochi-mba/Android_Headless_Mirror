@@ -6,3 +6,6 @@ CopiesLayout.cs
 CopiesStatus.cs
 ChildShape.cs
 DisplayOrientation.cs
+SettingsCatalogue.cs
+SiteLinks.cs
+WhatsNew.cs
