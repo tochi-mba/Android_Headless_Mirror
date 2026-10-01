@@ -40,8 +40,12 @@ public sealed class UiAuditCapture
         var monitor = app.MonitorBounds();
         foreach (var (label, width, height) in new[] { ("default", 1180, 780), ("smallest", 720, 480) })
         {
+            // Never larger than the screen: a window hanging off its edge photographs as blank there
+            // (the CI runner's screen is 1024 pixels wide).
             var scale = app.DpiScale();
-            app.MoveWindow(monitor.Left + 40, monitor.Top + 40, (int)(width * scale), (int)(height * scale));
+            var pixelsWide = Math.Min((int)(width * scale), monitor.Width - 80);
+            var pixelsHigh = Math.Min((int)(height * scale), monitor.Height - 80);
+            app.MoveWindow(monitor.Left + 40, monitor.Top + 40, pixelsWide, pixelsHigh);
             await Task.Delay(600, TestContext.Current.CancellationToken);
             // A narrow window hides the panel to give the phone the room; the audit wants it open.
             var status = await app.SendAsync(new IpcRequest("status"));
