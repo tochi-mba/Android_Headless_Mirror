@@ -18,7 +18,7 @@ public static class Ipc
     public static readonly string[] Commands =
     [
         "ping", "status", "show", "hide", "quit",
-        "action", "zoom", "screenshot", "session-restart", "session-stop", "refresh",
+        "action", "zoom", "sound", "screenshot", "session-restart", "session-stop", "refresh",
     ];
 
     public const string PipeNameOverride = "REX_PIPE_NAME";

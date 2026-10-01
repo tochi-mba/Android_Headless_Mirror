@@ -31,7 +31,7 @@ public partial class MainWindow
     internal bool HintsShowing => HintText.Visibility == Visibility.Visible;
 
     internal IEnumerable<string> QuickButtonsShowing =>
-        new (Button Button, string Id)[] { (QuickHome, "home"), (QuickBack, "back"), (QuickRecents, "recents"), (QuickSleep, "sleep"), (QuickScreenshot, "screenshot") }
+        new (Button Button, string Id)[] { (QuickHome, "home"), (QuickBack, "back"), (QuickRecents, "recents"), (QuickSleep, "sleep"), (QuickScreenshot, "screenshot"), (QuickSound, "sound") }
             .Where(pair => pair.Button.Visibility == Visibility.Visible)
             .Select(pair => pair.Id);
 
@@ -55,6 +55,7 @@ public partial class MainWindow
         }
 
         ApplyGlobalKeys();
+        _sound?.Refresh();
     }
 
     /// <summary>
@@ -87,7 +88,7 @@ public partial class MainWindow
     {
         var buttons = new (Button Button, string Id)[]
         {
-            (QuickHome, "home"), (QuickBack, "back"), (QuickRecents, "recents"), (QuickSleep, "sleep"), (QuickScreenshot, "screenshot"),
+            (QuickHome, "home"), (QuickBack, "back"), (QuickRecents, "recents"), (QuickSleep, "sleep"), (QuickScreenshot, "screenshot"), (QuickSound, "sound"),
         };
         foreach (var (button, id) in buttons)
         {
@@ -95,7 +96,7 @@ public partial class MainWindow
         }
 
         var navigation = wanted.Any(id => id is "home" or "back" or "recents");
-        var screen = wanted.Any(id => id is "sleep" or "screenshot");
+        var screen = wanted.Any(id => id is "sleep" or "screenshot" or "sound");
         QuickDivider.Visibility = navigation && screen ? Visibility.Visible : Visibility.Collapsed;
         QuickEndDivider.Visibility = navigation || screen ? Visibility.Visible : Visibility.Collapsed;
     }

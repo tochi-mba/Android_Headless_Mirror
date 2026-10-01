@@ -46,6 +46,7 @@ public static class MachineMode
                 "quit" => await ForwardAsync(context, "quit", new IpcRequest("quit")).ConfigureAwait(false),
                 "action" => await ActionAsync(context, positional, Arguments.Option(args, "--serial")).ConfigureAwait(false),
                 "zoom" => await ZoomAsync(context, positional).ConfigureAwait(false),
+                "sound" => await SoundAsync(context, positional).ConfigureAwait(false),
                 "screenshot" => await ScreenshotAsync(context, Arguments.Option(args, "--serial")).ConfigureAwait(false),
                 "phone" => await PhoneAsync(context, positional, Arguments.Option(args, "--serial")).ConfigureAwait(false),
                 "android" => await AndroidAsync(context, positional, Arguments.Option(args, "--serial"), Arguments.Option(args, "--filter")).ConfigureAwait(false),
@@ -146,6 +147,17 @@ public static class MachineMode
     {
         Arguments.Require(positional, 2, "zoom <in|out|reset>");
         return ForwardAsync(context, "zoom", new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = positional[1] }));
+    }
+
+    private static Task<MachineResult> SoundAsync(CliContext context, string[] positional)
+    {
+        var verb = positional.Length >= 2 ? positional[1] : string.Empty;
+        if (verb.Length > 0 && !SoundCommand.IsValid(verb))
+        {
+            throw new ArgumentException("Usage: " + SoundCommand.Usage);
+        }
+
+        return ForwardAsync(context, "sound", new IpcRequest("sound", new Dictionary<string, string> { ["verb"] = verb }));
     }
 
     private static async Task<MachineResult> ScreenshotAsync(CliContext context, string? serial)

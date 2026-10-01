@@ -14,6 +14,7 @@ public sealed record RexConfig
 
     public int Version { get; set; } = CurrentVersion;
     public MirrorSettings Mirror { get; set; } = new();
+    public SoundSettings Sound { get; set; } = new();
     public SessionSettings Session { get; set; } = new();
     public WirelessSettings Wireless { get; set; } = new();
     public TouchpadSettings Touchpad { get; set; } = new();
@@ -32,6 +33,7 @@ public sealed record RexConfig
     {
         Version = CurrentVersion;
         Mirror.Normalize();
+        Sound.Normalize();
         Session.Normalize();
         Wireless.Normalize();
         Touchpad.Normalize();
@@ -49,6 +51,7 @@ public sealed record RexConfig
     public RexConfig Copy() => this with
     {
         Mirror = Mirror.Copy(),
+        Sound = Sound.Copy(),
         Session = Session.Copy(),
         Wireless = Wireless.Copy(),
         Touchpad = Touchpad.Copy(),
@@ -70,6 +73,7 @@ public sealed record RexConfig
         var copy = other.Copy();
         Version = copy.Version;
         Mirror = copy.Mirror;
+        Sound = copy.Sound;
         Session = copy.Session;
         Wireless = copy.Wireless;
         Touchpad = copy.Touchpad;
@@ -710,7 +714,7 @@ public sealed record AppSettings
     public static readonly string[] SidebarSides = ["right", "left"];
 
     /// <summary>The phone buttons the top bar can show, in the order it shows them.</summary>
-    public static readonly string[] QuickButtons = ["home", "back", "recents", "sleep", "screenshot"];
+    public static readonly string[] QuickButtons = ["home", "back", "recents", "sleep", "screenshot", "sound"];
 
     public static readonly string[] ScreenshotFormats = ["png", "jpg"];
 

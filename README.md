@@ -43,6 +43,8 @@ delete that folder.
   the same gestures zoom and pan the view on this PC instead, so clicks always land where you see.
 - **A keyboard is enough.** Every key types as on a plugged-in keyboard, and browse mode
   (Ctrl+Alt+K) moves through a feed with the arrow keys.
+- **The phone's sound, your level.** The sound button in the top bar sets how loud the phone plays on
+  this PC, remembered for each phone, and it can mute itself while the window is away.
 - **Keys from anywhere.** Ctrl+Alt+M brings the mirror up from any app and sends it back to the
   tray, and any action can have a key of its own that works while the window is hidden.
 - **Copies side by side.** Ctrl+Alt+N adds another live view of the phone; copies nobody can see
@@ -65,6 +67,7 @@ All of it, with the settings that shape each part, is on the
 | Force landscape or portrait     | Ctrl+Alt+L or Ctrl+Alt+U; Ctrl+Alt+A lets the phone decide       |
 | Show the pattern guide          | Ctrl+Alt+P; Ctrl+Alt+C lines it up with the arrow keys           |
 | Jump between the side tabs      | Ctrl+Alt+1 to Ctrl+Alt+4; Ctrl+Alt+B hides the panel             |
+| Quieter, louder or mute on this PC | Ctrl+Alt+PageDown, Ctrl+Alt+PageUp, Ctrl+Alt+Shift+M, or the sound button |
 | Take a screenshot               | Ctrl+Alt+S, or the camera in the top bar                         |
 | Browse a feed without the mouse | Ctrl+Alt+K, then the arrow keys, Enter, L, M and Backspace       |
 | See the phone twice or more     | Ctrl+Alt+N adds a copy; Ctrl+Alt+W closes the last one           |
@@ -85,6 +88,7 @@ rex status                         app, mirror and phone state
 rex action sleep                   turn the phone screen off (rex action list)
 rex zoom in | out | reset          PC-side zoom of the open mirror
 rex screenshot                     save a picture of the phone screen
+rex sound 40                       the phone's sound on this PC (up, down, mute)
 rex phone set brightness 180       friendly phone settings (rex phone list)
 rex config set Mirror.MaxFps 90    app settings, with one-step undo (rex config restore)
 rex diagnostics                    everything needed to report a problem

@@ -52,6 +52,13 @@ internal static class Program
             return 1;
         }
 
+        // A phone too old to send its sound: real scrcpy says so and carries on with the picture.
+        var oldPhone = Path.Combine(Path.GetDirectoryName(LogPath) ?? AppContext.BaseDirectory, "no-audio");
+        if (!args.Contains("--no-audio") && File.Exists(oldPhone))
+        {
+            Console.Error.WriteLine("WARN: Audio disabled: it is not supported before Android 11");
+        }
+
         var shortcutModifier = args.FirstOrDefault(a => a.StartsWith("--shortcut-mod=", StringComparison.Ordinal));
         if (shortcutModifier?.Contains('+', StringComparison.Ordinal) == true)
         {

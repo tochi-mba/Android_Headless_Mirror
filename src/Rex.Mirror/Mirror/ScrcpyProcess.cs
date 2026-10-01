@@ -30,6 +30,8 @@ public sealed class ScrcpyProcess : IDisposable
                 return;
             }
 
+            NoteSound(e.Data);
+
             lock (_stderr)
             {
                 _stderr.Add(e.Data);
@@ -51,6 +53,10 @@ public sealed class ScrcpyProcess : IDisposable
                 FrameRate = rate;
                 FrameRateChanged?.Invoke(rate);
             }
+            else
+            {
+                NoteSound(e.Data);
+            }
         };
         process.BeginErrorReadLine();
         process.BeginOutputReadLine();
@@ -71,6 +77,12 @@ public sealed class ScrcpyProcess : IDisposable
 
     /// <summary>Raised on a worker thread each second while scrcpy's frame rate counter runs.</summary>
     public event Action<int>? FrameRateChanged;
+    /// <summary>Why the phone sends no sound, once scrcpy has said so; null until then.</summary>
+    public string? SoundProblem { get; private set; }
+
+    /// <summary>scrcpy said the phone cannot or will not send its sound. Raised on a reader thread.</summary>
+    public event Action<string>? SoundRefused;
+
     public int ProcessId => _process.Id;
     public IntPtr Hwnd { get; private set; }
     public uint ThreadId { get; private set; }
@@ -144,6 +156,15 @@ public sealed class ScrcpyProcess : IDisposable
         }
 
         return false;
+    }
+
+    private void NoteSound(string? line)
+    {
+        if (SoundProblem is null && SoundProblems.FromScrcpy(line) is { } why)
+        {
+            SoundProblem = why;
+            SoundRefused?.Invoke(why);
+        }
     }
 
     public void Kill() => ProcessRunner.Kill(_process);

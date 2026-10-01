@@ -18,3 +18,10 @@ KeyRepeat.cs
 WindowKeys.cs
 GlobalKeysSettings.cs
 ConfigValidation.cs
+SoundSettings.cs
+SoundPolicy.cs
+SoundFade.cs
+SoundBalance.cs
+SoundMemory.cs
+SoundProblems.cs
+SoundCommand.cs

@@ -87,6 +87,8 @@ public sealed partial class AppProcess : IDisposable
         start.Environment[UsbSystem.FakeRepairLogVariable] = _package.UsbRepairLog;
         // Never the PC's real browser.
         start.Environment[Rex.Mirror.Services.UrlOpener.FakeBrowserVariable] = _package.BrowserLog;
+        // Never the PC's real audio sessions.
+        start.Environment[Rex.Mirror.Services.Sound.FakePhoneSound.Variable] = _package.SoundFile;
         start.Environment.Remove(ToolLocator.AdbOverride);
         start.Environment.Remove(ToolLocator.ScrcpyOverride);
         var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start RexMirror.exe.");

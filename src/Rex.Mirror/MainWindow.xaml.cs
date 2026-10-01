@@ -154,6 +154,7 @@ public partial class MainWindow : Window
         SettingsPanel.Attach(this, host);
         InfoPanel.Attach(this, host);
         Onboarding.Attach(this, host);
+        InitSound();
 
         host.Session.Changed += OnSessionChanged;
         host.Usb.Changed += OnUsbChanged;
@@ -242,6 +243,7 @@ public partial class MainWindow : Window
             _overlay.Close();
             _hooks.Dispose();
             _copies?.Dispose();
+            StopSound();
             return;
         }
 
@@ -690,6 +692,8 @@ public partial class MainWindow : Window
                 return Copies.Add();
             case "copy-remove":
                 return Copies.Remove();
+            case "sound-up" or "sound-down" or "sound-mute":
+                return RunSound(id);
             default:
                 return AndroidResult.Failure($"Unknown app action '{id}'.");
         }

@@ -39,7 +39,7 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `usb [list|status|repair|enable-auto-repair|disable-auto-repair|run-auto-repair] [--dry-run]`, `open`, `stop`, `quit`, `action <id>`,
 `zoom <in|out|reset>`, `screenshot`, `phone get|set <setting> <value>`,
 `android list|get|set|delete <system|secure|global> [key] [value] [--filter text]`,
-`config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
+`sound [0-100|up|down|mute|unmute|toggle]`, `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
 
 Rules:
@@ -96,6 +96,7 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   WorkGate              one worker at a time, and a close that waits for it to leave
   KeyChord/GlobalKey*   chords in words, which keys may work from anywhere, what the show-or-hide key does
   WindowKeys            the window's own keys, read from Shortcuts, matched with exactly their modifiers
+  Sound*                the phone's sound on this PC: settings, the rules, fades, balance, where a level is kept
   SettingsCatalogue     every config.json value and where it is changed; which ones apply at the next start
   SiteLinks             every web address the app and the CLI send people to
   WhatsNew              when the window says once, after an update, which version this is
@@ -109,6 +110,7 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Mirror/PatternGuide   keyguard polling, geometry discovery, calibration
   Session/*             supervisor: device watching, scrcpy lifecycle, actions, copies (CopiesController)
   Services/*            composition root, pipe server, command router, tray icon, UsbDoctor
+  Services/Sound/*      the phone's sound on this PC: scrcpy's own Core Audio session (REX_FAKE_AUDIO in tests)
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
   Views/Settings/*      settings groups in separate controls
   Services/UrlOpener    opens the app's own https pages (REX_FAKE_BROWSER_LOG in tests)
@@ -175,6 +177,11 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   needs Ctrl or is F13-F24 on its own (`GlobalKeyRules`), never takes AltGr or one of Windows' own
   keys, and nothing acts while a `ChordBox` records. The window's own keys come from
   `WindowKeys`, read from `Shortcuts`, and match only with exactly their modifiers.
+- The phone's sound is only ever changed on this PC, through the scrcpy process's own audio
+  session (`PhoneSound`), never on the phone: the phone's volume keys are separate actions with
+  their own words and icons. The session is looked for only until it is found, the rules are
+  checked four times a second, the fading timer runs only while fading and the meter only while
+  the sound panel is open. Tests set `REX_FAKE_AUDIO`, and `AppProcess` always does.
 - Left Alt pressed on its own belongs to the PC view (zoom, pinch, pan). While it is held,
   `MirrorHost.HoldKeyboard` moves keyboard focus from scrcpy to the viewport, from inside the
   keyboard hook so it happens before Windows routes the key; otherwise the hardware keyboard shows

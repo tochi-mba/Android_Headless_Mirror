@@ -20,6 +20,24 @@
     "ExtraArgs": "",
     "CompatibilityKeyboard": false
   },
+  "Sound": {
+    "Volume": 1,
+    "Muted": false,
+    "Step": 0.05,
+    "RememberPerPhone": true,
+    "StartMuted": false,
+    "MuteWhenHidden": false,
+    "MuteWhenBehind": false,
+    "MuteWhenLocked": false,
+    "LowerWhileTyping": false,
+    "LowerTo": 0.3,
+    "LowerForMs": 800,
+    "FadeMs": 150,
+    "Balance": 0,
+    "FollowMixer": true,
+    "ShowLevel": true,
+    "WheelOnButton": true
+  },
   "Session": {
     "TurnScreenOff": true,
     "StayAwake": true,
@@ -142,7 +160,8 @@
       "back",
       "recents",
       "sleep",
-      "screenshot"
+      "screenshot",
+      "sound"
     ],
     "ShowHints": true,
     "NotifyConnections": false,

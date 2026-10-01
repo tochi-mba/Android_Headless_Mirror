@@ -95,9 +95,21 @@ public partial class SettingsPanel
     }
 
     internal IEnumerable<Expander> Groups() =>
-        [GroupDisplay, GroupAudio, GroupSession, GroupZoom, GroupInput, GroupOf(CopiesSettingsGroup), GroupOf(HudSettingsGroup), GroupLockScreen, GroupCaptures, GroupStartup, GroupOf(GlobalKeysSettingsGroup), GroupAdvanced];
+        [GroupDisplay, GroupAudio, GroupOf(SoundSettingsGroup), GroupSession, GroupZoom, GroupInput, GroupOf(CopiesSettingsGroup), GroupOf(HudSettingsGroup), GroupLockScreen, GroupCaptures, GroupStartup, GroupOf(GlobalKeysSettingsGroup), GroupAdvanced];
 
     private static Expander GroupOf(ISettingsGroup group) => group.Group;
+
+    /// <summary>Opens a group and scrolls it into view, as a link from elsewhere in the window does.</summary>
+    internal void Reveal(string groupName)
+    {
+        if (Groups().FirstOrDefault(group => group.Name == groupName) is not { } group)
+        {
+            return;
+        }
+
+        group.IsExpanded = true;
+        group.BringIntoView();
+    }
 
     private void OnGroupExpansionChanged(object sender, RoutedEventArgs e)
     {

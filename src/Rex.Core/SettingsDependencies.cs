@@ -15,6 +15,8 @@ namespace Rex.Core;
 /// <param name="Ambient">The soft background's options: the soft background is on.</param>
 /// <param name="Hud">The fullscreen controls' options: they are shown.</param>
 /// <param name="GlobalKeys">Every key from anywhere and what it does: keys from anywhere are on.</param>
+/// <param name="Sound">The sound on this PC: phone audio is on.</param>
+/// <param name="SoundLowering">How far and how long the sound is lowered: it is lowered while typing.</param>
 public sealed record SettingsDependencies(
     bool Sensitivity,
     bool Zoom,
@@ -25,7 +27,9 @@ public sealed record SettingsDependencies(
     bool AudioDup,
     bool Ambient,
     bool Hud,
-    bool GlobalKeys)
+    bool GlobalKeys,
+    bool Sound,
+    bool SoundLowering)
 {
     public static SettingsDependencies Of(RexConfig config) => new(
         Sensitivity: config.Touchpad.Enabled && config.Touchpad.TwoFingerToAndroid,
@@ -37,5 +41,7 @@ public sealed record SettingsDependencies(
         AudioDup: config.Mirror.Audio && config.Mirror.AudioDupPossible,
         Ambient: config.Ambient.Enabled,
         Hud: config.Hud.Enabled,
-        GlobalKeys: config.GlobalKeys.Enabled);
+        GlobalKeys: config.GlobalKeys.Enabled,
+        Sound: config.Mirror.Audio,
+        SoundLowering: config.Mirror.Audio && config.Sound.LowerWhileTyping);
 }

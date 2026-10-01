@@ -1,0 +1,49 @@
+<UserControl x:Class="Rex.Mirror.Views.Settings.SoundGroup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Expander x:Name="GroupSound" Header="Sound on this PC" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="How the phone's sound plays here. Only this PC is changed; the phone's own volume stays where it is. The sound button in the top bar does the same at a click." />
+    <TextBlock x:Name="SoundOffNote" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4" Visibility="Collapsed"
+               Text="Phone sound is off, so there is nothing to change here. Turn on &#8220;Phone audio on this PC&#8221; above." />
+    <StackPanel x:Name="SoundOptions">
+      <Grid Margin="0,8,0,0"><TextBlock x:Name="SoundLevelLabel" Text="Volume on this PC" /><TextBlock x:Name="SoundLevelValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="SoundLevel" AutomationProperties.LabeledBy="{Binding ElementName=SoundLevelLabel}" Minimum="0" Maximum="1" TickFrequency="0.01" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider"
+              ToolTip="Where a phone starts. With each phone remembered, the sound button in the top bar sets the one you are using." />
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Muted on this PC"><CheckBox x:Name="SoundMuted" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+      <Grid Margin="0,8,0,0"><TextBlock x:Name="SoundStepLabel" Text="One key press or wheel notch changes it by" TextWrapping="Wrap" Margin="0,0,48,0" /><TextBlock x:Name="SoundStepValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="SoundStep" AutomationProperties.LabeledBy="{Binding ElementName=SoundStepLabel}" Minimum="0.01" Maximum="0.25" TickFrequency="0.01" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="Remember the volume for each phone" TextWrapping="Wrap" />
+          <TextBlock Text="Off, every phone plays at the volume above." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <CheckBox x:Name="SoundPerPhone" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Remember the volume for each phone" />
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="Start every mirror muted" TextWrapping="Wrap" />
+          <TextBlock Text="From the next mirror on." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <CheckBox x:Name="SoundStartMuted" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Start every mirror muted" />
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mute while the window is hidden or minimised"><CheckBox x:Name="SoundMuteHidden" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mute while another window is in front"><CheckBox x:Name="SoundMuteBehind" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Mute while this PC is locked"><CheckBox x:Name="SoundMuteLocked" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Lower it while you type into the phone"><CheckBox x:Name="SoundLowerTyping" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+      <StackPanel x:Name="SoundLowerOptions">
+        <Grid Margin="0,8,0,0"><TextBlock x:Name="SoundLowerToLabel" Text="Lower it to" /><TextBlock x:Name="SoundLowerToValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="SoundLowerTo" AutomationProperties.LabeledBy="{Binding ElementName=SoundLowerToLabel}" Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+        <Grid Margin="0,8,0,0"><TextBlock x:Name="SoundLowerForLabel" Text="Back up after" /><TextBlock x:Name="SoundLowerForValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="SoundLowerFor" AutomationProperties.LabeledBy="{Binding ElementName=SoundLowerForLabel}" Minimum="200" Maximum="5000" TickFrequency="100" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+      </StackPanel>
+      <Grid Margin="0,8,0,0"><TextBlock x:Name="SoundFadeLabel" Text="Fade changes over" /><TextBlock x:Name="SoundFadeValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="SoundFade" AutomationProperties.LabeledBy="{Binding ElementName=SoundFadeLabel}" Minimum="0" Maximum="1000" TickFrequency="50" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+      <Grid Margin="0,8,0,0"><TextBlock x:Name="SoundBalanceLabel" Text="Balance" /><TextBlock x:Name="SoundBalanceValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="SoundBalance" AutomationProperties.LabeledBy="{Binding ElementName=SoundBalanceLabel}" Minimum="-1" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Follow changes made in the Windows volume mixer"><CheckBox x:Name="SoundFollowMixer" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the sound level in the sound panel"><CheckBox x:Name="SoundShowLevel" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="The wheel over the sound button changes the volume"><CheckBox x:Name="SoundWheel" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+    </StackPanel>
+  </StackPanel></Expander>
+</UserControl>
