@@ -125,6 +125,50 @@ public sealed class SettingsPanelRulesTests
     }
 
     [Fact]
+    public void GroupsInTheirOwnFilesAreStillSearchedNamedAndPolished()
+    {
+        Wpf.Run(() =>
+        {
+            var panel = Wpf.Layout(new SettingsPanel(), 300);
+            Assert.Equal(
+                ["GroupDisplay", "GroupAudio", "GroupSession", "GroupZoom", "GroupInput", "GroupCopies", "GroupHud", "GroupLockScreen", "GroupCaptures", "GroupStartup", "GroupAdvanced"],
+                panel.Groups().Select(group => group.Name));
+            var filter = Assert.IsType<TextBox>(panel.FindName("SettingsFilter"));
+            var count = Assert.IsType<TextBlock>(panel.FindName("FilterCount"));
+            var copies = panel.Groups().Single(group => group.Name == "GroupCopies");
+            var hud = panel.Groups().Single(group => group.Name == "GroupHud");
+
+            // By the words on the row, and by the config path stamped on its control.
+            filter.Text = "Show the status line under them";
+            Assert.Equal("1 setting matches", count.Text);
+            Assert.Equal(Visibility.Visible, hud.Visibility);
+            Assert.True(hud.IsExpanded);
+            Assert.Equal(Visibility.Collapsed, copies.Visibility);
+
+            filter.Text = "Copies.Gap";
+            Assert.Equal("1 setting matches", count.Text);
+            Assert.Equal(Visibility.Visible, copies.Visibility);
+            Assert.Equal(Visibility.Collapsed, hud.Visibility);
+
+            // Cleared, every group is back and closed as it was before the search.
+            filter.Text = string.Empty;
+            Assert.All(panel.Groups(), group => Assert.Equal(Visibility.Visible, group.Visibility));
+            Assert.False(copies.IsExpanded);
+            Assert.False(hud.IsExpanded);
+
+            // Named and polished by the same rules as the rest of the tab.
+            foreach (var row in LogicalDescendants(copies).Concat(LogicalDescendants(hud)).OfType<HeaderedContentControl>().Where(r => r.GetType() == typeof(HeaderedContentControl)))
+            {
+                Assert.False(string.IsNullOrWhiteSpace(SettingsPanel.LabelOf(row)), "A row without a label");
+                var style = row.Style == (System.Windows.Style)panel.FindResource("SettingRow") ? "inline" : "stacked";
+                Assert.Equal(row.Content is CheckBox ? "inline" : "stacked", style);
+            }
+
+            return true;
+        });
+    }
+
+    [Fact]
     public void GroupsInTheirOwnFilesCanBeConstructedBeforeTheyAreAttached()
     {
         Wpf.Run(() =>

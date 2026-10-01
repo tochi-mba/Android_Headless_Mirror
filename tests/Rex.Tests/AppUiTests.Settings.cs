@@ -94,4 +94,30 @@ public sealed partial class AppUiTests
         app.Ui.Select("TabControls");
         app.Ui.Select("TabSettings");
     }
+
+    [Fact(Timeout = 150_000)]
+    public async Task Settings_OpenGroupsAreRememberedAcrossRuns()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        using (var first = new AppProcess(package))
+        {
+            await first.WaitForPhaseAsync("mirroring", Startup);
+            first.Ui.Select("TabSettings");
+            Assert.False(first.Ui.IsExpanded("GroupLockScreen"));
+            first.Ui.ExpandGroup("GroupLockScreen");
+            await first.WaitUntilAsync(
+                () => new StateStore(package.Paths.State).Ui.SettingsOpen.Contains("GroupLockScreen"),
+                Soon,
+                "the open group to be saved");
+            await first.QuitAsync();
+        }
+
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", Startup);
+        app.Ui.Select("TabSettings");
+        Assert.True(app.Ui.IsExpanded("GroupLockScreen"));
+        Assert.True(app.Ui.IsExpanded("GroupDisplay"));
+        Assert.False(app.Ui.IsExpanded("GroupCaptures"));
+    }
 }
