@@ -106,7 +106,7 @@ public sealed class AppHost : IDisposable
         {
             return File.ReadAllText(Paths.Config);
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Log.Warn("Could not read config.json while watching it; Windows may still be replacing the file.");
             return string.Empty;
@@ -128,9 +128,11 @@ public sealed class AppHost : IDisposable
             latest.Normalize();
             ConfigFile.Save(Paths.Config, latest);
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            // Another program holding config.json, or a folder made read-only, must not take the app down.
             Log.Error("Could not save config.json", ex);
+            Window?.SetStatus("Could not save the settings: " + ex.Message + " Close anything that has config.json open and try again.", isError: true);
             return;
         }
 

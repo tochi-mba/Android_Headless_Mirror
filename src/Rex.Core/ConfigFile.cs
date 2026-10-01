@@ -190,9 +190,17 @@ internal static class LegacyConfigMigration
         obj[key] is JsonValue value && value.TryGetValue<string>(out var parsed) ? parsed : fallback;
 }
 
-/// <summary>Write-to-temp-then-move so a crash mid-write never leaves a truncated file.</summary>
+/// <summary>
+/// Write-to-temp-then-move so a crash mid-write never leaves a truncated file. Windows refuses to
+/// replace a file while any other handle has it open, however briefly (a read of it, an editor, a
+/// virus scan), so a write waits out such a reader for a moment before it gives up.
+/// </summary>
 public static class AtomicFile
 {
+    /// <summary>The pauses between attempts to put the new file in place, about a second in all.</summary>
+    internal static readonly TimeSpan[] MoveRetries =
+        [TimeSpan.FromMilliseconds(25), TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(400)];
+
     public static void Write(string path, string content, string? keepBackupAt, Func<string, bool>? validate)
     {
         var directory = Path.GetDirectoryName(path);
@@ -220,7 +228,7 @@ public static class AtomicFile
                 File.Copy(path, keepBackupAt, overwrite: true);
             }
 
-            File.Move(temp, path, overwrite: true);
+            MoveIntoPlace(temp, path);
         }
         finally
         {
@@ -233,5 +241,24 @@ public static class AtomicFile
                 // Best-effort cleanup only. The destination write has already completed or failed.
             }
         }
+    }
+
+    private static void MoveIntoPlace(string temp, string path)
+    {
+        foreach (var pause in MoveRetries)
+        {
+            try
+            {
+                File.Move(temp, path, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Held open by a reader; it lets go within moments.
+                Thread.Sleep(pause);
+            }
+        }
+
+        File.Move(temp, path, overwrite: true);
     }
 }
