@@ -59,6 +59,29 @@ public sealed record RexConfig
         App = App.Copy(),
         Logging = Logging.Copy(),
     };
+
+    /// <summary>Copies every setting from another config without replacing this instance.</summary>
+    public void CopyFrom(RexConfig other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        var copy = other.Copy();
+        Version = copy.Version;
+        Mirror = copy.Mirror;
+        Session = copy.Session;
+        Wireless = copy.Wireless;
+        Touchpad = copy.Touchpad;
+        Input = copy.Input;
+        Zoom = copy.Zoom;
+        Copies = copy.Copies;
+        Ambient = copy.Ambient;
+        Hud = copy.Hud;
+        PatternGuide = copy.PatternGuide;
+        App = copy.App;
+        Logging = copy.Logging;
+    }
+
+    /// <summary>Returns every app setting to its shipped value while keeping this config instance.</summary>
+    public void Reset() => CopyFrom(new RexConfig());
 }
 
 /// <summary>Video, audio and recording options passed to scrcpy at launch.</summary>

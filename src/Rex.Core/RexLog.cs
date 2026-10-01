@@ -19,8 +19,13 @@ public sealed class RexLog
 
     public void Info(string message) => Write("INFO", message);
     public void Warn(string message) => Write("WARN", message);
+    public void Warn(string message, Exception exception) => Write("WARN", $"{message}:{Environment.NewLine}{ExceptionDiagnostics.Format(exception)}");
     public void Error(string message) => Write("ERROR", message);
-    public void Error(string message, Exception exception) => Write("ERROR", $"{message}: {exception.GetType().Name}: {exception.Message}");
+    public void Error(string message, Exception exception) => Write("ERROR", $"{message}:{Environment.NewLine}{ExceptionDiagnostics.Format(exception)}");
+
+    /// <summary>A process-ending failure is always written locally, even when ordinary logging is off.</summary>
+    public void Critical(string message, Exception exception) =>
+        Write("FATAL", $"{message}:{Environment.NewLine}{ExceptionDiagnostics.Format(exception)}", always: true);
 
     public event Action<string>? LineWritten;
 
@@ -46,12 +51,12 @@ public sealed class RexLog
         }
     }
 
-    private void Write(string level, string message)
+    private void Write(string level, string message, bool always = false)
     {
         var line = $"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)} [{level}] {message}";
         LineWritten?.Invoke(line);
 
-        if (!_settings.Enabled)
+        if (!always && !_settings.Enabled)
         {
             return;
         }
@@ -94,5 +99,40 @@ public sealed class RexLog
         }
 
         File.Move(_path, _path + ".1", overwrite: true);
+    }
+}
+
+/// <summary>Unwraps framework invocation shells while retaining the complete exception chain and stacks.</summary>
+public static class ExceptionDiagnostics
+{
+    public static Exception RootCause(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        while (exception is System.Reflection.TargetInvocationException { InnerException: { } invocation })
+        {
+            exception = invocation;
+        }
+
+        while (exception is AggregateException { InnerExceptions.Count: 1 } aggregate)
+        {
+            exception = aggregate.InnerExceptions[0];
+        }
+
+        return exception;
+    }
+
+    public static string Summary(Exception exception)
+    {
+        var root = RootCause(exception);
+        return $"{root.GetType().Name}: {root.Message}";
+    }
+
+    public static string Format(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        var root = RootCause(exception);
+        return ReferenceEquals(root, exception)
+            ? exception.ToString()
+            : $"Root cause: {root.GetType().FullName}: {root.Message}{Environment.NewLine}{root.StackTrace}{Environment.NewLine}{Environment.NewLine}Full exception chain:{Environment.NewLine}{exception}";
     }
 }

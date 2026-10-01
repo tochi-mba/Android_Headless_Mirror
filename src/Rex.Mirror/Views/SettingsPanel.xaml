@@ -1,6 +1,7 @@
 <UserControl x:Class="Rex.Mirror.Views.SettingsPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:settings="clr-namespace:Rex.Mirror.Views.Settings">
   <StackPanel>
 
     <Grid Margin="0,10,0,0">
@@ -373,83 +374,8 @@
     <Slider x:Name="SwipeMilliseconds" AutomationProperties.LabeledBy="{Binding ElementName=SwipeTimeLabel}" Minimum="80" Maximum="800" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSwipeSlider"
             ToolTip="Quicker swipes fling further, as they do under a finger." />
     </StackPanel></Expander>
-    <Expander x:Name="GroupCopies" Header="Copies of the phone" Margin="0,12,0,0"><StackPanel>
-    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
-               Text="Extra live views of an upright phone, side by side, added from the Controls tab. Each copy is a session of its own, so each one asks the phone for another video encoder." />
-    <Grid Margin="0,8,0,0"><TextBlock x:Name="CopiesMostLabel" Text="Most copies" /><TextBlock x:Name="CopiesMostValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-    <Slider x:Name="CopiesMost" AutomationProperties.LabeledBy="{Binding ElementName=CopiesMostLabel}" Minimum="1" Maximum="5" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnCopiesSlider"
-            ToolTip="Only as many as fit the window at full height can be open, whatever this says." />
-    <Grid Margin="0,8,0,0"><TextBlock x:Name="CopiesGapLabel" Text="Space between copies" /><TextBlock x:Name="CopiesGapValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-    <Slider x:Name="CopiesGap" AutomationProperties.LabeledBy="{Binding ElementName=CopiesGapLabel}" Minimum="0" Maximum="48" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnCopiesSlider" />
-    <HeaderedContentControl Style="{StaticResource SettingRow}">
-      <HeaderedContentControl.Header>
-        <StackPanel>
-          <TextBlock Text="Copy resolution" />
-          <TextBlock Text="A lower one is lighter on the phone and the PC. Open copies restart with it." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
-        </StackPanel>
-      </HeaderedContentControl.Header>
-      <ComboBox x:Name="CopiesMaxSize" SelectionChanged="OnCopiesOption" AutomationProperties.Name="Copy resolution">
-        <ComboBoxItem Content="Same as the mirror" Tag="0" />
-        <ComboBoxItem Content="1920 px" Tag="1920" />
-        <ComboBoxItem Content="1600 px" Tag="1600" />
-        <ComboBoxItem Content="1280 px" Tag="1280" />
-        <ComboBoxItem Content="1024 px" Tag="1024" />
-        <ComboBoxItem Content="800 px" Tag="800" />
-        <ComboBoxItem Content="480 px" Tag="480" />
-      </ComboBox>
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Open the same copies next time">
-      <CheckBox x:Name="CopiesRemember" Checked="OnCopiesOption" Unchecked="OnCopiesOption" AutomationProperties.Name="Open the same copies next time" />
-    </HeaderedContentControl>
-    </StackPanel></Expander>
-    <Expander x:Name="GroupHud" Header="Fullscreen controls" Margin="0,12,0,0"><StackPanel>
-    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
-               Text="In fullscreen the controls hide themselves. Move the pointer to where you put them and they come back. Drag them anywhere by the dotted grip on their left." />
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the floating controls">
-      <CheckBox x:Name="HudEnabled" Checked="OnHudChanged" Unchecked="OnHudChanged" />
-    </HeaderedContentControl>
-    <StackPanel x:Name="HudOptions">
-      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Where they sit">
-        <ComboBox x:Name="HudPosition" SelectionChanged="OnHudPosition">
-          <ComboBoxItem Content="Top" Tag="top" />
-          <ComboBoxItem Content="Bottom" Tag="bottom" />
-          <ComboBoxItem Content="Left" Tag="left" />
-          <ComboBoxItem Content="Right" Tag="right" />
-          <ComboBoxItem Content="Top left" Tag="top-left" />
-          <ComboBoxItem Content="Top right" Tag="top-right" />
-          <ComboBoxItem Content="Bottom left" Tag="bottom-left" />
-          <ComboBoxItem Content="Bottom right" Tag="bottom-right" />
-        </ComboBox>
-      </HeaderedContentControl>
-      <Grid x:Name="HudDraggedRow" Margin="0,2,0,0" Visibility="Collapsed">
-        <TextBlock Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center"
-                   Text="Dragged to a spot of their own." />
-        <Button x:Name="HudPinBack" Content="Pin it back" Style="{StaticResource GhostButton}"
-                HorizontalAlignment="Right" Click="OnHudPinBack"
-                ToolTip="Put the controls back where the position above says." />
-      </Grid>
-      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the status line under them">
-        <CheckBox x:Name="HudMessages" Checked="OnHudChanged" Unchecked="OnHudChanged" />
-      </HeaderedContentControl>
-      <Grid Margin="0,10,0,0"><TextBlock Text="Size" /><TextBlock x:Name="HudScaleValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-      <Slider x:Name="HudScale" AutomationProperties.Name="Fullscreen controls size" Minimum="0.75" Maximum="1.75" Margin="0,2,0,0" ValueChanged="OnHudSlider" />
-      <Grid Margin="0,8,0,0"><TextBlock Text="Opacity" /><TextBlock x:Name="HudOpacityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-      <Slider x:Name="HudOpacity" AutomationProperties.Name="Fullscreen controls opacity" Minimum="0.3" Maximum="1" Margin="0,2,0,0" ValueChanged="OnHudSlider" />
-      <Grid Margin="0,8,0,0"><TextBlock Text="Hides after" /><TextBlock x:Name="HudDelayValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
-      <Slider x:Name="HudDelay" AutomationProperties.Name="Fullscreen controls hide delay" Minimum="1" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnHudSlider" />
-      <TextBlock Text="Buttons" Margin="0,14,0,0" />
-      <TextBlock x:Name="HudButtonCount" Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,6"
-                 Text="Tap to add or remove. They appear in this order." TextWrapping="Wrap" />
-      <Border Background="{StaticResource Ink}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="8,7" Margin="0,0,0,10">
-        <StackPanel>
-          <TextBlock Text="PREVIEW" Style="{StaticResource Eyebrow}" FontSize="11" Margin="2,0,0,6" />
-          <WrapPanel x:Name="HudPreview" />
-        </StackPanel>
-      </Border>
-      <WrapPanel x:Name="HudButtons" />
-      <Button Content="Reset the fullscreen controls" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetHud" />
-    </StackPanel>
-    </StackPanel></Expander>
+    <settings:CopiesGroup x:Name="CopiesSettingsGroup" />
+    <settings:HudGroup x:Name="HudSettingsGroup" />
 
     <Expander x:Name="GroupLockScreen" Header="Lock screen" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">

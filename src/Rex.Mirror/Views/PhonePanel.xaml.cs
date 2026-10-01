@@ -101,6 +101,7 @@ public partial class PhonePanel : UserControl
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
+            _host?.Log.Error($"Could not read settings from phone '{serial}'", ex);
             ShowStatus("Could not read the phone's settings: " + ex.Message);
         }
         finally

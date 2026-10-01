@@ -17,8 +17,14 @@ public static class StartupRegistration
 
     public static bool IsEnabled()
     {
+        return RegisteredCommand() is not null;
+    }
+
+    /// <summary>The exact command Windows will run at sign-in, or <see langword="null"/> when disabled.</summary>
+    public static string? RegisteredCommand()
+    {
         using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: false);
-        return key?.GetValue(ValueName) is string value && value.Length > 0;
+        return key?.GetValue(ValueName) is string { Length: > 0 } value ? value : null;
     }
 
     public static void Enable(string executablePath)

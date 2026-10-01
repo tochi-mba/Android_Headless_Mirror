@@ -258,7 +258,7 @@ public sealed partial class SessionController : IDisposable
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
             identity = new DeviceIdentity(device.Serial, string.Empty, device.Model, string.Empty, string.Empty, string.Empty, 0, 0);
-            _host.Log.Warn("Could not read the phone identity: " + ex.Message);
+            _host.Log.Warn($"Could not read the identity of phone '{device.Serial}'", ex);
         }
 
         // Some phones (and emulators) report no model through getprop, and the name would then be
@@ -585,14 +585,7 @@ public sealed partial class SessionController : IDisposable
                     return AndroidResult.Failure("No phone is connected.");
                 }
 
-                var command = MirrorActions.AdbCommand(action.Id)!.Value;
-                return command.Kind switch
-                {
-                    "key" => await Adb.KeyEventAsync(device.Serial, command.Argument).ConfigureAwait(true),
-                    "rotation" => await Adb.SetRotationOverrideAsync(device.Serial, command.Argument).ConfigureAwait(true),
-                    "activity" => await Adb.StartActivityAsync(device.Serial, command.Argument).ConfigureAwait(true),
-                    _ => await Adb.StatusBarAsync(device.Serial, command.Argument).ConfigureAwait(true),
-                };
+                return await MirrorActions.RunAdbAsync(Adb, device.Serial, action.Id).ConfigureAwait(true);
             }
 
             case ActionKind.Scrcpy:
@@ -700,7 +693,7 @@ public sealed partial class SessionController : IDisposable
             catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or NotSupportedException or FileFormatException)
             {
                 // Another app holds the clipboard; the file is saved all the same.
-                _host.Log.Warn("Could not copy the screenshot to the clipboard: " + ex.Message);
+                _host.Log.Warn("Could not copy the screenshot to the clipboard", ex);
             }
         }
 
@@ -734,6 +727,7 @@ public sealed partial class SessionController : IDisposable
                 }
                 catch (Exception ex) when (ex is IOException or InvalidOperationException)
                 {
+                    _host.Log.Warn($"Could not refresh the wireless connection for '{serial}'", ex);
                     await Task.Delay(TimeSpan.FromSeconds(30), cts.Token).ConfigureAwait(false);
                 }
             }
@@ -762,7 +756,7 @@ public sealed partial class SessionController : IDisposable
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
-            _host.Log.Warn("Wireless bootstrap failed: " + ex.Message);
+            _host.Log.Warn($"Wireless bootstrap failed for '{serial}'", ex);
         }
     }
 

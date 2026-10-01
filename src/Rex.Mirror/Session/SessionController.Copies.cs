@@ -43,6 +43,7 @@ public sealed partial class SessionController
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
+            _host.Log.Error($"Could not start copy {index + 1} of '{device.Serial}'", ex);
             return new CopyLaunch(null, "scrcpy could not start: " + ex.Message);
         }
 

@@ -96,6 +96,30 @@ public static class MirrorActions
         "keyboard-layout" => ("activity", "android.settings.HARD_KEYBOARD_SETTINGS"),
         _ => null,
     };
+
+    /// <summary>Runs an ADB-backed action through the one command dispatcher shared by the app and both CLI modes.</summary>
+    public static async Task<AndroidResult> RunAdbAsync(
+        AdbClient adb,
+        string serial,
+        string actionId,
+        CancellationToken cancellationToken = default)
+    {
+        var action = Find(actionId);
+        var command = AdbCommand(actionId);
+        if (action?.Kind != ActionKind.Adb || command is null)
+        {
+            return AndroidResult.Failure($"'{actionId}' is not an ADB action.");
+        }
+
+        return command.Value.Kind switch
+        {
+            "key" => await adb.KeyEventAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
+            "rotation" => await adb.SetRotationOverrideAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
+            "activity" => await adb.StartActivityAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
+            "statusbar" => await adb.StatusBarAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
+            _ => AndroidResult.Failure($"Unsupported ADB action '{actionId}'."),
+        };
+    }
 }
 
 /// <summary>scrcpy shortcut bindings (MOD is the configured shortcut modifier). Keys are virtual-key codes.</summary>

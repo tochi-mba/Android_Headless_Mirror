@@ -8,6 +8,7 @@ using System.Windows.Input;
 using Rex.Core;
 using Rex.Mirror.Mirror;
 using Rex.Mirror.Services;
+using Rex.Mirror.Views.Settings;
 
 namespace Rex.Mirror.Views;
 
@@ -17,11 +18,16 @@ public partial class SettingsPanel : UserControl
     private MainWindow? _window;
     private AppHost? _host;
     private bool _loading;
+    private ISettingsGroup[] _settingsGroups = [];
+
+    internal bool Loading => _loading;
 
     public SettingsPanel()
     {
         InitializeComponent();
+        _settingsGroups = [CopiesSettingsGroup, HudSettingsGroup];
         PolishRows();
+        StampConfigPaths();
     }
 
     /// <summary>
@@ -49,6 +55,20 @@ public partial class SettingsPanel : UserControl
         }
     }
 
+    private void StampConfigPaths()
+    {
+        var named = Descendants(this).Prepend(this).OfType<FrameworkElement>()
+            .Where(element => element.Name.Length > 0)
+            .ToDictionary(element => element.Name, StringComparer.Ordinal);
+        foreach (var (path, controlName) in SettingsCatalogue.Controls)
+        {
+            if (named.TryGetValue(controlName, out var control))
+            {
+                SettingRows.SetConfigPath(control, path);
+            }
+        }
+    }
+
     /// <summary>Settings whose parent is off stay in sight but cannot be changed (<see cref="SettingsDependencies"/>).</summary>
     private void ApplyDependencies(RexConfig c)
     {
@@ -71,7 +91,6 @@ public partial class SettingsPanel : UserControl
         AudioBitRate.IsEnabled = on.Audio;
         AudioDup.IsEnabled = on.AudioDup;
         AmbientOptions.IsEnabled = on.Ambient;
-        HudOptions.IsEnabled = on.Hud;
     }
 
     /// <summary>A row's label: its header text, or the first line of a header that also has a description.</summary>
@@ -86,6 +105,25 @@ public partial class SettingsPanel : UserControl
     {
         _window = window;
         _host = host;
+        foreach (var group in _settingsGroups)
+        {
+            group.Attach(this, window, host);
+        }
+        _loading = true;
+        try
+        {
+            var open = host.State.Ui.SettingsOpen;
+            foreach (var group in Groups())
+            {
+                group.IsExpanded = open.Contains(group.Name, StringComparer.Ordinal);
+                group.Expanded += OnGroupExpansionChanged;
+                group.Collapsed += OnGroupExpansionChanged;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
         Refresh();
     }
 
@@ -149,25 +187,13 @@ public partial class SettingsPanel : UserControl
             NavigatorWidth.Value = c.Zoom.NavigatorWidth;
             NavigatorOpacity.Value = c.Zoom.NavigatorOpacity;
             NavigatorFrameRate.Value = c.Zoom.NavigatorFrameRate;
-            HudEnabled.IsChecked = c.Hud.Enabled;
-            HudOptions.IsEnabled = c.Hud.Enabled;
-            HudMessages.IsChecked = c.Hud.ShowMessages;
-            SelectTag(HudPosition, c.Hud.Position);
-            HudDraggedRow.Visibility = c.Hud.IsPlaced ? Visibility.Visible : Visibility.Collapsed;
-            HudScale.Value = c.Hud.Scale;
-            HudOpacity.Value = c.Hud.Opacity;
-            HudDelay.Value = c.Hud.HideSeconds;
-            BuildHudButtons(c.Hud);
             ShowAmbientValues(c);
             MaximumZoom.Value = c.Zoom.MaxZoom;
             WheelSpeed.Value = c.Zoom.WheelStep;
-            CopiesMost.Maximum = CopiesSettings.MostUpperBound;
-            CopiesGap.Maximum = CopiesSettings.GapUpperBound;
-            CopiesMost.Value = c.Copies.Most;
-            CopiesGap.Value = c.Copies.Gap;
-            SelectTag(CopiesMaxSize, c.Copies.MaxSize.ToString(CultureInfo.InvariantCulture));
-            CopiesRemember.IsChecked = c.Copies.Remember;
-            ShowCopiesValues();
+            foreach (var group in _settingsGroups)
+            {
+                group.Refresh(c);
+            }
             // scrcpy only keeps the playback going on the phone, so another source rules it out.
             // What the audio rows can do follows from the others; see ApplyDependencies.
             PatternEnabled.IsChecked = c.PatternGuide.Enabled;
@@ -218,7 +244,7 @@ public partial class SettingsPanel : UserControl
 
     private static string SelectedTag(ComboBox combo, string fallback) => (combo.SelectedItem as ComboBoxItem)?.Tag as string ?? fallback;
 
-    private void Save(Action<RexConfig> mutate)
+    internal void Save(Action<RexConfig> mutate)
     {
         if (_loading || _host is null)
         {
@@ -363,6 +389,7 @@ public partial class SettingsPanel : UserControl
         }
         catch (InvalidOperationException ex)
         {
+            _host.Log.Error("Could not restore the previous configuration backup", ex);
             _window?.SetStatus(ex.Message, isError: true);
         }
     }
@@ -446,168 +473,6 @@ public partial class SettingsPanel : UserControl
 
     private void OnResetAmbient(object sender, RoutedEventArgs e) => Save(c => c.Ambient = new AmbientSettings());
 
-    /// <summary>The copies' sliders preview live (the gap moves as it is dragged) and are written after the drag.</summary>
-    private void OnCopiesSlider(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_host is null) return;
-        ShowCopiesValues();
-        if (_loading) return;
-        var most = (int)Math.Round(CopiesMost.Value);
-        var gap = Math.Round(CopiesGap.Value);
-        _host.PreviewConfig(c =>
-        {
-            c.Copies.Most = most;
-            c.Copies.Gap = gap;
-        });
-    }
-
-    private void OnCopiesOption(object sender, RoutedEventArgs e) => Save(c =>
-    {
-        c.Copies.MaxSize = int.TryParse(SelectedTag(CopiesMaxSize, "0"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var size) ? size : 0;
-        c.Copies.Remember = CopiesRemember.IsChecked == true;
-    });
-
-    private void ShowCopiesValues()
-    {
-        var most = (int)Math.Round(CopiesMost.Value);
-        CopiesMostValue.Text = most == 1 ? "1 copy" : $"{most} copies";
-        CopiesGapValue.Text = CopiesGap.Value < 0.5 ? "none" : $"{CopiesGap.Value:0} px";
-    }
-
-    /// <summary>
-    /// Narrows the panel to the settings that mention what was typed, row by row, opening their
-    /// groups and saying how many there are. A group whose own name matches shows whole.
-    ///
-    /// Eleven groups and a hundred-odd controls is more than anyone should scroll through hunting
-    /// for one switch, and a whole group shown for one word in it hid nothing.
-    /// </summary>
-    private void OnFilter(object sender, TextChangedEventArgs e) => ApplyFilter();
-
-    private void ApplyFilter()
-    {
-        var query = SettingsFilter.Text.Trim();
-        FilterHint.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        var matches = 0;
-        foreach (var group in Groups())
-        {
-            var whole = query.Length > 0 && Mentions(group.Header, query);
-            var shown = group.Content is Panel body ? FilterRows(body, whole ? string.Empty : query) : 0;
-            var hit = query.Length == 0 || whole || shown > 0;
-            group.Visibility = hit ? Visibility.Visible : Visibility.Collapsed;
-            if (query.Length > 0 && hit)
-            {
-                group.IsExpanded = true;
-                matches += shown;
-            }
-        }
-
-        FilterEmpty.Visibility = query.Length > 0 && matches == 0 ? Visibility.Visible : Visibility.Collapsed;
-        FilterCount.Visibility = query.Length > 0 && matches > 0 ? Visibility.Visible : Visibility.Collapsed;
-        FilterCount.Text = matches == 1 ? "1 setting matches" : $"{matches} settings match";
-        if (query.Length == 0 && _host is not null && !_loading)
-        {
-            // Some rows show only in some states (a dragged HUD, a note about the audio source);
-            // clearing the search gives them back to the state that decides.
-            Refresh();
-        }
-    }
-
-    /// <summary>
-    /// Shows the rows of a group that mention the words, or every row for no words, and says how
-    /// many are showing. A row is a setting row, a slider with its label line, a block marked as
-    /// one row, or a button; a nested panel is filtered row by row; a plain line of explanation is
-    /// put away while searching.
-    /// </summary>
-    private static int FilterRows(Panel body, string query)
-    {
-        var searching = query.Length > 0;
-        var shown = 0;
-        var children = body.Children.OfType<UIElement>().ToArray();
-        for (var i = 0; i < children.Length; i++)
-        {
-            var child = children[i];
-            if (child is Grid label && i + 1 < children.Length && children[i + 1] is Slider slider)
-            {
-                var pair = !searching || Mentions(label, query) || Mentions(slider, query);
-                label.Visibility = pair ? Visibility.Visible : Visibility.Collapsed;
-                slider.Visibility = label.Visibility;
-                shown += pair ? 1 : 0;
-                i++;
-                continue;
-            }
-
-            if (child is StackPanel { Tag: not "row" } inner)
-            {
-                var count = FilterRows(inner, query);
-                inner.Visibility = !searching || count > 0 ? Visibility.Visible : Visibility.Collapsed;
-                shown += count;
-                continue;
-            }
-
-            if (child is TextBlock)
-            {
-                child.Visibility = searching ? Visibility.Collapsed : Visibility.Visible;
-                continue;
-            }
-
-            var hit = !searching || Mentions(child, query);
-            child.Visibility = hit ? Visibility.Visible : Visibility.Collapsed;
-            shown += hit ? 1 : 0;
-        }
-
-        return shown;
-    }
-
-    private IEnumerable<Expander> Groups() =>
-        [GroupDisplay, GroupAudio, GroupSession, GroupZoom, GroupInput, GroupCopies, GroupHud, GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
-
-    /// <summary>Whether something says the words: its text, a label, a hint, an option or a button's words.</summary>
-    private static bool Mentions(object? subject, string query)
-    {
-        bool Says(string? text) => text is not null && text.Contains(query, StringComparison.OrdinalIgnoreCase);
-
-        switch (subject)
-        {
-            case string text:
-                return Says(text);
-            case null:
-                return false;
-            case DependencyObject root:
-                foreach (var node in Descendants(root).Prepend(root))
-                {
-                    var said = node switch
-                    {
-                        TextBlock text => Says(text.Text),
-                        HeaderedContentControl row => Says(row.Header as string),
-                        ContentControl control => Says(control.Content as string),
-                        _ => false,
-                    };
-                    if (said || (node is FrameworkElement element && Says(System.Windows.Automation.AutomationProperties.GetName(element))))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            default:
-                return false;
-        }
-    }
-
-    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
-    {
-        // The content of a collapsed expander is never realised, so the logical tree is what has
-        // the words in it whether the group is open or shut.
-        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
-        {
-            yield return child;
-            foreach (var deeper in Descendants(child))
-            {
-                yield return deeper;
-            }
-        }
-    }
-
     private async void OnResetEverything(object sender, RoutedEventArgs e)
     {
         if (_window is null || _host is null)
@@ -624,174 +489,9 @@ public partial class SettingsPanel : UserControl
             return;
         }
 
-        Save(c =>
-        {
-            var fresh = new RexConfig();
-            c.Mirror = fresh.Mirror;
-            c.Session = fresh.Session;
-            c.Touchpad = fresh.Touchpad;
-            c.Input = fresh.Input;
-            c.Zoom = fresh.Zoom;
-            c.Copies = fresh.Copies;
-            c.Ambient = fresh.Ambient;
-            c.Hud = fresh.Hud;
-            c.PatternGuide = fresh.PatternGuide;
-            c.Wireless = fresh.Wireless;
-            c.Logging = fresh.Logging;
-            c.App = fresh.App;
-        });
+        Save(c => c.Reset());
 
         _window?.SetStatus("Every app setting is back to how it ships.");
-    }
-
-    private void OnHudChanged(object sender, RoutedEventArgs e) => Save(c =>
-    {
-        c.Hud.Enabled = HudEnabled.IsChecked == true;
-        c.Hud.ShowMessages = HudMessages.IsChecked == true;
-    });
-
-    /// <summary>
-    /// Choosing a position is how the bar gets pinned back: it overrides wherever it was dragged to,
-    /// which the other HUD settings must leave alone.
-    /// </summary>
-    private void OnHudPosition(object sender, SelectionChangedEventArgs e) => Save(c =>
-    {
-        c.Hud.Position = SelectedTag(HudPosition, "top");
-        c.Hud.X = null;
-        c.Hud.Y = null;
-    });
-
-    private void OnHudPinBack(object sender, RoutedEventArgs e) => Save(c =>
-    {
-        c.Hud.X = null;
-        c.Hud.Y = null;
-    });
-
-    private void OnHudSlider(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_host is null) return;
-        HudScaleValue.Text = $"{HudScale.Value * 100:0}%";
-        HudOpacityValue.Text = $"{HudOpacity.Value * 100:0}%";
-        HudDelayValue.Text = $"{HudDelay.Value:0} s";
-        if (_loading) return;
-        var scale = Math.Round(HudScale.Value, 2);
-        var opacity = Math.Round(HudOpacity.Value, 2);
-        var seconds = Math.Round(HudDelay.Value);
-        _host.PreviewConfig(c =>
-        {
-            c.Hud.Scale = scale;
-            c.Hud.Opacity = opacity;
-            c.Hud.HideSeconds = seconds;
-        });
-    }
-
-    private void OnResetHud(object sender, RoutedEventArgs e) => Save(c => c.Hud = new HudSettings());
-
-    /// <summary>
-    /// One chip per action, filled in when the HUD carries it, above a preview of the real bar.
-    /// A set you pick from wants chips; a switch would say each action is a setting of its own.
-    /// </summary>
-    private void BuildHudButtons(HudSettings hud)
-    {
-        HudButtonCount.Text = hud.Buttons.Count == 0
-            ? "Nothing chosen, so the bar stays empty. Click a chip to add a button."
-            : "Click to add or remove. They appear in this order.";
-
-        if (HudButtons.Children.Count == 0)
-        {
-            foreach (var action in MirrorActions.All)
-            {
-                var chip = new ToggleButton
-                {
-                    Content = action.Label,
-                    Tag = action.Id,
-                    ToolTip = action.Detail,
-                    Style = (Style)FindResource("Chip"),
-                };
-                System.Windows.Automation.AutomationProperties.SetAutomationId(chip, "hud-button " + action.Id);
-                System.Windows.Automation.AutomationProperties.SetName(chip, action.Label);
-                chip.Checked += OnHudButton;
-                chip.Unchecked += OnHudButton;
-                HudButtons.Children.Add(chip);
-            }
-        }
-
-        foreach (var chip in HudButtons.Children.OfType<ToggleButton>())
-        {
-            chip.IsChecked = hud.Buttons.Contains((string)chip.Tag!, StringComparer.Ordinal);
-        }
-
-        BuildHudPreview(hud);
-    }
-
-    /// <summary>Shows the bar exactly as fullscreen will draw it, so the choice is never abstract.</summary>
-    private void BuildHudPreview(HudSettings hud)
-    {
-        HudPreview.Children.Clear();
-        if (hud.Buttons.Count == 0)
-        {
-            HudPreview.Children.Add(new TextBlock
-            {
-                Text = "empty",
-                Style = (Style)FindResource("MutedText"),
-                FontSize = 11,
-                Margin = new Thickness(2, 2, 0, 2),
-            });
-            return;
-        }
-
-        foreach (var action in hud.Buttons.Select(MirrorActions.Find).OfType<MirrorAction>())
-        {
-            var icon = ActionIcons.For(action.Id);
-            var content = icon is not null && TryFindResource(icon) is System.Windows.Media.Geometry geometry
-                ? new System.Windows.Shapes.Path
-                {
-                    Data = geometry,
-                    Stroke = (System.Windows.Media.Brush)FindResource("Text"),
-                    StrokeThickness = 1.6,
-                    Width = 16,
-                    Height = 16,
-                    Stretch = System.Windows.Media.Stretch.Uniform,
-                } as object
-                : action.Label;
-
-            HudPreview.Children.Add(new Border
-            {
-                Background = (System.Windows.Media.Brush)FindResource("Raised"),
-                BorderBrush = (System.Windows.Media.Brush)FindResource("Line"),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(8, 5, 8, 5),
-                Margin = new Thickness(0, 0, 4, 4),
-                ToolTip = action.Label,
-                Child = content is string text
-                    ? new TextBlock { Text = text, FontSize = 11, Foreground = (System.Windows.Media.Brush)FindResource("Text") }
-                    : (UIElement)content,
-            });
-        }
-    }
-
-    private void OnHudButton(object sender, RoutedEventArgs e)
-    {
-        if (_loading || sender is not ToggleButton { Tag: string id })
-        {
-            return;
-        }
-
-        Save(c =>
-        {
-            if (c.Hud.Buttons.Contains(id, StringComparer.Ordinal))
-            {
-                c.Hud.Buttons.Remove(id);
-            }
-            else
-            {
-                // Keep the catalogue's order so the bar never looks shuffled.
-                c.Hud.Buttons = MirrorActions.Ids
-                    .Where(x => x == id || c.Hud.Buttons.Contains(x, StringComparer.Ordinal))
-                    .ToList();
-            }
-        });
     }
 
     private void OnChooseScreenshotFolder(object sender, RoutedEventArgs e)

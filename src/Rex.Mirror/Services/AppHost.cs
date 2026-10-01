@@ -108,6 +108,7 @@ public sealed class AppHost : IDisposable
         }
         catch (IOException)
         {
+            Log.Warn("Could not read config.json while watching it; Windows may still be replacing the file.");
             return string.Empty;
         }
     }

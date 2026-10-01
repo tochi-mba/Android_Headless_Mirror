@@ -81,6 +81,38 @@ public sealed class CliTests
     }
 
     [Fact]
+    public async Task Action_OpensTheKeyboardSettingsWithoutTheApp()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        var result = await MachineMode.RunAsync(["action", "keyboard-layout"], new CliContext(package.Paths));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains(package.AdbCalls(), line => line ==
+            "-s FAKE123 shell am start -a android.settings.HARD_KEYBOARD_SETTINGS");
+    }
+
+    [Fact]
+    public async Task HumanAction_OpensTheKeyboardSettingsWithoutTheApp()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        using var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            Assert.Equal(0, await Commands.RunAsync(["action", "keyboard-layout"], new CliContext(package.Paths)));
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.Contains("Keyboard layout", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains(package.AdbCalls(), line => line ==
+            "-s FAKE123 shell am start -a android.settings.HARD_KEYBOARD_SETTINGS");
+    }
+
+    [Fact]
     public async Task Action_NeedsTheAppForScrcpyShortcuts()
     {
         using var package = new TestPackage(withFakeTools: true);

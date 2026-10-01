@@ -86,7 +86,7 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   ZoomMath              zoom/pan geometry (pure functions)
   AmbientLayout         soft-background geometry: image size, margins, tint hue, navigator corner
   Ipc                   pipe protocol between rex.exe and the app
-  MirrorActions         the single list of user actions and their scrcpy shortcuts
+  MirrorActions         the single list of user actions, shortcuts and ADB-action dispatcher
 src/Rex.Mirror          WPF app (RexMirror.exe)
   Mirror/MirrorHost     HwndHost that embeds scrcpy and scales it for zoom
   Mirror/MirrorGroupPanel lays out the main view and its copies side by side
@@ -98,6 +98,7 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Session/*             supervisor: device watching, scrcpy lifecycle, actions, copies (CopiesController)
   Services/*            composition root, pipe server, command router, tray icon, UsbDoctor
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
+  Views/Settings/*      settings groups in separate controls and SettingsCatalogue's config-path audit
 src/Rex.Cli             rex.exe: human commands and MachineMode
 tests/Rex.Tests         xUnit: unit, contract, end-to-end and UI-automation tests
   Support/AppProcess    drives a real RexMirror.exe: pipe, real input, screenshots, CLI
@@ -252,6 +253,12 @@ docs/                   GitHub Pages site; its download button points at the lat
   boundaries must be explicit about DIPs versus physical pixels.
 - IPC requests stay current-user-only, size-bounded and deadline-controlled. Fire-and-forget server handlers
   must observe and log their own unexpected exceptions.
+- Every configuration value must appear in `SettingsCatalogue.Controls`, `Elsewhere` or `NotYet`;
+  `EveryValueInConfigHasAControl` enforces the complete mapping.
+- Every ADB-backed action goes through `MirrorActions.RunAdbAsync`, so the app and both CLI modes dispatch it
+  identically.
+- Add each new fully testable Rex.Core source file to `tests/coverage-required.txt`; CI requires every listed
+  executable line to remain covered.
 - Tests wait for observable state rather than fixed sleeps, except where elapsed time itself is the
   behaviour under test or Windows input/compositor APIs expose no better signal.
 - Every user-reachable control carries an `x:Name`, which WPF exposes as its AutomationId, so the
