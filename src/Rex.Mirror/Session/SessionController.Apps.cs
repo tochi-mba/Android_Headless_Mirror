@@ -43,6 +43,11 @@ public sealed partial class SessionController
 
     private async Task<AppsRead> ReadAppsNowAsync(string serial)
     {
+        // ReadAppsAsync stores this Task in _appsRead immediately after this method yields. Without
+        // the yield, AppsChanged is raised before that assignment, so a visible Apps panel sees
+        // ReadingApps=false and starts another read. A failed "Try again" then recurses until the
+        // process exhausts its stack.
+        await Task.Yield();
         AppsError = string.Empty;
         AppsChanged?.Invoke();
         AppsRead read;
