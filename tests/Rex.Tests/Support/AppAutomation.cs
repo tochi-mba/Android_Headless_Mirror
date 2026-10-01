@@ -178,8 +178,27 @@ public sealed class AppAutomation(IntPtr window)
         return found!;
     }
 
-    private AutomationElement? FindBy(AutomationProperty property, string value) =>
-        AutomationElement.FromHandle(window).FindFirst(TreeScope.Descendants, new PropertyCondition(property, value));
+    private AutomationElement? FindBy(AutomationProperty property, string value)
+    {
+        var condition = new PropertyCondition(property, value);
+        var main = AutomationElement.FromHandle(window);
+        if (main.FindFirst(TreeScope.Descendants, condition) is { } inMain)
+        {
+            return inMain;
+        }
+
+        // A popup (the sound panel) is a window of its own beside the main one.
+        var processId = main.Current.ProcessId;
+        foreach (AutomationElement top in AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, processId)))
+        {
+            if (top.FindFirst(TreeScope.Descendants, condition) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
 
     private void Act(string automationId, Action<AutomationElement> action, string verb)
     {

@@ -80,6 +80,9 @@ public static class Commands
                 Arguments.Require(positional, 2, "rex zoom <in|out|reset>");
                 return await SendAsync(context, new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = positional[1] }), "The mirror is not open.").ConfigureAwait(false);
 
+            case "sound":
+                return await SoundAsync(context, positional).ConfigureAwait(false);
+
             case "screenshot":
                 return await ScreenshotAsync(context, Arguments.Option(args, "--serial")).ConfigureAwait(false);
 
@@ -358,6 +361,35 @@ public static class Commands
             default:
                 throw new ArgumentException("autostart expects on or off.");
         }
+    }
+
+    /// <summary>Sets or shows the phone's sound on this PC, through the running app.</summary>
+    private static async Task<int> SoundAsync(CliContext context, string[] positional)
+    {
+        var verb = positional.Length >= 2 ? positional[1] : string.Empty;
+        if (verb.Length > 0 && !SoundCommand.IsValid(verb))
+        {
+            Console.WriteLine("Usage: " + SoundCommand.Usage);
+            return 2;
+        }
+
+        var response = await context.Ipc.SendAsync(new IpcRequest("sound", new Dictionary<string, string> { ["verb"] = verb })).ConfigureAwait(false);
+        if (response is null)
+        {
+            Console.WriteLine("The app is not running. Start it with 'rex open'.");
+            return 1;
+        }
+
+        if (!response.Ok || response.Data is not JsonObject data)
+        {
+            Console.WriteLine(response.Error);
+            return 1;
+        }
+
+        var level = Math.Round(data["volume"]!.GetValue<double>() * 100);
+        var by = data["mutedBy"]?.GetValue<string>();
+        Console.WriteLine("Phone sound on this PC: " + (data["muted"]!.GetValue<bool>() ? $"muted ({level}%)" : $"{level}%") + (by is null ? string.Empty : " · " + by));
+        return 0;
     }
 
     private static async Task<int> SendAsync(CliContext context, IpcRequest request, string notRunning)

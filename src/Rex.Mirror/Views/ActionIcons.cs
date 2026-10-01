@@ -47,6 +47,9 @@ public static class ActionIcons
         ["like"] = "IconHeart",
         ["browse"] = "IconKeyboard",
         ["keyboard-layout"] = "IconKeyboardLayout",
+        ["sound-up"] = "IconPcSoundUp",
+        ["sound-down"] = "IconPcSoundDown",
+        ["sound-mute"] = "IconPcMute",
     };
 
     /// <summary>The theme key of the action's icon, or null when it shows its label instead.</summary>

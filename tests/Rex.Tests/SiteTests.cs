@@ -178,7 +178,7 @@ public sealed partial class SiteTests
         Assert.All(CliReference.MachineCommands, command => Assert.Contains($"`{command}", agents, StringComparison.Ordinal));
     }
 
-    [GeneratedRegex(@"(Ctrl\+Alt\+[A-Za-z0-9]+|\bF\d{1,2}\b|Alt \+ [a-z]+)")]
+    [GeneratedRegex(@"(Ctrl\+Alt\+(?:Shift\+)?[A-Za-z0-9]+|\bF\d{1,2}\b|Alt \+ [a-z]+)")]
     private static partial Regex KeyMention();
 
     [Fact]

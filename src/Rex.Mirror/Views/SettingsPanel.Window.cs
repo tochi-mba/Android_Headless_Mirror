@@ -20,6 +20,7 @@ public partial class SettingsPanel
         ("recents", "Recent apps"),
         ("sleep", "Screen off"),
         ("screenshot", "Screenshot"),
+        ("sound", "Sound on this PC"),
     ];
 
     private void RefreshWindow(RexConfig c)

@@ -222,6 +222,27 @@ public sealed class CliTests
     }
 
     [Fact]
+    public async Task Sound_NeedsTheApp()
+    {
+        using var package = new TestPackage();
+        Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, "rex-tests-nobody-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var context = new CliContext(package.Paths);
+            var result = await MachineMode.RunAsync(["sound", "40"], context);
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains("not running", JsonNode.Parse(result.Json)!["error"]!["message"]!.GetValue<string>(), StringComparison.Ordinal);
+
+            var refused = await MachineMode.RunAsync(["sound", "louder"], context);
+            Assert.Equal("ArgumentException", JsonNode.Parse(refused.Json)!["error"]!["type"]!.GetValue<string>());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, null);
+        }
+    }
+
+    [Fact]
     public async Task ConfigSet_RefusesAChordWithoutCtrl()
     {
         using var package = new TestPackage();

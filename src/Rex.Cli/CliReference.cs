@@ -1,3 +1,5 @@
+using Rex.Core;
+
 namespace Rex.Cli;
 
 /// <summary>
@@ -34,6 +36,8 @@ public static class CliReference
         new("action", "rex action <name> [--serial S]", "Send an action: home, back, sleep, volume, rotation and the rest. rex action list shows the names.", "rex action sleep",
             Human: true, Machine: true, NeedsApp: false),
         new("zoom", "rex zoom <in|out|reset>", "Zoom the PC view of the open mirror.", "rex zoom in",
+            Human: true, Machine: true, NeedsApp: true),
+        new("sound", SoundCommand.Usage, "The phone's sound on this PC: a level, louder, quieter or muted. Without a value, what it is now.", "rex sound 40",
             Human: true, Machine: true, NeedsApp: true),
         new("screenshot", "rex screenshot [--serial S]", "Save a picture of the phone screen.", "rex screenshot",
             Human: true, Machine: true, NeedsApp: false),

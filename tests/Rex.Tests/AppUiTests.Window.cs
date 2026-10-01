@@ -38,7 +38,7 @@ public sealed partial class AppUiTests
         app.Ui.Toggle("quick-button home", on: false);
         app.Ui.Toggle("quick-button screenshot", on: false);
         await app.WaitForStatusAsync(
-            s => Window(s)["quickButtons"]!.AsArray().Select(n => n!.GetValue<string>()).SequenceEqual(["back", "recents", "sleep"]),
+            s => Window(s)["quickButtons"]!.AsArray().Select(n => n!.GetValue<string>()).SequenceEqual(["back", "recents", "sleep", "sound"]),
             Soon,
             "the top bar to keep only the chosen buttons");
         Assert.False(app.Ui.Exists("QuickHome"));
@@ -59,7 +59,7 @@ public sealed partial class AppUiTests
         var config = ConfigFile.Load(package.Paths.Config);
         Assert.True(config.App.AlwaysOnTop);
         Assert.Equal("left", config.App.SidebarSide);
-        Assert.Equal(new[] { "back", "recents", "sleep" }, config.App.TopBarButtons);
+        Assert.Equal(new[] { "back", "recents", "sleep", "sound" }, config.App.TopBarButtons);
         Assert.False(config.App.ShowHints);
         Assert.False(config.App.ShowFrameRate);
     }

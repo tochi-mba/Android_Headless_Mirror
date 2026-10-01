@@ -25,6 +25,8 @@ public sealed class TestPackage : IDisposable
         File.Delete(Path.Combine(Root, "config.json.rex-backup"));
 
         Paths = AppPaths.FromRoot(Root);
+        // The phone's sound as Windows' volume mixer would hold it, so tests never touch this PC's audio.
+        File.WriteAllText(SoundFile, """{"available":true,"volume":1,"muted":false,"channels":2,"peak":0.4}""");
         if (!showTour)
         {
             new StateStore(Paths.State).SetUi(new UiState { TourSeenVersion = Rex.Mirror.Views.Tour.Version });
@@ -52,6 +54,12 @@ public sealed class TestPackage : IDisposable
     public string FailCopiesMarker => Path.Combine(ToolsFolder, "fail-copies");
     public string FakeAdbScenario => Path.Combine(ToolsFolder, "fake-adb.json");
 
+    /// <summary>With this present, the fake phone says it is too old to send its sound.</summary>
+    public string NoAudioMarker => Path.Combine(ToolsFolder, "no-audio");
+
+    /// <summary>The fake audio session of the phone's sound (<c>REX_FAKE_AUDIO</c>).</summary>
+    public string SoundFile => Path.Combine(Root, "fake-audio.json");
+
     /// <summary>The USB devices the app is told Windows could not read (none until a test writes them).</summary>
     public string UsbProblemsFile => Path.Combine(Root, "usb-problems.json");
 
@@ -70,6 +78,30 @@ public sealed class TestPackage : IDisposable
         File.WriteAllText(UsbProblemsFile, JsonSerializer.Serialize(nodes));
 
     public string[] AdbCalls() => ReadLiveLog(FakeAdbLog);
+
+    /// <summary>The fake audio session as the app last left it, or null while it is being replaced.</summary>
+    public (double Volume, bool Muted, double Left, double Right)? Sound()
+    {
+        try
+        {
+            var file = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(SoundFile))!;
+            return (file["volume"]?.GetValue<double>() ?? 1, file["muted"]?.GetValue<bool>() == true,
+                file["left"]?.GetValue<double>() ?? 1, file["right"]?.GetValue<double>() ?? 1);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Plays a change made in the Windows volume mixer: the app sees it at its next look.</summary>
+    public void ChangeSoundOutside(double volume, bool muted)
+    {
+        var file = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(SoundFile))!.AsObject();
+        file["outsideVolume"] = volume;
+        file["outsideMuted"] = muted;
+        AtomicFile.Write(SoundFile, file.ToJsonString(), keepBackupAt: null, validate: null);
+    }
     public string[] ScrcpyLog() => ReadLiveLog(FakeScrcpyLog);
 
     private static string[] ReadLiveLog(string path)

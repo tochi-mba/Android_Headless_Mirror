@@ -36,6 +36,12 @@ public sealed record DeviceProfile
     /// </summary>
     public bool CompatibilityKeyboard { get; set; }
 
+    /// <summary>The volume of this phone's sound on this PC, when it is remembered per phone.</summary>
+    public double? SoundVolume { get; set; }
+
+    /// <summary>Whether this phone's sound is muted on this PC, when it is remembered per phone.</summary>
+    public bool? SoundMuted { get; set; }
+
     public DateTimeOffset? LastSeenUtc { get; set; }
 }
 
@@ -168,6 +174,14 @@ public sealed class StateStore
             }
         });
     }
+
+    /// <summary>Remembers the volume and mute of this phone's sound on this PC.</summary>
+    public void SetSound(string serial, double volume, bool muted) => Update(state =>
+    {
+        var profile = GetOrAdd(state, serial);
+        profile.SoundVolume = SoundSettings.Fraction(volume, 1);
+        profile.SoundMuted = muted;
+    });
 
     public void SetLockScreenMode(string serial, string mode)
     {

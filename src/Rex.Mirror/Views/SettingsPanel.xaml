@@ -155,6 +155,8 @@
                Text="Keeping audio playing on the phone needs &#8220;Everything the phone plays&#8221; or &#8220;App playback&#8221;." />
     </StackPanel></Expander>
 
+    <settings:SoundGroup x:Name="SoundSettingsGroup" />
+
     <Expander x:Name="GroupSession" Header="Phone screen &amp; session" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>

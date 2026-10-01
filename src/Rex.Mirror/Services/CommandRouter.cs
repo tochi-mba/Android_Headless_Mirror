@@ -71,6 +71,28 @@ public static class CommandRouter
                     : IpcResponse.Fail(result.Text);
             }
 
+            case "sound":
+            {
+                if (window is null)
+                {
+                    return IpcResponse.Fail("The window is not available.");
+                }
+
+                var sound = window.PhoneSound;
+                if (!sound.Available)
+                {
+                    return IpcResponse.Fail(sound.Problem!);
+                }
+
+                var verb = request.Arg("verb");
+                if (verb.Length > 0 && Sound.SoundVerbs.Apply(sound, verb) is { } refused)
+                {
+                    return IpcResponse.Fail(refused);
+                }
+
+                return IpcResponse.Success(SoundStatus(window));
+            }
+
             case "action":
             {
                 var id = request.Arg("name");
@@ -88,6 +110,27 @@ public static class CommandRouter
 
     public static string AppVersion =>
         typeof(CommandRouter).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+
+    /// <summary>The phone's sound on this PC: whether there is any, its level and what is acting on it.</summary>
+    private static JsonObject SoundStatus(MainWindow window)
+    {
+        var sound = window.PhoneSound;
+        return new JsonObject
+        {
+            ["available"] = sound.Available,
+            ["why"] = sound.Problem,
+            ["volume"] = Math.Round(sound.Volume, 3),
+            ["muted"] = sound.Muted,
+            ["level"] = Math.Round(sound.Level, 3),
+            ["mutedBy"] = sound.Target.Muted && !sound.Muted ? sound.Target.Why : null,
+            ["lowered"] = !sound.Target.Muted && sound.Target.Why is not null,
+            ["balance"] = Math.Round(sound.Balance, 3),
+            ["perPhone"] = sound.PerPhone,
+            ["followMixer"] = sound.FollowMixer,
+            ["channels"] = sound.Channels,
+            ["panelOpen"] = window.SoundPanelOpen,
+        };
+    }
 
     private static JsonObject CopiesStatus(MainWindow window)
     {
@@ -233,6 +276,7 @@ public static class CommandRouter
             // The copies of the phone: how many are wanted, running and given room, and where each
             // view is on screen with its zoom, so a test can see them side by side and in step.
             ["copies"] = host.Window is { } copies ? CopiesStatus(copies) : null,
+            ["sound"] = host.Window is { } sounding ? SoundStatus(sounding) : null,
             ["window"] = host.Window is { } shown ? new JsonObject
             {
                 ["topmost"] = shown.Topmost,

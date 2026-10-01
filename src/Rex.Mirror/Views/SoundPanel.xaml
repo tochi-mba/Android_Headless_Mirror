@@ -1,0 +1,32 @@
+<UserControl x:Class="Rex.Mirror.Views.SoundPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- The phone's sound on this PC: opened from the top bar's sound button. It works the keyboard
+       on its own: the slider has focus when it opens, Tab stays inside, Esc closes it. -->
+  <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="14" Width="290"
+          KeyboardNavigation.TabNavigation="Cycle">
+    <StackPanel>
+      <TextBlock Text="Phone sound on this PC" FontWeight="SemiBold" />
+      <TextBlock x:Name="SoundPhone" Style="{StaticResource MutedText}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+      <StackPanel x:Name="SoundControls" Margin="0,10,0,0">
+        <Grid><TextBlock x:Name="SoundVolumeLabel" Text="Volume" /><TextBlock x:Name="SoundVolumeValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+        <Slider x:Name="SoundVolume" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10" Margin="0,4,0,0" ValueChanged="OnVolume"
+                AutomationProperties.Name="Volume of the phone's sound on this PC" />
+        <Border x:Name="SoundMeterTrack" Height="4" CornerRadius="2" Background="{StaticResource Raised}" Margin="0,8,0,0" ClipToBounds="True"
+                AutomationProperties.Name="Sound level">
+          <Rectangle x:Name="SoundMeter" HorizontalAlignment="Left" Width="0" Fill="{StaticResource Signal}" />
+        </Border>
+        <TextBlock x:Name="SoundWhy" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed" />
+        <Button x:Name="SoundMute" Content="Mute" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnMute"
+                AutomationProperties.Name="Mute the phone's sound on this PC" />
+      </StackPanel>
+      <StackPanel x:Name="SoundUnavailable" Margin="0,10,0,0" Visibility="Collapsed">
+        <TextBlock x:Name="SoundProblem" TextWrapping="Wrap" />
+        <Button x:Name="SoundTurnOn" Content="Turn phone sound on" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnTurnOn"
+                ToolTip="Applies the next time the mirror starts." />
+      </StackPanel>
+      <Button x:Name="SoundSettingsLink" Style="{StaticResource GhostButton}" Content="Sound settings" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnSettings"
+              AutomationProperties.Name="Open the sound settings" />
+    </StackPanel>
+  </Border>
+</UserControl>

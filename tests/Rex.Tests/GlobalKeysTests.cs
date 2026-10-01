@@ -343,8 +343,11 @@ public sealed class GlobalKeysTests
 
         Assert.Equal(id, WindowKeys.ActionFor(chord.Key, chord.Mods));
         Assert.Equal(Shortcuts.Gesture(id), written);
-        Assert.Null(WindowKeys.ActionFor(chord.Key, chord.Mods | KeyMods.Shift));
-        Assert.Null(WindowKeys.ActionFor(chord.Key, chord.Mods | KeyMods.Win));
+        // The same key with a modifier it does not have is another key, and means nothing.
+        foreach (var extra in new[] { KeyMods.Shift, KeyMods.Win }.Where(m => !chord.Mods.HasFlag(m)))
+        {
+            Assert.Null(WindowKeys.ActionFor(chord.Key, chord.Mods | extra));
+        }
     }
 
     [Fact]

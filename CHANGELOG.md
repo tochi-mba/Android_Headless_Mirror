@@ -4,6 +4,22 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.5.0 - 2026-10-01
+
+### Added
+
+- The phone's sound on this PC has a level of its own: the sound button in the top bar opens a
+  panel with a volume slider, mute and a level meter, and the phone's own volume is never touched.
+  Each phone remembers its level.
+- Ctrl+Alt+PageUp and Ctrl+Alt+PageDown change it, Ctrl+Alt+Shift+M mutes it, the wheel over the
+  button works too, and the three can be keys from anywhere.
+- Settings has a **Sound on this PC** group: start muted, mute while the window is hidden or behind
+  others or while this PC is locked, lower it while you type, fades, balance, and following the
+  Windows volume mixer.
+- When there is no sound to control, the panel says why: phone sound off, an Android older than
+  11, or no mirror yet.
+- `rex sound 40`, `rex sound mute` and `rex sound` set and show it from the command line.
+
 ## 2.4.0 - 2026-10-01
 
 ### Added

@@ -42,6 +42,12 @@
   <Geometry x:Key="IconVolumeDown">M4 10 H8 L13 6 V18 L8 14 H4 Z M16 10 V14</Geometry>
   <Geometry x:Key="IconVolumeUp">M4 10 H8 L13 6 V18 L8 14 H4 Z M16 9 A4 4 0 0 1 16 15 M18 6 A8 8 0 0 1 18 18</Geometry>
   <Geometry x:Key="IconMute">M4 10 H8 L13 6 V18 L8 14 H4 Z M16 9.5 L21 14.5 M21 9.5 L16 14.5</Geometry>
+  <!-- The phone's sound on this PC: a speaker inside a screen, so it never looks like the phone's own volume. -->
+  <Geometry x:Key="IconPcSound">M3 4 H21 V16 H3 Z M9 20 H15 M12 16 V20 M6 8.5 H8 L10.5 6.5 V13.5 L8 11.5 H6 Z M13 8.5 A2.5 2.5 0 0 1 13 11.5</Geometry>
+  <Geometry x:Key="IconPcSoundUp">M3 4 H21 V16 H3 Z M9 20 H15 M12 16 V20 M6 8.5 H8 L10.5 6.5 V13.5 L8 11.5 H6 Z M13 8.5 A2.5 2.5 0 0 1 13 11.5 M15 7 A5 5 0 0 1 15 13</Geometry>
+  <Geometry x:Key="IconPcSoundDown">M3 4 H21 V16 H3 Z M9 20 H15 M12 16 V20 M6 8.5 H8 L10.5 6.5 V13.5 L8 11.5 H6 Z M13 10 H17</Geometry>
+  <Geometry x:Key="IconPcMute">M3 4 H21 V16 H3 Z M9 20 H15 M12 16 V20 M6 8.5 H8 L10.5 6.5 V13.5 L8 11.5 H6 Z M13 8 L17 12 M17 8 L13 12</Geometry>
+  <Geometry x:Key="IconPcSoundOff">M3 4 H21 V16 H3 Z M9 20 H15 M12 16 V20 M6 8.5 H8 L10.5 6.5 V13.5 L8 11.5 H6 Z M4 15 L20 5</Geometry>
   <Geometry x:Key="IconRotate">M20 12 A8 8 0 1 1 16 5.1 M16 2 V6 H12</Geometry>
   <Geometry x:Key="IconRotateLeft">M4 12 A8 8 0 1 0 8 5.1 M8 2 V6 H12</Geometry>
   <!-- The phone itself turning, rather than the picture of it on this PC. -->
