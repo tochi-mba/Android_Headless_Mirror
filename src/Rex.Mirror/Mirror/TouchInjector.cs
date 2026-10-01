@@ -51,12 +51,7 @@ public sealed class TouchInjector
             return false;
         }
 
-        var contacts = new[]
-        {
-            Contact(0, point.X, point.Y, _down[0] ? NativeMethods.POINTER_FLAG_UPDATE : NativeMethods.POINTER_FLAG_DOWN),
-        };
-        var ok = _inject(contacts);
-        LastError = ok ? 0 : Marshal.GetLastWin32Error();
+        var ok = Send([(0, point, _down[0])]);
         if (ok)
         {
             _down[0] = true;
@@ -72,8 +67,7 @@ public sealed class TouchInjector
             return !_down[1];
         }
 
-        var ok = _inject([Contact(0, point.X, point.Y, NativeMethods.POINTER_FLAG_UP)]);
-        LastError = ok ? 0 : Marshal.GetLastWin32Error();
+        var ok = Lift([(0, point)]);
         _down[0] = false;
         return ok;
     }
@@ -86,14 +80,7 @@ public sealed class TouchInjector
             return false;
         }
 
-        var contacts = new[]
-        {
-            Contact(0, first.X, first.Y, _down[0] ? NativeMethods.POINTER_FLAG_UPDATE : NativeMethods.POINTER_FLAG_DOWN),
-            Contact(1, second.X, second.Y, _down[1] ? NativeMethods.POINTER_FLAG_UPDATE : NativeMethods.POINTER_FLAG_DOWN),
-        };
-
-        var ok = _inject(contacts);
-        LastError = ok ? 0 : Marshal.GetLastWin32Error();
+        var ok = Send([(0, first, _down[0]), (1, second, _down[1])]);
         if (ok)
         {
             _down[0] = _down[1] = true;
@@ -109,17 +96,55 @@ public sealed class TouchInjector
             return true;
         }
 
-        var contacts = new[]
-        {
-            Contact(0, first.X, first.Y, NativeMethods.POINTER_FLAG_UP),
-            Contact(1, second.X, second.Y, NativeMethods.POINTER_FLAG_UP),
-        };
-        var ok = _inject(contacts);
-        LastError = ok ? 0 : Marshal.GetLastWin32Error();
-
         // Even if Windows rejects the UP packet, do not leave REX's logical state stuck down.
         // The error is returned to the bridge so it can be surfaced in diagnostics.
+        var ok = Lift([(0, first), (1, second)]);
         _down[0] = _down[1] = false;
+        return ok;
+    }
+
+    /// <summary>
+    /// Presses or moves the contacts (each moves if it is down, and is pressed if not). A press
+    /// Windows refuses may be refused because it still holds the contact from a release it refused
+    /// earlier, so every contact is let go of and pressed again, once.
+    /// </summary>
+    private bool Send((uint Id, (int X, int Y) At, bool Down)[] contacts)
+    {
+        var frame = contacts.Select(c => Contact(c.Id, c.At.X, c.At.Y, c.Down ? NativeMethods.POINTER_FLAG_UPDATE : NativeMethods.POINTER_FLAG_DOWN)).ToArray();
+        if (Inject(frame) || contacts.All(c => c.Down))
+        {
+            return LastError == 0;
+        }
+
+        var lifted = contacts.Select(c => (c.Id, c.At)).ToArray();
+        Inject(Frame(lifted, NativeMethods.POINTER_FLAG_UP | NativeMethods.POINTER_FLAG_CANCELED));
+        return Inject(Frame(lifted, NativeMethods.POINTER_FLAG_DOWN));
+    }
+
+    /// <summary>
+    /// Lifts the contacts. When Windows refuses the release it may still hold them down, which would
+    /// make it refuse the next press as well, so they are cancelled outright.
+    /// </summary>
+    private bool Lift((uint Id, (int X, int Y) At)[] contacts)
+    {
+        if (Inject(Frame(contacts, NativeMethods.POINTER_FLAG_UP)))
+        {
+            return true;
+        }
+
+        var refused = LastError;
+        Inject(Frame(contacts, NativeMethods.POINTER_FLAG_UP | NativeMethods.POINTER_FLAG_CANCELED));
+        LastError = refused;
+        return false;
+    }
+
+    private static POINTER_TOUCH_INFO[] Frame((uint Id, (int X, int Y) At)[] contacts, uint state) =>
+        contacts.Select(c => Contact(c.Id, c.At.X, c.At.Y, state)).ToArray();
+
+    private bool Inject(POINTER_TOUCH_INFO[] frame)
+    {
+        var ok = _inject(frame);
+        LastError = ok ? 0 : Marshal.GetLastWin32Error();
         return ok;
     }
 
@@ -128,7 +153,7 @@ public sealed class TouchInjector
     private static POINTER_TOUCH_INFO Contact(uint id, int x, int y, uint stateFlags)
     {
         var flags = stateFlags;
-        if (stateFlags != NativeMethods.POINTER_FLAG_UP)
+        if ((stateFlags & NativeMethods.POINTER_FLAG_UP) == 0)
         {
             flags |= NativeMethods.POINTER_FLAG_INRANGE | NativeMethods.POINTER_FLAG_INCONTACT;
         }

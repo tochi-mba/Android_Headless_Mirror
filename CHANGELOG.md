@@ -4,6 +4,16 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.3.4 - 2026-10-01
+
+### Fixed
+
+- Quitting the app while the soft background or the navigator picture was being drawn could crash
+  it on the way out. Closing now waits for the picture in progress before letting go of it.
+- A touch that Windows refused to lift could leave every later touch refused as well, so taps and
+  swipes from the touchpad or the keyboard could stop reaching the phone. A refused touch is now
+  let go of and the next one starts cleanly.
+
 ## 2.3.3 - 2026-10-01
 
 ### Added

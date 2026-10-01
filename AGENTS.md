@@ -93,6 +93,7 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   AmbientLayout         soft-background geometry: image size, margins, tint hue, navigator corner
   Ipc                   pipe protocol between rex.exe and the app
   MirrorActions         the single list of user actions, shortcuts and ADB-action dispatcher
+  WorkGate              one worker at a time, and a close that waits for it to leave
   SettingsCatalogue     every config.json value and where it is changed; which ones apply at the next start
   SiteLinks             every web address the app and the CLI send people to
   WhatsNew              when the window says once, after an update, which version this is
@@ -262,6 +263,11 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   `CrossProcessFileLock`. `AtomicFile` provides crash-safe replacement, not concurrency control.
 - Only REX-owned mirror/session processes belong to the kill-on-close Job Object. Never assign the shared
   ADB server to it.
+- A resource used on a worker thread is released only after that worker has left it
+  (`WorkGate`): `LiveCapture` closes its gate and waits for the capture in flight before it
+  disposes the graphics device, and leaves the objects to Windows rather than free them under it.
+- A touch contact Windows refuses to lift or press is cancelled (`POINTER_FLAG_CANCELED`) before
+  the next press, so one refused frame never leaves `TouchInjector` refused from then on.
 - Low-level keyboard/mouse hooks may classify input and enqueue work only. Do not perform file I/O, ADB,
   process work, native resizing, or substantial layout/render work synchronously inside a hook callback.
 - `app.manifest` is the source of truth for PerMonitorV2 DPI awareness. Code crossing WPF/Win32 geometry

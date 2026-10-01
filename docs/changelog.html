@@ -61,6 +61,12 @@
   </section>
   <div class="container page-body changelog">
 <!-- generated:changelog -->
+<h2 id="v2-3-4">2.3.4 - 2026-10-01</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Quitting the app while the soft background or the navigator picture was being drawn could crash it on the way out. Closing now waits for the picture in progress before letting go of it.</li>
+<li>A touch that Windows refused to lift could leave every later touch refused as well, so taps and swipes from the touchpad or the keyboard could stop reaching the phone. A refused touch is now let go of and the next one starts cleanly.</li>
+</ul>
 <h2 id="v2-3-3">2.3.3 - 2026-10-01</h2>
 <h3>Added</h3>
 <ul>

@@ -514,6 +514,8 @@ public sealed partial class AppProcess : IDisposable
     {
         await _client.SendAsync(new IpcRequest("quit"), TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.True(await Task.Run(() => _process.WaitForExit(15000), TestContext.Current.CancellationToken), "The app did not exit after quit. Log:\n" + Log());
+        // A crash on the way out (a native one never reaches the log) still shows in the exit code.
+        Assert.True(_process.ExitCode == 0, $"The app quit with exit code 0x{_process.ExitCode:X8}. Log:\n" + Log());
     }
 
     private string Log()
