@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Text;
 using Rex.Core;
+using Rex.Tests.Support;
 
 namespace Rex.Tests;
 
@@ -150,6 +151,90 @@ public sealed class TransferTests
         Assert.NotNull(TransferSettings.WhyNotFolder("/data"));
         Assert.Null(TransferSettings.WhyNotFolder("/sdcard/x"));
         Assert.Equal("/storage/emulated/0/", TransferSettings.RootOf("/storage/emulated/0/Pictures/"));
+    }
+
+    [Fact]
+    public void InstallFlagsBecomeArguments()
+    {
+        Assert.Equal(["-s", "S", "install", "-r", "app.apk"], AdbClient.InstallArguments("S", "app.apk", new InstallFlags()));
+        Assert.Equal(["-s", "S", "install", "-d", "-g", "-t", "app.apk"],
+            AdbClient.InstallArguments("S", "app.apk", new InstallFlags(false, true, true, true)));
+    }
+
+    [Theory]
+    [InlineData("INFO: Request to install C:\\A B\\app.apk", "Requested", true, "C:\\A B\\app.apk", null)]
+    [InlineData("INFO: Installing C:\\A B\\app.apk...", "Started", true, "C:\\A B\\app.apk", null)]
+    [InlineData("INFO: C:\\A B\\app.apk successfully installed", "Succeeded", true, "C:\\A B\\app.apk", null)]
+    [InlineData("ERROR: Failed to install C:\\A B\\app.apk", "Failed", true, "C:\\A B\\app.apk", null)]
+    [InlineData("[client] INFO: Request to push C:\\A B\\photo.jpg", "Requested", false, "C:\\A B\\photo.jpg", null)]
+    [InlineData("INFO: Pushing C:\\A B\\photo.jpg...", "Started", false, "C:\\A B\\photo.jpg", null)]
+    [InlineData("INFO: C:\\A B\\photo.jpg successfully pushed to /sdcard/Download/photo.jpg", "Succeeded", false, "C:\\A B\\photo.jpg", "/sdcard/Download/photo.jpg")]
+    [InlineData("ERROR: Failed to push C:\\A B\\photo.jpg to /sdcard/Download/photo.jpg", "Failed", false, "C:\\A B\\photo.jpg", "/sdcard/Download/photo.jpg")]
+    public void ScrcpysOwnDropLinesAreRead(string line, string phase, bool install, string path, string? target)
+    {
+        var parsed = Assert.IsType<ScrcpyArguments.FileTransferLine>(ScrcpyArguments.ParseFileTransfer(line));
+        Assert.Equal(phase, parsed.Phase.ToString());
+        Assert.Equal((install, path, target), (parsed.Install, parsed.Path, parsed.Target));
+    }
+
+    [Fact]
+    public void UnrelatedScrcpyLinesAreNotTransfers()
+    {
+        Assert.Null(ScrcpyArguments.ParseFileTransfer(null));
+        Assert.Null(ScrcpyArguments.ParseFileTransfer("INFO: Texture: 1080x2400"));
+        Assert.Null(ScrcpyArguments.ParseFileTransfer("INFO: Pushing ..."));
+        Assert.Null(ScrcpyArguments.ParseFileTransfer("Failed to push x"));
+    }
+
+    [Fact]
+    public void ThePushTargetNeverAsksForARestart()
+    {
+        var config = new RexConfig();
+        var before = ScrcpyArguments.LaunchSettings(config, false);
+        config.Transfer.Folder = "/sdcard/Documents/";
+        Assert.Equal(before, ScrcpyArguments.LaunchSettings(config, false));
+        Assert.Contains("--push-target=/sdcard/Documents/", ScrcpyArguments.Build(config, "S", false, "T", null, null));
+        Assert.DoesNotContain(ScrcpyArguments.Build(config, "S", false, "copy", null, null, copyIndex: 0), a => a.StartsWith(ScrcpyArguments.PushTarget, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ConfigSetRefusesAFolderOutsideThePhonesStorage()
+    {
+        ConfigValidation.Check("Transfer.Folder", "/sdcard/Documents", new RexConfig());
+        var error = Assert.Throws<FormatException>(() => ConfigValidation.Check("Transfer.Folder", "/data/local/tmp", new RexConfig()));
+        Assert.Contains("phone's storage", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AdbCopiesInstallsAndLooksAfterFiles()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var runner = new FakeProcessRunner
+        {
+            Respond = args => args.Contains("stat -c %s '/sdcard/Download/a b.txt'")
+                ? new ProcessResult(0, "42\n", string.Empty)
+                : args.Contains("ls -1 /sdcard/Download/")
+                    ? new ProcessResult(0, "one.txt\ntwo.txt\n", string.Empty)
+                    : new ProcessResult(0, "Success\n", string.Empty),
+        };
+        var adb = new AdbClient("adb.exe", runner);
+        Assert.True((await adb.PushAsync("S", "C:\\a b.txt", "/sdcard/Download/", 1, ct)).Ok);
+        Assert.False((await adb.PushAsync("S", "a", "/data/", 1, ct)).Ok);
+        Assert.True((await adb.InstallAsync("S", "app.apk", new InstallFlags(), ct)).Ok);
+        Assert.Equal(42, await adb.RemoteSizeAsync("S", "/sdcard/Download/a b.txt", ct));
+        Assert.Equal(["one.txt", "two.txt"], (await adb.ListNamesAsync("S", "/sdcard/Download/", ct)).Order().ToArray());
+        Assert.Empty(await adb.ListNamesAsync("S", "/data/", ct));
+        Assert.True((await adb.DeleteFileAsync("S", "/sdcard/Download/a b.txt", ct)).Ok);
+        Assert.True((await adb.ScanMediaAsync("S", "/sdcard/Pictures/a.jpg", ct)).Ok);
+        Assert.True((await adb.OpenFolderAsync("S", "/sdcard/Download/", ct)).Ok);
+        Assert.False((await adb.OpenFolderAsync("S", "/data/", ct)).Ok);
+        Assert.Equal("/sdcard/Download/a b.txt", AdbClient.RemotePath("/sdcard/Download/", "a b.txt"));
+        Assert.Throws<ArgumentException>(() => AdbClient.RemotePath("/data/", "a"));
+        Assert.Throws<ArgumentException>(() => AdbClient.RemotePath("/sdcard/", "a/b"));
+
+        runner.Respond = _ => new ProcessResult(1, "", "no device");
+        Assert.False((await adb.InstallAsync("S", "app.apk", new InstallFlags(), ct)).Ok);
+        Assert.Null(await adb.RemoteSizeAsync("S", "/sdcard/Download/nope", ct));
     }
 
     [Fact]

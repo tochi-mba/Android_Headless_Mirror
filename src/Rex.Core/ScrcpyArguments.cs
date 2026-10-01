@@ -58,11 +58,12 @@ public static partial class ScrcpyArguments
             config.Mirror.RecordOnStart
                 ? Path.Combine(config.Mirror.RecordDirectory, RecordingFileName(config.Mirror.RecordFormat, DateTime.MinValue))
                 : null)
-            .Where(argument => argument != PrintFps)
+            .Where(argument => argument != PrintFps && !argument.StartsWith(PushTarget, StringComparison.Ordinal))
             .ToArray();
 
     /// <summary>scrcpy's frame rate counter, which prints the rate to the console every second.</summary>
     public const string PrintFps = "--print-fps";
+    public const string PushTarget = "--push-target=";
 
     [GeneratedRegex(@"^\s*INFO:\s+(\d{1,4})\s+fps\b")]
     private static partial Regex FrameRatePattern();
@@ -267,6 +268,13 @@ public static partial class ScrcpyArguments
             args.Add("--record=" + recordPath);
         }
 
+        // Keep scrcpy's own drop support consistent with drops the window catches. This is left
+        // out of LaunchSettings because changing a folder must not ask to restart the mirror.
+        if (!isCopy)
+        {
+            args.Add(PushTarget + config.Transfer.Folder);
+        }
+
         args.AddRange(SplitExtraArgs(mirror.ExtraArgs));
 
         // After the extra arguments, so it wins over an orientation given there: the main view may
@@ -277,6 +285,79 @@ public static partial class ScrcpyArguments
         }
 
         return args;
+    }
+
+    public enum FileTransferPhase
+    {
+        Requested,
+        Started,
+        Succeeded,
+        Failed,
+    }
+
+    public sealed record FileTransferLine(FileTransferPhase Phase, bool Install, string Path, string? Target = null);
+
+    [GeneratedRegex(@"^(?:\[[^\]]+\]\s+)?(?:INFO|WARN|ERROR):\s+(?<message>.*)$")]
+    private static partial Regex LogMessage();
+
+    /// <summary>One of scrcpy's own install/push status lines, or null for ordinary output.</summary>
+    public static FileTransferLine? ParseFileTransfer(string? line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return null;
+        }
+
+        var match = LogMessage().Match(line.Trim());
+        var message = match.Success ? match.Groups["message"].Value : line.Trim();
+        return Prefix(message, "Request to install ", FileTransferPhase.Requested, install: true)
+            ?? Prefix(message, "Installing ", FileTransferPhase.Started, install: true, trimDots: true)
+            ?? Prefix(message, "Failed to install ", FileTransferPhase.Failed, install: true)
+            ?? Suffix(message, " successfully installed", FileTransferPhase.Succeeded, install: true)
+            ?? Prefix(message, "Request to push ", FileTransferPhase.Requested, install: false)
+            ?? Prefix(message, "Pushing ", FileTransferPhase.Started, install: false, trimDots: true)
+            ?? Pushed(message, failed: false)
+            ?? Pushed(message, failed: true);
+    }
+
+    private static FileTransferLine? Prefix(string message, string prefix, FileTransferPhase phase, bool install, bool trimDots = false)
+    {
+        if (!message.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var path = message[prefix.Length..];
+        if (trimDots && path.EndsWith("...", StringComparison.Ordinal))
+        {
+            path = path[..^3];
+        }
+
+        return path.Length == 0 ? null : new FileTransferLine(phase, install, path);
+    }
+
+    private static FileTransferLine? Suffix(string message, string suffix, FileTransferPhase phase, bool install) =>
+        message.EndsWith(suffix, StringComparison.Ordinal) && message.Length > suffix.Length
+            ? new FileTransferLine(phase, install, message[..^suffix.Length])
+            : null;
+
+    private static FileTransferLine? Pushed(string message, bool failed)
+    {
+        var prefix = failed ? "Failed to push " : string.Empty;
+        var divider = failed ? " to " : " successfully pushed to ";
+        if (!message.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var at = message.LastIndexOf(divider, StringComparison.Ordinal);
+        if (at <= prefix.Length || at + divider.Length >= message.Length)
+        {
+            return null;
+        }
+
+        return new FileTransferLine(failed ? FileTransferPhase.Failed : FileTransferPhase.Succeeded, false,
+            message[prefix.Length..at], message[(at + divider.Length)..]);
     }
 
     [GeneratedRegex(@"\bTexture:\s*(\d{1,5})x(\d{1,5})\b")]
