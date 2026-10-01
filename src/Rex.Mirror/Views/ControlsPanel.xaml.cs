@@ -70,6 +70,9 @@ public partial class ControlsPanel : UserControl
     private readonly ActionTileModel _pauseTile;
     private MainWindow? _window;
     private AppHost? _host;
+    private readonly Dictionary<Guid, TransferRow> _transferRows = [];
+
+    private sealed record TransferRow(Grid Root, TextBlock State, ProgressBar Progress, Button Action);
 
     /// <summary>
     /// True while the panel shows state it has read (the phone's orientation, browse mode). Only a
@@ -98,6 +101,8 @@ public partial class ControlsPanel : UserControl
         ZoomReset.ToolTip = Shortcuts.Tip("Fit the whole phone screen in the window", "zoom-reset");
         CopyAdd.ToolTip = Shortcuts.Tip("Show another live view of the phone beside this one", "copy-add");
         CopyRemove.ToolTip = Shortcuts.Tip("Close the last copy", "copy-remove");
+        SendFiles.ToolTip = "Choose one or more files to send to the phone";
+        SendCopiedFiles.ToolTip = Shortcuts.Tip("Send files copied in File Explorer", "send-copied-files");
         Refresh();
     }
 
@@ -167,6 +172,8 @@ public partial class ControlsPanel : UserControl
         CopyRemove.IsEnabled = copies.CanRemove;
         CopiesStatus.Text = copies.Summary;
 
+        RefreshFiles();
+
         RefreshFavourites();
 
         var guide = _window.Guide;
@@ -180,6 +187,109 @@ public partial class ControlsPanel : UserControl
                 : $"Appears automatically when the lock screen is black. {Shortcuts.Gesture("pattern-guide")} toggles it.";
         }
     }
+
+    internal void RefreshFiles()
+    {
+        if (_host is null || _window is null) return;
+        FilesSection.Visibility = _host.Config.Transfer.Enabled ? Visibility.Visible : Visibility.Collapsed;
+        var ready = _host.Session.Devices.Any(device => device.IsReady);
+        SendFiles.IsEnabled = ready;
+        SendCopiedFiles.IsEnabled = ready;
+        AutomationProperties.SetHelpText(SendFiles, ready ? string.Empty : NeedsPhone);
+        AutomationProperties.SetHelpText(SendCopiedFiles, ready ? string.Empty : NeedsPhone);
+        var jobs = _window.Transfers;
+        foreach (var removed in _transferRows.Keys.Where(id => jobs.All(job => job.Id != id)).ToArray())
+        {
+            _transferRows.Remove(removed);
+        }
+
+        foreach (var job in jobs)
+        {
+            if (!_transferRows.TryGetValue(job.Id, out var row))
+            {
+                row = CreateTransferRow(job);
+                _transferRows[job.Id] = row;
+            }
+
+            UpdateTransferRow(row, job);
+        }
+
+        var ordered = jobs.Select(job => _transferRows[job.Id].Root).ToArray();
+        if (!TransferRows.Children.Cast<UIElement>().SequenceEqual(ordered))
+        {
+            TransferRows.Children.Clear();
+            foreach (var row in ordered) TransferRows.Children.Add(row);
+        }
+
+        ClearTransfers.IsEnabled = jobs.Any(job => TransferProgress.IsFinished(job.State));
+        ClearTransfers.Visibility = jobs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private TransferRow CreateTransferRow(TransferJob job)
+    {
+        var root = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+        AutomationProperties.SetAutomationId(root, "transfer-" + job.Id.ToString("N"));
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var text = new StackPanel();
+        text.Children.Add(new TextBlock { Text = job.Item.Entry.Name, TextTrimming = TextTrimming.CharacterEllipsis });
+        var state = new TextBlock { Style = (Style)FindResource("MutedText"), FontSize = 11 };
+        AutomationProperties.SetAutomationId(state, "transfer-state-" + job.Id.ToString("N"));
+        text.Children.Add(state);
+        var progress = new ProgressBar
+        {
+            Minimum = 0,
+            Maximum = 100,
+            Height = 4,
+            Margin = new Thickness(0, 4, 8, 0),
+            IsHitTestVisible = false,
+        };
+        text.Children.Add(progress);
+        root.Children.Add(text);
+        var action = new Button { Tag = job.Id, Padding = new Thickness(8, 3, 8, 3), Margin = new Thickness(6, 0, 0, 0) };
+        action.Click += OnTransferAction;
+        Grid.SetColumn(action, 1);
+        root.Children.Add(action);
+        return new TransferRow(root, state, progress, action);
+    }
+
+    private static void UpdateTransferRow(TransferRow row, TransferJob job)
+    {
+        var words = job.State == TransferState.Sending
+            ? TransferProgress.Sending(job.Sent, job.Item.Entry.Size, job.BytesPerSecond)
+            : TransferProgress.Words(job.State, job.Item.Target, job.Why);
+        row.State.Text = words;
+        row.Progress.Value = job.Percent;
+        row.Progress.Visibility = job.State == TransferState.Sending ? Visibility.Visible : Visibility.Collapsed;
+        AutomationProperties.SetName(row.Root, job.Item.Entry.Name + ", " + words);
+
+        var retry = job.State is TransferState.Failed or TransferState.Cancelled;
+        var actionable = retry || job.State is TransferState.Waiting or TransferState.Sending or TransferState.Installing;
+        row.Action.Visibility = actionable ? Visibility.Visible : Visibility.Collapsed;
+        row.Action.Content = retry ? "Try again" : "Cancel";
+        AutomationProperties.SetName(row.Action, (retry ? "Try " : "Cancel ") + job.Item.Entry.Name + (retry ? " again" : string.Empty));
+        AutomationProperties.SetAutomationId(row.Action, (retry ? "transfer-retry-" : "transfer-cancel-") + job.Id.ToString("N"));
+    }
+
+    private async void OnSendFiles(object sender, RoutedEventArgs e)
+    {
+        if (_window is not null) await _window.SendFilesAsync();
+    }
+
+    private async void OnSendCopiedFiles(object sender, RoutedEventArgs e)
+    {
+        if (_window is not null) await _window.SendCopiedFilesAsync();
+    }
+
+    private void OnTransferAction(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: Guid id } || _window is null) return;
+        var state = _window.Transfers.FirstOrDefault(job => job.Id == id)?.State;
+        if (state is TransferState.Failed or TransferState.Cancelled) _window.RetryTransfer(id);
+        else _window.CancelTransfer(id);
+    }
+
+    private void OnClearTransfers(object sender, RoutedEventArgs e) => _window?.ClearFinishedTransfers();
 
     private string _favouritesShown = string.Empty;
 

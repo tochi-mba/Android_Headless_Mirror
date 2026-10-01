@@ -58,7 +58,22 @@ public sealed partial class AdbClient
     }
 
     public async Task<AndroidResult> DeleteFileAsync(string serial, string remotePath, CancellationToken cancellationToken = default) =>
-        AndroidResult.From(await ShellCommandAsync(serial, "rm -f " + ShellQuoting.Quote(remotePath), cancellationToken).ConfigureAwait(false));
+        await DeleteEntryAsync(serial, remotePath, recursive: false, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Removes a partial transfer. Recursive removal is only accepted inside shared storage.</summary>
+    public async Task<AndroidResult> DeleteEntryAsync(string serial, string remotePath, bool recursive, CancellationToken cancellationToken = default)
+    {
+        var slash = remotePath.LastIndexOf('/');
+        var folder = slash >= 0 ? remotePath[..(slash + 1)] : string.Empty;
+        var name = slash >= 0 ? remotePath[(slash + 1)..] : string.Empty;
+        if (!TransferSettings.IsValidFolder(folder) || string.IsNullOrWhiteSpace(name) || name is "." or "..")
+        {
+            return AndroidResult.Failure("The phone file path is not safe.");
+        }
+
+        var option = recursive ? "rm -rf -- " : "rm -f -- ";
+        return AndroidResult.From(await ShellCommandAsync(serial, option + ShellQuoting.Quote(remotePath), cancellationToken).ConfigureAwait(false));
+    }
 
     public async Task<AndroidResult> ScanMediaAsync(string serial, string remotePath, CancellationToken cancellationToken = default) =>
         AndroidResult.From(await ShellAsync(serial,

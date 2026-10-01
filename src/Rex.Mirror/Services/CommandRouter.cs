@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using System.Windows;
+using System.Text.Json;
 using Rex.Core;
 using Rex.Mirror.Session;
 
@@ -109,6 +110,24 @@ public static partial class CommandRouter
             case "open-app":
                 return await OpenAppAsync(host, request).ConfigureAwait(true);
 
+            case "push":
+            {
+                if (window is null) return IpcResponse.Fail("The window is not available.");
+                string[] paths;
+                try
+                {
+                    paths = JsonSerializer.Deserialize<string[]>(request.Arg("paths")) ?? [];
+                }
+                catch (JsonException)
+                {
+                    return IpcResponse.Fail("The file list is not valid.");
+                }
+
+                if (paths.Length == 0) return IpcResponse.Fail("No files were given.");
+                var queued = window.QueueLaunchFiles(paths);
+                return IpcResponse.Success(new JsonObject { ["queued"] = queued });
+            }
+
             default:
                 return IpcResponse.Fail($"Unknown command '{request.Command}'.");
         }
@@ -172,6 +191,34 @@ public static partial class CommandRouter
                     ["surfaceWidth"] = Math.Round(surface.Width),
                     ["surfaceHeight"] = Math.Round(surface.Height),
                 };
+            }).ToArray()),
+        };
+    }
+
+    private static JsonObject FilesStatus(MainWindow window)
+    {
+        var jobs = window.Transfers;
+        return new JsonObject
+        {
+            ["armed"] = window.FilesArmed,
+            ["hint"] = window.FilesHint,
+            ["waiting"] = jobs.Count(job => job.State == TransferState.Waiting),
+            ["running"] = jobs.Count(job => job.State is TransferState.Sending or TransferState.Installing),
+            ["done"] = jobs.Count(job => job.State is TransferState.Done or TransferState.Installed),
+            ["failed"] = jobs.Count(job => job.State == TransferState.Failed),
+            ["items"] = new JsonArray(jobs.Select(job => (JsonNode)new JsonObject
+            {
+                ["id"] = job.Id.ToString("N"),
+                ["name"] = job.Item.Entry.Name,
+                ["kind"] = job.Item.Kind.ToString().ToLowerInvariant(),
+                ["state"] = job.State.ToString().ToLowerInvariant(),
+                ["sent"] = job.Sent,
+                ["size"] = job.Item.Entry.Size,
+                ["percent"] = job.Percent,
+                ["bytesPerSecond"] = Math.Round(job.BytesPerSecond),
+                ["secondsLeft"] = job.TimeLeft is { } left ? Math.Ceiling(left.TotalSeconds) : null,
+                ["target"] = job.Item.Target,
+                ["error"] = job.Why,
             }).ToArray()),
         };
     }
@@ -285,6 +332,7 @@ public static partial class CommandRouter
             ["copies"] = host.Window is { } copies ? CopiesStatus(copies) : null,
             ["sound"] = host.Window is { } sounding ? SoundStatus(sounding) : null,
             ["apps"] = host.Window is { } listing ? AppsStatus(host, listing) : null,
+            ["files"] = host.Window is { } files ? FilesStatus(files) : null,
             ["window"] = host.Window is { } shown ? new JsonObject
             {
                 ["topmost"] = shown.Topmost,

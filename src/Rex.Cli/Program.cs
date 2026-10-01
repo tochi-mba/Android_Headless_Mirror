@@ -126,7 +126,7 @@ public static class Arguments
         {
             if (args[i].StartsWith("--", StringComparison.Ordinal))
             {
-                if (args[i] is "--serial" or "--filter" && i + 1 < args.Length)
+                if (i + 1 < args.Length && new[] { "--serial", "--filter", "--to" }.Contains(args[i], StringComparer.OrdinalIgnoreCase))
                 {
                     i++;
                 }

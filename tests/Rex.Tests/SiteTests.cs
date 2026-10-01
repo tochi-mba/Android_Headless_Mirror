@@ -86,6 +86,7 @@ public sealed partial class SiteTests
         ["Mirror.AudioCodec"] = ["aac", "flac", "raw"],
         ["Mirror.AudioBufferMs"] = ["120"],
         ["Mirror.RecordDirectory"] = ["elsewhere"],
+        ["Transfer.Folder"] = ["/sdcard/Documents/"],
         ["Session.KeepActive"] = ["false"],
     };
 

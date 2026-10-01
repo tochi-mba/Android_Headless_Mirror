@@ -205,6 +205,13 @@ internal sealed class MirrorForm : Form
         KeyPreview = true;
         // When the session's window is up, its server has started: a test orders this against other starts.
         Shown += (_, _) => Program.Log($"shown at={_port}");
+        if (_port == "27183" && File.Exists(Path.Combine(Path.GetDirectoryName(
+                Environment.GetEnvironmentVariable("REX_FAKE_SCRCPY_LOG") ?? string.Empty) ?? AppContext.BaseDirectory, "fake-scrcpy-drop.txt")))
+        {
+            _drop = new System.Windows.Forms.Timer { Interval = 600 };
+            _drop.Tick += (_, _) => EmitDrop();
+            _drop.Start();
+        }
 
         // The window starts in the shape it was asked for. Anything a previous run left behind
         // would otherwise turn it before the test that owns it has begun. A copy joins a phone that
@@ -253,10 +260,27 @@ internal sealed class MirrorForm : Form
     }
 
     private readonly System.Windows.Forms.Timer? _animation;
+    private readonly System.Windows.Forms.Timer? _drop;
     private int _frame;
     private readonly System.Windows.Forms.Timer _frameRate;
     private bool _frameRateCounter;
     private bool _rightControl;
+
+    private void EmitDrop()
+    {
+        _drop?.Stop();
+        var folder = Path.GetDirectoryName(Environment.GetEnvironmentVariable("REX_FAKE_SCRCPY_LOG") ?? string.Empty) ?? AppContext.BaseDirectory;
+        var marker = Path.Combine(folder, "fake-scrcpy-drop.txt");
+        var path = File.ReadAllText(marker).Trim();
+        if (path.Length == 0) return;
+        var install = path.EndsWith(".apk", StringComparison.Ordinal);
+        Console.Out.WriteLine(install ? $"INFO: Request to install {path}" : $"INFO: Request to push {path}");
+        Console.Out.WriteLine(install ? $"INFO: Installing {path}..." : $"INFO: Pushing {path}...");
+        Console.Out.WriteLine(install
+            ? $"INFO: {path} successfully installed"
+            : $"INFO: {path} successfully pushed to {(Option("--push-target") ?? "/sdcard/Download/")}{Path.GetFileName(path)}");
+        Console.Out.Flush();
+    }
 
     /// <summary>A strong, clearly different colour for each frame of the fake video.</summary>
     internal static Color FrameColour(int frame) => (frame % 3) switch

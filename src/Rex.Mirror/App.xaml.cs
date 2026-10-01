@@ -2,6 +2,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
+using System.Text.Json;
 using Rex.Core;
 using Rex.Mirror.Services;
 
@@ -42,8 +43,11 @@ public partial class App : Application
             _instanceMutex = new Mutex(initiallyOwned: true, "Local\\RexMirror-" + Ipc.PipeName(), out var createdNew);
             if (!createdNew)
             {
-                // Another copy is already running: bring it forward instead of racing for the phone.
-                _ = new IpcClient().SendAsync(new IpcRequest("show")).GetAwaiter().GetResult();
+                // Another copy is already running: hand it files, or bring it forward, instead of racing for the phone.
+                var request = Options.SendPaths.Count > 0
+                    ? new IpcRequest("push", new Dictionary<string, string> { ["paths"] = JsonSerializer.Serialize(Options.SendPaths) })
+                    : new IpcRequest("show");
+                _ = new IpcClient().SendAsync(request).GetAwaiter().GetResult();
                 ActiveLog?.Info($"Run {_runId}: another instance is already running; asked it to show.");
                 Shutdown(0);
                 return;
@@ -67,6 +71,10 @@ public partial class App : Application
             _window = new MainWindow(_host);
             SetStartupPhase("background services");
             _host.Start(_window);
+            if (Options.SendPaths.Count > 0)
+            {
+                _window.QueueLaunchFiles(Options.SendPaths);
+            }
 
             SetStartupPhase(Options.StartInBackground ? "hidden startup complete" : "showing the window");
             if (!Options.StartInBackground)
@@ -259,6 +267,7 @@ public sealed record LaunchOptions
 
     /// <summary>--root PATH: package folder override (otherwise discovered).</summary>
     public string? Root { get; init; }
+    public IReadOnlyList<string> SendPaths { get; init; } = [];
 
     public static LaunchOptions Parse(string[] args)
     {
@@ -272,6 +281,10 @@ public sealed record LaunchOptions
                     break;
                 case "--root" when i + 1 < args.Length:
                     options = options with { Root = args[++i] };
+                    break;
+                case "--send":
+                    options = options with { SendPaths = args[(i + 1)..] };
+                    i = args.Length;
                     break;
             }
         }

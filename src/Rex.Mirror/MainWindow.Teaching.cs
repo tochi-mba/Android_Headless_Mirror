@@ -20,6 +20,7 @@ public partial class MainWindow
     private bool _tourConsidered;
     private string? _tipShowing;
     private TaskCompletionSource<bool>? _confirm;
+    private TaskCompletionSource<(string? Choice, bool ApplyToAll)>? _confirmChoice;
     private DispatcherTimer? _tipTimer;
 
     // ----- Teaching -----
@@ -82,14 +83,51 @@ public partial class MainWindow
     public Task<bool> ConfirmAsync(string title, string body, string action, string? risk = null)
     {
         _confirm?.TrySetResult(false);
+        _confirmChoice?.TrySetResult((null, false));
+        _confirmChoice = null;
         var pending = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _confirm = pending;
 
         ConfirmTitle.Text = title;
         ConfirmBody.Text = body;
         ConfirmAccept.Content = action;
+        ConfirmAccept.Tag = null;
+        ConfirmCancel.Content = "Cancel";
+        ConfirmCancel.Tag = null;
+        ConfirmMiddle.Visibility = Visibility.Collapsed;
+        ConfirmApplyToAll.Visibility = Visibility.Collapsed;
         ConfirmRisk.Text = risk?.ToUpperInvariant() ?? string.Empty;
         ConfirmRisk.Visibility = string.IsNullOrWhiteSpace(risk) ? Visibility.Collapsed : Visibility.Visible;
+        ConfirmSheet.Visibility = Visibility.Visible;
+        AutomationProperties.SetName(ConfirmSheet, title + ". " + body);
+        PreviewKeyDown -= OnConfirmKey;
+        PreviewKeyDown += OnConfirmKey;
+        Dispatcher.BeginInvoke(() => ConfirmCancel.Focus(), DispatcherPriority.Input);
+        return pending.Task;
+    }
+
+    /// <summary>Asks a question with three named answers; Escape and the last button return null.</summary>
+    public Task<(string? Choice, bool ApplyToAll)> ConfirmChoiceAsync(
+        string title, string body, string first, string second, string third, string? applyToAllText = null)
+    {
+        _confirm?.TrySetResult(false);
+        _confirm = null;
+        _confirmChoice?.TrySetResult((null, false));
+        var pending = new TaskCompletionSource<(string?, bool)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _confirmChoice = pending;
+        ConfirmTitle.Text = title;
+        ConfirmBody.Text = body;
+        ConfirmAccept.Content = first;
+        ConfirmAccept.Tag = first;
+        ConfirmMiddle.Content = second;
+        ConfirmMiddle.Tag = second;
+        ConfirmMiddle.Visibility = Visibility.Visible;
+        ConfirmCancel.Content = third;
+        ConfirmCancel.Tag = third;
+        ConfirmRisk.Visibility = Visibility.Collapsed;
+        ConfirmApplyToAll.Content = applyToAllText ?? string.Empty;
+        ConfirmApplyToAll.IsChecked = false;
+        ConfirmApplyToAll.Visibility = applyToAllText is null ? Visibility.Collapsed : Visibility.Visible;
         ConfirmSheet.Visibility = Visibility.Visible;
         AutomationProperties.SetName(ConfirmSheet, title + ". " + body);
         PreviewKeyDown -= OnConfirmKey;
@@ -103,7 +141,8 @@ public partial class MainWindow
     {
         if (e.Key == System.Windows.Input.Key.Escape && ConfirmSheet.Visibility == Visibility.Visible)
         {
-            CloseConfirm(false);
+            if (_confirmChoice is not null) CloseChoice(null);
+            else CloseConfirm(false);
             e.Handled = true;
         }
     }
@@ -117,9 +156,32 @@ public partial class MainWindow
         pending?.TrySetResult(accepted);
     }
 
-    private void OnConfirmAccept(object sender, RoutedEventArgs e) => CloseConfirm(true);
+    private void CloseChoice(string? choice)
+    {
+        PreviewKeyDown -= OnConfirmKey;
+        ConfirmSheet.Visibility = Visibility.Collapsed;
+        var pending = _confirmChoice;
+        _confirmChoice = null;
+        pending?.TrySetResult((choice, ConfirmApplyToAll.IsChecked == true));
+        ConfirmCancel.Content = "Cancel";
+        ConfirmCancel.Tag = null;
+        ConfirmMiddle.Visibility = Visibility.Collapsed;
+        ConfirmApplyToAll.Visibility = Visibility.Collapsed;
+    }
 
-    private void OnConfirmCancel(object sender, RoutedEventArgs e) => CloseConfirm(false);
+    private void OnConfirmAccept(object sender, RoutedEventArgs e)
+    {
+        if (_confirmChoice is not null) CloseChoice(ConfirmAccept.Tag as string);
+        else CloseConfirm(true);
+    }
+
+    private void OnConfirmMiddle(object sender, RoutedEventArgs e) => CloseChoice(ConfirmMiddle.Tag as string);
+
+    private void OnConfirmCancel(object sender, RoutedEventArgs e)
+    {
+        if (_confirmChoice is not null) CloseChoice(ConfirmCancel.Tag as string);
+        else CloseConfirm(false);
+    }
 
     /// <summary>Offers a hint once, and never while something is being asked in the same bar.</summary>
     public void ShowTipOnce(string id)

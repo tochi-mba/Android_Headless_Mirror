@@ -109,6 +109,17 @@
     <TextBlock x:Name="CopiesStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,8,0,0"
                AutomationProperties.LiveSetting="Polite" />
 
+    <StackPanel x:Name="FilesSection">
+      <TextBlock Text="FILES" Style="{StaticResource Eyebrow}" />
+      <UniformGrid Columns="2" Margin="-3,0">
+        <Button x:Name="SendFiles" Content="Send files…" Margin="3,0" Click="OnSendFiles" ToolTipService.ShowOnDisabled="True" />
+        <Button x:Name="SendCopiedFiles" Content="Send copied files" Margin="3,0" Click="OnSendCopiedFiles" ToolTipService.ShowOnDisabled="True" />
+      </UniformGrid>
+      <StackPanel x:Name="TransferRows" Margin="0,4,0,0" />
+      <Button x:Name="ClearTransfers" Content="Clear finished" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnClearTransfers"
+              ToolTipService.ShowOnDisabled="True" />
+    </StackPanel>
+
     <TextBlock Text="CLIPBOARD" Style="{StaticResource Eyebrow}" />
     <UniformGrid x:Name="ClipboardButtons" Columns="4" Margin="-3,0">
       <Button x:Name="ClipboardCopy" Content="Copy" Margin="3,0" Tag="copy" Click="OnTile" ToolTipService.ShowOnDisabled="True" />

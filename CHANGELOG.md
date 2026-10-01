@@ -4,6 +4,28 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.7.0 - 2026-10-02
+
+### Added
+
+- Drop files or folders onto the window, choose them from Controls, paste files copied in File
+  Explorer with Ctrl+Alt+V, or add **Send to › Android phone** to Explorer. Each transfer stays in
+  the Controls tab with progress, cancel, retry and a clear result.
+- APK files install after asking. Updates, downgrades, test builds, granted permissions and opening
+  the app afterwards are all separate settings.
+- File-name clashes can ask, keep both with a numbered name, replace or skip. Photos, videos and
+  music can go to their own shared-storage folders, and new media can appear in Gallery at once.
+- `rex push <files…>` and `rex install <apks…>` work without the desktop app and support the JSON
+  agent mode.
+
+### Changed
+
+- scrcpy's own drops onto the phone picture appear in the same transfer history. Turning file drops
+  off disables that path too; changing the destination offers the restart scrcpy needs.
+- Several files may be sent together, from one to four at once. A disconnect can cancel the queue,
+  partial files are cleaned up, and hidden-window notifications and taskbar progress are optional.
+- The first-run setup guide and tour now introduce the Apps tab and every way to send files.
+
 ## 2.6.0 - 2026-10-01
 
 ### Added

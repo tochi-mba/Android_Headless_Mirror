@@ -152,6 +152,29 @@ public static class SettingsCatalogue
         ["Apps.OpenFresh"] = "AppsOpenFresh",
         ["Apps.CloseWhenMirrorStops"] = "AppsCloseOnStop",
         ["Apps.Hidden"] = "AppsShowHidden",
+
+        ["Transfer.Enabled"] = "TransferEnabled",
+        ["Transfer.Folder"] = "TransferFolder",
+        ["Transfer.SortMedia"] = "TransferSortMedia",
+        ["Transfer.Folders"] = "TransferFolders",
+        ["Transfer.InstallApks"] = "TransferInstallApks",
+        ["Transfer.Replace"] = "TransferReplace",
+        ["Transfer.AllowDowngrade"] = "TransferAllowDowngrade",
+        ["Transfer.GrantPermissions"] = "TransferGrantPermissions",
+        ["Transfer.AllowTestApps"] = "TransferAllowTestApps",
+        ["Transfer.ConfirmInstall"] = "TransferConfirmInstall",
+        ["Transfer.ConfirmDrops"] = "TransferConfirmDrops",
+        ["Transfer.ConfirmOverMb"] = "TransferConfirmOver",
+        ["Transfer.WhenNameExists"] = "TransferWhenExists",
+        ["Transfer.ScanMedia"] = "TransferScanMedia",
+        ["Transfer.OpenAfterInstall"] = "TransferOpenAfterInstall",
+        ["Transfer.ShowFolderAfter"] = "TransferShowFolderAfter",
+        ["Transfer.AtOnce"] = "TransferAtOnce",
+        ["Transfer.TaskbarProgress"] = "TransferTaskbar",
+        ["Transfer.NotifyWhenHidden"] = "TransferNotifyHidden",
+        ["Transfer.CancelWhenPhoneLeaves"] = "TransferCancelOnLeave",
+        ["Transfer.History"] = "TransferHistory",
+        ["Transfer.SendToMenu"] = "TransferSendToMenu",
     };
 
     /// <summary>
@@ -171,6 +194,7 @@ public static class SettingsCatalogue
         "Input.RightClick", "Input.MiddleClick", "Input.BackButton", "Input.ForwardButton",
         "Input.ShiftClicks", "Input.KeyRepeat", "Input.MouseHover", "Input.ClipboardAutosync",
         "Input.LegacyPaste", "Input.Gamepad",
+        "Transfer.Enabled", "Transfer.Folder",
     };
 
     /// <summary>Whether a setting applies at once, or the next time the mirror starts.</summary>

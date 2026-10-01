@@ -86,6 +86,12 @@ public static class Commands
             case "app":
                 return await AppCommands.RunAsync(args, context).ConfigureAwait(false);
 
+            case "push":
+                return await FileCommands.PushAsync(args, context).ConfigureAwait(false);
+
+            case "install":
+                return await FileCommands.InstallAsync(args, context).ConfigureAwait(false);
+
             case "screenshot":
                 return await ScreenshotAsync(context, Arguments.Option(args, "--serial")).ConfigureAwait(false);
 

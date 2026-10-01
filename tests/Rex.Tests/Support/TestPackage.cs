@@ -57,6 +57,13 @@ public sealed class TestPackage : IDisposable
     /// <summary>With this present, reading the fake phone's apps fails as if it had just left.</summary>
     public string FailListAppsMarker => Path.Combine(ToolsFolder, "fail-list-apps");
 
+    public string FailPushMarker => Path.Combine(ToolsFolder, "fail-push");
+    public string SlowPushMarker => Path.Combine(ToolsFolder, "slow-push");
+    public string FailInstallMarker => Path.Combine(ToolsFolder, "fail-install");
+    public string FakeScrcpyDrop => Path.Combine(ToolsFolder, "fake-scrcpy-drop.txt");
+    public string SendToFolder => Path.Combine(Root, "send-to");
+    public string SendToShortcut => Path.Combine(SendToFolder, Rex.Mirror.Services.Files.SendToMenu.Name);
+
     /// <summary>With this present, the fake phone says it is too old to send its sound.</summary>
     public string NoAudioMarker => Path.Combine(ToolsFolder, "no-audio");
 

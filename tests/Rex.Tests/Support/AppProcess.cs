@@ -28,7 +28,7 @@ public sealed partial class AppProcess : IDisposable
         _package = package;
         _background = background;
         _client = new IpcClient(_pipe);
-        _process = Start();
+        _process = Start([]);
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ public sealed partial class AppProcess : IDisposable
         }
     }
 
-    private Process Start()
+    private Process Start(IReadOnlyList<string> arguments)
     {
         Assert.True(File.Exists(RepoPaths.MirrorExecutable), "RexMirror.exe must be built before the end-to-end tests run.");
         var start = new ProcessStartInfo(RepoPaths.MirrorExecutable)
@@ -81,6 +81,11 @@ public sealed partial class AppProcess : IDisposable
             start.ArgumentList.Add("--background");
         }
 
+        foreach (var argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
         start.Environment[Ipc.PipeNameOverride] = _pipe;
         // Never the PC's real USB devices, Task Scheduler or administrator prompt.
         start.Environment[UsbDeviceSource.FakeVariable] = _package.UsbProblemsFile;
@@ -89,6 +94,7 @@ public sealed partial class AppProcess : IDisposable
         start.Environment[Rex.Mirror.Services.UrlOpener.FakeBrowserVariable] = _package.BrowserLog;
         // Never the PC's real audio sessions.
         start.Environment[Rex.Mirror.Services.Sound.FakePhoneSound.Variable] = _package.SoundFile;
+        start.Environment[Rex.Mirror.Services.Files.SendToMenu.FolderVariable] = _package.SendToFolder;
         start.Environment.Remove(ToolLocator.AdbOverride);
         start.Environment.Remove(ToolLocator.ScrcpyOverride);
         var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start RexMirror.exe.");
@@ -100,7 +106,7 @@ public sealed partial class AppProcess : IDisposable
         return process;
     }
 
-    public Process StartAnother() => Start();
+    public Process StartAnother(params string[] arguments) => Start(arguments);
 
     public async Task ActionAsync(string action)
     {

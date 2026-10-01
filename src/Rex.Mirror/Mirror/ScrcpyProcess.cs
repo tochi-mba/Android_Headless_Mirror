@@ -31,6 +31,7 @@ public sealed class ScrcpyProcess : IDisposable
             }
 
             NoteSound(e.Data);
+            NoteFileTransfer(e.Data);
 
             lock (_stderr)
             {
@@ -56,6 +57,7 @@ public sealed class ScrcpyProcess : IDisposable
             else
             {
                 NoteSound(e.Data);
+                NoteFileTransfer(e.Data);
             }
         };
         process.BeginErrorReadLine();
@@ -82,6 +84,9 @@ public sealed class ScrcpyProcess : IDisposable
 
     /// <summary>scrcpy said the phone cannot or will not send its sound. Raised on a reader thread.</summary>
     public event Action<string>? SoundRefused;
+
+    /// <summary>scrcpy's built-in drag/drop pusher reported a step. Raised on a reader thread.</summary>
+    public event Action<ScrcpyArguments.FileTransferLine>? FileTransfer;
 
     public int ProcessId => _process.Id;
     public IntPtr Hwnd { get; private set; }
@@ -164,6 +169,14 @@ public sealed class ScrcpyProcess : IDisposable
         {
             SoundProblem = why;
             SoundRefused?.Invoke(why);
+        }
+    }
+
+    private void NoteFileTransfer(string? line)
+    {
+        if (ScrcpyArguments.ParseFileTransfer(line) is { } transfer)
+        {
+            FileTransfer?.Invoke(transfer);
         }
     }
 

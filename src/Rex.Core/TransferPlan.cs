@@ -6,19 +6,34 @@ public sealed record LocalEntry(string Path, string Name, bool IsFolder, long Si
     /// <summary>What a path on this PC is, read from the disk; null when it is not there.</summary>
     public static LocalEntry? Read(string path)
     {
-        if (File.Exists(path))
+        try
         {
-            return new LocalEntry(path, System.IO.Path.GetFileName(path), false, new FileInfo(path).Length);
-        }
+            if (File.Exists(path))
+            {
+                return new LocalEntry(path, System.IO.Path.GetFileName(path), false, new FileInfo(path).Length);
+            }
 
-        if (!Directory.Exists(path))
+            if (!Directory.Exists(path))
+            {
+                return null;
+            }
+
+            // A junction can lead outside the folder or back into it. adb follows the directory
+            // tree it is given, so count the same ordinary files and leave reparse points alone.
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.ReparsePoint,
+            };
+            var files = Directory.EnumerateFiles(path, "*", options).Select(f => new FileInfo(f)).ToArray();
+            var name = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
+            return new LocalEntry(path, name, true, files.Sum(f => f.Length), files.Length);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return null;
         }
-
-        var files = Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories).Select(f => new FileInfo(f)).ToArray();
-        var name = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
-        return new LocalEntry(path, name, true, files.Sum(f => f.Length), files.Length);
     }
 }
 

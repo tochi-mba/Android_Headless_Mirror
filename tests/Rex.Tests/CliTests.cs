@@ -33,6 +33,7 @@ public sealed class CliTests
     public void Positional_SkipsOptionsAndTheirValues()
     {
         Assert.Equal(["action", "sleep"], Arguments.Positional(["action", "sleep", "--serial", "X"]));
+        Assert.Equal(["push", "one.txt"], Arguments.Positional(["push", "one.txt", "--TO", "/sdcard/Pictures/"]));
         Assert.Equal("X", Arguments.Option(["--SERIAL", "X"], "--serial"));
         Assert.Throws<ArgumentException>(() => Arguments.Require(["a"], 2, "usage"));
     }
@@ -308,6 +309,65 @@ public sealed class CliTests
         {
             Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, null);
         }
+    }
+
+    [Fact]
+    public async Task Files_PushAndInstallWorkWithoutTheDesktopApp()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        var photo = Path.Combine(package.Root, "photo one.jpg");
+        var apk = Path.Combine(package.Root, "example.apk");
+        File.WriteAllText(photo, "picture");
+        File.WriteAllText(apk, "fake apk");
+        var context = new CliContext(package.Paths);
+
+        var pushed = await MachineMode.RunAsync(["push", photo, "--to", "/sdcard/Pictures/"], context);
+        Assert.Equal(0, pushed.ExitCode);
+        var push = JsonNode.Parse(pushed.Json)!;
+        Assert.Equal("/sdcard/Pictures/", push["data"]!["items"]![0]!["to"]!.GetValue<string>());
+        Assert.Contains(package.AdbCalls(), call => call.Contains("push", StringComparison.Ordinal) && call.Contains("photo one.jpg", StringComparison.Ordinal));
+
+        var installed = await MachineMode.RunAsync(["install", apk, "--downgrade", "--grant", "--test", "--no-replace"], context);
+        Assert.Equal(0, installed.ExitCode);
+        Assert.Contains(package.AdbCalls(), call => call.Contains("install -d -g -t", StringComparison.Ordinal) && call.Contains("example.apk", StringComparison.Ordinal));
+
+        using var output = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(output);
+        try
+        {
+            Assert.Equal(0, await Commands.RunAsync(["push", photo], context));
+            Assert.Equal(0, await Commands.RunAsync(["install", apk], context));
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.Contains("Sent photo one.jpg", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Installed example.apk", output.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Files_ReportInvalidTargetsAndAdbFailures()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        var file = Path.Combine(package.Root, "large.bin");
+        File.WriteAllText(file, "contents");
+        var context = new CliContext(package.Paths);
+
+        var unsafeTarget = await MachineMode.RunAsync(["push", file, "--to", "/data/local/tmp/"], context);
+        Assert.Equal(1, unsafeTarget.ExitCode);
+        Assert.Contains("phone's storage", JsonNode.Parse(unsafeTarget.Json)!["error"]!["message"]!.GetValue<string>(), StringComparison.Ordinal);
+
+        File.WriteAllText(package.FailPushMarker, string.Empty);
+        var failed = await MachineMode.RunAsync(["push", file], context);
+        Assert.Equal(1, failed.ExitCode);
+        Assert.Contains("One or more files failed", failed.Json, StringComparison.Ordinal);
+
+        var notApk = await MachineMode.RunAsync(["install", file], context);
+        Assert.Equal(1, notApk.ExitCode);
+        Assert.Contains("APK file is required", notApk.Json, StringComparison.Ordinal);
     }
 
     [Fact]

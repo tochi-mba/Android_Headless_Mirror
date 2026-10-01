@@ -215,8 +215,10 @@
           <TextBlock x:Name="ConfirmRisk" Style="{StaticResource Eyebrow}" Foreground="{StaticResource Live}" Margin="0,0,0,6" Visibility="Collapsed" />
           <TextBlock x:Name="ConfirmTitle" Style="{StaticResource SectionTitle}" />
           <TextBlock x:Name="ConfirmBody" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+          <CheckBox x:Name="ConfirmApplyToAll" Content="Do the same for the rest" Margin="0,12,0,0" Visibility="Collapsed" />
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
             <Button x:Name="ConfirmCancel" Content="Cancel" MinHeight="32" Padding="14,5" Margin="0,0,8,0" Click="OnConfirmCancel" />
+            <Button x:Name="ConfirmMiddle" Content="Keep both" MinHeight="32" Padding="14,5" Margin="0,0,8,0" Click="OnConfirmMiddle" Visibility="Collapsed" />
             <Button x:Name="ConfirmAccept" Content="Continue" Style="{StaticResource DangerButton}" MinHeight="32" Padding="16,5" Click="OnConfirmAccept" />
           </StackPanel>
         </StackPanel>

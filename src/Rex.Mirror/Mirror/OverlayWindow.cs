@@ -28,6 +28,24 @@ public sealed class OverlayWindow : Window
     private const double NavigatorFrame = 7;
 
     private readonly Canvas _canvas = new();
+    private readonly Border _dropHint = new()
+    {
+        Background = new SolidColorBrush(Color.FromArgb(0xE8, 0x08, 0x0A, 0x09)),
+        BorderBrush = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F)),
+        BorderThickness = new Thickness(2),
+        CornerRadius = new CornerRadius(14),
+        Padding = new Thickness(18, 12, 18, 12),
+        Visibility = Visibility.Collapsed,
+        IsHitTestVisible = false,
+        Child = new TextBlock
+        {
+            Foreground = new SolidColorBrush(Color.FromRgb(0xF2, 0xF5, 0xEE)),
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 420,
+        },
+    };
     private bool _trailEmpty = true;
 
     public bool NavigatorVisible => _navigator.Visibility == Visibility.Visible;
@@ -209,6 +227,7 @@ public sealed class OverlayWindow : Window
         _canvas.Children.Add(_trailTail);
         _canvas.Children.Add(_pattern);
         _canvas.Children.Add(_label);
+        _canvas.Children.Add(_dropHint);
         Canvas.SetLeft(_label, 12);
         Canvas.SetTop(_label, 10);
 
@@ -237,6 +256,10 @@ public sealed class OverlayWindow : Window
         _canvas.MouseMove += OnPanMove;
         _canvas.MouseLeftButtonUp += OnPanUp;
         _canvas.Background = Brushes.Transparent;
+        _canvas.AllowDrop = true;
+        _canvas.DragOver += OnFilesDragOver;
+        _canvas.Drop += OnFilesDrop;
+        _canvas.DragLeave += (_, _) => FilesDragLeft?.Invoke();
         Content = _canvas;
 
         SourceInitialized += (_, _) =>
@@ -261,6 +284,52 @@ public sealed class OverlayWindow : Window
 
     /// <summary>Raised for WM_POINTER* messages so the touchpad bridge can inspect contacts.</summary>
     public event Func<int, IntPtr, bool>? PointerMessage;
+
+    /// <summary>Explorer files dropped over the armed picture.</summary>
+    public event Action<IReadOnlyList<string>>? FilesDropped;
+    public event Action? FilesDragLeft;
+
+    /// <summary>
+    /// Makes the layered window one alpha step opaque so OLE drag/drop hits it over scrcpy, and
+    /// shows the exact result of dropping. Transparent again when the drag ends.
+    /// </summary>
+    public void ArmFiles(bool armed, string? words = null)
+    {
+        _canvas.Background = armed ? PictureHole : Brushes.Transparent;
+        _dropHint.Visibility = armed && !string.IsNullOrWhiteSpace(words) ? Visibility.Visible : Visibility.Collapsed;
+        if (_dropHint.Child is TextBlock text)
+        {
+            text.Text = words ?? string.Empty;
+        }
+
+        if (armed)
+        {
+            _dropHint.Measure(new Size(Math.Max(1, _canvas.Width - 24), Math.Max(1, _canvas.Height - 24)));
+            Canvas.SetLeft(_dropHint, Math.Max(12, (_canvas.Width - _dropHint.DesiredSize.Width) / 2));
+            Canvas.SetTop(_dropHint, Math.Max(12, (_canvas.Height - _dropHint.DesiredSize.Height) / 2));
+        }
+    }
+
+    private static string[] DropPaths(IDataObject data) =>
+        data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths ? paths : [];
+
+    private void OnFilesDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DropPaths(e.Data).Length > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnFilesDrop(object sender, DragEventArgs e)
+    {
+        var paths = DropPaths(e.Data);
+        ArmFiles(false);
+        if (paths.Length > 0)
+        {
+            FilesDropped?.Invoke(paths);
+        }
+
+        e.Handled = true;
+    }
 
     /// <summary>Raised while Alt-dragging with pixel deltas.</summary>
     public event Action<double, double>? PanDelta;

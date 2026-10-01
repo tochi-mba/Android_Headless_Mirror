@@ -3,12 +3,15 @@ namespace Rex.Core;
 /// <summary>One transfer as it moves from the waiting list to a finished state.</summary>
 public sealed record TransferJob(Guid Id, TransferItem Item)
 {
+    internal List<(TimeSpan Elapsed, long Bytes)> Samples { get; } = [];
     public TransferState State { get; internal set; } = TransferState.Waiting;
     public long Sent { get; internal set; }
     public string? Why { get; internal set; }
     public DateTimeOffset ChangedAt { get; internal set; } = DateTimeOffset.UtcNow;
 
     public int Percent => TransferProgress.Percent(Sent, Item.Entry.Size);
+    public double BytesPerSecond => TransferProgress.Speed(Samples);
+    public TimeSpan? TimeLeft => TransferProgress.Left(Sent, Item.Entry.Size, BytesPerSecond);
 }
 
 /// <summary>
@@ -18,6 +21,7 @@ public sealed record TransferJob(Guid Id, TransferItem Item)
 public sealed class TransferQueue
 {
     private readonly List<TransferJob> _jobs = [];
+    private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     private int _atOnce;
     private int _history;
 
@@ -51,9 +55,24 @@ public sealed class TransferQueue
         foreach (var job in jobs)
         {
             Change(job, job.Item.Kind == TransferKind.Install ? TransferState.Installing : TransferState.Sending);
+            job.Samples.Add((_clock.Elapsed, 0));
         }
 
         return jobs;
+    }
+
+    /// <summary>Marks a job started by scrcpy's own drop handler rather than by this queue.</summary>
+    public bool Start(Guid id, bool installing)
+    {
+        var job = Find(id);
+        if (job is null || job.State != TransferState.Waiting)
+        {
+            return false;
+        }
+
+        Change(job, installing ? TransferState.Installing : TransferState.Sending);
+        job.Samples.Add((_clock.Elapsed, 0));
+        return true;
     }
 
     public bool Progress(Guid id, long sent)
@@ -65,6 +84,9 @@ public sealed class TransferQueue
         }
 
         job.Sent = Math.Clamp(sent, 0, Math.Max(0, job.Item.Entry.Size));
+        job.Samples.Add((_clock.Elapsed, job.Sent));
+        var oldest = _clock.Elapsed - TransferProgress.Window - TimeSpan.FromSeconds(1);
+        job.Samples.RemoveAll(sample => sample.Elapsed < oldest);
         job.ChangedAt = DateTimeOffset.UtcNow;
         return true;
     }
@@ -96,6 +118,7 @@ public sealed class TransferQueue
         }
 
         job.Sent = 0;
+        job.Samples.Clear();
         job.Why = null;
         Change(job, TransferState.Waiting);
         return true;
