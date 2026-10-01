@@ -59,9 +59,19 @@ public sealed partial class AppUiTests
         Assert.False(app.Ui.Exists("SoundVolume") && app.Ui.Read("SoundVolume", i => !i.IsOffscreen));
         Assert.Contains("needs Android 11", app.Ui.Read("QuickSound", i => i.HelpText), StringComparison.Ordinal);
 
-        // With phone sound off, the panel offers to turn it on, which asks for a restart.
+        // With phone sound off, the panel offers to turn it on, which asks for a restart. The mirror
+        // is started again without sound first: until then it still has its sound, and turning the
+        // setting back on would need no restart at all.
         new ConfigStore(package.Paths.Config).Set("Mirror.Audio", "false");
         await app.WaitForStatusAsync(s => SoundOf(s)["why"]?.GetValue<string>() == SoundProblems.AudioOff, Soon, "the sound to be off");
+        await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "the offer to restart without sound");
+        Assert.True((await app.SendAsync(new IpcRequest("session-restart"))).Ok);
+        await app.WaitForStatusAsync(s => s["mirroring"]!.GetValue<bool>() && !s["restartRequired"]!.GetValue<bool>(), Startup, "the mirror without sound");
+        if (!app.Ui.Exists("SoundProblem"))
+        {
+            app.Ui.Invoke("QuickSound");
+        }
+
         await app.WaitUntilAsync(() => app.Ui.Read("SoundProblem", i => i.Name) == SoundProblems.AudioOff, Soon, "the panel to say sound is off");
         app.Ui.Invoke("SoundTurnOn");
         await app.WaitUntilAsync(() => ConfigFile.Load(package.Paths.Config).Mirror.Audio, Soon, "phone sound to be turned on");

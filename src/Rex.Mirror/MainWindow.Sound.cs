@@ -82,10 +82,10 @@ public partial class MainWindow
     private SoundWindow SoundNow()
     {
         var hidden = !IsVisible || WindowState == WindowState.Minimized;
-        // The sound panel and the fullscreen controls are windows of this app too: only another
-        // program in front counts as behind.
+        // The sound panel and the fullscreen controls are windows of this app too, and the phone's
+        // picture is scrcpy's window inside this one: only another program in front counts as behind.
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out var foregroundProcess);
-        var behind = !hidden && foregroundProcess != Environment.ProcessId;
+        var behind = !hidden && foregroundProcess != Environment.ProcessId && !InFront;
         var typing = FocusInsideControl() ? TimeSpan.MaxValue : SoundPolicy.SinceLastKey(Environment.TickCount64, _hooks.LastKeyToPhone);
         return new SoundWindow(hidden, behind, _pcLocked, typing);
     }
