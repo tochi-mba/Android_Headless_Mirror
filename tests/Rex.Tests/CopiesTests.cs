@@ -160,6 +160,23 @@ public sealed class CopiesTests
     }
 
     [Fact]
+    public void Plan_ACopyStoppedWhileStartingFreesTheNextStart()
+    {
+        var plan = new CopiesPlan();
+        plan.Want(1);
+        Assert.Equal(new CopyStep(CopyStepKind.Launch, 0), plan.Next(true));
+        plan.Started(0);
+        Assert.True(plan.Starting);
+        Assert.Equal(CopyStep.Nothing, plan.Next(true));
+
+        // Removed, or the main session ended, before its window appeared.
+        plan.Stopped(0);
+        Assert.False(plan.Starting);
+        Assert.Empty(plan.Running);
+        Assert.Equal(new CopyStep(CopyStepKind.Launch, 0), plan.Next(true));
+    }
+
+    [Fact]
     public void Plan_TriesAFailedCopyOnceMoreThenGivesItUpWithTheReason()
     {
         var plan = new CopiesPlan();
