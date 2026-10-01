@@ -66,6 +66,7 @@
 <ul>
 <li>Quitting the app while the soft background or the navigator picture was being drawn could crash it on the way out. Closing now waits for the picture in progress before letting go of it.</li>
 <li>A touch that Windows refused to lift could leave every later touch refused as well, so taps and swipes from the touchpad or the keyboard could stop reaching the phone. A refused touch is now let go of and the next one starts cleanly.</li>
+<li>Saving a setting while another program was reading config.json could close the app. The app now waits a moment for the other program, and if it still cannot save, says so in the status bar.</li>
 </ul>
 <h2 id="v2-3-3">2.3.3 - 2026-10-01</h2>
 <h3>Added</h3>

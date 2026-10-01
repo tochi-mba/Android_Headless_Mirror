@@ -13,6 +13,8 @@ was built and tested by CI; the installer for each published one is on the
 - A touch that Windows refused to lift could leave every later touch refused as well, so taps and
   swipes from the touchpad or the keyboard could stop reaching the phone. A refused touch is now
   let go of and the next one starts cleanly.
+- Saving a setting while another program was reading config.json could close the app. The app now
+  waits a moment for the other program, and if it still cannot save, says so in the status bar.
 
 ## 2.3.3 - 2026-10-01
 

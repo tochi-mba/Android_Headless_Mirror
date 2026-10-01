@@ -261,6 +261,8 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   and discovery picks the newest complete one.
 - Persistence is transactional across processes: every config/state read-modify-write mutation must hold
   `CrossProcessFileLock`. `AtomicFile` provides crash-safe replacement, not concurrency control.
+  Windows cannot replace a file while anything has it open, so `AtomicFile.Write` waits out a
+  reader for about a second; a save that still fails is reported, never fatal.
 - Only REX-owned mirror/session processes belong to the kill-on-close Job Object. Never assign the shared
   ADB server to it.
 - A resource used on a worker thread is released only after that worker has left it
