@@ -198,10 +198,16 @@ public sealed class CopiesTests
             new CopiesStatus(false, 0, 0, false, 1, true, "x").Summary);
         Assert.Equal("2 copies will open again once the phone is mirrored.", new CopiesStatus(false, 2, 0, false, 1, true, null).Summary);
         Assert.Equal("Opening copy 2 of 2…", new CopiesStatus(true, 2, 1, true, 2, true, null).Summary);
-        Assert.Equal("1 copy out of sight while the phone is on its side. It comes back when the phone is upright.",
-            new CopiesStatus(true, 1, 1, false, 1, false, null).Summary);
-        Assert.Equal("2 copies open, 1 hidden for want of room. Make the window wider to see it.",
+        Assert.Equal("1 copy out of sight while the phone is on its side, paused so they cost nothing. It comes back when the phone is upright.",
+            new CopiesStatus(true, 1, 0, false, 1, false, null, Room: 0).Summary);
+        // Out of sight for a moment, still running; then paused, waiting for room.
+        Assert.Equal("1 of 2 copies showing, 1 paused for want of room. Make the window wider to see it.",
             new CopiesStatus(true, 2, 2, false, 2, true, null).Summary);
+        var waiting = new CopiesStatus(true, 3, 1, false, 2, true, null, Room: 1);
+        Assert.Equal(2, waiting.Waiting);
+        Assert.Equal(2, waiting.Hidden);
+        Assert.Equal("1 of 3 copies showing, 2 paused for want of room. Make the window wider to see them.", waiting.Summary);
+        Assert.Equal(0, new CopiesStatus(true, 2, 1, false, 2, true, null).Waiting);
         Assert.Equal("1 of 2 open. Trying the next one again shortly.", new CopiesStatus(true, 2, 1, false, 2, true, null).Summary);
         Assert.StartsWith("1 copy open. Touch or type on any of them", new CopiesStatus(true, 1, 1, false, 2, true, null).Summary, StringComparison.Ordinal);
         Assert.EndsWith(" Too many.", new CopiesStatus(true, 0, 0, false, 1, true, "Too many.").Summary, StringComparison.Ordinal);
@@ -212,6 +218,42 @@ public sealed class CopiesTests
         Assert.False(new CopiesStatus(false, 0, 0, false, 1, true, null).CanAdd);
         Assert.True(new CopiesStatus(false, 1, 0, false, 1, true, null).CanRemove);
         Assert.Equal(0, new CopiesStatus(false, 2, 2, false, 1, true, null).Hidden);
+    }
+
+    [Fact]
+    public void Plan_PausesCopiesThereIsNoRoomForAndBringsThemBack()
+    {
+        var plan = new CopiesPlan();
+        plan.Want(3);
+        plan.Room = 1;
+        Assert.Equal(1, plan.Target);
+        Assert.Equal(new CopyStep(CopyStepKind.Launch, 0), plan.Next(mainIsMirroring: true));
+        plan.Started(0);
+        plan.Ready(0);
+        // Only as many as there is room for.
+        Assert.Equal(CopyStep.Nothing, plan.Next(mainIsMirroring: true));
+
+        plan.Room = 3;
+        Assert.Equal(new CopyStep(CopyStepKind.Launch, 1), plan.Next(mainIsMirroring: true));
+        plan.Started(1);
+        plan.Ready(1);
+        plan.Started(2);
+        plan.Ready(2);
+
+        // Less room: the last ones stop, and what was wanted is kept.
+        plan.Room = 1;
+        Assert.Equal(new CopyStep(CopyStepKind.Stop, 2), plan.Next(mainIsMirroring: true));
+        plan.Stopped(2);
+        Assert.Equal(new CopyStep(CopyStepKind.Stop, 1), plan.Next(mainIsMirroring: true));
+        plan.Stopped(1);
+        Assert.Equal(CopyStep.Nothing, plan.Next(mainIsMirroring: true));
+        Assert.Equal(3, plan.Wanted);
+
+        // No room at all (the phone on its side, the window in the tray): none run.
+        plan.Room = 0;
+        Assert.Equal(new CopyStep(CopyStepKind.Stop, 0), plan.Next(mainIsMirroring: true));
+        plan.Room = -4;
+        Assert.Equal(0, plan.Target);
     }
 
     // ----- Each copy's own session -----

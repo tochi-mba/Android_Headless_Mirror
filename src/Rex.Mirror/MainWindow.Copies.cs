@@ -61,6 +61,71 @@ public partial class MainWindow : ICopyViews
             UpdateGroupAspect();
             FollowMainView();
         };
+
+        // Out of sight, the copies have no room at all.
+        IsVisibleChanged += (_, _) => UpdateRoom();
+        StateChanged += (_, _) => UpdateRoom();
+    }
+
+    /// <summary>How long a copy has to have been out of sight before its session is paused.</summary>
+    private static readonly TimeSpan RoomShrinkDelay = TimeSpan.FromSeconds(5);
+
+    private System.Windows.Threading.DispatcherTimer? _roomTimer;
+
+    /// <summary>
+    /// How many copies can be seen right now: none while the window is out of sight or the phone
+    /// is on its side, otherwise as many as fit beside the main view.
+    /// </summary>
+    private int RoomForCopies()
+    {
+        if (_copies is null || !IsVisible || WindowState == WindowState.Minimized || !CopiesLayout.IsUpright(Group.Aspect) || Group.ActualWidth <= 0)
+        {
+            return 0;
+        }
+
+        // As many as could be shown, whatever is wanted right now: adding a copy must not wait for
+        // a layout to discover that there is room for it.
+        return CopiesLayout.ShownCount(1 + Math.Max(_copies.Wanted, _host.Config.Copies.Most), Group.ActualWidth, Group.Gap) - 1;
+    }
+
+    /// <summary>
+    /// Passes the room on to the copies. More room counts at once; less only once it has lasted,
+    /// so dragging the window narrower and back, or a moment in the tray, does not restart copies.
+    /// </summary>
+    private void UpdateRoom()
+    {
+        if (_copies is null || _quitting)
+        {
+            return;
+        }
+
+        var room = RoomForCopies();
+        if (room >= _copies.Room || _copies.Running <= room && !_copies.Starting)
+        {
+            // Nothing beyond the room is running, so nothing has to be stopped to honour it.
+            _roomTimer?.Stop();
+            _copies.SetRoom(room);
+            return;
+        }
+
+        if (_roomTimer is null)
+        {
+            _roomTimer = new System.Windows.Threading.DispatcherTimer { Interval = RoomShrinkDelay };
+            _roomTimer.Tick += (_, _) =>
+            {
+                _roomTimer!.Stop();
+                var now = RoomForCopies();
+                if (_copies is not null && now < _copies.Room)
+                {
+                    _copies.SetRoom(now);
+                }
+            };
+        }
+
+        if (!_roomTimer.IsEnabled)
+        {
+            _roomTimer.Start();
+        }
     }
 
     public MirrorHost AddCopyView(int index)
@@ -114,7 +179,8 @@ public partial class MainWindow : ICopyViews
         _copies?.Starting ?? false,
         Group.Shown,
         CopiesLayout.IsUpright(Group.Aspect),
-        _host.Session.IsMirroring ? WhyNoMoreCopies(1 + (_copies?.Wanted ?? 0)) : "Copies need the phone to be mirrored first.");
+        _host.Session.IsMirroring ? WhyNoMoreCopies(1 + (_copies?.Wanted ?? 0)) : "Copies need the phone to be mirrored first.",
+        _copies?.Room ?? int.MaxValue);
 
     /// <summary>Settings that change how copies look apply at once; the controller handles the rest.</summary>
     private void ApplyCopiesConfig()
@@ -198,6 +264,7 @@ public partial class MainWindow : ICopyViews
         }
 
         UpdateCopiesShown();
+        UpdateRoom();
         Dispatcher.BeginInvoke(FollowMainView, System.Windows.Threading.DispatcherPriority.Loaded);
         Dispatcher.BeginInvoke(() => ControlsPanel.Refresh(), System.Windows.Threading.DispatcherPriority.Background);
     }

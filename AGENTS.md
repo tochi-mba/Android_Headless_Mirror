@@ -182,7 +182,11 @@ docs/                   GitHub Pages site; its download button points at the lat
   exits and would undo the main session's; it gets a port of its own (`ScrcpyArguments.CopyPort`)
   and records nothing. Copies start one at a time after the main picture is up (`CopiesPlan`): two
   sessions starting together race for the server upload and the port. Copies are only shown for an
-  upright picture and only as many as the width holds; the rest keep running out of sight.
+  upright picture and only as many as the width holds. A copy with no room (the window hidden or
+  minimised, the phone on its side, too narrow a window) is stopped once that has lasted five
+  seconds (`CopiesPlan.Room`, set by `MainWindow.UpdateRoom`) and started again as soon as there
+  is room; more room counts at once, so resizing never makes a copy wait. Only the main session
+  carries audio.
   A scrcpy shortcut that changes only the picture on this PC (turns, flips, pause, recapture:
   `ScrcpyShortcuts.AppliesToEveryView`) is sent to every copy too, and a copy opens with the main
   view's current `--display-orientation` (`DisplayOrientation`, composed as scrcpy composes it)

@@ -102,21 +102,28 @@ public sealed partial class AppEndToEndTests
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
         await app.WaitForStatusAsync(s => CopiesRunning(s) == 1, StartupTimeout, "the remembered copy");
 
-        // On its side the phone fills the width alone; the copy keeps running, out of sight.
+        // On its side the phone fills the width alone; the copy steps aside, and once it has been
+        // out of sight a moment its session is paused, so it costs the phone and the PC nothing.
+        var copyProcess = Copies((await app.SendAsync(new IpcRequest("status"))).Data!.AsObject())["processes"]![0]!.GetValue<int>();
         await app.ActionAsync("rotation-landscape");
-        var sideways = await app.WaitForStatusAsync(
+        await app.WaitForStatusAsync(
             s => Copies(s)["shown"]!.GetValue<int>() == 1 && s["surface"]!["width"]!.GetValue<double>() > s["surface"]!["height"]!.GetValue<double>(),
             StartupTimeout,
             "the copy to step aside");
-        Assert.Equal(1, CopiesRunning(sideways));
-        Assert.False(Copies(sideways)["views"]![1]!["shown"]!.GetValue<bool>());
-        Assert.Contains("out of sight", Copies(sideways)["summary"]!.GetValue<string>(), StringComparison.Ordinal);
-        Assert.False(Copies(sideways)["canAdd"]!.GetValue<bool>());
         await app.SaveScreenshotAsync("copies-landscape.png");
+        var paused = await app.WaitForStatusAsync(
+            s => CopiesRunning(s) == 0 && Copies(s)["waiting"]!.GetValue<int>() == 1,
+            TimeSpan.FromSeconds(15),
+            "the copy out of sight to be paused");
+        await AppProcess.WaitForProcessExitAsync(copyProcess, TimeSpan.FromSeconds(10));
+        Assert.Equal(1, Copies(paused)["wanted"]!.GetValue<int>());
+        Assert.Contains("out of sight", Copies(paused)["summary"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.False(Copies(paused)["canAdd"]!.GetValue<bool>());
 
+        // Upright again, it comes straight back.
         await app.ActionAsync("rotation-portrait");
         await app.WaitForStatusAsync(
-            s => Copies(s)["shown"]!.GetValue<int>() == 2 && Copies(s)["views"]![1]!["shown"]!.GetValue<bool>(),
+            s => CopiesRunning(s) == 1 && Copies(s)["shown"]!.GetValue<int>() == 2 && Copies(s)["views"]![1]!["shown"]!.GetValue<bool>(),
             StartupTimeout,
             "the copy to come back");
         await app.QuitAsync();
@@ -170,6 +177,37 @@ public sealed partial class AppEndToEndTests
 
         await app.ActionAsync("resume");
         await app.WaitForStatusAsync(s => !s["view"]!["paused"]!.GetValue<bool>(), TimeSpan.FromSeconds(5), "the picture to play again");
+        await app.QuitAsync();
+    }
+
+    [Fact]
+    public async Task Copies_PauseWhileTheWindowIsInTheTrayAndTheMainSessionKeepsGoing()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        await app.WaitForStatusAsync(s => Copies(s)["canAdd"]!.GetValue<bool>(), StartupTimeout, "room for a copy");
+        await app.ActionAsync("copy-add");
+        var open = await app.WaitForStatusAsync(s => CopiesRunning(s) == 1, StartupTimeout, "the copy to open");
+        var copyProcess = Copies(open)["processes"]![0]!.GetValue<int>();
+
+        // Nobody can see a copy in the tray: its session pauses, and the phone's own goes on.
+        app.CloseWindow();
+        var away = await app.WaitForStatusAsync(
+            s => !s["windowVisible"]!.GetValue<bool>() && CopiesRunning(s) == 0, TimeSpan.FromSeconds(20), "the copy to pause in the tray");
+        await AppProcess.WaitForProcessExitAsync(copyProcess, TimeSpan.FromSeconds(10));
+        Assert.True(away["mirroring"]!.GetValue<bool>());
+        Assert.Equal(1, Copies(away)["wanted"]!.GetValue<int>());
+        Assert.Single(Launches(package), line => !line.Contains("--no-cleanup", StringComparison.Ordinal));
+
+        // Only the main session ever plays the phone's audio.
+        Assert.All(Launches(package).Where(line => line.Contains("--no-cleanup", StringComparison.Ordinal)),
+            line => Assert.Contains("--no-audio", line, StringComparison.Ordinal));
+        Assert.DoesNotContain("--no-audio", Launches(package).Single(line => !line.Contains("--no-cleanup", StringComparison.Ordinal)), StringComparison.Ordinal);
+
+        // Back on screen, so is the copy.
+        Assert.True((await app.SendAsync(new IpcRequest("show"))).Ok);
+        await app.WaitForStatusAsync(s => s["windowVisible"]!.GetValue<bool>() && CopiesRunning(s) == 1, StartupTimeout, "the copy to come back");
         await app.QuitAsync();
     }
 

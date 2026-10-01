@@ -49,6 +49,15 @@ public sealed class CopiesPlan
 
     public void Want(int copies) => Wanted = Math.Max(0, copies);
 
+    /// <summary>
+    /// How many copies there is room to show. The rest wait, stopped, until there is room again:
+    /// a copy nobody can see still costs the phone an encoder and the PC a decoder.
+    /// </summary>
+    public int Room { get; set; } = int.MaxValue;
+
+    /// <summary>The copies that should be running now: what is wanted, as far as there is room.</summary>
+    public int Target => Math.Min(Wanted, Math.Max(0, Room));
+
     /// <summary>The next step, given whether the main picture is up.</summary>
     public CopyStep Next(bool mainIsMirroring)
     {
@@ -59,13 +68,13 @@ public sealed class CopiesPlan
             return _running.Count > 0 ? new CopyStep(CopyStepKind.Stop, _running.Max) : CopyStep.Nothing;
         }
 
-        if (_running.Count > Wanted)
+        if (_running.Count > Target)
         {
             return new CopyStep(CopyStepKind.Stop, _running.Max);
         }
 
         // One start at a time, and none once enough are running.
-        if (_starting is not null || _running.Count >= Wanted)
+        if (_starting is not null || _running.Count >= Target)
         {
             return CopyStep.Nothing;
         }
