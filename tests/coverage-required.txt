@@ -35,3 +35,9 @@ ServerStartGate.cs
 TimeWords.cs
 AdbClient.Apps.cs
 StateStore.Apps.cs
+TransferSettings.cs
+TransferPlan.cs
+NameClash.cs
+TransferProgress.cs
+TransferQueue.cs
+ApkManifest.cs
