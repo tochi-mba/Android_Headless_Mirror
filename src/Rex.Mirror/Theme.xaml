@@ -24,6 +24,14 @@
   <SolidColorBrush x:Key="Live" Color="{StaticResource LiveColor}" />
   <SolidColorBrush x:Key="LiveWash" Color="#1AFF774D" />
   <SolidColorBrush x:Key="Hover" Color="#202820" />
+  <!-- Tints for the apps' letter tiles: dark enough for the text colour on top, from the same
+       family as the palette. LetterTile picks one from the package, so an app keeps its tint. -->
+  <SolidColorBrush x:Key="AppTile0" Color="#2A3517" />
+  <SolidColorBrush x:Key="AppTile1" Color="#3A2418" />
+  <SolidColorBrush x:Key="AppTile2" Color="#17302E" />
+  <SolidColorBrush x:Key="AppTile3" Color="#2C2238" />
+  <SolidColorBrush x:Key="AppTile4" Color="#33301A" />
+  <SolidColorBrush x:Key="AppTile5" Color="#1D2A35" />
   <!-- The outline of a box you type into: 3:1 against the panel and the ink inside it, so an empty
        box still reads as a box. Line is only 1.4:1 there. -->
   <SolidColorBrush x:Key="Field" Color="#5F675E" />
@@ -60,6 +68,8 @@
   <Geometry x:Key="IconSettings">M12 8 A4 4 0 1 0 12 16 A4 4 0 1 0 12 8 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M4.9 19.1 L7 17 M17 7 L19.1 4.9</Geometry>
   <Geometry x:Key="IconPhone">M8 3 H16 A2 2 0 0 1 18 5 V19 A2 2 0 0 1 16 21 H8 A2 2 0 0 1 6 19 V5 A2 2 0 0 1 8 3 Z M10 18 H14</Geometry>
   <Geometry x:Key="IconSliders">M4 6 H20 M4 12 H20 M4 18 H20 M8 4 V8 M16 10 V14 M10 16 V20</Geometry>
+  <Geometry x:Key="IconApps">M5 5 H8 V8 H5 Z M10.5 5 H13.5 V8 H10.5 Z M16 5 H19 V8 H16 Z M5 10.5 H8 V13.5 H5 Z M10.5 10.5 H13.5 V13.5 H10.5 Z M16 10.5 H19 V13.5 H16 Z M5 16 H8 V19 H5 Z M10.5 16 H13.5 V19 H10.5 Z M16 16 H19 V19 H16 Z</Geometry>
+  <Geometry x:Key="IconStar">M12 3.5 L14.6 8.9 L20.5 9.6 L16.1 13.6 L17.3 19.5 L12 16.6 L6.7 19.5 L7.9 13.6 L3.5 9.6 L9.4 8.9 Z</Geometry>
   <Geometry x:Key="IconInfo">M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M12 10 V17 M12 7 V7.5</Geometry>
   <Geometry x:Key="IconSidebar">M4 5 H20 V19 H4 Z M15 5 V19</Geometry>
   <Geometry x:Key="IconFullscreen">M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15</Geometry>
@@ -248,6 +258,41 @@
           <Path Data="{Binding}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                 StrokeThickness="1.7" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                 Width="20" Height="20" Stretch="None" />
+        </DataTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- An app in the Apps tab: the whole row opens it. Flat at rest, as a list is, with the usual
+       hover and focus ring. -->
+  <Style x:Key="AppRow" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="6,4" />
+    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+
+  <!-- The star beside an app: hollow, or filled with the signal colour once the app is a favourite. -->
+  <Style x:Key="StarToggle" TargetType="ToggleButton" BasedOn="{StaticResource BaseButton}">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="ContentTemplate">
+      <Setter.Value>
+        <DataTemplate>
+          <Path x:Name="Star" Data="{StaticResource IconStar}" Stroke="{StaticResource Muted}" Fill="Transparent" StrokeThickness="1.6"
+                StrokeLineJoin="Round" Width="20" Height="20" Stretch="None" />
+          <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+              <Setter TargetName="Star" Property="Fill" Value="{StaticResource Signal}" />
+              <Setter TargetName="Star" Property="Stroke" Value="{StaticResource Signal}" />
+            </DataTrigger>
+          </DataTemplate.Triggers>
         </DataTemplate>
       </Setter.Value>
     </Setter>

@@ -1,0 +1,71 @@
+<UserControl x:Class="Rex.Mirror.Views.Settings.AppsGroup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Expander x:Name="GroupApps" Header="Apps" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="The Apps tab, and where favourite apps show up. Each phone keeps its own list, favourites and recent apps." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Show system apps" TextWrapping="Wrap" />
+        <TextBlock Text="The apps that came with the phone, in a group of their own. A search finds them either way." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="AppsShowSystem" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Show system apps" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show package names"><CheckBox x:Name="AppsShowPackages" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Sort apps by">
+      <ComboBox x:Name="AppsSortBy" SelectionChanged="OnOption" AutomationProperties.Name="Sort apps by">
+        <ComboBoxItem Content="Name" Tag="name" />
+        <ComboBoxItem Content="Opened last first" Tag="recent" />
+        <ComboBoxItem Content="Opened most first" Tag="most-used" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show apps as">
+      <ComboBox x:Name="AppsLayout" SelectionChanged="OnOption" AutomationProperties.Name="Show apps as">
+        <ComboBoxItem Content="A list" Tag="list" />
+        <ComboBoxItem Content="Tiles" Tag="grid" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Show recently opened apps first" TextWrapping="Wrap" />
+        <TextBlock Text="While sorting by name." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="AppsShowRecent" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Show recently opened apps first" />
+    </HeaderedContentControl>
+    <StackPanel x:Name="AppsRecentOptions">
+      <Grid Margin="0,8,0,0"><TextBlock x:Name="AppsRecentCountLabel" Text="Remember this many recent apps" TextWrapping="Wrap" Margin="0,0,64,0" /><TextBlock x:Name="AppsRecentCountValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="AppsRecentCount" AutomationProperties.LabeledBy="{Binding ElementName=AppsRecentCountLabel}" Minimum="0" Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+    </StackPanel>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Favourites on the Controls tab"><CheckBox x:Name="AppsOnControls" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+    <StackPanel x:Name="AppsOnControlsOptions">
+      <Grid Margin="0,8,0,0"><TextBlock x:Name="AppsOnControlsMostLabel" Text="Up to" /><TextBlock x:Name="AppsOnControlsMostValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="AppsOnControlsMost" AutomationProperties.LabeledBy="{Binding ElementName=AppsOnControlsMostLabel}" Minimum="1" Maximum="12" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+    </StackPanel>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Favourites on the fullscreen controls"><CheckBox x:Name="AppsInHud" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Ctrl+Alt+Shift+1 to 9 open favourites" TextWrapping="Wrap" />
+        <TextBlock Text="In the order they are in. Off, those keys go to the phone." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="AppsKeys" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Ctrl+Alt+Shift+1 to 9 open favourites" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Read the list again whenever the phone connects" TextWrapping="Wrap" />
+        <TextBlock Text="Once the mirror is up. Off, it is read once and then with Read again." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="AppsReadOnConnect" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Read the list again whenever the phone connects" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Open apps fresh" TextWrapping="Wrap" />
+        <TextBlock Text="Closes an app before opening it, so it starts from the beginning. Shift does it for one click." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="AppsOpenFresh" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Open apps fresh" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Close the apps opened from here when the mirror stops"><CheckBox x:Name="AppsCloseOnStop" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+    <TextBlock x:Name="AppsHiddenText" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,0" />
+    <Button x:Name="AppsShowHidden" Content="Show them all again" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnShowHidden"
+            ToolTipService.ShowOnDisabled="True" AutomationProperties.Name="Show every hidden app again" />
+  </StackPanel></Expander>
+</UserControl>

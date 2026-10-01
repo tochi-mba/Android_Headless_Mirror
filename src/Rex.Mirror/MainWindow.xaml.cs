@@ -78,7 +78,7 @@ public partial class MainWindow : Window
         Host.MaxZoom = host.Config.Zoom.MaxZoom;
 
         _overlay = new OverlayWindow(this);
-        _overlay.HudActionRequested += async id => await RunActionAsync(id);
+        _overlay.HudActionRequested += async id => await RunHudActionAsync(id);
         _overlay.PointerMessage += OnOverlayPointer;
         // Dragging moves the bar as it happens; the drop is what gets written to disk.
         _overlay.HudMovedTo += (x, y) => _host.PreviewConfig(c => { c.Hud.X = x; c.Hud.Y = y; });
@@ -151,6 +151,7 @@ public partial class MainWindow : Window
 
         ControlsPanel.Attach(this, host);
         PhonePanel.Attach(this, host);
+        AttachApps();
         SettingsPanel.Attach(this, host);
         InfoPanel.Attach(this, host);
         Onboarding.Attach(this, host);

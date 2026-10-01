@@ -164,6 +164,13 @@ public sealed class OverlayWindow : Window
     public RectD HudBarRect => _hudWindow.BarRect;
     public void RevealHud(string? message = null) => _hudWindow.Reveal(message);
 
+    /// <summary>The favourite apps the fullscreen controls offer.</summary>
+    public IReadOnlyList<PhoneApp> HudFavourites
+    {
+        get => _hudWindow.Favourites;
+        set => _hudWindow.Favourites = value;
+    }
+
     /// <summary>Reveals the HUD when the pointer reaches the strip it is pinned to, wherever that is.</summary>
     public void UpdateHud(bool fullscreen, double zoom, HudSettings settings)
     {

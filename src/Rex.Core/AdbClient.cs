@@ -61,7 +61,7 @@ public enum KeyguardState
 }
 
 /// <summary>Everything the app asks ADB for, with one place for quoting, timeouts and output parsing.</summary>
-public sealed class AdbClient
+public sealed partial class AdbClient
 {
     private static readonly TimeSpan QuickTimeout = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan ShellTimeout = TimeSpan.FromSeconds(15);

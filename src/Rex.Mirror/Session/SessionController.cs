@@ -309,21 +309,26 @@ public sealed partial class SessionController : IDisposable
         _host.Log.Info($"Launching scrcpy for {device.Serial} ({device.Transport}): {string.Join(' ', args)}");
 
         ScrcpyProcess scrcpy;
-        try
+        bool appeared;
+        using (await ServerStart.EnterAsync(cancellationToken).ConfigureAwait(false))
         {
-            scrcpy = ScrcpyProcess.Launch(Tools!.Scrcpy, args, device.Serial, title, keyboardMode, _ownedProcesses);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
-        {
-            _host.Log.Error("Could not start scrcpy", ex);
-            await OnUi(() => SetState(SessionPhase.Waiting, "Could not start scrcpy: " + ex.Message)).ConfigureAwait(false);
-            _retryAfter = DateTime.UtcNow.AddSeconds(config.Session.RetrySeconds);
-            return;
+            try
+            {
+                scrcpy = ScrcpyProcess.Launch(Tools!.Scrcpy, args, device.Serial, title, keyboardMode, _ownedProcesses);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                _host.Log.Error("Could not start scrcpy", ex);
+                await OnUi(() => SetState(SessionPhase.Waiting, "Could not start scrcpy: " + ex.Message)).ConfigureAwait(false);
+                _retryAfter = DateTime.UtcNow.AddSeconds(config.Session.RetrySeconds);
+                return;
+            }
+
+            _pending = scrcpy;
+            appeared = await scrcpy.WaitForWindowAsync(TimeSpan.FromSeconds(25), cancellationToken).ConfigureAwait(false);
+            _pending = null;
         }
 
-        _pending = scrcpy;
-        var appeared = await scrcpy.WaitForWindowAsync(TimeSpan.FromSeconds(25), cancellationToken).ConfigureAwait(false);
-        _pending = null;
         if (!appeared)
         {
             var reason = ScrcpyFailureText(scrcpy);
@@ -373,6 +378,11 @@ public sealed partial class SessionController : IDisposable
         StopBatteryPoll();
         Scrcpy = null;
         Battery = null;
+        if (!_restartRequested)
+        {
+            CloseAppsOpenedHere();
+        }
+
         MirrorEnded?.Invoke();
 
         if (TryUseCompatibilityKeyboard(scrcpy))

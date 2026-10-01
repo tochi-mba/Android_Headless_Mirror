@@ -181,6 +181,22 @@
     "Announce": false,
     "Actions": []
   },
+  "Apps": {
+    "ShowSystem": false,
+    "ShowPackages": true,
+    "SortBy": "name",
+    "Layout": "list",
+    "ShowRecent": true,
+    "RecentCount": 20,
+    "FavouritesOnControls": true,
+    "FavouritesOnControlsMost": 6,
+    "FavouritesInHud": false,
+    "FavouriteKeys": true,
+    "ReadOnConnect": true,
+    "OpenFresh": false,
+    "CloseWhenMirrorStops": false,
+    "Hidden": []
+  },
   "Logging": {
     "Enabled": true,
     "MaxBytes": 2097152,

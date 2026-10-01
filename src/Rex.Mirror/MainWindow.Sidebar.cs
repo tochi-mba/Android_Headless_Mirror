@@ -53,12 +53,17 @@ public partial class MainWindow
         var restore = _tabOffsets.GetValueOrDefault(tab);
         _shownTab = tab;
         ControlsPanel.Visibility = tab == "controls" ? Visibility.Visible : Visibility.Collapsed;
+        AppsPanel.Visibility = tab == "apps" ? Visibility.Visible : Visibility.Collapsed;
         PhonePanel.Visibility = tab == "phone" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = tab == "settings" ? Visibility.Visible : Visibility.Collapsed;
         InfoPanel.Visibility = tab == "info" ? Visibility.Visible : Visibility.Collapsed;
         if (tab == "controls")
         {
             _ = ControlsPanel.RefreshRotationAsync();
+        }
+        else if (tab == "apps")
+        {
+            AppsPanel.Refresh();
         }
         else if (tab == "phone")
         {
@@ -78,13 +83,26 @@ public partial class MainWindow
     }
 
     private string CurrentTab() =>
-        TabPhone.IsChecked == true ? "phone" : TabSettings.IsChecked == true ? "settings" : TabInfo.IsChecked == true ? "info" : "controls";
+        TabApps.IsChecked == true ? "apps" : TabPhone.IsChecked == true ? "phone" : TabSettings.IsChecked == true ? "settings" :
+        TabInfo.IsChecked == true ? "info" : "controls";
+
+    /// <summary>Shows the side panel at one of its tabs.</summary>
+    internal void ShowTab(string tab)
+    {
+        if (!_sidebarWanted)
+        {
+            SetSidebarVisible(true);
+        }
+
+        SelectTab(tab);
+    }
 
     /// <summary>Shows a tab of the side panel by its name.</summary>
     private void SelectTab(string tab)
     {
         (tab switch
         {
+            "apps" => TabApps,
             "phone" => TabPhone,
             "settings" => TabSettings,
             "info" => TabInfo,

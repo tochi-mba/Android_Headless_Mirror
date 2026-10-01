@@ -25,3 +25,13 @@ SoundBalance.cs
 SoundMemory.cs
 SoundProblems.cs
 SoundCommand.cs
+PackageName.cs
+AppList.cs
+AppOrder.cs
+AppsSettings.cs
+LetterTile.cs
+AppLister.cs
+ServerStartGate.cs
+TimeWords.cs
+AdbClient.Apps.cs
+StateStore.Apps.cs

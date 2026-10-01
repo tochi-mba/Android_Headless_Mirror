@@ -24,6 +24,11 @@ internal static class Program
             return 0;
         }
 
+        if (args.Contains("--list-apps"))
+        {
+            return ListApps(args);
+        }
+
         if (args.Contains("--rex-test-child"))
         {
             Log("child-pid " + Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
@@ -91,6 +96,55 @@ internal static class Program
     }
 
     /// <summary>
+    /// The phone's apps the way real scrcpy prints them: a header, then one app a line with the
+    /// name padded to 30 characters, and a long name with its package on the next line. It takes a
+    /// moment, as the real one does, and logs when it starts and ends so a test can see it never
+    /// overlaps another server starting. A marker file makes it fail the way a phone that left does.
+    /// </summary>
+    private static int ListApps(string[] args)
+    {
+        Log("list-apps start " + string.Join(' ', args));
+        Thread.Sleep(300);
+        if (File.Exists(Path.Combine(Path.GetDirectoryName(LogPath) ?? AppContext.BaseDirectory, "fail-list-apps")))
+        {
+            Console.Error.WriteLine("ERROR: Could not find any ADB device");
+            Log("list-apps end failed");
+            return 1;
+        }
+
+        (string Name, string Package, bool System)[] apps =
+        [
+            ("Example One", "com.example.one", false),
+            ("Example Two", "com.example.two", false),
+            ("Spotify", "com.spotify.music", false),
+            ("YouTube", "com.google.android.youtube", false),
+            ("Café Maps", "com.example.cafe", false),
+            ("Notes", "com.example.notes", false),
+            ("Notes", "org.other.notes", false),
+            ("A Very Long Application Name Here", "com.example.longname", false),
+            ("Calculator", "com.example.calculator", false),
+            ("Weather", "com.example.weather", false),
+            ("Banking", "com.example.bank", false),
+            ("Podcasts", "com.example.podcasts", false),
+            ("Settings", "com.android.settings", true),
+            ("Phone", "com.android.dialer", true),
+        ];
+        var output = new StringBuilder("[server] INFO: List of apps:");
+        foreach (var (name, package, system) in apps.OrderBy(a => !a.System).ThenBy(a => a.Name, StringComparer.Ordinal))
+        {
+            output.Append('\n').Append(system ? " * " : " - ").Append(name);
+            output.Append(name.Length < 30 ? new string(' ', 30 - name.Length) : '\n' + new string(' ', 33));
+            output.Append(' ').Append(package);
+        }
+
+        // The server's words reach scrcpy's output as the UTF-8 the phone sent, accents and all.
+        using var stdout = Console.OpenStandardOutput();
+        stdout.Write(Encoding.UTF8.GetBytes(output.Append('\n').ToString()));
+        Log("list-apps end");
+        return 0;
+    }
+
+    /// <summary>
     /// Appends one line. The main session and every copy are processes of their own writing the
     /// same log, so a writer that finds it held by another waits its turn instead of dropping the
     /// line: a test waiting for that line would otherwise wait in vain. One writer at a time, so
@@ -149,6 +203,8 @@ internal sealed class MirrorForm : Form
         DoubleBuffered = true;
         BackColor = Color.Black;
         KeyPreview = true;
+        // When the session's window is up, its server has started: a test orders this against other starts.
+        Shown += (_, _) => Program.Log($"shown at={_port}");
 
         // The window starts in the shape it was asked for. Anything a previous run left behind
         // would otherwise turn it before the test that owns it has begun. A copy joins a phone that

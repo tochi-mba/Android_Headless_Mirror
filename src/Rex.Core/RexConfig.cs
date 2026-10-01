@@ -26,6 +26,7 @@ public sealed record RexConfig
     public PatternGuideSettings PatternGuide { get; set; } = new();
     public AppSettings App { get; set; } = new();
     public GlobalKeysSettings GlobalKeys { get; set; } = new();
+    public AppsSettings Apps { get; set; } = new();
     public LoggingSettings Logging { get; set; } = new();
 
     /// <summary>Clamps every value into its supported range. Called after load and before save.</summary>
@@ -45,6 +46,7 @@ public sealed record RexConfig
         PatternGuide.Normalize();
         App.Normalize();
         GlobalKeys.Normalize();
+        Apps.Normalize();
         Logging.Normalize();
     }
 
@@ -63,6 +65,7 @@ public sealed record RexConfig
         PatternGuide = PatternGuide.Copy(),
         App = App.Copy(),
         GlobalKeys = GlobalKeys.Copy(),
+        Apps = Apps.Copy(),
         Logging = Logging.Copy(),
     };
 
@@ -85,6 +88,7 @@ public sealed record RexConfig
         PatternGuide = copy.PatternGuide;
         App = copy.App;
         GlobalKeys = copy.GlobalKeys;
+        Apps = copy.Apps;
         Logging = copy.Logging;
     }
 

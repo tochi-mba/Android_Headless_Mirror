@@ -377,6 +377,7 @@
             ToolTip="Quicker swipes fling further, as they do under a finger." />
     </StackPanel></Expander>
     <settings:CopiesGroup x:Name="CopiesSettingsGroup" />
+    <settings:AppsGroup x:Name="AppsSettingsGroup" />
     <settings:HudGroup x:Name="HudSettingsGroup" />
 
     <Expander x:Name="GroupLockScreen" Header="Lock screen" Margin="0,12,0,0"><StackPanel>

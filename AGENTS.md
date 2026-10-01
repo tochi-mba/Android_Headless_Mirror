@@ -39,7 +39,8 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `usb [list|status|repair|enable-auto-repair|disable-auto-repair|run-auto-repair] [--dry-run]`, `open`, `stop`, `quit`, `action <id>`,
 `zoom <in|out|reset>`, `screenshot`, `phone get|set <setting> <value>`,
 `android list|get|set|delete <system|secure|global> [key] [value] [--filter text]`,
-`sound [0-100|up|down|mute|unmute|toggle]`, `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
+`sound [0-100|up|down|mute|unmute|toggle]`, `app list [search] [--system]|open <name|package> [--fresh]|close <package>|info <package>|favourite <package> on|off`,
+`config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
 
 Rules:
@@ -97,6 +98,8 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   KeyChord/GlobalKey*   chords in words, which keys may work from anywhere, what the show-or-hide key does
   WindowKeys            the window's own keys, read from Shortcuts, matched with exactly their modifiers
   Sound*                the phone's sound on this PC: settings, the rules, fades, balance, where a level is kept
+  App*/PackageName      the phone's apps: scrcpy's list read, searched and ordered, favourites, package checks
+  ServerStartGate       one scrcpy server starting at a time, whoever starts it
   SettingsCatalogue     every config.json value and where it is changed; which ones apply at the next start
   SiteLinks             every web address the app and the CLI send people to
   WhatsNew              when the window says once, after an update, which version this is
@@ -112,6 +115,7 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Services/*            composition root, pipe server, command router, tray icon, UsbDoctor
   Services/Sound/*      the phone's sound on this PC: scrcpy's own Core Audio session (REX_FAKE_AUDIO in tests)
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
+  Views/AppsPanel*      the Apps tab: rows made once per list and filtered while searching
   Views/Settings/*      settings groups in separate controls
   Services/UrlOpener    opens the app's own https pages (REX_FAKE_BROWSER_LOG in tests)
 src/Rex.Cli             rex.exe: human commands and MachineMode
@@ -182,6 +186,12 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   their own words and icons. The session is looked for only until it is found, the rules are
   checked four times a second, the fading timer runs only while fading and the meter only while
   the sound panel is open. Tests set `REX_FAKE_AUDIO`, and `AppProcess` always does.
+- The phone's apps are read with `scrcpy --list-apps --no-cleanup` (`AppLister`), once per
+  connection after the mirror is up, never polled. Every scrcpy server start (the mirror, a copy,
+  the app list) goes through `SessionController.ServerStart`, so two never start at once. A
+  package reaches `am` or `pm` only after `PackageName` has checked it, as one argument; apps that
+  came with the phone are never uninstalled. `rex app` goes through the running app when it shows
+  that phone, and straight to the phone otherwise.
 - Left Alt pressed on its own belongs to the PC view (zoom, pinch, pan). While it is held,
   `MirrorHost.HoldKeyboard` moves keyboard focus from scrcpy to the viewport, from inside the
   keyboard hook so it happens before Windows routes the key; otherwise the hardware keyboard shows

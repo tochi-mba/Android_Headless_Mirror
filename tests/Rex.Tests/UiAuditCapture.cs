@@ -55,7 +55,7 @@ public sealed class UiAuditCapture
                 await Task.Delay(600, TestContext.Current.CancellationToken);
             }
 
-            foreach (var tab in new[] { "TabControls", "TabPhone", "TabSettings", "TabInfo" })
+            foreach (var tab in new[] { "TabControls", "TabApps", "TabPhone", "TabSettings", "TabInfo" })
             {
                 var watch = System.Diagnostics.Stopwatch.StartNew();
                 app.Ui.Select(tab);

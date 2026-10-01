@@ -343,10 +343,13 @@ public sealed class GlobalKeysTests
 
         Assert.Equal(id, WindowKeys.ActionFor(chord.Key, chord.Mods));
         Assert.Equal(Shortcuts.Gesture(id), written);
-        // The same key with a modifier it does not have is another key, and means nothing.
+        // The same key with a modifier it does not have is another key: it means only what that
+        // key is given in its own right (Ctrl+Alt+Shift+1 opens a favourite), never this.
         foreach (var extra in new[] { KeyMods.Shift, KeyMods.Win }.Where(m => !chord.Mods.HasFlag(m)))
         {
-            Assert.Null(WindowKeys.ActionFor(chord.Key, chord.Mods | extra));
+            var other = WindowKeys.All.Where(k => k.Chord.Matches(chord.Key, chord.Mods | extra)).Select(k => k.Id).SingleOrDefault();
+            Assert.NotEqual(id, WindowKeys.ActionFor(chord.Key, chord.Mods | extra));
+            Assert.Equal(other, WindowKeys.ActionFor(chord.Key, chord.Mods | extra));
         }
     }
 
@@ -354,7 +357,9 @@ public sealed class GlobalKeysTests
     public void TabAndFunctionKeysNeedExactlyTheirModifiers()
     {
         Assert.Equal("tab-controls", WindowKeys.ActionFor('1', KeyMods.Ctrl | KeyMods.Alt));
-        Assert.Null(WindowKeys.ActionFor('1', KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift));
+        Assert.Equal("favourite-1", WindowKeys.ActionFor('1', KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift));
+        Assert.Null(WindowKeys.ActionFor('0', KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift));
+        Assert.Null(WindowKeys.ActionFor('1', KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift | KeyMods.Win));
         Assert.Equal("tour", WindowKeys.ActionFor(KeyChord.F1, KeyMods.None));
         Assert.Null(WindowKeys.ActionFor(KeyChord.F1, KeyMods.Ctrl | KeyMods.Alt));
         Assert.Null(WindowKeys.ActionFor(KeyChord.F1 + 10, KeyMods.Shift));
