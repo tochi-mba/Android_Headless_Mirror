@@ -1,4 +1,4 @@
-; Android Headless Mirror — Windows installer (Inno Setup 6).
+; Android Headless Mirror - Windows installer (Inno Setup 6).
 ; Built by installer\build.ps1: ISCC /DAppVersion=<x.y.z> /DSource=<dist folder> AndroidHeadlessMirror.iss
 ;
 ; Per-user install (no administrator prompt) into %LocalAppData%\Programs. The app keeps its own

@@ -311,7 +311,7 @@ public partial class MainWindow : Window
             : "Connected phone: " + DeviceName.Text);
         Title = session.Identity is null
             ? "Android Headless Mirror"
-            : session.Identity.DisplayName + " — Android Headless Mirror";
+            : session.Identity.DisplayName + " - Android Headless Mirror";
 
         Onboarding.Visibility = onboarding ? Visibility.Visible : Visibility.Collapsed;
         MirrorArea.Visibility = onboarding ? Visibility.Collapsed : Visibility.Visible;
