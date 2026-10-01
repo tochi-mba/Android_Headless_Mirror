@@ -56,8 +56,13 @@ public sealed class ProcessRunner : IProcessRunner
 {
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(20);
 
-    /// <summary>How long to wait for trailing output after the child has exited.</summary>
-    private static readonly TimeSpan DrainGrace = TimeSpan.FromMilliseconds(300);
+    /// <summary>
+    /// How long to wait for trailing output after the child has exited. It is only spent when a
+    /// grandchild still holds the pipe; otherwise the pipe closes and the wait ends at once. It is
+    /// generous because the readers run on the thread pool, which a busy machine can starve: at
+    /// 300 ms a CI runner returned a child's output empty.
+    /// </summary>
+    private static readonly TimeSpan DrainGrace = TimeSpan.FromSeconds(2);
 
     public async Task<ProcessResult> RunAsync(
         string fileName,
@@ -227,7 +232,7 @@ public sealed class ProcessRunner : IProcessRunner
         }
         catch (OperationCanceledException)
         {
-            // A grandchild still holds the pipe; everything the child wrote has already been collected.
+            // A grandchild still holds the pipe; the child's own output has been given time to arrive.
         }
     }
 
