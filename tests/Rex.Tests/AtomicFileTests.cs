@@ -16,18 +16,35 @@ public sealed class AtomicFileTests : IDisposable
     public void Dispose() => Directory.Delete(_folder, recursive: true);
 
     [Fact]
-    public async Task AWriteWaitsOutABriefReader()
+    public void AWriteWaitsOutABriefReader()
     {
         var path = File("config.json");
         System.IO.File.WriteAllText(path, "old");
         var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        var write = Task.Run(() => AtomicFile.Write(path, "new", keepBackupAt: File("config.json.rex-backup"), validate: null), TestContext.Current.CancellationToken);
-        // Elapsed time is the behaviour here: the reader lets go well inside the write's patience.
-        await Task.Delay(150, TestContext.Current.CancellationToken);
-        await reader.DisposeAsync();
-        await write;
+        // The write and the reader each have a thread of their own. On a busy runner the thread
+        // pool can be slow to hand out a thread, and a reader released from it once let go after
+        // the write had already given up.
+        Exception? failure = null;
+        var write = new Thread(() =>
+        {
+            try
+            {
+                AtomicFile.Write(path, "new", keepBackupAt: File("config.json.rex-backup"), validate: null);
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        });
+        write.Start();
 
+        // Elapsed time is the behaviour here: the reader lets go well inside the write's patience.
+        Thread.Sleep(150);
+        reader.Dispose();
+        Assert.True(write.Join(TimeSpan.FromSeconds(10)), "The write never finished.");
+
+        Assert.Null(failure);
         Assert.Equal("new", System.IO.File.ReadAllText(path));
         Assert.Equal("old", System.IO.File.ReadAllText(File("config.json.rex-backup")));
     }

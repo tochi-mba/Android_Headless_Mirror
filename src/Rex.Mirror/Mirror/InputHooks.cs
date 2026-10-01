@@ -43,8 +43,8 @@ public sealed class InputHooks : IDisposable
     /// </summary>
     public Func<int, bool, bool>? Record { get; set; }
 
-    /// <summary>When (Environment.TickCount64) the last key went on to the window in front of this app's own.</summary>
-    public long LastKeyToPhone { get; private set; } = long.MinValue / 2;
+    /// <summary>When (Environment.TickCount64) the last key went on to the window in front of this app's own; null before the first.</summary>
+    public long? LastKeyToPhone { get; private set; }
 
     /// <summary>Whether the keyboard hook is in place.</summary>
     public bool KeyboardInstalled => _keyboardHook != IntPtr.Zero;

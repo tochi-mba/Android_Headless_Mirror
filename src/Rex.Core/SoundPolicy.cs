@@ -24,6 +24,15 @@ public static class SoundPolicy
     public const string WhyBehind = "Muted while another window is in front";
     public const string WhyTyping = "Lowered while you type";
 
+    /// <summary>
+    /// How long ago the last key went to the phone, from two <c>Environment.TickCount64</c> readings;
+    /// forever when no key has gone yet.
+    /// </summary>
+    public static TimeSpan SinceLastKey(long nowMs, long? lastKeyMs) =>
+        lastKeyMs is { } last && nowMs - last < (long)TimeSpan.MaxValue.TotalMilliseconds
+            ? TimeSpan.FromMilliseconds(Math.Max(0, nowMs - last))
+            : TimeSpan.MaxValue;
+
     public static SoundTarget Decide(SoundInputs now, SoundSettings settings)
     {
         if (now.Muted)
