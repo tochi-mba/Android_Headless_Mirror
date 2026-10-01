@@ -1,5 +1,7 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Rex.Core;
 
@@ -10,6 +12,13 @@ namespace Rex.Core;
 /// </summary>
 public static class ConfigFile
 {
+    /// <summary>
+    /// config.json is read and edited by people, so a key such as Ctrl+Alt+M is written as it is
+    /// typed rather than escaped as Ctrl\u002BAlt\u002BM. The file is never embedded in a page.
+    /// </summary>
+    private static readonly JsonTypeInfo<RexConfig> Readable =
+        new RexJsonContext(new JsonSerializerOptions(RexJsonContext.Default.Options) { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }).RexConfig;
+
     public static string BackupPath(string path) => path + ".rex-backup";
 
     public static RexConfig Load(string path)
@@ -44,7 +53,7 @@ public static class ConfigFile
     public static void Save(string path, RexConfig config)
     {
         config.Normalize();
-        var json = JsonSerializer.Serialize(config, RexJsonContext.Default.RexConfig) + Environment.NewLine;
+        var json = JsonSerializer.Serialize(config, Readable) + Environment.NewLine;
         AtomicFile.Write(path, json, keepBackupAt: BackupPath(path), validate: text =>
             JsonNode.Parse(text)?.AsObject() is not null);
     }

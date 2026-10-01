@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using Rex.Core;
 using Rex.Mirror.Mirror;
 using Rex.Mirror.Native;
+using Rex.Mirror.Views.Controls;
 
 namespace Rex.Mirror;
 
@@ -87,8 +88,17 @@ public partial class MainWindow
         return true;
     }
 
-    private bool OnHotkey(int virtualKey, bool ctrl, bool alt, bool shift)
+    private bool OnHotkey(int virtualKey, KeyMods mods)
     {
+        // The key being recorded in a shortcut box is that box's alone.
+        if (ChordBox.AnyRecording)
+        {
+            return false;
+        }
+
+        var ctrl = mods.HasFlag(KeyMods.Ctrl);
+        var alt = mods.HasFlag(KeyMods.Alt);
+        var shift = mods.HasFlag(KeyMods.Shift);
         var guide = _guide;
         if (guide is { IsCalibrating: true } && !alt && guide.CanHandleCalibrationKey(virtualKey))
         {
@@ -117,95 +127,38 @@ public partial class MainWindow
             }
         }
 
-        switch (virtualKey)
-        {
-            case NativeMethods.VK_F11:
-                Dispatcher.BeginInvoke(ToggleFullscreen);
-                return true;
-            case NativeMethods.VK_ESCAPE when _fullscreen:
-                Dispatcher.BeginInvoke(ToggleFullscreen);
-                return true;
-            case 'L' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-landscape"));
-                return true;
-            case 'U' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-portrait"));
-                return true;
-            case 'A' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotation-auto"));
-                return true;
-            case NativeMethods.VK_LEFT when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotate-left"));
-                return true;
-            case NativeMethods.VK_RIGHT when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("rotate-right"));
-                return true;
-            case NativeMethods.VK_UP when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("swipe-down"));
-                return true;
-            case NativeMethods.VK_DOWN when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("swipe-up"));
-                return true;
-            case NativeMethods.VK_RETURN when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("tap"));
-                return true;
-            case 'N' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("copy-add"));
-                return true;
-            case 'W' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("copy-remove"));
-                return true;
-            case 'K' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("browse"));
-                return true;
-            case NativeMethods.VK_BACK when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("back"));
-                return true;
-            case 'R' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("recents"));
-                return true;
-            case 'P' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _guide?.Toggle());
-                return true;
-            case 'C' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _guide?.StartCalibration());
-                return true;
-            case NativeMethods.VK_F1:
-                Dispatcher.BeginInvoke(StartTour);
-                return true;
-            case 'S' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("screenshot"));
-                return true;
-            case 'H' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("home"));
-                return true;
-            case 'B' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => SetSidebarVisible(!_sidebarWanted));
-                return true;
-            case >= '1' and <= '4' when ctrl && alt:
-                var tab = virtualKey - '1';
-                Dispatcher.BeginInvoke(() =>
-                {
-                    if (!_sidebarWanted)
-                    {
-                        SetSidebarVisible(true);
-                    }
+        return WindowKeys.ActionFor(virtualKey, mods) is { } id && RunWindowKey(id);
+    }
 
-                    SelectTab(TabOrder[tab]);
-                });
-                return true;
-            case '0' when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-reset"));
-                return true;
-            case NativeMethods.VK_OEM_PLUS when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-in"));
-                return true;
-            case NativeMethods.VK_OEM_MINUS when ctrl && alt:
-                Dispatcher.BeginInvoke(() => _ = RunActionAsync("zoom-out"));
-                return true;
-            default:
-                return false;
+    /// <summary>Queues what a key of the window's own means; false when it means nothing right now.</summary>
+    private bool RunWindowKey(string id)
+    {
+        Action? work = id switch
+        {
+            "fullscreen" => ToggleFullscreen,
+            "fullscreen-exit" => _fullscreen ? ToggleFullscreen : null,
+            "tour" => StartTour,
+            "sidebar" => () => SetSidebarVisible(!_sidebarWanted),
+            "pattern-guide" => () => _guide?.Toggle(),
+            "pattern-calibrate" => () => _guide?.StartCalibration(),
+            _ when id.StartsWith("tab-", StringComparison.Ordinal) => () =>
+            {
+                if (!_sidebarWanted)
+                {
+                    SetSidebarVisible(true);
+                }
+
+                SelectTab(id["tab-".Length..]);
+            },
+            _ => () => _ = RunActionAsync(id),
+        };
+        if (work is null)
+        {
+            return false;
         }
+
+        Dispatcher.BeginInvoke(work);
+        return true;
     }
 
     private bool OnOverlayPointer(int msg, IntPtr wParam) => _touchpad.HandlePointerMessage(msg, wParam);

@@ -95,7 +95,9 @@ public partial class SettingsPanel
     }
 
     internal IEnumerable<Expander> Groups() =>
-        [GroupDisplay, GroupAudio, GroupSession, GroupZoom, GroupInput, .. _settingsGroups.Select(group => group.Group), GroupLockScreen, GroupCaptures, GroupStartup, GroupAdvanced];
+        [GroupDisplay, GroupAudio, GroupSession, GroupZoom, GroupInput, GroupOf(CopiesSettingsGroup), GroupOf(HudSettingsGroup), GroupLockScreen, GroupCaptures, GroupStartup, GroupOf(GlobalKeysSettingsGroup), GroupAdvanced];
+
+    private static Expander GroupOf(ISettingsGroup group) => group.Group;
 
     private void OnGroupExpansionChanged(object sender, RoutedEventArgs e)
     {

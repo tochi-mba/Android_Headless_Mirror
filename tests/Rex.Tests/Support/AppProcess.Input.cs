@@ -4,6 +4,32 @@ public sealed partial class AppProcess
 {
     private System.Windows.Forms.Form? _foregroundTestWindow;
     private Thread? _foregroundTestThread;
+    private readonly System.Collections.Concurrent.ConcurrentQueue<int> _foregroundKeys = new();
+
+    /// <summary>The keys the test's own window in front received, as virtual-key codes.</summary>
+    public IReadOnlyCollection<int> KeysReachingTheWindowInFront => _foregroundKeys;
+
+    /// <summary>Holds the keys down in order, presses the last one <paramref name="times"/> times as a held key repeats, then lets go.</summary>
+    public async Task HoldChordAsync(int times, params byte[] keys)
+    {
+        foreach (var key in keys) keybd_event(key, 0, 0, UIntPtr.Zero);
+        for (var repeat = 1; repeat < times; repeat++) keybd_event(keys[^1], 0, 0, UIntPtr.Zero);
+        for (var index = keys.Length - 1; index >= 0; index--) keybd_event(keys[index], 0, 2, UIntPtr.Zero);
+        await Task.Delay(250, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Left Ctrl with right Alt, which is AltGr on many layouts, and a key.</summary>
+    public async Task PressAltGrAsync(byte key)
+    {
+        const uint Extended = 1;
+        keybd_event(0xA2, 0, 0, UIntPtr.Zero);
+        keybd_event(0xA5, 0, Extended, UIntPtr.Zero);
+        keybd_event(key, 0, 0, UIntPtr.Zero);
+        keybd_event(key, 0, 2, UIntPtr.Zero);
+        keybd_event(0xA5, 0, Extended | 2, UIntPtr.Zero);
+        keybd_event(0xA2, 0, 2, UIntPtr.Zero);
+        await Task.Delay(250, TestContext.Current.CancellationToken);
+    }
 
     /// <summary>Sends a chord to whichever window is already in front, without changing focus first.</summary>
     public async Task PressChordAsync(params byte[] keys)
@@ -26,7 +52,9 @@ public sealed partial class AppProcess
                 Width = 320,
                 Height = 180,
                 StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen,
+                KeyPreview = true,
             };
+            form.KeyDown += (_, e) => _foregroundKeys.Enqueue((int)e.KeyCode);
             _foregroundTestWindow = form;
             form.Shown += (_, _) =>
             {

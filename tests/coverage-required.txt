@@ -10,3 +10,11 @@ SettingsCatalogue.cs
 SiteLinks.cs
 WhatsNew.cs
 WorkGate.cs
+KeyChord.cs
+GlobalKeyRules.cs
+GlobalKeyPolicy.cs
+ChordRecorder.cs
+KeyRepeat.cs
+WindowKeys.cs
+GlobalKeysSettings.cs
+ConfigValidation.cs

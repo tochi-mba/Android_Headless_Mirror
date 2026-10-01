@@ -77,6 +77,14 @@ public sealed class AppAutomation(IntPtr window)
     public void SetValue(string automationId, double value) =>
         Act(automationId, e => Pattern<RangeValuePattern>(e, RangeValuePattern.Pattern, automationId).SetValue(value), "set the value of");
 
+    /// <summary>Gives a control the keyboard, as a click or Tab would.</summary>
+    public void Focus(string automationId) =>
+        Act(automationId, e => e.SetFocus(), "focus");
+
+    /// <summary>The text a control shows, through its value.</summary>
+    public string TextOf(string automationId) =>
+        Bounded(() => Pattern<ValuePattern>(Find(automationId), ValuePattern.Pattern, automationId).Current.Value, $"read the text of '{automationId}'");
+
     public void SetText(string automationId, string text) =>
         Act(automationId, e => Pattern<ValuePattern>(e, ValuePattern.Pattern, automationId).SetValue(text), "type into");
 

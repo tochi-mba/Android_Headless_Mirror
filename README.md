@@ -43,6 +43,8 @@ delete that folder.
   the same gestures zoom and pan the view on this PC instead, so clicks always land where you see.
 - **A keyboard is enough.** Every key types as on a plugged-in keyboard, and browse mode
   (Ctrl+Alt+K) moves through a feed with the arrow keys.
+- **Keys from anywhere.** Ctrl+Alt+M brings the mirror up from any app and sends it back to the
+  tray, and any action can have a key of its own that works while the window is hidden.
 - **Copies side by side.** Ctrl+Alt+N adds another live view of the phone; copies nobody can see
   pause themselves, and only the main view plays sound.
 - **Yours to shape.** Every setting lives in config.json, previews as you change it, and is
@@ -67,6 +69,7 @@ All of it, with the settings that shape each part, is on the
 | Browse a feed without the mouse | Ctrl+Alt+K, then the arrow keys, Enter, L, M and Backspace       |
 | See the phone twice or more     | Ctrl+Alt+N adds a copy; Ctrl+Alt+W closes the last one           |
 | Go back, or show recent apps    | Ctrl+Alt+Backspace, or Ctrl+Alt+R                                |
+| Bring the mirror up from any app | Ctrl+Alt+M, from anywhere; press it again to hide it            |
 | See the window explained again  | F1, or Info → **Take the tour**                                  |
 | Find a setting                  | The search box at the top of Settings                            |
 | Get help                        | Info → **Help**, or the [help page](https://tochi-mba.github.io/Android_Headless_Mirror/help.html) |

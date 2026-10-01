@@ -19,15 +19,28 @@ public partial class InfoPanel : UserControl
         InitializeComponent();
 
         // One list, from the registry the window and the website also read, so it cannot drift.
-        static KeyValuePair<string, string>[] Rows(IEnumerable<Shortcut> shortcuts) =>
-            shortcuts.Select(s => KeyValuePair.Create(s.Gesture, s.Description)).ToArray();
-        ShortcutKeys.ItemsSource = Rows(Shortcuts.All.Where(s => s.IsKey && !s.Browse));
+        ShortcutKeys.ItemsSource = Rows(Shortcuts.All.Where(s => s.IsKey && !s.Browse && !s.Global));
         ShortcutBrowse.ItemsSource = Rows(Shortcuts.BrowseKeys);
         ShortcutGestures.ItemsSource = Rows(Shortcuts.All.Where(s => !s.IsKey));
         // The heading is set in capitals; the key is written the way it is everywhere else.
         BrowseHeading.Text = "BROWSE MODE · " + Shortcuts.Gesture("browse");
         HelpWhatsNew.ToolTip = $"What changed in {CommandRouter.AppVersion}, on the website";
         System.Windows.Automation.AutomationProperties.SetName(HelpWhatsNew, $"What's new in {CommandRouter.AppVersion}");
+    }
+
+    private static KeyValuePair<string, string>[] Rows(IEnumerable<Shortcut> shortcuts) =>
+        shortcuts.Select(s => KeyValuePair.Create(s.Gesture, s.Description)).ToArray();
+
+    /// <summary>The keys from anywhere as this person has set them, or why there are none.</summary>
+    internal void ShowGlobalKeys(RexConfig config)
+    {
+        var keys = Shortcuts.Effective(config).Where(s => s.Global).ToArray();
+        ShortcutGlobal.ItemsSource = Rows(keys);
+        ShortcutGlobalNote.Text = !config.GlobalKeys.Enabled
+            ? "Off. Turn them on in Settings, Shortcuts from anywhere."
+            : keys.Length == 0
+                ? "None set. Add them in Settings, Shortcuts from anywhere."
+                : "These work while the window is hidden or behind others.";
     }
 
     /// <summary>The page each Help button opens, and how the status line names it.</summary>

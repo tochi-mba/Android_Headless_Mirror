@@ -131,6 +131,8 @@ public partial class MainWindow : Window
         _hooks.AltWheel = OnAltWheel;
         _hooks.PanelWheel = OnPanelWheel;
         _hooks.KeyDown = OnHotkey;
+        _hooks.GlobalKey = OnGlobalKey;
+        _hooks.Record = OnRecordKey;
         _hooks.PcAlt = down =>
         {
             // Whichever view has the keyboard: the main one or a copy.
@@ -695,9 +697,7 @@ public partial class MainWindow : Window
 
     public async Task RunActionAsync(string id)
     {
-        var result = await _host.Session.RunActionAsync(id, ApplyAppActionAsync);
-        NoteAction(id, result.Ok);
-        SetStatus(result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? MirrorActions.Find(id)?.Label ?? id : result.Text) : result.Text, !result.Ok);
+        await RunActionCoreAsync(id);
         // Back to whichever view was being used, the main one or a copy.
         if (ActiveView.HasChild)
         {
@@ -705,20 +705,32 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SaveScreenshotAsync()
+    /// <summary>Plays an action and shows what it did in the status bar; returns the same words.</summary>
+    private async Task<(bool Ok, string Text)> RunActionCoreAsync(string id)
     {
-        try { await SaveScreenshotCoreAsync(); }
+        var result = await _host.Session.RunActionAsync(id, ApplyAppActionAsync);
+        NoteAction(id, result.Ok);
+        var text = result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? MirrorActions.Find(id)?.Label ?? id : result.Text) : result.Text;
+        SetStatus(text, !result.Ok);
+        return (result.Ok, text);
+    }
+
+    private async Task<(bool Ok, string Text)> SaveScreenshotAsync()
+    {
+        try { return await SaveScreenshotCoreAsync(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
             _host.Log.Error("Could not save a screenshot", ex);
             SetStatus("Could not save screenshot: " + ex.Message, isError: true);
+            return (false, "Could not save screenshot: " + ex.Message);
         }
     }
 
-    private async Task SaveScreenshotCoreAsync()
+    private async Task<(bool Ok, string Text)> SaveScreenshotCoreAsync()
     {
         var (ok, text) = await _host.Session.SaveScreenshotAsync();
-        SetStatus(ok ? "Screenshot saved: " + Path.GetFileName(text) : text, !ok);
+        var said = ok ? "Screenshot saved: " + Path.GetFileName(text) : text;
+        SetStatus(said, !ok);
         if (ok)
         {
             StatusText.Inlines.Clear();
@@ -732,6 +744,8 @@ public partial class MainWindow : Window
             link.Click += (_, _) => RevealScreenshot(text);
             StatusText.Inlines.Add(link);
         }
+
+        return (ok, said);
     }
 
     private void RevealScreenshot(string path)

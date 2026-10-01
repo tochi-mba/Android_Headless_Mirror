@@ -1,12 +1,14 @@
 using System.Runtime.InteropServices;
+using Rex.Core;
 using Rex.Mirror.Native;
 
 namespace Rex.Mirror.Mirror;
 
 /// <summary>
-/// Low-level mouse and keyboard hooks used only while the mirror window is in the
-/// foreground: Alt + wheel zooms the PC view, and a handful of app hotkeys (F11, Escape,
-/// Ctrl+Alt+P/C, calibration keys) are intercepted before scrcpy can forward them to the phone.
+/// Low-level mouse and keyboard hooks. While the mirror window is in the foreground, Alt + wheel
+/// zooms the PC view and the app's own keys (F11, Escape, Ctrl+Alt+P/C, calibration keys) are
+/// intercepted before scrcpy can forward them to the phone. Keys from anywhere are looked at
+/// whatever is in front.
 /// </summary>
 public sealed class InputHooks : IDisposable
 {
@@ -14,7 +16,7 @@ public sealed class InputHooks : IDisposable
     private readonly HookProc _keyboardProc;
     private IntPtr _mouseHook;
     private IntPtr _keyboardHook;
-    private readonly HashSet<int> _consumedKeys = [];
+    private readonly KeyRepeat _taken = new();
 
     public InputHooks()
     {
@@ -26,8 +28,23 @@ public sealed class InputHooks : IDisposable
     public Func<int, int, int, bool>? AltWheel { get; set; }
     public Func<int, int, int, bool>? PanelWheel { get; set; }
 
-    /// <summary>Must return true when the key should be consumed. Args: virtual key, ctrl, alt, shift.</summary>
-    public Func<int, bool, bool, bool, bool>? KeyDown { get; set; }
+    /// <summary>Must return true when the key should be consumed. Asked only while the window is in front.</summary>
+    public Func<int, KeyMods, bool>? KeyDown { get; set; }
+
+    /// <summary>
+    /// Must return true when the key is a key from anywhere and should be consumed. Asked first, for
+    /// every key-down whatever window is in front, except while AltGr is held.
+    /// </summary>
+    public Func<int, KeyMods, bool>? GlobalKey { get; set; }
+
+    /// <summary>
+    /// Must return true when a shortcut box is recording and takes the key (down or up); asked
+    /// first, while the window is in front, so a key another app has claimed is recorded too.
+    /// </summary>
+    public Func<int, bool, bool>? Record { get; set; }
+
+    /// <summary>Whether the keyboard hook is in place.</summary>
+    public bool KeyboardInstalled => _keyboardHook != IntPtr.Zero;
 
     /// <summary>Tells the hooks whether our window currently owns the keyboard (foreground and not minimized).</summary>
     public Func<bool>? IsActive { get; set; }
@@ -63,7 +80,7 @@ public sealed class InputHooks : IDisposable
 
     public void Uninstall()
     {
-        _consumedKeys.Clear();
+        _taken.Clear();
         if (_mouseHook != IntPtr.Zero)
         {
             NativeMethods.UnhookWindowsHookEx(_mouseHook);
@@ -96,6 +113,13 @@ public sealed class InputHooks : IDisposable
     private IntPtr KeyboardProc(int nCode, IntPtr wParam, IntPtr lParam)
     {
         var message = wParam.ToInt64();
+        var isDown = message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN;
+        if (nCode >= 0 && (isDown || message is NativeMethods.WM_KEYUP or NativeMethods.WM_SYSKEYUP) && Record is { } record &&
+            IsActive?.Invoke() == true && record((int)Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam).vkCode, isDown))
+        {
+            return new IntPtr(1);
+        }
+
         if (nCode >= 0 && message is NativeMethods.WM_KEYUP or NativeMethods.WM_SYSKEYUP)
         {
             var released = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
@@ -106,28 +130,40 @@ public sealed class InputHooks : IDisposable
                 PcAlt?.Invoke(false);
             }
 
-            if (_consumedKeys.Remove((int)released.vkCode)) return new IntPtr(1);
+            if (_taken.Release((int)released.vkCode)) return new IntPtr(1);
         }
-        if (nCode >= 0 && message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN && IsActive?.Invoke() == true)
+        if (nCode >= 0 && message is NativeMethods.WM_KEYDOWN or NativeMethods.WM_SYSKEYDOWN)
         {
             var data = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
-            if (_consumedKeys.Contains((int)data.vkCode)) return new IntPtr(1);
+            var key = (int)data.vkCode;
+            // A held key repeats its key-down; the repeats of a key the app took are the app's too.
+            if (_taken.IsHeld(key)) return new IntPtr(1);
             var ctrl = NativeMethods.IsKeyDown(NativeMethods.VK_CONTROL);
-            var alt = NativeMethods.IsKeyDown(NativeMethods.VK_MENU);
             var shift = NativeMethods.IsKeyDown(NativeMethods.VK_SHIFT);
+            var win = NativeMethods.IsKeyDown(NativeMethods.VK_LWIN) || NativeMethods.IsKeyDown(NativeMethods.VK_RWIN);
+            var mods = (ctrl ? KeyMods.Ctrl : 0) | (NativeMethods.IsKeyDown(NativeMethods.VK_MENU) ? KeyMods.Alt : 0) |
+                (shift ? KeyMods.Shift : 0) | (win ? KeyMods.Win : 0);
             // Windows exposes AltGr as Ctrl+Right-Alt. It is text input, not one of the app's
             // Ctrl+Alt shortcuts; stealing it breaks characters on many keyboard layouts.
-            var altGr = NativeMethods.IsKeyDown(NativeMethods.VK_RMENU);
-            var win = NativeMethods.IsKeyDown(NativeMethods.VK_LWIN) || NativeMethods.IsKeyDown(NativeMethods.VK_RWIN);
-            if (IsPcAlt((int)data.vkCode, ctrl, shift, win))
+            var offered = CanOfferHotkey(NativeMethods.IsKeyDown(NativeMethods.VK_RMENU));
+            if (offered && GlobalKey?.Invoke(key, mods) == true)
             {
-                PcAlt?.Invoke(true);
+                _taken.Take(key);
+                return new IntPtr(1);
             }
 
-            if (CanOfferHotkey(altGr) && KeyDown?.Invoke((int)data.vkCode, ctrl, alt, shift) == true)
+            if (IsActive?.Invoke() == true)
             {
-                _consumedKeys.Add((int)data.vkCode);
-                return new IntPtr(1);
+                if (IsPcAlt(key, ctrl, shift, win))
+                {
+                    PcAlt?.Invoke(true);
+                }
+
+                if (offered && KeyDown?.Invoke(key, mods) == true)
+                {
+                    _taken.Take(key);
+                    return new IntPtr(1);
+                }
             }
         }
 

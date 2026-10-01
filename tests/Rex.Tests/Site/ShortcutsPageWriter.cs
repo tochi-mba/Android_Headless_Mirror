@@ -13,7 +13,10 @@ internal static class ShortcutsPageWriter
     [
         ("keys-window", "In the window",
             "They work while the app's window is in front, whatever has the keyboard. Most are Ctrl+Alt with a key; AltGr is never taken, so it still types on the phone.",
-            s => s.IsKey && !s.Browse),
+            s => s.IsKey && !s.Browse && !s.Global),
+        ("keys-anywhere", "From anywhere",
+            "They work while the window is hidden in the tray or behind other windows, as long as the app runs. The key is yours to choose in Settings, Shortcuts from anywhere, where any action can have a key of its own too.",
+            s => s.Global),
         ("keys-browse", "Browse mode",
             "Press Ctrl+Alt+K first. While browse mode is on, these plain keys act on the phone instead of typing into it; letters still type, so a search box works. Esc goes back to typing.",
             s => s.Browse),

@@ -150,6 +150,16 @@ public static class CommandRouter
             ["ambientFrame"] = host.Window?.AmbientFrameAvailable ?? false,
             ["sidebarTab"] = host.Window?.SidebarTab,
             ["windowVisible"] = host.Window?.IsVisible ?? false,
+            // Keys from anywhere: what is set, whether the hook is listening, and what the last one did.
+            ["globalKeys"] = host.Window is { } keys ? new JsonObject
+            {
+                ["enabled"] = host.Config.GlobalKeys.Enabled,
+                ["showHide"] = host.Config.GlobalKeys.ShowHide,
+                ["actions"] = new JsonArray([.. host.Config.GlobalKeys.Actions.Select(a => (JsonNode)new JsonObject { ["key"] = a.Key, ["action"] = a.Action })]),
+                ["recording"] = Views.Controls.ChordBox.AnyRecording,
+                ["hookInstalled"] = keys.KeyboardHookInstalled,
+                ["foregroundStep"] = keys.LastForegroundStep,
+            } : null,
             ["fullscreen"] = host.Window?.IsFullscreen ?? false,
             ["hudVisible"] = host.Window?.HudVisible ?? false,
             // Where the fullscreen controls are on screen, so a caller can reach for them.
@@ -231,6 +241,7 @@ public static class CommandRouter
                 ["hints"] = shown.HintsShowing,
                 ["frameRate"] = shown.FrameRateShowing,
                 ["lastNotification"] = shown.LastNotification,
+                ["foreground"] = shown.InFront,
             } : null,
             ["view"] = new JsonObject
             {

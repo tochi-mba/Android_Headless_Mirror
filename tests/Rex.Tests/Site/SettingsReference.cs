@@ -46,6 +46,9 @@ internal static class SettingsReference
         ["Input.Gamepad"] = ("uhid", "disabled"),
     };
 
+    /// <summary>A key any shortcut box accepts, for the page's example and the tests.</summary>
+    public const string ExampleKey = "Ctrl+Shift+F9";
+
     public static IReadOnlyList<SettingGroupInfo> Read(string repoRoot)
     {
         var views = Path.Combine(repoRoot, "src", "Rex.Mirror", "Views");
@@ -102,6 +105,7 @@ internal static class SettingsReference
             "CheckBox" => "switch",
             "Slider" => "slider",
             "TextBox" => "text",
+            "ChordBox" => "key",
             _ => Default(path) is JsonArray ? "list" : "text",
         };
 
@@ -223,6 +227,7 @@ internal static class SettingsReference
             "switch" => SwitchValue(row.Path) is { } values ? [text == values.On ? values.Off : values.On] : [],
             "slider" => new[] { row.Minimum, row.Maximum }.OfType<double>()
                 .Select(v => v.ToString(CultureInfo.InvariantCulture)).Where(v => v != text),
+            "key" => [ExampleKey],
             _ => [],
         };
     }

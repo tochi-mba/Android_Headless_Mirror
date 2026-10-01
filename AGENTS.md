@@ -94,6 +94,8 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   Ipc                   pipe protocol between rex.exe and the app
   MirrorActions         the single list of user actions, shortcuts and ADB-action dispatcher
   WorkGate              one worker at a time, and a close that waits for it to leave
+  KeyChord/GlobalKey*   chords in words, which keys may work from anywhere, what the show-or-hide key does
+  WindowKeys            the window's own keys, read from Shortcuts, matched with exactly their modifiers
   SettingsCatalogue     every config.json value and where it is changed; which ones apply at the next start
   SiteLinks             every web address the app and the CLI send people to
   WhatsNew              when the window says once, after an update, which version this is
@@ -168,6 +170,11 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   phone, and only while focus is not in one of the app's own controls. Keep ordinary keys for typing
   otherwise, keep AltGr out of the Ctrl+Alt hotkey path, and add every new chord or browse key to
   `Shortcuts` so the app and website continue to agree.
+- Keys from anywhere (`GlobalKeys`) are matched in the same keyboard hook, before the window's own
+  keys and whatever is in front, and the hook only looks the key up and queues the work. Each
+  needs Ctrl or is F13-F24 on its own (`GlobalKeyRules`), never takes AltGr or one of Windows' own
+  keys, and nothing acts while a `ChordBox` records. The window's own keys come from
+  `WindowKeys`, read from `Shortcuts`, and match only with exactly their modifiers.
 - Left Alt pressed on its own belongs to the PC view (zoom, pinch, pan). While it is held,
   `MirrorHost.HoldKeyboard` moves keyboard focus from scrcpy to the viewport, from inside the
   keyboard hook so it happens before Windows routes the key; otherwise the hardware keyboard shows

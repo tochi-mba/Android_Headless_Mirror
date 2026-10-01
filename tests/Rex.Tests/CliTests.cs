@@ -222,6 +222,21 @@ public sealed class CliTests
     }
 
     [Fact]
+    public async Task ConfigSet_RefusesAChordWithoutCtrl()
+    {
+        using var package = new TestPackage();
+        var context = new CliContext(package.Paths);
+
+        var result = await MachineMode.RunAsync(["config", "set", "GlobalKeys.ShowHide", "Alt+Q"], context);
+
+        Assert.Equal(1, result.ExitCode);
+        var doc = JsonNode.Parse(result.Json)!.AsObject();
+        Assert.Equal("FormatException", doc["error"]!["type"]!.GetValue<string>());
+        Assert.Contains("needs Ctrl", doc["error"]!["message"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal(GlobalKeysSettings.DefaultShowHide, context.Config.Get("GlobalKeys.ShowHide").Value);
+    }
+
+    [Fact]
     public async Task Usb_ListsWindowsAdbInterfacesReadOnly()
     {
         // Listing reads the real PC and changes nothing; everything that repairs is in UsbTests,

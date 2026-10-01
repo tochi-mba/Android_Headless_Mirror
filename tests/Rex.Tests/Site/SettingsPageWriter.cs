@@ -83,6 +83,7 @@ internal static partial class SettingsPageWriter
             "switch" => "On or off",
             "slider" => Range(row),
             "list" => "A list, chosen in the window",
+            "key" => $"A key with Ctrl, such as {SettingsReference.ExampleKey}, or F13 to F24 on their own; empty turns it off",
             _ => "Text",
         };
 
