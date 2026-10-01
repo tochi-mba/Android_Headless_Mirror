@@ -227,12 +227,14 @@ public sealed class ScrcpyTests
             {
                 case ActionKind.Adb:
                     Assert.NotNull(MirrorActions.AdbCommand(action.Id));
+                    Assert.Null(ScrcpyShortcuts.For(action.Id));
                     break;
                 case ActionKind.Scrcpy:
                     Assert.NotNull(ScrcpyShortcuts.For(action.Id));
                     break;
                 case ActionKind.App:
                     Assert.Null(MirrorActions.AdbCommand(action.Id));
+                    Assert.Null(ScrcpyShortcuts.For(action.Id));
                     break;
             }
         }

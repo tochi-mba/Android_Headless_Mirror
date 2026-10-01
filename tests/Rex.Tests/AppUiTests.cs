@@ -207,7 +207,7 @@ public sealed partial class AppUiTests
 
         // The offer stays in sight above every tab, however far the settings were scrolled.
         app.Ui.Select("TabControls");
-        Assert.True(app.Ui.Exists("RestartNow"));
+        await app.WaitUntilAsync(() => app.Ui.Exists("RestartNow"), Soon, "the restart offer above the Controls tab");
         await app.SaveScreenshotAsync("ui-restart-notice.png");
 
         app.Ui.InvokeNamed("Restart now");
