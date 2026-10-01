@@ -132,8 +132,11 @@ public sealed partial class AppEndToEndTests
         var firstTouches = package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal));
 
         await app.PressCtrlAltKeyAsync(0x0D); // Enter: tap the centre.
+        // A touch Windows refuses to inject (error 87 on a busy runner) is played by Android itself
+        // over ADB instead; either way the tap reaches the phone.
         await app.WaitUntilAsync(
-            () => package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal)) > firstTouches,
+            () => package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal)) > firstTouches ||
+                  package.AdbCalls().Any(line => line.EndsWith("input tap 540 1200", StringComparison.Ordinal)),
             TimeSpan.FromSeconds(5),
             "keyboard tap to reach the phone");
         await app.PressCtrlAltKeyAsync(0x08); // Backspace: Android back.
