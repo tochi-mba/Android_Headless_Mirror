@@ -45,6 +45,10 @@ public sealed class AppAutomation(IntPtr window)
     public bool IsOn(string automationId) =>
         Bounded(() => Pattern<TogglePattern>(Find(automationId), TogglePattern.Pattern, automationId).Current.ToggleState, $"read '{automationId}'") == ToggleState.On;
 
+    /// <summary>Whether a group (an Expander) is open.</summary>
+    public bool IsExpanded(string automationId) =>
+        Bounded(() => Pattern<ExpandCollapsePattern>(Find(automationId), ExpandCollapsePattern.Pattern, automationId).Current.ExpandCollapseState, $"read '{automationId}'") == ExpandCollapseState.Expanded;
+
     /// <summary>The text of the selected row in a choice control.</summary>
     public string SelectedName(string automationId)
     {
