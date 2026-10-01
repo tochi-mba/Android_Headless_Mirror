@@ -190,6 +190,7 @@ internal static partial class NativeMethods
     public const uint POINTER_FLAG_DOWN = 0x00010000;
     public const uint POINTER_FLAG_UPDATE = 0x00020000;
     public const uint POINTER_FLAG_UP = 0x00040000;
+    public const uint POINTER_FLAG_CANCELED = 0x00008000;
     public const uint TOUCH_FEEDBACK_NONE = 0x3;
     public const uint TOUCH_MASK_CONTACTAREA = 0x1;
     public const uint TOUCH_MASK_ORIENTATION = 0x2;

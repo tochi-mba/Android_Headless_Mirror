@@ -125,7 +125,84 @@ public sealed class TouchInputTests
         Assert.False(injector.Release((100, 200), (300, 200)));
         Assert.False(injector.AnyDown);
         Assert.True(injector.Move((100, 200), (300, 200)));
-        Assert.All(frames[2], contact => Assert.NotEqual(0u, contact.pointerInfo.pointerFlags & NativeMethods.POINTER_FLAG_DOWN));
+        Assert.All(frames[2], contact => Assert.Equal(NativeMethods.POINTER_FLAG_UP | NativeMethods.POINTER_FLAG_CANCELED, contact.pointerInfo.pointerFlags));
+        Assert.All(frames[3], contact => Assert.NotEqual(0u, contact.pointerInfo.pointerFlags & NativeMethods.POINTER_FLAG_DOWN));
+    }
+
+    private const int InvalidParameter = 87;
+
+    /// <summary>An injector whose Windows refuses the frames numbered in <paramref name="refused"/> (from 1).</summary>
+    private static TouchInjector Refusing(List<POINTER_TOUCH_INFO[]> frames, params int[] refused) =>
+        new(() => true, contacts =>
+        {
+            frames.Add(contacts);
+            if (!refused.Contains(frames.Count))
+            {
+                return true;
+            }
+
+            System.Runtime.InteropServices.Marshal.SetLastPInvokeError(InvalidParameter);
+            return false;
+        });
+
+    [Fact]
+    public void ARefusedReleaseLetsGoOfTheContact()
+    {
+        var frames = new List<POINTER_TOUCH_INFO[]>();
+        var injector = Refusing(frames, 2);
+
+        Assert.True(injector.MoveOne((100, 500)));
+        Assert.False(injector.ReleaseOne((100, 500)));
+
+        Assert.Equal(InvalidParameter, injector.LastError);
+        Assert.False(injector.AnyDown);
+        Assert.Equal(3, frames.Count);
+        Assert.Equal(NativeMethods.POINTER_FLAG_UP | NativeMethods.POINTER_FLAG_CANCELED, Assert.Single(frames[2]).pointerInfo.pointerFlags);
+    }
+
+    [Fact]
+    public void ARefusedDownIsCancelledAndTriedOnce()
+    {
+        var frames = new List<POINTER_TOUCH_INFO[]>();
+        var recovers = Refusing(frames, 1);
+        Assert.True(recovers.MoveOne((100, 500)));
+        Assert.True(recovers.AnyDown);
+        Assert.Equal(0, recovers.LastError);
+        Assert.Equal(
+            [NativeMethods.POINTER_FLAG_DOWN, NativeMethods.POINTER_FLAG_UP | NativeMethods.POINTER_FLAG_CANCELED, NativeMethods.POINTER_FLAG_DOWN],
+            frames.Select(f => Assert.Single(f).pointerInfo.pointerFlags & ~(NativeMethods.POINTER_FLAG_INRANGE | NativeMethods.POINTER_FLAG_INCONTACT)));
+
+        frames.Clear();
+        var refuses = Refusing(frames, 1, 2, 3);
+        Assert.False(refuses.MoveOne((100, 500)));
+        Assert.False(refuses.AnyDown);
+        Assert.Equal(InvalidParameter, refuses.LastError);
+        Assert.Equal(3, frames.Count);
+
+        // A contact that is already down and fails to move is not pressed again.
+        frames.Clear();
+        var moving = Refusing(frames, 2);
+        Assert.True(moving.MoveOne((100, 500)));
+        Assert.False(moving.MoveOne((100, 400)));
+        Assert.Equal(2, frames.Count);
+        Assert.True(moving.AnyDown);
+    }
+
+    [Fact]
+    public void TwoFingersRecoverTheSameWay()
+    {
+        var frames = new List<POINTER_TOUCH_INFO[]>();
+        var injector = Refusing(frames, 1);
+
+        Assert.True(injector.Move((100, 200), (300, 200)));
+
+        Assert.Equal(3, frames.Count);
+        Assert.All(frames, frame => Assert.Equal([0u, 1u], frame.Select(c => c.pointerInfo.pointerId)));
+        Assert.All(frames[1], c => Assert.Equal(NativeMethods.POINTER_FLAG_UP | NativeMethods.POINTER_FLAG_CANCELED, c.pointerInfo.pointerFlags));
+        Assert.All(frames[2], c => Assert.NotEqual(0u, c.pointerInfo.pointerFlags & NativeMethods.POINTER_FLAG_DOWN));
+        Assert.True(injector.AnyDown);
+        Assert.True(injector.Release((100, 200), (300, 200)));
+        Assert.All(frames[3], c => Assert.Equal(NativeMethods.POINTER_FLAG_UP, c.pointerInfo.pointerFlags));
     }
 
     [Fact]

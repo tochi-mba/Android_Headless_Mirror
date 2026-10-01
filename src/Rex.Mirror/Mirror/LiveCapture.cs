@@ -22,7 +22,10 @@ public sealed record CaptureResult(AmbientFrame? Ambient, AmbientFrame? Preview)
 /// </summary>
 public sealed class LiveCapture : IDisposable
 {
-    private readonly SemaphoreSlim _oneAtATime = new(1, 1);
+    /// <summary>How long closing waits for a capture in flight before leaving its graphics objects to Windows.</summary>
+    private static readonly TimeSpan CloseWait = TimeSpan.FromSeconds(2);
+
+    private readonly WorkGate _oneAtATime = new();
     private readonly GpuCapture _gpu = new();
     private readonly Action<string>? _log;
     private string? _gpuFailureLogged;
@@ -38,7 +41,7 @@ public sealed class LiveCapture : IDisposable
     private Drawing.Bitmap? _full;
     private Drawing.Bitmap? _smallAmbient;
     private Drawing.Bitmap? _smallPreview;
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public LiveCapture(Action<string>? log = null)
     {
@@ -57,19 +60,24 @@ public sealed class LiveCapture : IDisposable
     public async Task<CaptureResult?> CaptureAsync(RECT screenRect, double blurRadius, bool ambient, int previewWidth)
     {
         if (_disposed || screenRect.Width < 8 || screenRect.Height < 8 || (!ambient && previewWidth <= 0) ||
-            !await _oneAtATime.WaitAsync(0).ConfigureAwait(false))
+            !_oneAtATime.TryEnter())
         {
             return null;
         }
 
-        try
+        // The gate is left on the worker itself: Dispose waits on the UI thread for it, so leaving
+        // it from a continuation queued to that same thread would never happen while it waits.
+        return await Task.Run(() =>
         {
-            return await Task.Run(() => Capture(screenRect, blurRadius, ambient, previewWidth)).ConfigureAwait(true);
-        }
-        finally
-        {
-            _oneAtATime.Release();
-        }
+            try
+            {
+                return _disposed ? null : Capture(screenRect, blurRadius, ambient, previewWidth);
+            }
+            finally
+            {
+                _oneAtATime.Exit();
+            }
+        }).ConfigureAwait(true);
     }
 
     private CaptureResult? Capture(RECT screenRect, double blurRadius, bool ambient, int previewWidth)
@@ -232,13 +240,22 @@ public sealed class LiveCapture : IDisposable
         return pixels;
     }
 
+    /// <summary>
+    /// Releases the graphics objects once no capture is using them. A capture still reading back
+    /// is waited for; releasing the device under it crashed the app on quit.
+    /// </summary>
     public void Dispose()
     {
         _disposed = true;
+        if (!_oneAtATime.Close(CloseWait))
+        {
+            _log?.Invoke("A capture was still running as the window closed; its graphics objects are left for Windows to release.");
+            return;
+        }
+
         _gpu.Dispose();
         _full?.Dispose();
         _smallAmbient?.Dispose();
         _smallPreview?.Dispose();
-        _oneAtATime.Dispose();
     }
 }

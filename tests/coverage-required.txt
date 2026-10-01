@@ -9,3 +9,4 @@ DisplayOrientation.cs
 SettingsCatalogue.cs
 SiteLinks.cs
 WhatsNew.cs
+WorkGate.cs
