@@ -99,6 +99,8 @@ public static class CommandRouter
             ["starting"] = state.Starting,
             ["shown"] = state.ShownViews,
             ["hidden"] = state.Hidden,
+            ["waiting"] = state.Waiting,
+            ["room"] = state.Room == int.MaxValue ? null : state.Room,
             ["canAdd"] = state.CanAdd,
             ["canRemove"] = state.CanRemove,
             ["reason"] = state.WhyNoMore,

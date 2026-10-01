@@ -83,6 +83,9 @@ until you delete that folder.
   the limit in Settings → Copies of the phone). Every copy takes touch, typing and gestures, and
   Alt + wheel or Alt + pinch over any of them zooms them all to the same place. Copies step aside
   while the phone is on its side and come back when it is upright; Ctrl+Alt+W closes the last one.
+  A copy nobody can see (the window in the tray or minimised, the phone on its side, no room
+  left) pauses its session after a few seconds, so it costs neither the phone nor the PC, and
+  comes back as soon as it can be seen. Only the main view ever plays the phone's sound.
 - **Command line and agent mode.** `rex.exe` (on your PATH after installing) scripts everything;
   `rex agent ...` and `rex --json ...` emit exactly one JSON document and never prompt.
 

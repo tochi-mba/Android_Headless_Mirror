@@ -77,6 +77,34 @@ public sealed class CopiesController : IDisposable
 
     public bool Starting => _plan.Starting;
 
+    /// <summary>How many copies there is room to show; see <see cref="CopiesPlan.Room"/>.</summary>
+    public int Room => _plan.Room;
+
+    /// <summary>
+    /// Tells the copies how many of them can be seen. Copies beyond that are stopped and wait to
+    /// be started again when there is room, so a copy out of sight costs nothing.
+    /// </summary>
+    public void SetRoom(int room)
+    {
+        room = Math.Max(0, room);
+        if (_plan.Room == room)
+        {
+            return;
+        }
+
+        var before = _plan.Target;
+        _plan.Room = room;
+        if (_plan.Target != before)
+        {
+            _host.Log.Info(_plan.Target < before
+                ? $"Room for {_plan.Target} of {_plan.Wanted} copies; the rest wait, stopped."
+                : $"Room for {_plan.Target} of {_plan.Wanted} copies again.");
+        }
+
+        Pump();
+        Changed?.Invoke();
+    }
+
     /// <summary>The copies' views, in order.</summary>
     public IEnumerable<MirrorHost> Views => _copies.Values.Select(c => c.View);
 
@@ -121,7 +149,7 @@ public sealed class CopiesController : IDisposable
         return AndroidResult.Success(_plan.Wanted == 0 ? "Copies closed." : $"{_plan.Wanted} {(_plan.Wanted == 1 ? "copy" : "copies")} left.");
     }
 
-    /// <summary>Starts or stops copies until what runs matches what is wanted. Safe to call any time.</summary>
+    /// <summary>Starts or stops copies until what runs matches what is wanted and has room. Safe to call any time.</summary>
     public async void Pump()
     {
         if (_disposed)
