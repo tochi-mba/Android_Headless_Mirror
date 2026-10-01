@@ -27,6 +27,7 @@ public sealed record RexConfig
     public AppSettings App { get; set; } = new();
     public GlobalKeysSettings GlobalKeys { get; set; } = new();
     public AppsSettings Apps { get; set; } = new();
+    public TransferSettings Transfer { get; set; } = new();
     public LoggingSettings Logging { get; set; } = new();
 
     /// <summary>Clamps every value into its supported range. Called after load and before save.</summary>
@@ -47,6 +48,7 @@ public sealed record RexConfig
         App.Normalize();
         GlobalKeys.Normalize();
         Apps.Normalize();
+        Transfer.Normalize();
         Logging.Normalize();
     }
 
@@ -66,6 +68,7 @@ public sealed record RexConfig
         App = App.Copy(),
         GlobalKeys = GlobalKeys.Copy(),
         Apps = Apps.Copy(),
+        Transfer = Transfer.Copy(),
         Logging = Logging.Copy(),
     };
 
@@ -89,6 +92,7 @@ public sealed record RexConfig
         App = copy.App;
         GlobalKeys = copy.GlobalKeys;
         Apps = copy.Apps;
+        Transfer = copy.Transfer;
         Logging = copy.Logging;
     }
 
