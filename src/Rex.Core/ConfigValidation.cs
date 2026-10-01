@@ -25,6 +25,9 @@ public static class ConfigValidation
             case "GlobalKeys.Actions":
                 CheckActions(raw, current);
                 break;
+            case "Transfer.Folder":
+                Refuse(TransferSettings.WhyNotFolder(raw));
+                break;
         }
     }
 

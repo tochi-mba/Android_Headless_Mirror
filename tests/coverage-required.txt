@@ -41,3 +41,4 @@ NameClash.cs
 TransferProgress.cs
 TransferQueue.cs
 ApkManifest.cs
+AdbClient.Files.cs
