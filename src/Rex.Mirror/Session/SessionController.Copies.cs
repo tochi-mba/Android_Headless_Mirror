@@ -37,17 +37,23 @@ public sealed partial class SessionController
         _host.Log.Info($"Starting copy {index + 1} of {device.Serial}: {string.Join(' ', args)}");
 
         ScrcpyProcess scrcpy;
-        try
+        bool appeared;
+        using (await ServerStart.EnterAsync(cancellationToken).ConfigureAwait(true))
         {
-            scrcpy = ScrcpyProcess.Launch(Tools.Scrcpy, args, device.Serial, title, keyboardMode, _ownedProcesses);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
-        {
-            _host.Log.Error($"Could not start copy {index + 1} of '{device.Serial}'", ex);
-            return new CopyLaunch(null, "scrcpy could not start: " + ex.Message);
+            try
+            {
+                scrcpy = ScrcpyProcess.Launch(Tools.Scrcpy, args, device.Serial, title, keyboardMode, _ownedProcesses);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                _host.Log.Error($"Could not start copy {index + 1} of '{device.Serial}'", ex);
+                return new CopyLaunch(null, "scrcpy could not start: " + ex.Message);
+            }
+
+            appeared = await scrcpy.WaitForWindowAsync(TimeSpan.FromSeconds(25), cancellationToken).ConfigureAwait(true);
         }
 
-        if (!await scrcpy.WaitForWindowAsync(TimeSpan.FromSeconds(25), cancellationToken).ConfigureAwait(true))
+        if (!appeared)
         {
             var reason = CopyFailure(scrcpy.RecentStderr);
             _host.Log.Warn($"Copy {index + 1} did not open a window: {reason}");

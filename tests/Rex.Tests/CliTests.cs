@@ -243,6 +243,74 @@ public sealed class CliTests
     }
 
     [Fact]
+    public async Task App_ListOpenAndStarWithoutTheDesktopApp()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, "rex-tests-nobody-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var context = new CliContext(package.Paths);
+            var listed = JsonNode.Parse((await MachineMode.RunAsync(["app", "list"], context)).Json)!;
+            var apps = listed["data"]!["apps"]!.AsArray();
+            Assert.Equal(12, apps.Count);
+            Assert.DoesNotContain(apps, a => a!["system"]!.GetValue<bool>());
+            Assert.Equal("A Very Long Application Name Here", apps[0]!["name"]!.GetValue<string>());
+            Assert.Equal(14, JsonNode.Parse((await MachineMode.RunAsync(["app", "list", "--system"], context)).Json)!["data"]!["apps"]!.AsArray().Count);
+            Assert.Single(JsonNode.Parse((await MachineMode.RunAsync(["app", "list", "dialer"], context)).Json)!["data"]!["apps"]!.AsArray());
+            // Read with scrcpy, and remembered for the phone as the app would.
+            Assert.Equal(14, new StateStore(package.Paths.State).GetDevice("FAKE123")!.Apps!.Count);
+
+            var opened = await MachineMode.RunAsync(["app", "open", "Café", "Maps"], context);
+            Assert.Equal(0, opened.ExitCode);
+            Assert.Equal("com.example.cafe", JsonNode.Parse(opened.Json)!["data"]!["opened"]!.GetValue<string>());
+            Assert.Contains(package.AdbCalls(), c => c.Contains("am start -n com.example.cafe/.MainActivity", StringComparison.Ordinal));
+            Assert.Equal("com.example.cafe", new StateStore(package.Paths.State).GetDevice("FAKE123")!.RecentApps[0].Package);
+
+            Assert.Equal(0, (await MachineMode.RunAsync(["app", "close", "com.example.cafe"], context)).ExitCode);
+            Assert.Equal(0, (await MachineMode.RunAsync(["app", "info", "com.example.cafe"], context)).ExitCode);
+            Assert.Contains(package.AdbCalls(), c => c.Contains("am force-stop com.example.cafe", StringComparison.Ordinal));
+
+            Assert.Equal(0, (await MachineMode.RunAsync(["app", "favourite", "com.example.cafe", "on"], context)).ExitCode);
+            Assert.Equal(["com.example.cafe"], new StateStore(package.Paths.State).GetDevice("FAKE123")!.FavouriteApps);
+            Assert.Equal(0, await Commands.RunAsync(["app", "favourite", "com.example.cafe", "off"], context));
+            Assert.Empty(new StateStore(package.Paths.State).GetDevice("FAKE123")!.FavouriteApps);
+            Assert.Equal(0, await Commands.RunAsync(["app", "list", "notes"], context));
+            Assert.Equal(0, await Commands.RunAsync(["app", "open", "com.example.one"], context));
+            Assert.Equal(0, await Commands.RunAsync(["app", "close", "com.example.one"], context));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, null);
+        }
+    }
+
+    [Fact]
+    public async Task App_RefusesWhatIsNotAnApp()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, "rex-tests-nobody-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var context = new CliContext(package.Paths);
+            var refused = await MachineMode.RunAsync(["app", "open", "x;", "reboot"], context);
+            Assert.Equal(1, refused.ExitCode);
+            Assert.Contains("No app on the phone is called", JsonNode.Parse(refused.Json)!["error"]!["message"]!.GetValue<string>(), StringComparison.Ordinal);
+            Assert.Contains("More than one app", JsonNode.Parse((await MachineMode.RunAsync(["app", "open", "Notes"], context)).Json)!["error"]!["message"]!.GetValue<string>(), StringComparison.Ordinal);
+            Assert.Equal(1, (await MachineMode.RunAsync(["app", "close", "not-a-package"], context)).ExitCode);
+            Assert.Equal(1, (await MachineMode.RunAsync(["app", "favourite", "nope", "on"], context)).ExitCode);
+            Assert.Equal(1, (await MachineMode.RunAsync(["app", "favourite", "com.example.one", "maybe"], context)).ExitCode);
+            Assert.Equal(1, (await MachineMode.RunAsync(["app", "dance"], context)).ExitCode);
+            Assert.Equal(1, await Commands.RunAsync(["app", "open", "Notes"], context));
+            Assert.Equal(1, await Commands.RunAsync(["app", "info", "not-a-package"], context));
+            Assert.DoesNotContain(package.AdbCalls(), c => c.Contains("am start", StringComparison.Ordinal) || c.Contains("reboot", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, null);
+        }
+    }
+
+    [Fact]
     public async Task ConfigSet_RefusesAChordWithoutCtrl()
     {
         using var package = new TestPackage();

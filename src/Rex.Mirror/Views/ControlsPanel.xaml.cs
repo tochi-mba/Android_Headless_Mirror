@@ -167,6 +167,8 @@ public partial class ControlsPanel : UserControl
         CopyRemove.IsEnabled = copies.CanRemove;
         CopiesStatus.Text = copies.Summary;
 
+        RefreshFavourites();
+
         var guide = _window.Guide;
         PatternSection.Visibility = guide is not null ? Visibility.Visible : Visibility.Collapsed;
         if (guide is not null)
@@ -178,6 +180,50 @@ public partial class ControlsPanel : UserControl
                 : $"Appears automatically when the lock screen is black. {Shortcuts.Gesture("pattern-guide")} toggles it.";
         }
     }
+
+    private string _favouritesShown = string.Empty;
+
+    /// <summary>
+    /// The APPS section: a tile for each favourite, up to the number set, in the person's order. It
+    /// is rebuilt only when the favourites or the setting change, since the panel refreshes often.
+    /// </summary>
+    internal void RefreshFavourites()
+    {
+        if (_host is null || _window is null)
+        {
+            return;
+        }
+
+        var settings = _host.Config.Apps;
+        AppsSection.Visibility = settings.FavouritesOnControls ? Visibility.Visible : Visibility.Collapsed;
+        var favourites = _window.Favourites().Take(settings.FavouritesOnControlsMost).ToArray();
+        var shown = string.Join('|', favourites.Select(a => a.Package + "=" + a.Name)) + "|" + settings.FavouritesOnControls;
+        if (shown == _favouritesShown)
+        {
+            return;
+        }
+
+        _favouritesShown = shown;
+        FavouriteTiles.Children.Clear();
+        FavouritesHint.Visibility = favourites.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        for (var i = 0; i < favourites.Length; i++)
+        {
+            var app = favourites[i];
+            var face = new StackPanel();
+            var tile = AppsPanel.Tile(app, 24);
+            tile.HorizontalAlignment = HorizontalAlignment.Center;
+            face.Children.Add(tile);
+            face.Children.Add(new TextBlock { Text = app.Name, FontSize = 11, TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 5, 0, 0) });
+            var key = i < Shortcuts.FavouriteKeys && settings.FavouriteKeys ? " · " + Shortcuts.Gesture(Shortcuts.FavouritePrefix + (i + 1)) : string.Empty;
+            var button = new Button { Content = face, Margin = new Thickness(3), MinHeight = 58, Padding = new Thickness(4, 8, 4, 8), HorizontalContentAlignment = HorizontalAlignment.Stretch, ToolTip = $"Open {app.Name}{key}" };
+            AutomationProperties.SetAutomationId(button, "favourite-tile-" + (i + 1));
+            AutomationProperties.SetName(button, app.Name);
+            button.Click += async (_, _) => await _window.OpenAppAsync(app, _host.Config.Apps.OpenFresh);
+            FavouriteTiles.Children.Add(button);
+        }
+    }
+
+    private void OnAllApps(object sender, RoutedEventArgs e) => _window?.ShowTab("apps");
 
     /// <summary>
     /// Turns a control on or off with the phone, and says why while it is off: a greyed button

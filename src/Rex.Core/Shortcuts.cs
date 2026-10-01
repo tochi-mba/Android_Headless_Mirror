@@ -27,9 +27,10 @@ public static class Shortcuts
         new("tour", "F1", "Show the tour again"),
         new("sidebar", "Ctrl+Alt+B", "Show or hide the side panel"),
         new("tab-controls", "Ctrl+Alt+1", "The Controls tab"),
-        new("tab-phone", "Ctrl+Alt+2", "The Phone tab"),
-        new("tab-settings", "Ctrl+Alt+3", "The Settings tab"),
-        new("tab-info", "Ctrl+Alt+4", "The Info tab"),
+        new("tab-apps", "Ctrl+Alt+2", "The Apps tab"),
+        new("tab-phone", "Ctrl+Alt+3", "The Phone tab"),
+        new("tab-settings", "Ctrl+Alt+4", "The Settings tab"),
+        new("tab-info", "Ctrl+Alt+5", "The Info tab"),
         new("home", "Ctrl+Alt+H", "Home"),
         new("back", "Ctrl+Alt+Backspace", "Back"),
         new("recents", "Ctrl+Alt+R", "Recent apps"),
@@ -53,6 +54,7 @@ public static class Shortcuts
         new("sound-up", "Ctrl+Alt+PageUp", "The phone's sound louder on this PC"),
         new("sound-down", "Ctrl+Alt+PageDown", "The phone's sound quieter on this PC"),
         new("sound-mute", "Ctrl+Alt+Shift+M", "Mute or unmute the phone's sound on this PC"),
+        .. Enumerable.Range(1, FavouriteKeys).Select(n => new Shortcut(FavouritePrefix + n, "Ctrl+Alt+Shift+" + n, $"Open favourite app {n}")),
         new(GlobalKeyRules.ShowHide, GlobalKeysSettings.DefaultShowHide, "Show or hide the window, from anywhere", Global: true),
         new("browse-next", "Down", "Next item in a feed (swipe up)", Browse: true, Action: "swipe-up"),
         new("browse-previous", "Up", "Previous item in a feed (swipe down)", Browse: true, Action: "swipe-down"),
@@ -67,6 +69,14 @@ public static class Shortcuts
         new("host-pan", "Alt + drag", "Pan while zoomed", IsKey: false),
         new("phone-gesture", "Two fingers", "Pinch, rotate and pan on the phone", IsKey: false),
     ];
+
+    /// <summary>How many favourite apps have a key of their own, and the start of those keys' ids.</summary>
+    public const int FavouriteKeys = 9;
+    public const string FavouritePrefix = "favourite-";
+
+    /// <summary>The favourite (1 to 9) a shortcut id opens, or 0 when it is not one of those keys.</summary>
+    public static int Favourite(string? id) =>
+        id is not null && id.StartsWith(FavouritePrefix, StringComparison.Ordinal) && int.TryParse(id.AsSpan(FavouritePrefix.Length), out var n) ? n : 0;
 
     public static Shortcut? Find(string id) => All.FirstOrDefault(s => s.Id == id);
 

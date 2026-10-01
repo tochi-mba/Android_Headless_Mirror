@@ -203,6 +203,12 @@ int Shell(string[] rest)
         return Write("Current Battery Service state:\n  AC powered: false\n  USB powered: true\n  status: 2\n  level: 74\n  scale: 100\n");
     }
 
+    // Every app the fake phone has opens through its MainActivity, as the launcher would.
+    if (rest.Length >= 3 && rest[0] == "cmd" && rest[1] == "package" && rest[2] == "resolve-activity")
+    {
+        return Write($"priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=false\n{rest[^1]}/.MainActivity\n");
+    }
+
     if (rest[0] is "input" or "cmd" or "svc" or "dumpsys")
     {
         return 0;

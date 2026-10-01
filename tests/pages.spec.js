@@ -45,7 +45,7 @@ test.describe('Android Headless Mirror site', () => {
     await expect(page.locator('.brand-company')).toHaveText('REX Technologies');
     await expect(page.locator('.brand-name')).toHaveText('Android Headless Mirror');
     await expect(page.locator('h1')).toContainText('One window');
-    await expect(page.locator('.app-window .app-tabs span')).toHaveText(['Controls', 'Phone', 'Settings', 'Info']);
+    await expect(page.locator('.app-window .app-tabs span')).toHaveText(['Controls', 'Apps', 'Phone', 'Settings', 'Info']);
   });
 
   test('uses the REX palette at runtime', async ({ page }) => {

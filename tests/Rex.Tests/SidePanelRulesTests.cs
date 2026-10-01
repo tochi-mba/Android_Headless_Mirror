@@ -46,7 +46,7 @@ public sealed class SidePanelRulesTests
     [Fact]
     public void TabShortcutsNameTheTabsAsTheyAreLabelled()
     {
-        foreach (var (id, tab) in new[] { ("tab-controls", "Controls"), ("tab-phone", "Phone"), ("tab-settings", "Settings"), ("tab-info", "Info") })
+        foreach (var (id, tab) in new[] { ("tab-controls", "Controls"), ("tab-apps", "Apps"), ("tab-phone", "Phone"), ("tab-settings", "Settings"), ("tab-info", "Info") })
         {
             Assert.Equal($"The {tab} tab", Shortcuts.All.Single(s => s.Id == id).Description);
         }

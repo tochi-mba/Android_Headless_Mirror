@@ -4,6 +4,31 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.6.0 - 2026-10-01
+
+### Added
+
+- An **Apps** tab lists every app the phone can open, by its own name: type to find one, click to
+  open it, Shift+click to open it fresh. Favourites come first in your order, then the apps you
+  opened last, then the rest; the apps that came with the phone have a group of their own when
+  you want it, and a search always finds them.
+- Each app's menu opens its info page, closes it, hides it from the list, copies its package
+  name, and, for apps you installed, clears its data or uninstalls it after asking.
+- Starred apps get tiles at the top of the Controls tab, and Ctrl+Alt+Shift+1 to 9 open them.
+  They can sit on the fullscreen controls too.
+- Settings has an **Apps** group: system apps, package names, the order, a list or tiles, how many
+  recent apps to remember, where favourites show, opening apps fresh, and closing the apps opened
+  from here when the mirror stops.
+- `rex app list`, `rex app open Spotify`, `rex app close`, `rex app info` and `rex app favourite`
+  work with or without the desktop app.
+
+### Changed
+
+- The side panel's tabs are Controls, Apps, Phone, Settings and Info, and Ctrl+Alt+1 to 5 follow
+  that order: Phone is now Ctrl+Alt+3, Settings Ctrl+Alt+4 and Info Ctrl+Alt+5.
+- Only one scrcpy server starts at a time, whatever starts it: the mirror, a copy or reading the
+  app list never race each other on the phone.
+
 ## 2.5.0 - 2026-10-01
 
 ### Added

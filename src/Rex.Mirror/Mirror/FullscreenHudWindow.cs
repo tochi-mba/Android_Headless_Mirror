@@ -134,6 +134,13 @@ public sealed class FullscreenHudWindow : Window
 
     public void Reveal(string? message = null) => _hud.Reveal(message);
 
+    /// <summary>The favourite apps the bar offers after its buttons.</summary>
+    public IReadOnlyList<PhoneApp> Favourites
+    {
+        get => _hud.Favourites;
+        set => _hud.Favourites = value;
+    }
+
     private (int Left, int Top, int Width, int Height, double Dpi, string Position, double Scale, string Buttons, double X, double Y)? _placement;
 
     public void Update(bool enabled, bool pointerInZone, double zoom, RECT mirrorPixels, double dpiScale, HudSettings settings)

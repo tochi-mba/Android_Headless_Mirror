@@ -6,7 +6,7 @@ using Rex.Mirror.Session;
 namespace Rex.Mirror.Services;
 
 /// <summary>Executes pipe requests from the CLI and agents against the running app. UI thread only.</summary>
-public static class CommandRouter
+public static partial class CommandRouter
 {
     public static async Task<IpcResponse> HandleAsync(AppHost host, IpcRequest request)
     {
@@ -102,6 +102,12 @@ public static class CommandRouter
                 window?.NoteAction(id, result.Ok);
                 return result.Ok ? IpcResponse.Success(new JsonObject { ["action"] = id, ["text"] = result.Text }) : IpcResponse.Fail(result.Text);
             }
+
+            case "apps":
+                return await AppsAsync(host, request).ConfigureAwait(true);
+
+            case "open-app":
+                return await OpenAppAsync(host, request).ConfigureAwait(true);
 
             default:
                 return IpcResponse.Fail($"Unknown command '{request.Command}'.");
@@ -277,6 +283,7 @@ public static class CommandRouter
             // view is on screen with its zoom, so a test can see them side by side and in step.
             ["copies"] = host.Window is { } copies ? CopiesStatus(copies) : null,
             ["sound"] = host.Window is { } sounding ? SoundStatus(sounding) : null,
+            ["apps"] = host.Window is { } listing ? AppsStatus(host, listing) : null,
             ["window"] = host.Window is { } shown ? new JsonObject
             {
                 ["topmost"] = shown.Topmost,

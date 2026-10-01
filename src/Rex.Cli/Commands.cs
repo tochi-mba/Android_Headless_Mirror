@@ -83,6 +83,9 @@ public static class Commands
             case "sound":
                 return await SoundAsync(context, positional).ConfigureAwait(false);
 
+            case "app":
+                return await AppCommands.RunAsync(args, context).ConfigureAwait(false);
+
             case "screenshot":
                 return await ScreenshotAsync(context, Arguments.Option(args, "--serial")).ConfigureAwait(false);
 

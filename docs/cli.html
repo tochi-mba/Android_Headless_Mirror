@@ -143,6 +143,42 @@
     </dl>
     <div class="command-row"><code>rex sound 40</code><button class="copy-button" type="button" data-copy="rex sound 40">Copy</button></div>
   </article>
+  <article class="ref-row cli-row" id="cmd-app-list-search-system-serial-s">
+    <h3><code>rex app list [search] [--system] [--serial S]</code></h3>
+    <p class="ref-hint">The phone's apps by name. A search finds the phone's own apps too; --system lists them all.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex app list spot</code><button class="copy-button" type="button" data-copy="rex app list spot">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-app-open-name-package-fresh-serial-s">
+    <h3><code>rex app open &lt;name|package&gt; [--fresh] [--serial S]</code></h3>
+    <p class="ref-hint">Open an app by its name or package. --fresh closes it first.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex app open Spotify</code><button class="copy-button" type="button" data-copy="rex app open Spotify">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-app-close-info-package-serial-s">
+    <h3><code>rex app close|info &lt;package&gt; [--serial S]</code></h3>
+    <p class="ref-hint">Close an app completely, or open its info page on the phone.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex app close com.spotify.music</code><button class="copy-button" type="button" data-copy="rex app close com.spotify.music">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-app-favourite-package-on-off-serial-s">
+    <h3><code>rex app favourite &lt;package&gt; on|off [--serial S]</code></h3>
+    <p class="ref-hint">Star an app, or take its star away. Favourites have tiles and keys in the app.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex app favourite com.spotify.music on</code><button class="copy-button" type="button" data-copy="rex app favourite com.spotify.music on">Copy</button></div>
+  </article>
   <article class="ref-row cli-row" id="cmd-screenshot-serial-s">
     <h3><code>rex screenshot [--serial S]</code></h3>
     <p class="ref-hint">Save a picture of the phone screen.</p>

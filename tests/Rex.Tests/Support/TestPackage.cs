@@ -54,6 +54,9 @@ public sealed class TestPackage : IDisposable
     public string FailCopiesMarker => Path.Combine(ToolsFolder, "fail-copies");
     public string FakeAdbScenario => Path.Combine(ToolsFolder, "fake-adb.json");
 
+    /// <summary>With this present, reading the fake phone's apps fails as if it had just left.</summary>
+    public string FailListAppsMarker => Path.Combine(ToolsFolder, "fail-list-apps");
+
     /// <summary>With this present, the fake phone says it is too old to send its sound.</summary>
     public string NoAudioMarker => Path.Combine(ToolsFolder, "no-audio");
 

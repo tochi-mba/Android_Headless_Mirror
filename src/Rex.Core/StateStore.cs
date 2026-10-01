@@ -42,6 +42,18 @@ public sealed record DeviceProfile
     /// <summary>Whether this phone's sound is muted on this PC, when it is remembered per phone.</summary>
     public bool? SoundMuted { get; set; }
 
+    /// <summary>The apps this phone can open, as last read; null until they are read.</summary>
+    public IReadOnlyList<PhoneApp>? Apps { get; set; }
+
+    /// <summary>When <see cref="Apps"/> was read.</summary>
+    public DateTimeOffset? AppsReadUtc { get; set; }
+
+    /// <summary>The starred apps' packages, in the order the person put them.</summary>
+    public IReadOnlyList<string> FavouriteApps { get; set; } = [];
+
+    /// <summary>The apps opened from this PC, last opened first.</summary>
+    public IReadOnlyList<RecentApp> RecentApps { get; set; } = [];
+
     public DateTimeOffset? LastSeenUtc { get; set; }
 }
 
@@ -95,7 +107,7 @@ public sealed record StateDocument
 /// Per-machine runtime state (state.json): which phone was seen, its lock type, saved pattern
 /// calibration and learned wireless addresses. Never contains credentials or the pattern itself.
 /// </summary>
-public sealed class StateStore
+public sealed partial class StateStore
 {
     private readonly string _path;
     private readonly object _gate = new();

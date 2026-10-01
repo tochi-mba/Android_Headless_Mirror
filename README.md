@@ -37,7 +37,7 @@ delete that folder.
 
 ## Highlights
 
-- **One window, true fullscreen.** A side panel holds Controls, Phone, Settings and Info. F11 fills
+- **One window, true fullscreen.** A side panel holds Controls, Apps, Phone, Settings and Info. F11 fills
   the display, and the controls become a small bar you drag wherever you like.
 - **Real gestures.** Two fingers on a precision touchpad are two fingers on the phone. Hold Alt and
   the same gestures zoom and pan the view on this PC instead, so clicks always land where you see.
@@ -45,6 +45,8 @@ delete that folder.
   (Ctrl+Alt+K) moves through a feed with the arrow keys.
 - **The phone's sound, your level.** The sound button in the top bar sets how loud the phone plays on
   this PC, remembered for each phone, and it can mute itself while the window is away.
+- **Every app, one click away.** The Apps tab lists the phone's apps by name; type to find one,
+  star the ones you use and open them with Ctrl+Alt+Shift+1 to 9.
 - **Keys from anywhere.** Ctrl+Alt+M brings the mirror up from any app and sends it back to the
   tray, and any action can have a key of its own that works while the window is hidden.
 - **Copies side by side.** Ctrl+Alt+N adds another live view of the phone; copies nobody can see
@@ -66,7 +68,8 @@ All of it, with the settings that shape each part, is on the
 | Go fullscreen                   | F11; Esc leaves                                                  |
 | Force landscape or portrait     | Ctrl+Alt+L or Ctrl+Alt+U; Ctrl+Alt+A lets the phone decide       |
 | Show the pattern guide          | Ctrl+Alt+P; Ctrl+Alt+C lines it up with the arrow keys           |
-| Jump between the side tabs      | Ctrl+Alt+1 to Ctrl+Alt+4; Ctrl+Alt+B hides the panel             |
+| Jump between the side tabs      | Ctrl+Alt+1 to Ctrl+Alt+5; Ctrl+Alt+B hides the panel             |
+| Open an app on the phone        | Ctrl+Alt+2, type its name, Enter; favourites on Ctrl+Alt+Shift+1 to 9 |
 | Quieter, louder or mute on this PC | Ctrl+Alt+PageDown, Ctrl+Alt+PageUp, Ctrl+Alt+Shift+M, or the sound button |
 | Take a screenshot               | Ctrl+Alt+S, or the camera in the top bar                         |
 | Browse a feed without the mouse | Ctrl+Alt+K, then the arrow keys, Enter, L, M and Backspace       |

@@ -17,6 +17,8 @@ namespace Rex.Core;
 /// <param name="GlobalKeys">Every key from anywhere and what it does: keys from anywhere are on.</param>
 /// <param name="Sound">The sound on this PC: phone audio is on.</param>
 /// <param name="SoundLowering">How far and how long the sound is lowered: it is lowered while typing.</param>
+/// <param name="AppsRecent">How many recent apps are remembered: they are shown.</param>
+/// <param name="AppsOnControls">How many favourites the Controls tab shows: it shows them.</param>
 public sealed record SettingsDependencies(
     bool Sensitivity,
     bool Zoom,
@@ -29,7 +31,9 @@ public sealed record SettingsDependencies(
     bool Hud,
     bool GlobalKeys,
     bool Sound,
-    bool SoundLowering)
+    bool SoundLowering,
+    bool AppsRecent,
+    bool AppsOnControls)
 {
     public static SettingsDependencies Of(RexConfig config) => new(
         Sensitivity: config.Touchpad.Enabled && config.Touchpad.TwoFingerToAndroid,
@@ -43,5 +47,7 @@ public sealed record SettingsDependencies(
         Hud: config.Hud.Enabled,
         GlobalKeys: config.GlobalKeys.Enabled,
         Sound: config.Mirror.Audio,
-        SoundLowering: config.Mirror.Audio && config.Sound.LowerWhileTyping);
+        SoundLowering: config.Mirror.Audio && config.Sound.LowerWhileTyping,
+        AppsRecent: config.Apps.ShowRecent,
+        AppsOnControls: config.Apps.FavouritesOnControls);
 }

@@ -137,6 +137,21 @@ public static class SettingsCatalogue
         ["GlobalKeys.TypeIntoPhone"] = "GlobalTypeIntoPhone",
         ["GlobalKeys.Announce"] = "GlobalAnnounce",
         ["GlobalKeys.Actions"] = "GlobalActions",
+
+        ["Apps.ShowSystem"] = "AppsShowSystem",
+        ["Apps.ShowPackages"] = "AppsShowPackages",
+        ["Apps.SortBy"] = "AppsSortBy",
+        ["Apps.Layout"] = "AppsLayout",
+        ["Apps.ShowRecent"] = "AppsShowRecent",
+        ["Apps.RecentCount"] = "AppsRecentCount",
+        ["Apps.FavouritesOnControls"] = "AppsOnControls",
+        ["Apps.FavouritesOnControlsMost"] = "AppsOnControlsMost",
+        ["Apps.FavouritesInHud"] = "AppsInHud",
+        ["Apps.FavouriteKeys"] = "AppsKeys",
+        ["Apps.ReadOnConnect"] = "AppsReadOnConnect",
+        ["Apps.OpenFresh"] = "AppsOpenFresh",
+        ["Apps.CloseWhenMirrorStops"] = "AppsCloseOnStop",
+        ["Apps.Hidden"] = "AppsShowHidden",
     };
 
     /// <summary>

@@ -32,6 +32,12 @@ public sealed class FullscreenHud : Border
     public event Action<string>? ActionRequested;
 
     public bool IsShown => _shown;
+
+    /// <summary>The favourite apps to offer after the chosen buttons; empty when they are not wanted there.</summary>
+    public IReadOnlyList<PhoneApp> Favourites { get; set; } = [];
+
+    /// <summary>What <see cref="ActionRequested"/> carries for a favourite: this, then the app's package.</summary>
+    public const string AppAction = "app:";
     public double HideSeconds { get; set; } = 3;
 
     public FullscreenHud()
@@ -56,7 +62,8 @@ public sealed class FullscreenHud : Border
     public void Apply(HudSettings settings)
     {
         HideSeconds = settings.HideSeconds;
-        var signature = string.Join(",", settings.Buttons) + "|" + settings.Position + "|" + settings.Scale + "|" + settings.Opacity;
+        var signature = string.Join(",", settings.Buttons) + "|" + settings.Position + "|" + settings.Scale + "|" + settings.Opacity + "|" +
+            string.Join(",", Favourites.Select(a => a.Package + "=" + a.Name));
         if (signature == _builtFor)
         {
             return;
@@ -80,7 +87,12 @@ public sealed class FullscreenHud : Border
             }
         }
 
-        if (_buttons.Children.Count == 0)
+        foreach (var app in Favourites)
+        {
+            _buttons.Children.Add(CreateApp(app));
+        }
+
+        if (_buttons.Children.Count == 1)
         {
             _message.Visibility = Visibility.Visible;
             _message.Text = "No buttons chosen. Settings → Fullscreen HUD.";
@@ -201,6 +213,31 @@ public sealed class FullscreenHud : Border
             e.Handled = true;
             Reveal();
             ActionRequested?.Invoke(action.Id);
+        };
+        return button;
+    }
+
+    /// <summary>A favourite app: its letter tile, opening it on the phone.</summary>
+    private Button CreateApp(PhoneApp app)
+    {
+        var button = new Button
+        {
+            Style = (Style)FindResource("GhostButton"),
+            Focusable = false,
+            Margin = new Thickness(2),
+            Width = 40,
+            MinHeight = 36,
+            Padding = new Thickness(6),
+            ToolTip = "Open " + app.Name,
+            Content = Views.AppsPanel.Tile(app, 22),
+        };
+        AutomationProperties.SetName(button, "Open " + app.Name);
+        AutomationProperties.SetAutomationId(button, "hud-app-" + app.Package);
+        button.Click += (_, e) =>
+        {
+            e.Handled = true;
+            Reveal();
+            ActionRequested?.Invoke(AppAction + app.Package);
         };
         return button;
     }

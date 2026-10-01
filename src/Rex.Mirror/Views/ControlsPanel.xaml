@@ -37,6 +37,14 @@
 
     <!-- Each grid is pulled out by the 3 DIP its tiles keep around themselves, so the outer tiles
          line up with everything else in the panel. -->
+    <StackPanel x:Name="AppsSection">
+      <TextBlock Text="APPS" Style="{StaticResource Eyebrow}" />
+      <UniformGrid x:Name="FavouriteTiles" Columns="3" Margin="-3" />
+      <TextBlock x:Name="FavouritesHint" Style="{StaticResource MutedText}" TextWrapping="Wrap" Visibility="Collapsed"
+                 Text="Star an app in the Apps tab to keep it here." />
+      <Button x:Name="AllApps" Content="All apps…" Click="OnAllApps" Margin="0,6,0,0" ToolTip="The Apps tab · Ctrl+Alt+2" />
+    </StackPanel>
+
     <TextBlock Text="PHONE" Style="{StaticResource Eyebrow}" />
     <ItemsControl x:Name="NavigationTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
 
