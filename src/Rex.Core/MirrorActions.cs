@@ -116,8 +116,8 @@ public static class MirrorActions
             "key" => await adb.KeyEventAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
             "rotation" => await adb.SetRotationOverrideAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
             "activity" => await adb.StartActivityAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
-            "statusbar" => await adb.StatusBarAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
-            _ => AndroidResult.Failure($"Unsupported ADB action '{actionId}'."),
+            // AdbCommand has four kinds; the last is the status bar.
+            _ => await adb.StatusBarAsync(serial, command.Value.Argument, cancellationToken).ConfigureAwait(false),
         };
     }
 }

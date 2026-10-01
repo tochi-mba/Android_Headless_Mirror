@@ -2,6 +2,11 @@ using System.Windows;
 
 namespace Rex.Mirror;
 
+/// <summary>
+/// The side panel's tabs, and what the panel needs to know about the window that the session does
+/// not: whether the picture has been frozen. scrcpy keeps no state anyone can ask for, so the
+/// window remembers what was last asked of it, and forgets it with the picture.
+/// </summary>
 public partial class MainWindow
 {
     /// <summary>True from a successful Pause until Resume, or until the mirror ends or starts again.</summary>

@@ -21,6 +21,8 @@ public partial class App : Application
     private readonly string _runId = Guid.NewGuid().ToString("N")[..8];
     private string _startupPhase = "process entry";
     private bool _fatalShown;
+    private bool _errorShown;
+    private const string RunningPhase = "running";
 
     public static LaunchOptions Options { get; private set; } = new();
 
@@ -72,7 +74,7 @@ public partial class App : Application
                 _window.ShowFromTray();
             }
 
-            SetStartupPhase("running");
+            SetStartupPhase(RunningPhase);
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
         {
@@ -115,11 +117,39 @@ public partial class App : Application
         base.OnExit(e);
     }
 
+    /// <summary>
+    /// A failure before the window is up ends the run: a half-built window is worse than none. Once
+    /// it is running the failure is logged in full and the app carries on, as it always has.
+    /// </summary>
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        ReportFatal("Unhandled UI failure", e.Exception, showTechnicalSummary: true);
         e.Handled = true;
-        Shutdown(3);
+        if (_startupPhase != RunningPhase)
+        {
+            ReportFatal("Unhandled UI failure", e.Exception, showTechnicalSummary: true);
+            Shutdown(3);
+            return;
+        }
+
+        ActiveLog?.Critical($"Run {_runId}: unhandled UI failure while running", e.Exception);
+        if (_errorShown)
+        {
+            return;
+        }
+
+        _errorShown = true;
+        try
+        {
+            MessageBox.Show(
+                $"Something went wrong: {ExceptionDiagnostics.Summary(e.Exception)}\n\nThe app carries on. Full details were written to:\n{ActiveLog?.Path ?? "the local application log"}",
+                "Android Headless Mirror",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        catch
+        {
+            // Logged above; a dialog Windows cannot draw must not raise a second failure.
+        }
     }
 
     private RexLog? ActiveLog => _host?.Log ?? _startupLog;
