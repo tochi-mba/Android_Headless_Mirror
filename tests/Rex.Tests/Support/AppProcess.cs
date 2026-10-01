@@ -293,11 +293,13 @@ public sealed partial class AppProcess : IDisposable
         await Task.Delay(250, TestContext.Current.CancellationToken);
     }
 
-    public void KillMirror()
+    public async Task KillMirrorAsync()
     {
-        var executable = Path.Combine(_package.ToolsFolder, "scrcpy.exe");
-        using var mirror = Process.GetProcessesByName("scrcpy")
-            .Single(process => string.Equals(process.MainModule?.FileName, executable, StringComparison.OrdinalIgnoreCase));
+        var status = await SendAsync(new IpcRequest("status"));
+        Assert.True(status.Ok, status.Error);
+        var processId = status.Data?["mirrorProcessId"]?.GetValue<int>();
+        Assert.NotNull(processId);
+        using var mirror = Process.GetProcessById(processId.Value);
         mirror.Kill();
     }
 

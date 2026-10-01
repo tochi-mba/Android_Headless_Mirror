@@ -782,7 +782,7 @@ public sealed partial class AppEndToEndTests
         // The phone drops off USB (a Samsung changes USB mode on unlock) and scrcpy dies with it.
         package.WriteScenario(new { Devices = Array.Empty<object>() });
         await app.WaitForStatusAsync(data => data["visibleDevices"]!.GetValue<int>() == 0, TimeSpan.FromSeconds(10), "ADB to lose the phone");
-        app.KillMirror();
+        await app.KillMirrorAsync();
         var waiting = await app.WaitForPhaseAsync("waiting", StartupTimeout);
         Assert.Contains("disconnected", waiting["message"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
 
@@ -877,7 +877,7 @@ public sealed partial class AppEndToEndTests
         for (var i = 0; i < launches; i++)
         {
             await app.WaitForPhaseAsync("mirroring", StartupTimeout);
-            app.KillMirror();
+            await app.KillMirrorAsync();
             await app.WaitForPhaseAsync(i == launches - 1 ? "stopped" : "waiting", StartupTimeout);
         }
 
