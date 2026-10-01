@@ -53,6 +53,8 @@ public partial class MainWindow
         {
             HideFrameRate();
         }
+
+        ApplyGlobalKeys();
     }
 
     /// <summary>

@@ -1,0 +1,80 @@
+<UserControl x:Class="Rex.Mirror.Views.Settings.GlobalKeysGroup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Rex.Mirror.Views.Controls">
+  <Expander x:Name="GroupGlobalKeys" Header="Shortcuts from anywhere" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="Keys that work while the window is hidden in the tray or behind other windows. To set one, click its box and press the keys; Backspace turns it off and Esc puts back what was there." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Shortcuts work while the window is hidden or behind others" TextWrapping="Wrap" />
+        <TextBlock Text="They take the key from every other app while this one runs. Not while an app running as administrator is in front." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="GlobalKeysEnabled" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Shortcuts work while the window is hidden or behind others" />
+    </HeaderedContentControl>
+    <StackPanel x:Name="GlobalOptions">
+      <HeaderedContentControl Style="{StaticResource SettingRowStacked}" Header="Show or hide the window">
+        <StackPanel>
+          <Grid Margin="0,4,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <controls:ChordBox x:Name="GlobalShowHide" AutomationProperties.Name="Show or hide the window, keyboard shortcut" />
+            <Button x:Name="GlobalShowHideOff" Grid.Column="1" Style="{StaticResource GhostButton}" Content="Turn off" Margin="8,0,0,0" Click="OnShowHideOff"
+                    AutomationProperties.Name="Turn this shortcut off" ToolTip="The show or hide key does nothing until a new one is set." />
+          </Grid>
+          <TextBlock x:Name="GlobalShowHideNote" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+        </StackPanel>
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="When the window is behind others">
+        <ComboBox x:Name="GlobalWhenBehind" SelectionChanged="OnOption" AutomationProperties.Name="When the window is behind others">
+          <ComboBoxItem Content="Bring it to the front" Tag="front" />
+          <ComboBoxItem Content="Hide it" Tag="hide" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="When the window is in front">
+        <ComboBox x:Name="GlobalWhenInFront" SelectionChanged="OnOption" AutomationProperties.Name="When the window is in front">
+          <ComboBoxItem Content="Hide it" Tag="hide" />
+          <ComboBoxItem Content="Do nothing" Tag="nothing" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Hide it to">
+        <ComboBox x:Name="GlobalHideTo" SelectionChanged="OnOption" AutomationProperties.Name="Hide the window to">
+          <ComboBoxItem Content="The tray" Tag="tray" />
+          <ComboBoxItem Content="The taskbar" Tag="taskbar" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Open straight to fullscreen">
+        <CheckBox x:Name="GlobalShowFullscreen" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Open straight to fullscreen" />
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="Type into the phone as soon as it shows" TextWrapping="Wrap" />
+          <TextBlock Text="The phone has the keyboard the moment the window comes up." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <CheckBox x:Name="GlobalTypeIntoPhone" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Type into the phone as soon as it shows" />
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="Say what a shortcut did, from the tray" TextWrapping="Wrap" />
+          <TextBlock Text="Only while the window is hidden or minimised." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <CheckBox x:Name="GlobalAnnounce" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Say what a shortcut did, from the tray" />
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRowStacked}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="More shortcuts from anywhere" />
+          <TextBlock Text="Any action, on a key of its own: a screenshot, the next video, muting." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <StackPanel>
+          <StackPanel x:Name="GlobalActions" AutomationProperties.Name="More shortcuts from anywhere" Margin="0,4,0,0" />
+          <Grid Margin="0,6,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <ComboBox x:Name="GlobalNewAction" AutomationProperties.Name="Action for a new shortcut from anywhere" />
+            <Button x:Name="GlobalAddAction" Grid.Column="1" Content="Add a shortcut…" Margin="8,0,0,0" Click="OnAddAction"
+                    AutomationProperties.Name="Add a shortcut from anywhere for this action" />
+          </Grid>
+          <TextBlock x:Name="GlobalActionsNote" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+        </StackPanel>
+      </HeaderedContentControl>
+    </StackPanel>
+  </StackPanel></Expander>
+</UserControl>

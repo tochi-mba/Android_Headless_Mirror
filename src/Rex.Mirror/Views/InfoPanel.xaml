@@ -57,8 +57,8 @@
               ToolTip="Offer the one-time hints again the next time each one applies" />
     </UniformGrid>
 
-    <!-- Three short lists instead of one long one: the app's own keys, the plain keys browse mode
-         takes over, and the pointer gestures. The keys are drawn as keycaps in one shared column,
+    <!-- Short lists instead of one long one: the window's own keys, the keys from anywhere, the
+         plain keys browse mode takes over, and the pointer gestures. The keys are drawn as keycaps in one shared column,
          so every description starts at the same place whatever the key's length. -->
     <StackPanel>
       <StackPanel.Resources>
@@ -78,6 +78,9 @@
       </StackPanel.Resources>
       <TextBlock Text="SHORTCUTS" Style="{StaticResource Eyebrow}" />
       <ItemsControl x:Name="ShortcutKeys" ItemTemplate="{StaticResource ShortcutRow}" Focusable="False" />
+      <TextBlock Text="FROM ANYWHERE" Style="{StaticResource Eyebrow}" />
+      <TextBlock x:Name="ShortcutGlobalNote" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6" />
+      <ItemsControl x:Name="ShortcutGlobal" ItemTemplate="{StaticResource ShortcutRow}" Focusable="False" />
       <TextBlock x:Name="BrowseHeading" Style="{StaticResource Eyebrow}" />
       <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,6"
                  Text="While browse mode is on, these keys act on the phone. Letters still type, and Esc goes back to typing." />

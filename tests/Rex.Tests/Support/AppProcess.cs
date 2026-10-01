@@ -19,10 +19,14 @@ public sealed partial class AppProcess : IDisposable
     /// <summary>Every window these tests have started, so none can outlive the test that owns it.</summary>
     private static readonly List<Process> Started = [];
 
-    public AppProcess(TestPackage package)
+    private readonly bool _background;
+
+    /// <param name="background">Start hidden in the tray, as Start with Windows does (--background).</param>
+    public AppProcess(TestPackage package, bool background = false)
     {
         KillStrays();
         _package = package;
+        _background = background;
         _client = new IpcClient(_pipe);
         _process = Start();
     }
@@ -72,6 +76,11 @@ public sealed partial class AppProcess : IDisposable
         };
         start.ArgumentList.Add("--root");
         start.ArgumentList.Add(_package.Root);
+        if (_background)
+        {
+            start.ArgumentList.Add("--background");
+        }
+
         start.Environment[Ipc.PipeNameOverride] = _pipe;
         // Never the PC's real USB devices, Task Scheduler or administrator prompt.
         start.Environment[UsbDeviceSource.FakeVariable] = _package.UsbProblemsFile;
@@ -517,6 +526,9 @@ public sealed partial class AppProcess : IDisposable
         // A crash on the way out (a native one never reaches the log) still shows in the exit code.
         Assert.True(_process.ExitCode == 0, $"The app quit with exit code 0x{_process.ExitCode:X8}. Log:\n" + Log());
     }
+
+    /// <summary>The app's log as it stands, for a test that counts what the app did.</summary>
+    public string ReadLog() => Log();
 
     private string Log()
     {

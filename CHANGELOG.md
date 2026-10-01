@@ -4,6 +4,26 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.4.0 - 2026-10-01
+
+### Added
+
+- Keys that work from anywhere. Ctrl+Alt+M brings the mirror up from any app, even from the tray,
+  and sends it away again; what it does when the window is behind others or in front is yours to
+  choose, and it can open straight to fullscreen.
+- Any action can have a key of its own that works while the window is hidden, such as the next
+  video or a screenshot, with an optional word from the tray to say it worked.
+- Settings has a **Shortcuts from anywhere** group: click a box and press the keys. A key that
+  Windows or the window already uses is refused with the reason, and the box warns when your
+  keyboard layout types a character with the key or another app has claimed it.
+- The tray menu shows the key beside **Open**, and has a switch for keys from anywhere. The Info
+  tab lists your keys from anywhere.
+
+### Fixed
+
+- Ctrl+Alt+Shift+1 to 4 no longer switch tabs, and Ctrl+Alt+F1 no longer starts the tour: each
+  key of the window now needs exactly its own modifiers.
+
 ## 2.3.4 - 2026-10-01
 
 ### Fixed

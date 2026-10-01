@@ -80,9 +80,7 @@ public partial class MainWindow
     private string CurrentTab() =>
         TabPhone.IsChecked == true ? "phone" : TabSettings.IsChecked == true ? "settings" : TabInfo.IsChecked == true ? "info" : "controls";
 
-    /// <summary>The tabs in the order Ctrl+Alt+1 to 4 reach them.</summary>
-    private static readonly string[] TabOrder = ["controls", "phone", "settings", "info"];
-
+    /// <summary>Shows a tab of the side panel by its name.</summary>
     private void SelectTab(string tab)
     {
         (tab switch

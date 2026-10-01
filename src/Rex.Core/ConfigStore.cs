@@ -48,7 +48,8 @@ public sealed class ConfigStore
 
         // The load belongs inside the same cross-process transaction as the save.
         // Otherwise a stale GUI/CLI snapshot can overwrite an unrelated newer edit.
-        var root = ToJson(ConfigFile.Load(_path));
+        var loaded = ConfigFile.Load(_path);
+        var root = ToJson(loaded);
         var segments = Split(path);
         if (segments.Length == 0)
         {
@@ -75,12 +76,8 @@ public sealed class ConfigStore
             throw new InvalidOperationException("Version is managed by the app and cannot be changed.");
         }
 
-        if (segments.Length == 2 &&
-            segments[0].Equals(nameof(RexConfig.Mirror), StringComparison.OrdinalIgnoreCase) &&
-            key.Equals(nameof(MirrorSettings.ExtraArgs), StringComparison.OrdinalIgnoreCase))
-        {
-            _ = ScrcpyArguments.SplitExtraArgs(rawValue);
-        }
+        var group = segments.Length == 2 ? ResolveKey(root, segments[0]) : null;
+        ConfigValidation.Check(group is null ? key : group + "." + key, rawValue, loaded);
 
         parent[key] = ParseLike(existing, rawValue);
 

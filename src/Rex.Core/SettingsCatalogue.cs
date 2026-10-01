@@ -110,6 +110,16 @@ public static class SettingsCatalogue
         ["App.ScreenshotFormat"] = "ScreenshotFormat",
         ["App.CopyScreenshots"] = "CopyScreenshots",
         ["App.ShowWhatsNew"] = "ShowWhatsNew",
+
+        ["GlobalKeys.Enabled"] = "GlobalKeysEnabled",
+        ["GlobalKeys.ShowHide"] = "GlobalShowHide",
+        ["GlobalKeys.WhenBehind"] = "GlobalWhenBehind",
+        ["GlobalKeys.WhenInFront"] = "GlobalWhenInFront",
+        ["GlobalKeys.HideTo"] = "GlobalHideTo",
+        ["GlobalKeys.ShowFullscreen"] = "GlobalShowFullscreen",
+        ["GlobalKeys.TypeIntoPhone"] = "GlobalTypeIntoPhone",
+        ["GlobalKeys.Announce"] = "GlobalAnnounce",
+        ["GlobalKeys.Actions"] = "GlobalActions",
     };
 
     /// <summary>

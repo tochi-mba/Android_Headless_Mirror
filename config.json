@@ -151,6 +151,17 @@
     "CopyScreenshots": false,
     "ShowWhatsNew": true
   },
+  "GlobalKeys": {
+    "Enabled": true,
+    "ShowHide": "Ctrl+Alt+M",
+    "WhenBehind": "front",
+    "WhenInFront": "hide",
+    "HideTo": "tray",
+    "ShowFullscreen": false,
+    "TypeIntoPhone": true,
+    "Announce": false,
+    "Actions": []
+  },
   "Logging": {
     "Enabled": true,
     "MaxBytes": 2097152,

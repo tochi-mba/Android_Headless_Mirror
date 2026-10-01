@@ -6,8 +6,9 @@ namespace Rex.Core;
 /// <param name="Description">What happens, in the same voice as the buttons.</param>
 /// <param name="IsKey">True for a key combination, false for a pointer or touchpad gesture.</param>
 /// <param name="Browse">True for a plain key that only means this while browse mode is on.</param>
-/// <param name="Action">For a browse key, the <see cref="MirrorActions"/> id it plays.</param>
-public sealed record Shortcut(string Id, string Gesture, string Description, bool IsKey = true, bool Browse = false, string? Action = null);
+/// <param name="Action">For a browse key or a key from anywhere, the <see cref="MirrorActions"/> id it plays.</param>
+/// <param name="Global">True for a key that works from anywhere, while the window is hidden or behind others.</param>
+public sealed record Shortcut(string Id, string Gesture, string Description, bool IsKey = true, bool Browse = false, string? Action = null, bool Global = false);
 
 /// <summary>
 /// Every shortcut the app answers to, in one place.
@@ -49,6 +50,7 @@ public static class Shortcuts
         new("rotate-right", "Ctrl+Alt+Right", "Turn the PC view right"),
         new("pattern-guide", "Ctrl+Alt+P", "Show or hide the pattern guide"),
         new("pattern-calibrate", "Ctrl+Alt+C", "Calibrate the guide with the arrow keys"),
+        new(GlobalKeyRules.ShowHide, GlobalKeysSettings.DefaultShowHide, "Show or hide the window, from anywhere", Global: true),
         new("browse-next", "Down", "Next item in a feed (swipe up)", Browse: true, Action: "swipe-up"),
         new("browse-previous", "Up", "Previous item in a feed (swipe down)", Browse: true, Action: "swipe-down"),
         new("browse-forward", "Right", "Next story, photo or page (swipe left)", Browse: true, Action: "swipe-left"),
@@ -64,6 +66,35 @@ public static class Shortcuts
     ];
 
     public static Shortcut? Find(string id) => All.FirstOrDefault(s => s.Id == id);
+
+    /// <summary>
+    /// The shortcuts as this person has them: the show-or-hide key they chose (left out when it or
+    /// every key from anywhere is off), and their own keys from anywhere after it.
+    /// </summary>
+    public static IReadOnlyList<Shortcut> Effective(RexConfig config)
+    {
+        var keys = config.GlobalKeys;
+        var list = new List<Shortcut>(All.Count + keys.Actions.Count);
+        foreach (var shortcut in All)
+        {
+            if (shortcut.Id != GlobalKeyRules.ShowHide)
+            {
+                list.Add(shortcut);
+            }
+            else if (keys.Enabled && keys.ShowHide.Length > 0)
+            {
+                list.Add(shortcut with { Gesture = keys.ShowHide });
+            }
+        }
+
+        if (keys.Enabled)
+        {
+            list.AddRange(keys.Actions.Select(a => new Shortcut(
+                "global-" + a.Action, a.Key, MirrorActions.Find(a.Action)!.Label + ", from anywhere", Action: a.Action, Global: true)));
+        }
+
+        return list;
+    }
 
     /// <summary>The keys that mean something on their own while browse mode is on.</summary>
     public static IReadOnlyList<Shortcut> BrowseKeys => All.Where(s => s.Browse).ToArray();

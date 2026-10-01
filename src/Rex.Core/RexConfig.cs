@@ -24,6 +24,7 @@ public sealed record RexConfig
     public HudSettings Hud { get; set; } = new();
     public PatternGuideSettings PatternGuide { get; set; } = new();
     public AppSettings App { get; set; } = new();
+    public GlobalKeysSettings GlobalKeys { get; set; } = new();
     public LoggingSettings Logging { get; set; } = new();
 
     /// <summary>Clamps every value into its supported range. Called after load and before save.</summary>
@@ -41,6 +42,7 @@ public sealed record RexConfig
         Hud.Normalize();
         PatternGuide.Normalize();
         App.Normalize();
+        GlobalKeys.Normalize();
         Logging.Normalize();
     }
 
@@ -57,6 +59,7 @@ public sealed record RexConfig
         Hud = Hud.Copy(),
         PatternGuide = PatternGuide.Copy(),
         App = App.Copy(),
+        GlobalKeys = GlobalKeys.Copy(),
         Logging = Logging.Copy(),
     };
 
@@ -77,6 +80,7 @@ public sealed record RexConfig
         Hud = copy.Hud;
         PatternGuide = copy.PatternGuide;
         App = copy.App;
+        GlobalKeys = copy.GlobalKeys;
         Logging = copy.Logging;
     }
 
@@ -800,6 +804,7 @@ public static class PathRules
     PropertyNamingPolicy = JsonKnownNamingPolicy.Unspecified,
     DefaultIgnoreCondition = JsonIgnoreCondition.Never)]
 [JsonSerializable(typeof(RexConfig))]
+[JsonSerializable(typeof(List<GlobalKeyAction>))]
 [JsonSerializable(typeof(StateDocument))]
 [JsonSerializable(typeof(UiState))]
 [JsonSerializable(typeof(DeviceProfile))]

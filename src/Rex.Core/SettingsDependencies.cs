@@ -14,6 +14,7 @@ namespace Rex.Core;
 /// <param name="AudioDup">Keeping the audio on the phone too: audio is on and its source can be duplicated.</param>
 /// <param name="Ambient">The soft background's options: the soft background is on.</param>
 /// <param name="Hud">The fullscreen controls' options: they are shown.</param>
+/// <param name="GlobalKeys">Every key from anywhere and what it does: keys from anywhere are on.</param>
 public sealed record SettingsDependencies(
     bool Sensitivity,
     bool Zoom,
@@ -23,7 +24,8 @@ public sealed record SettingsDependencies(
     bool Audio,
     bool AudioDup,
     bool Ambient,
-    bool Hud)
+    bool Hud,
+    bool GlobalKeys)
 {
     public static SettingsDependencies Of(RexConfig config) => new(
         Sensitivity: config.Touchpad.Enabled && config.Touchpad.TwoFingerToAndroid,
@@ -34,5 +36,6 @@ public sealed record SettingsDependencies(
         Audio: config.Mirror.Audio,
         AudioDup: config.Mirror.Audio && config.Mirror.AudioDupPossible,
         Ambient: config.Ambient.Enabled,
-        Hud: config.Hud.Enabled);
+        Hud: config.Hud.Enabled,
+        GlobalKeys: config.GlobalKeys.Enabled);
 }
