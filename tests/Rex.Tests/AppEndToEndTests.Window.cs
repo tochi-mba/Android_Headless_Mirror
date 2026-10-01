@@ -49,7 +49,7 @@ public sealed partial class AppEndToEndTests
             s => s["window"]!["lastNotification"]!.GetValue<string>().StartsWith("Phone disconnected", StringComparison.Ordinal),
             StartupTimeout,
             "word that the phone left");
-        app.KillMirror();
+        await app.KillMirrorAsync();
 
         File.Delete(package.FakeAdbScenario);
         await app.WaitForStatusAsync(

@@ -184,6 +184,7 @@ public static partial class CommandRouter
             ["phase"] = session.Phase.ToString().ToLowerInvariant(),
             ["message"] = session.Message,
             ["mirroring"] = session.IsMirroring,
+            ["mirrorProcessId"] = session.Scrcpy?.ProcessId,
             ["visibleDevices"] = session.Devices.Count,
             ["restartRequired"] = session.NeedsRestart,
             ["paused"] = host.Window?.MirrorPaused ?? false,
