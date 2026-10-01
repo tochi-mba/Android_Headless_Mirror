@@ -51,6 +51,9 @@ public sealed record UiState
     public bool SidebarVisible { get; set; } = true;
     public string SidebarTab { get; set; } = "controls";
 
+    /// <summary>Settings groups the person left open, in display order.</summary>
+    public List<string> SettingsOpen { get; set; } = ["GroupDisplay"];
+
     /// <summary>0 means the panel has never been resized; the window then uses its own default.</summary>
     public double SidebarWidth { get; set; }
 
@@ -107,10 +110,10 @@ public sealed class StateStore
 
     public UiState Ui
     {
-        get { lock (_gate) { return _state.Ui with { }; } }
+        get { lock (_gate) { return _state.Ui with { SettingsOpen = [.. _state.Ui.SettingsOpen] }; } }
     }
 
-    public void SetUi(UiState ui) => Update(state => state.Ui = ui with { });
+    public void SetUi(UiState ui) => Update(state => state.Ui = ui with { SettingsOpen = [.. ui.SettingsOpen] });
 
     public DeviceProfile? GetDevice(string serial)
     {
@@ -266,6 +269,7 @@ public sealed class StateStore
             state.Devices = new Dictionary<string, DeviceProfile>(state.Devices, StringComparer.Ordinal);
             state.WirelessHosts ??= [];
             state.Ui ??= new UiState();
+            state.Ui.SettingsOpen ??= ["GroupDisplay"];
             return state;
         }
         catch (JsonException)

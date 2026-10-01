@@ -22,6 +22,41 @@ public sealed class ConfigTests
     }
 
     [Fact]
+    public void EveryGroupOfSettingsIsCopiedResetAndCopiedFrom()
+    {
+        var source = new RexConfig();
+        source.Mirror.MaxFps = 17;
+        source.Session.StayAwake = false;
+        source.Wireless.Port = 6000;
+        source.Touchpad.Sensitivity = 2;
+        source.Input.RightClick = "home";
+        source.Zoom.MaxZoom = 7;
+        source.Copies.Most = 5;
+        source.Ambient.Blur = 7;
+        source.Hud.Buttons = ["home"];
+        source.PatternGuide.Opacity = 0.5;
+        source.App.TopBarButtons = ["home"];
+        source.Logging.KeepFiles = 9;
+
+        var copy = source.Copy();
+        foreach (var property in typeof(RexConfig).GetProperties().Where(property => property.Name != nameof(RexConfig.Version)))
+        {
+            Assert.NotSame(property.GetValue(source), property.GetValue(copy));
+        }
+
+        var target = new RexConfig();
+        target.CopyFrom(source);
+        Assert.Equal(
+            System.Text.Json.JsonSerializer.Serialize(source, RexJsonContext.Default.RexConfig),
+            System.Text.Json.JsonSerializer.Serialize(target, RexJsonContext.Default.RexConfig));
+
+        target.Reset();
+        Assert.Equal(
+            System.Text.Json.JsonSerializer.Serialize(new RexConfig(), RexJsonContext.Default.RexConfig),
+            System.Text.Json.JsonSerializer.Serialize(target, RexJsonContext.Default.RexConfig));
+    }
+
+    [Fact]
     public void Normalize_ClampsOutOfRangeValues()
     {
         var config = new RexConfig();

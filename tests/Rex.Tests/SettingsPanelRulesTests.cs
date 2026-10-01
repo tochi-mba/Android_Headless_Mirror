@@ -1,8 +1,10 @@
 using System.Windows.Automation;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Rex.Core;
 using Rex.Mirror.Views;
+using Rex.Mirror.Views.Settings;
 using Rex.Tests.Support;
 
 namespace Rex.Tests;
@@ -86,6 +88,75 @@ public sealed class SettingsPanelRulesTests
                 }
             }
 
+            return true;
+        });
+    }
+
+    [Fact]
+    public void EveryValueInConfigHasAControlOrARecordedReason()
+    {
+        using var package = new TestPackage();
+        var paths = new ConfigStore(package.Paths.Config).Flatten().Select(leaf => leaf.Path).ToHashSet(StringComparer.Ordinal);
+        // Flatten intentionally omits null leaves; these two are still schema values and are set by dragging.
+        paths.Add("Hud.X");
+        paths.Add("Hud.Y");
+        var catalogued = SettingsCatalogue.Controls.Keys
+            .Concat(SettingsCatalogue.Elsewhere.Keys)
+            .Concat(SettingsCatalogue.NotYet)
+            .ToArray();
+
+        Assert.Equal(catalogued.Length, catalogued.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(paths.Order(), catalogued.Order());
+        Assert.Equal(21, SettingsCatalogue.NotYet.Count);
+
+        Wpf.Run(() =>
+        {
+            var panel = Wpf.Layout(new SettingsPanel(), 300);
+            var controls = LogicalDescendants(panel).OfType<FrameworkElement>()
+                .Where(element => element.Name.Length > 0)
+                .ToDictionary(element => element.Name, StringComparer.Ordinal);
+            Assert.All(SettingsCatalogue.Controls, entry =>
+            {
+                Assert.True(controls.TryGetValue(entry.Value, out var control), $"No settings control named '{entry.Value}'.");
+                Assert.Equal(entry.Key, SettingRows.GetConfigPath(control));
+            });
+            return true;
+        });
+    }
+
+    [Fact]
+    public void GroupsInTheirOwnFilesCanBeConstructedBeforeTheyAreAttached()
+    {
+        Wpf.Run(() =>
+        {
+            var copies = Wpf.Layout(new CopiesGroup(), 300);
+            var hud = Wpf.Layout(new HudGroup(), 300);
+            Assert.NotNull(LogicalDescendants(copies).OfType<Slider>().Single(slider => slider.Name == "CopiesMost"));
+            Assert.NotNull(LogicalDescendants(hud).OfType<Slider>().Single(slider => slider.Name == "HudScale"));
+            return true;
+        });
+    }
+
+    [Fact]
+    public void ASettingIsFoundByItsConfigPath()
+    {
+        Wpf.Run(() =>
+        {
+            var panel = Wpf.Layout(new SettingsPanel(), 300);
+            var filter = Assert.IsType<TextBox>(panel.FindName("SettingsFilter"));
+            var count = Assert.IsType<TextBlock>(panel.FindName("FilterCount"));
+            var frameRate = Assert.IsType<ComboBox>(panel.FindName("MaxFps"));
+
+            filter.Text = "Mirror.MaxFps";
+            Assert.Equal("1 setting matches", count.Text);
+            Assert.Equal(Visibility.Visible, frameRate.Visibility);
+
+            filter.Text = "maxfps";
+            Assert.Equal("1 setting matches", count.Text);
+            Assert.Equal(Visibility.Visible, frameRate.Visibility);
+
+            filter.Text = "Config.Path.That.Does.Not.Exist";
+            Assert.Equal(Visibility.Visible, Assert.IsType<TextBlock>(panel.FindName("FilterEmpty")).Visibility);
             return true;
         });
     }

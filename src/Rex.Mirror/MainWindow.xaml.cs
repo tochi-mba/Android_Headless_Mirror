@@ -710,6 +710,7 @@ public partial class MainWindow : Window
         try { await SaveScreenshotCoreAsync(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
+            _host.Log.Error("Could not save a screenshot", ex);
             SetStatus("Could not save screenshot: " + ex.Message, isError: true);
         }
     }
@@ -749,6 +750,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
+            _host.Log.Error($"Could not reveal screenshot '{path}' in File Explorer", ex);
             SetStatus("Could not open File Explorer: " + ex.Message, isError: true);
         }
     }
@@ -781,6 +783,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
+            _host.Log.Error($"Could not turn Start with Windows {(enabled ? "on" : "off")}", ex);
             SetStatus("Could not change Windows startup: " + ex.Message, true);
         }
 
@@ -837,70 +840,6 @@ public partial class MainWindow : Window
         {
             EmptyRepair.IsEnabled = true;
         }
-    }
-
-    private void OnTabChecked(object sender, RoutedEventArgs e)
-    {
-        if (ControlsPanel is null)
-        {
-            return;
-        }
-
-        var tab = CurrentTab();
-
-        // The four tabs share one scroll bar. Each keeps its own place, so a long scroll through
-        // Settings no longer opens Info at its bottom, and coming back finds Settings where it was.
-        if (_shownTab is { } previous && previous != tab)
-        {
-            _tabOffsets[previous] = SidebarScroll.VerticalOffset;
-        }
-
-        var restore = _tabOffsets.GetValueOrDefault(tab);
-        _shownTab = tab;
-        ControlsPanel.Visibility = tab == "controls" ? Visibility.Visible : Visibility.Collapsed;
-        PhonePanel.Visibility = tab == "phone" ? Visibility.Visible : Visibility.Collapsed;
-        SettingsPanel.Visibility = tab == "settings" ? Visibility.Visible : Visibility.Collapsed;
-        InfoPanel.Visibility = tab == "info" ? Visibility.Visible : Visibility.Collapsed;
-        if (tab == "controls")
-        {
-            _ = ControlsPanel.RefreshRotationAsync();
-        }
-        else if (tab == "phone")
-        {
-            PhonePanel.Refresh();
-        }
-        else if (tab == "settings")
-        {
-            SettingsPanel.Refresh();
-        }
-        else if (tab == "info")
-        {
-            InfoPanel.Refresh();
-        }
-
-        SidebarScroll.ScrollToVerticalOffset(restore);
-        // The new tab has not been measured yet; apply it again once it has, clamped to its height.
-        Dispatcher.BeginInvoke(() => SidebarScroll.ScrollToVerticalOffset(restore), System.Windows.Threading.DispatcherPriority.Loaded);
-    }
-
-    private readonly Dictionary<string, double> _tabOffsets = new(StringComparer.Ordinal);
-    private string? _shownTab;
-
-    private string CurrentTab() =>
-        TabPhone.IsChecked == true ? "phone" : TabSettings.IsChecked == true ? "settings" : TabInfo.IsChecked == true ? "info" : "controls";
-
-    /// <summary>The tabs in the order Ctrl+Alt+1 to 4 reach them.</summary>
-    private static readonly string[] TabOrder = ["controls", "phone", "settings", "info"];
-
-    private void SelectTab(string tab)
-    {
-        (tab switch
-        {
-            "phone" => TabPhone,
-            "settings" => TabSettings,
-            "info" => TabInfo,
-            _ => TabControls,
-        }).IsChecked = true;
     }
 
     public void OpenFolder(string path)

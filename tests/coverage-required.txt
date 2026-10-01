@@ -1,0 +1,8 @@
+# Rex.Core source files that must remain 100% line-covered by the fast test suite.
+MirrorActions.cs
+SettingsDependencies.cs
+CopiesPlan.cs
+CopiesLayout.cs
+CopiesStatus.cs
+ChildShape.cs
+DisplayOrientation.cs

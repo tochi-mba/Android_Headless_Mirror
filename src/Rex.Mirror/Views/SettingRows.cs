@@ -22,6 +22,10 @@ public static class SettingRows
     public static readonly DependencyProperty HotProperty = DependencyProperty.RegisterAttached(
         "Hot", typeof(bool), typeof(SettingRows), new PropertyMetadata(false));
 
+    /// <summary>The dotted config.json path a settings control edits.</summary>
+    public static readonly DependencyProperty ConfigPathProperty = DependencyProperty.RegisterAttached(
+        "ConfigPath", typeof(string), typeof(SettingRows), new PropertyMetadata(string.Empty));
+
     private static readonly DependencyProperty PressedProperty = DependencyProperty.RegisterAttached(
         "Pressed", typeof(bool), typeof(SettingRows), new PropertyMetadata(false));
 
@@ -32,6 +36,10 @@ public static class SettingRows
     public static bool GetHot(DependencyObject element) => (bool)element.GetValue(HotProperty);
 
     public static void SetHot(DependencyObject element, bool value) => element.SetValue(HotProperty, value);
+
+    public static string GetConfigPath(DependencyObject element) => (string)element.GetValue(ConfigPathProperty);
+
+    public static void SetConfigPath(DependencyObject element, string value) => element.SetValue(ConfigPathProperty, value);
 
     /// <summary>The switch a row holds, or null for a row whose control is something else.</summary>
     internal static ToggleButton? SwitchOf(HeaderedContentControl row) => row.Content as CheckBox;

@@ -128,6 +128,7 @@ public partial class InfoPanel : UserControl
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Runtime.InteropServices.COMException)
         {
+            _host.Log.Error("Could not build or copy diagnostics", ex);
             _window?.SetStatus("Could not build diagnostics: " + ex.Message, true);
         }
     }

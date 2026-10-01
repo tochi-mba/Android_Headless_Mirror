@@ -133,12 +133,7 @@ public static class MachineMode
         {
             var adb = context.RequireAdb();
             var target = await context.ResolveSerialAsync(serial).ConfigureAwait(false);
-            var command = MirrorActions.AdbCommand(action.Id)!.Value;
-            var result = command.Kind == "key"
-                ? await adb.KeyEventAsync(target, command.Argument).ConfigureAwait(false)
-                : command.Kind == "rotation"
-                ? await adb.SetRotationOverrideAsync(target, command.Argument).ConfigureAwait(false)
-                : await adb.StatusBarAsync(target, command.Argument).ConfigureAwait(false);
+            var result = await MirrorActions.RunAdbAsync(adb, target, action.Id).ConfigureAwait(false);
             return result.Ok
                 ? Success("action", new JsonObject { ["action"] = action.Id, ["serial"] = target })
                 : throw new InvalidOperationException(result.Text);

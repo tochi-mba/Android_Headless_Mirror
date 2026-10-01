@@ -244,4 +244,33 @@ public sealed class StateAndIpcTests
         Assert.False(report.SetupComplete);
         Assert.Equal("unauthorized", report.ToJson()["devices"]![0]!["state"]!.GetValue<string>());
     }
+
+    [Fact]
+    public void ExceptionDiagnosticsUnwrapsInvocationShellsAndKeepsTheWholeChain()
+    {
+        var root = new InvalidOperationException("the useful message");
+        var wrapped = new System.Reflection.TargetInvocationException(
+            new System.Reflection.TargetInvocationException(root));
+
+        Assert.Same(root, ExceptionDiagnostics.RootCause(wrapped));
+        Assert.Equal("InvalidOperationException: the useful message", ExceptionDiagnostics.Summary(wrapped));
+        var details = ExceptionDiagnostics.Format(wrapped);
+        Assert.Contains("Root cause", details, StringComparison.Ordinal);
+        Assert.Contains("the useful message", details, StringComparison.Ordinal);
+        Assert.Contains("Full exception chain", details, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FatalFailuresAreLoggedEvenWhenOrdinaryLoggingIsOff()
+    {
+        using var package = new TestPackage();
+        var log = new RexLog(package.Paths.LogFile, new LoggingSettings { Enabled = false });
+        log.Info("not written");
+        log.Critical("startup failed", new InvalidOperationException("root cause"));
+
+        var text = File.ReadAllText(package.Paths.LogFile);
+        Assert.DoesNotContain("not written", text, StringComparison.Ordinal);
+        Assert.Contains("[FATAL]", text, StringComparison.Ordinal);
+        Assert.Contains("root cause", text, StringComparison.Ordinal);
+    }
 }

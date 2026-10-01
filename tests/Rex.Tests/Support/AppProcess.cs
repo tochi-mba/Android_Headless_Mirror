@@ -9,7 +9,7 @@ namespace Rex.Tests.Support;
 /// One running RexMirror.exe against a <see cref="TestPackage"/>: drives it over the pipe, with
 /// real input, and through UI Automation; captures screenshots; waits for observable state.
 /// </summary>
-public sealed class AppProcess : IDisposable
+public sealed partial class AppProcess : IDisposable
 {
     private readonly TestPackage _package;
     private readonly string _pipe = "rex-tests-" + Guid.NewGuid().ToString("N");
@@ -562,6 +562,7 @@ public sealed class AppProcess : IDisposable
 
     public void Dispose()
     {
+        CloseForegroundTestWindow();
         lock (Started)
         {
             Started.Remove(_process);

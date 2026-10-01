@@ -116,7 +116,7 @@ public sealed class UsbDoctor : IDisposable
         }
         catch (InvalidOperationException ex)
         {
-            _host.Log.Warn("Could not read the USB auto-repair task: " + ex.Message);
+            _host.Log.Warn("Could not read the USB auto-repair task", ex);
             return new UsbAutoRepairStatus(UsbAutoRepairState.NotInstalled);
         }
     }
@@ -130,7 +130,7 @@ public sealed class UsbDoctor : IDisposable
         }
         catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
         {
-            _host.Log.Warn("USB auto-repair did not start: " + ex.Message);
+            _host.Log.Warn("USB auto-repair did not start", ex);
         }
     }
 
@@ -196,10 +196,12 @@ public sealed class UsbDoctor : IDisposable
         }
         catch (OperationCanceledException)
         {
+            _host.Log.Info("USB repair was cancelled at the administrator prompt.");
             return (false, "Cancelled at the administrator prompt.");
         }
         catch (InvalidOperationException ex)
         {
+            _host.Log.Error("Could not start the elevated USB repair", ex);
             return (false, "Could not start the repair: " + ex.Message);
         }
         finally

@@ -290,6 +290,27 @@ public sealed class AdbTests
     }
 
     [Fact]
+    public async Task EveryAdbActionRunsItsOwnCommand()
+    {
+        foreach (var action in MirrorActions.All.Where(action => action.Kind == ActionKind.Adb))
+        {
+            var runner = new FakeProcessRunner();
+            var result = await MirrorActions.RunAdbAsync(
+                new AdbClient("adb.exe", runner), "S", action.Id, TestContext.Current.CancellationToken);
+
+            Assert.True(result.Ok, action.Id);
+            Assert.NotEmpty(runner.Calls);
+        }
+
+        var refusedRunner = new FakeProcessRunner();
+        var refused = await MirrorActions.RunAdbAsync(
+            new AdbClient("adb.exe", refusedRunner), "S", "zoom-in", TestContext.Current.CancellationToken);
+        Assert.False(refused.Ok);
+        Assert.Contains("not an ADB action", refused.Text, StringComparison.Ordinal);
+        Assert.Empty(refusedRunner.Calls);
+    }
+
+    [Fact]
     public async Task DumpUiHierarchy_ExtractsXmlFromTtyOutput()
     {
         var runner = new FakeProcessRunner { Respond = _ => new ProcessResult(0, "UI hierchary dumped to: /dev/tty\n<?xml version='1.0'?><hierarchy rotation=\"0\"><node bounds=\"[0,0][1,1]\"/></hierarchy>\n", "") };

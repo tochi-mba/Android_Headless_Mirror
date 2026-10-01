@@ -51,7 +51,7 @@ public sealed class PipeServer : IDisposable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                _host.Log.Warn("Pipe server error: " + ex.Message);
+                _host.Log.Warn("Pipe server connection failed; retrying", ex);
                 await Task.Delay(500, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
