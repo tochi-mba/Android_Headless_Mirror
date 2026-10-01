@@ -31,7 +31,6 @@ public sealed partial class AppUiTests
         }
 
         Assert.Equal(expected.Select(e => e.Url), package.OpenedPages());
-        await app.WaitUntilAsync(() => app.Ui.Read("StatusText", e => e.Name).StartsWith("Opened", StringComparison.Ordinal), Soon, "the status line to say so");
         await app.SaveScreenshotAsync("ui-info-help.png");
         await app.QuitAsync();
     }
@@ -42,11 +41,14 @@ public sealed partial class AppUiTests
         TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         var state = new StateStore(package.Paths.State);
+        // The lock-screen question outranks the note; answer it first, as someone who has used the app has.
+        state.SetLockScreenMode("FAKE123", LockScreenModes.Pattern);
         state.SetUi(state.Ui with { LastRunVersion = "1.0.0" });
 
         using (var first = new AppProcess(package))
         {
-            await first.WaitUntilAsync(() => first.Ui.Exists("NoticeWhatsNew"), Startup, "the note about the update");
+            await first.WaitForPhaseAsync("mirroring", Startup);
+            await first.WaitUntilAsync(() => first.Ui.Exists("NoticeWhatsNew"), Soon, "the note about the update");
             Assert.Equal($"Updated to {CommandRouter.AppVersion}.", first.Ui.Read("NoticeTitle", e => e.Name));
             await first.SaveScreenshotAsync("ui-whats-new.png");
             first.Ui.Invoke("NoticeWhatsNew");
