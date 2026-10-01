@@ -60,7 +60,7 @@ public partial class SoundGroup : UserControl, ISettingsGroup
             SoundOffNote.Visibility = on.Sound ? Visibility.Collapsed : Visibility.Visible;
             SoundLowerOptions.IsEnabled = on.SoundLowering;
             // Balance needs two channels; an output that is known to have another number says so.
-            var channels = _window?.PhoneSound.Channels ?? 0;
+            var channels = _window?.SoundChannels ?? 0;
             SoundBalance.IsEnabled = channels is 0 or 2;
             AutomationProperties.SetHelpText(SoundBalance, SoundBalance.IsEnabled ? string.Empty : NotStereo);
             SoundBalance.ToolTip = SoundBalance.IsEnabled ? null : NotStereo;

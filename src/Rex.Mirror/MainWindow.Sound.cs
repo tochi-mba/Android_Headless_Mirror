@@ -19,6 +19,9 @@ public partial class MainWindow
 
     internal PhoneSound PhoneSound => _sound!;
 
+    /// <summary>How many channels the phone's sound has on this PC; 0 when unknown, or before the sound exists while the window is built.</summary>
+    internal int SoundChannels => _sound?.Channels ?? 0;
+
     internal bool SoundPanelOpen => SoundPopup.IsOpen;
 
     private void InitSound()
