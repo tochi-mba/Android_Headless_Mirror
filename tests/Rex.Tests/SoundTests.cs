@@ -61,6 +61,21 @@ public sealed class SoundTests
     }
 
     [Fact]
+    public void NoKeyYetIsForeverAgoAndNeverOverflows()
+    {
+        Assert.Equal(TimeSpan.MaxValue, SoundPolicy.SinceLastKey(Environment.TickCount64, null));
+        Assert.Equal(TimeSpan.FromMilliseconds(250), SoundPolicy.SinceLastKey(10_250, 10_000));
+        Assert.Equal(TimeSpan.Zero, SoundPolicy.SinceLastKey(10_000, 10_000));
+        Assert.Equal(TimeSpan.Zero, SoundPolicy.SinceLastKey(9_000, 10_000));
+        Assert.Equal(TimeSpan.MaxValue, SoundPolicy.SinceLastKey(long.MaxValue / 2, 10_000));
+
+        var lowering = new SoundSettings { LowerWhileTyping = true };
+        lowering.Normalize();
+        var target = SoundPolicy.Decide(new SoundInputs(0.8, false, false, false, false, SoundPolicy.SinceLastKey(5, null)), lowering);
+        Assert.Equal(new SoundTarget(0.8, false, null), target);
+    }
+
+    [Fact]
     public void AFadeArrivesExactlyAndNeverOvershoots()
     {
         var tick = TimeSpan.FromMilliseconds(33);

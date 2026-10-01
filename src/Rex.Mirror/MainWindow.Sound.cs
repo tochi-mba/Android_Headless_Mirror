@@ -86,7 +86,7 @@ public partial class MainWindow
         // program in front counts as behind.
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out var foregroundProcess);
         var behind = !hidden && foregroundProcess != Environment.ProcessId;
-        var typing = FocusInsideControl() ? TimeSpan.MaxValue : TimeSpan.FromMilliseconds(Environment.TickCount64 - _hooks.LastKeyToPhone);
+        var typing = FocusInsideControl() ? TimeSpan.MaxValue : SoundPolicy.SinceLastKey(Environment.TickCount64, _hooks.LastKeyToPhone);
         return new SoundWindow(hidden, behind, _pcLocked, typing);
     }
 
