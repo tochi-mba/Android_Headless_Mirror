@@ -16,21 +16,23 @@ var stdout = Console.OpenStandardOutput();
 
 static string Quote(string arg) => arg.Contains(' ', StringComparison.Ordinal) ? $"\"{arg}\"" : arg;
 
-// The app runs several adb calls at once (device poll, battery poll, actions), so appenders
-// must share the file; a brief retry covers the window where one holds it exclusively.
+// The app runs several adb calls at once (device poll, battery poll, actions). FileMode.Append
+// writes at the end as it was when the file was opened, so two processes appending together could
+// write over each other's line and lose a call; each append therefore holds the file for writing
+// alone (readers are still let in), and the others wait their turn.
 static void AppendLine(string path, string line)
 {
     for (var attempt = 0; ; attempt++)
     {
         try
         {
-            using var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            using var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read | FileShare.Delete);
             stream.Write(Encoding.UTF8.GetBytes(line + Environment.NewLine));
             return;
         }
-        catch (IOException) when (attempt < 20)
+        catch (IOException) when (attempt < 400)
         {
-            Thread.Sleep(10);
+            Thread.Sleep(5);
         }
     }
 }
