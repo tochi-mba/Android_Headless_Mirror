@@ -411,6 +411,8 @@ test.describe('the reference pages', () => {
       expect(a[0] * 1e6 + a[1] * 1e3 + a[2]).toBeGreaterThan(b[0] * 1e6 + b[1] * 1e3 + b[2]);
     }
 
+    // Without GitHub's answer, the static link is the stable asset name (the page decorates it when GitHub answers).
+    await page.route('https://api.github.com/**', route => route.abort());
     await page.goto('/');
     await expect(page.locator('#download')).toHaveAttribute('href', 'https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest/download/AndroidHeadlessMirror-Setup.exe');
   });
