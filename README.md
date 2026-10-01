@@ -2,11 +2,19 @@
 
 **A REX Technologies product.** Your Android phone, in one window on your Windows PC.
 
-Website and download: https://tochi-mba.github.io/Android_Headless_Mirror/
+**[Download](https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest/download/AndroidHeadlessMirror-Setup.exe)** ·
+[Website](https://tochi-mba.github.io/Android_Headless_Mirror/) ·
+[Features](https://tochi-mba.github.io/Android_Headless_Mirror/features.html) ·
+[Guide](https://tochi-mba.github.io/Android_Headless_Mirror/guide.html) ·
+[Shortcuts](https://tochi-mba.github.io/Android_Headless_Mirror/shortcuts.html) ·
+[Every setting](https://tochi-mba.github.io/Android_Headless_Mirror/settings.html) ·
+[Command line](https://tochi-mba.github.io/Android_Headless_Mirror/cli.html) ·
+[Help](https://tochi-mba.github.io/Android_Headless_Mirror/help.html) ·
+[What's new](CHANGELOG.md)
 
 Plug the phone in and it appears on screen. The phone's own display stays off, so it does not
 burn battery or react to stray touches while you use it from the PC. Everything lives in a single
-window: the mirror, the controls, the phone settings and the app settings.
+window: the mirror, the controls, the phone's settings and the app's.
 
 REX is designed for Android devices supported by ADB and scrcpy. Development and testing happen on
 a Samsung Galaxy S21 Ultra (SM-G998B) on Windows 11, so other phones and OEM builds may expose
@@ -14,104 +22,58 @@ different encoder, settings or lock-screen behaviour.
 
 ## Install
 
-1. Download **AndroidHeadlessMirror-Setup.exe** from the website (or the
-   [latest release](https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest)) and run it.
-   It installs for your user only, needs no administrator rights, and includes scrcpy. The
-   installer is not code-signed yet: if SmartScreen appears, choose *More info → Run anyway*.
+1. Download **AndroidHeadlessMirror-Setup.exe** and run it. It installs for your user only, needs
+   no administrator rights, and includes scrcpy. It is not code-signed yet: if SmartScreen appears,
+   choose *More info → Run anyway*.
 2. Choose *Start with Windows* (the app waits in the tray for your phone) and, if you like, a
    desktop shortcut.
-3. The app opens and walks you through the phone side: turn on USB debugging (Settings → About
-   phone → tap *Build number* seven times, then Developer options → USB debugging), plug the phone
-   in and tap **Allow** with *Always allow from this computer* ticked.
+3. The app walks you through the phone side: turn on USB debugging (Settings → About phone → tap
+   *Build number* seven times, then Developer options → USB debugging), plug the phone in and tap
+   **Allow** with *Always allow from this computer* ticked.
 
 From then on the mirror opens by itself whenever the phone is connected. Uninstall from Windows
-Settings → Apps. Your settings live in `%LocalAppData%\REX\Android Headless Mirror` and stay
-until you delete that folder.
+Settings → Apps; your settings stay in `%LocalAppData%\REX\Android Headless Mirror` until you
+delete that folder.
 
-## What you get
+## Highlights
 
-- **One window.** The mirror fills the left; a side panel holds Controls, Phone, Settings and Info,
-  and can be dragged wider. F11 is true fullscreen, where the controls become a small bar you can
-  drag anywhere and reach for again by moving the pointer back to it.
-- **It shows you around.** The first run walks through the window a step at a time, and one-time
-  hints explain zooming, fullscreen and risky settings the first time you meet them. F1 brings the
-  tour back, and Info offers the hints again.
-- **Automatic.** The app waits in the tray, opens when an authorised phone connects, restarts the
-  mirror if it crashes, and stays closed after you stop it until the phone reconnects.
-- **Real gestures.** Two fingers on a Windows Precision Touchpad become two fingers on the phone:
-  pinch, rotate and pan exactly like on the glass. Hold **Alt** to zoom or pan the PC view instead;
-  **Alt + wheel** and **Alt + drag** do the same with a mouse. Zoom scales the real video surface,
-  so clicks always land where you see them. A small navigator shows a live picture of the whole
-  phone with the part you are looking at framed: drag it to pan, drag a corner to zoom. Settings
-  sets its size, corner, opacity and frame rate, and can keep it on screen at 100% as a preview.
-- **Soft background.** The empty space around the phone shows a blurred, live copy of the mirror
-  instead of black, taken from the pixels already on screen (no phone round trip) through the
-  graphics card, at up to 60 frames per second. Every part of it is yours to set in Settings: opacity, blur (down to sharp),
-  which margins show it, how it scales, size, position, edge fade, a colour wash, mirroring and
-  frame rate. Changes preview instantly.
-- **Phone controls.** Home, back, recents, power, screen off/on, volume, notifications, quick
-  settings, rotation, clipboard both ways, screenshots.
-- **Phone settings.** Brightness, timeout, forced rotation, dark mode, text size, animations, stay
-  awake, Wi-Fi, mobile data, airplane mode, display size and density, plus a searchable browser for
-  the raw Android settings provider (keys that would cut off ADB are protected).
-- **Tuned to taste.** Settings covers what scrcpy can do and more: a smoothing buffer for a
-  shaky connection, the renderer, what audio to capture (the phone's output, app playback, a
-  microphone or a call) and its quality, the phone's screen timeout while mirrored, keeping this
-  PC awake, an app to open when the mirror starts, what the right, middle, back and forward mouse
-  buttons do, key repeat, hover, clipboard syncing, paste-by-typing, handing game controllers to
-  the phone, and MP4 or MKV recordings. The window is yours too: keep it on top, put the side
-  panel on the left, choose the top bar's phone buttons, show the live frame rate, hear from the
-  tray when the phone comes or goes, save screenshots as JPG and copy them to the clipboard, zoom
-  on the pointer or the middle with either wheel direction, zoom out when the phone turns, and set
-  how far and fast keyboard swipes go. Each lives in config.json, so `rex config set` works too.
-- **Screenshots where you want them.** Pick the folder in Settings; click a saved filename in the
-  status bar to reveal it in File Explorer.
-- **Pattern-lock guide.** Some phones mirror their secure lock screen as black. For pattern locks the
-  app draws a nine-dot guide, positioned from Android's own UI layout when available, with keyboard
-  calibration as a fallback. The pattern itself is never stored or replayed.
-- **Complete keyboard input.** The mirror appears to Android as a physical keyboard, so numbers,
-  shifted symbols, AltGr characters and IME input follow the phone's chosen hardware-keyboard
-  layout. Phones that reject this mode reconnect once with raw-key compatibility and start there
-  from then on; **Keyboard layout** in Controls opens the Android screen where the layout is picked.
-- **Keyboard-only browsing.** Ctrl+Alt+K turns on browse mode: Up and Down move through a feed,
-  Left and Right turn pages or stories, Enter taps, L likes, M mutes and Backspace goes back, with
-  letters still typing so a search box works. Esc returns to typing. The same gestures are buttons
-  in Controls and the HUD, and `rex action swipe-up` from the command line, working over ADB
-  even while the window is in the tray.
-- **Copies side by side.** While the phone is upright, **Add a copy** in Controls (Ctrl+Alt+N)
-  puts another live view of it beside the first, as many as fit the window at full height (up to
-  the limit in Settings → Copies of the phone). Every copy takes touch, typing and gestures, and
-  Alt + wheel or Alt + pinch over any of them zooms them all to the same place. Copies step aside
-  while the phone is on its side and come back when it is upright; Ctrl+Alt+W closes the last one.
-  A copy nobody can see (the window in the tray or minimised, the phone on its side, no room
-  left) pauses its session after a few seconds, so it costs neither the phone nor the PC, and
-  comes back as soon as it can be seen. Only the main view ever plays the phone's sound.
-- **Command line and agent mode.** `rex.exe` (on your PATH after installing) scripts everything;
-  `rex agent ...` and `rex --json ...` emit exactly one JSON document and never prompt.
+- **One window, true fullscreen.** A side panel holds Controls, Phone, Settings and Info. F11 fills
+  the display, and the controls become a small bar you drag wherever you like.
+- **Real gestures.** Two fingers on a precision touchpad are two fingers on the phone. Hold Alt and
+  the same gestures zoom and pan the view on this PC instead, so clicks always land where you see.
+- **A keyboard is enough.** Every key types as on a plugged-in keyboard, and browse mode
+  (Ctrl+Alt+K) moves through a feed with the arrow keys.
+- **Copies side by side.** Ctrl+Alt+N adds another live view of the phone; copies nobody can see
+  pause themselves, and only the main view plays sound.
+- **Yours to shape.** Every setting lives in config.json, previews as you change it, and is
+  [explained on the website](https://tochi-mba.github.io/Android_Headless_Mirror/settings.html).
+
+All of it, with the settings that shape each part, is on the
+[features page](https://tochi-mba.github.io/Android_Headless_Mirror/features.html).
 
 ## Everyday use
 
-| Want to…                       | Do this                                                        |
-| ------------------------------ | -------------------------------------------------------------- |
-| Zoom the PC view               | Alt + mouse wheel, or Alt + pinch on the touchpad              |
-| Pan while zoomed               | Alt + drag, Alt + two-finger slide, or drag the navigator      |
-| Pinch inside a phone app       | Two-finger pinch on the touchpad (no modifier)                 |
-| Turn the phone screen off/on   | The moon icon in the top bar / **Wake** in Controls            |
-| Go fullscreen                  | F11 (Esc leaves; reach for wherever you left the controls)     |
-| Force landscape / portrait     | Ctrl+Alt+L / Ctrl+Alt+U; Ctrl+Alt+A restores auto rotation     |
-| Show or hide the pattern guide | Ctrl+Alt+P; Ctrl+Alt+C calibrates it with the arrow keys       |
-| Jump between the side tabs     | Ctrl+Alt+1 to Ctrl+Alt+4; Ctrl+Alt+B hides the panel           |
-| Take a screenshot              | Ctrl+Alt+S, or the camera in the top bar                       |
-| Browse a feed without the mouse| Ctrl+Alt+K, then Up / Down, Left / Right, Enter, L, M, Backspace |
-| One gesture while typing       | Ctrl+Alt+Up / Down; Ctrl+Alt+Enter taps the centre             |
-| See the phone twice or more    | Ctrl+Alt+N adds a copy beside it; Ctrl+Alt+W closes the last   |
-| Go back / show recent apps     | Ctrl+Alt+Backspace / Ctrl+Alt+R                                |
-| See the window explained again | F1, or Info → **Take the tour**                                 |
-| Find a setting                 | The search box at the top of Settings                          |
-| Choose between two phones      | The chip in the top bar lists them once more than one is in    |
-| Change how the mirror looks     | Settings → Display; every change previews instantly            |
-| Stop the mirror                | **Stop mirror** in Controls; the app keeps waiting in the tray |
-| Quit completely                | Tray icon → **Quit**                                           |
+| Want to…                        | Do this                                                          |
+| ------------------------------- | ---------------------------------------------------------------- |
+| Zoom the PC view                | Alt + wheel, or Alt + pinch on the touchpad                      |
+| Pan while zoomed                | Alt + drag, or drag the navigator                                |
+| Pinch inside a phone app        | Two fingers on the touchpad, with no key held                    |
+| Turn the phone screen off or on | The moon in the top bar, or **Wake** in Controls                 |
+| Go fullscreen                   | F11; Esc leaves                                                  |
+| Force landscape or portrait     | Ctrl+Alt+L or Ctrl+Alt+U; Ctrl+Alt+A lets the phone decide       |
+| Show the pattern guide          | Ctrl+Alt+P; Ctrl+Alt+C lines it up with the arrow keys           |
+| Jump between the side tabs      | Ctrl+Alt+1 to Ctrl+Alt+4; Ctrl+Alt+B hides the panel             |
+| Take a screenshot               | Ctrl+Alt+S, or the camera in the top bar                         |
+| Browse a feed without the mouse | Ctrl+Alt+K, then the arrow keys, Enter, L, M and Backspace       |
+| See the phone twice or more     | Ctrl+Alt+N adds a copy; Ctrl+Alt+W closes the last one           |
+| Go back, or show recent apps    | Ctrl+Alt+Backspace, or Ctrl+Alt+R                                |
+| See the window explained again  | F1, or Info → **Take the tour**                                  |
+| Find a setting                  | The search box at the top of Settings                            |
+| Get help                        | Info → **Help**, or the [help page](https://tochi-mba.github.io/Android_Headless_Mirror/help.html) |
+| Quit completely                 | Tray icon → **Quit**                                             |
+
+Every key and gesture is on the
+[shortcuts page](https://tochi-mba.github.io/Android_Headless_Mirror/shortcuts.html).
 
 ## Command line
 
@@ -119,79 +81,44 @@ until you delete that folder.
 rex status                         app, mirror and phone state
 rex action sleep                   turn the phone screen off (rex action list)
 rex zoom in | out | reset          PC-side zoom of the open mirror
-rex screenshot                     save a PNG of the phone screen
-rex phone set brightness 180       friendly phone settings (rex phone get)
-rex android list global --filter animation
+rex screenshot                     save a picture of the phone screen
+rex phone set brightness 180       friendly phone settings (rex phone list)
 rex config set Mirror.MaxFps 90    app settings, with one-step undo (rex config restore)
-rex autostart on | off
-rex setup                          download and verify the latest scrcpy release
+rex diagnostics                    everything needed to report a problem
 ```
 
-When several phones are connected, pass `--serial <SERIAL>`. The machine-readable contract for
-scripts and coding agents is documented in [AGENTS.md](AGENTS.md).
+`rex help` lists every command, and the
+[command line page](https://tochi-mba.github.io/Android_Headless_Mirror/cli.html) has an example
+of each. With more than one phone connected, pass `--serial <SERIAL>`. Scripts and coding agents
+use `rex agent <command>`, which writes exactly one JSON document; the contract is in
+[AGENTS.md](AGENTS.md).
+
+## When something is not right
+
+The [help page](https://tochi-mba.github.io/Android_Headless_Mirror/help.html) goes through it by
+symptom. In short:
+
+- **No phone found.** Try another cable (charge-only cables carry no data) and a port on the PC
+  itself, unlock the phone and allow USB debugging.
+- **Windows cannot read the phone.** The app notices and offers **Repair USB driver** or
+  **Fix USB**, with one administrator approval, and can fix it by itself from then on.
+- **Anything else.** Info → **Copy diagnostics**, then Info → **Report a problem**.
+
+## Security
+
+USB debugging gives this PC full control of the phone, so only allow computers you trust. The app
+never stores or types a PIN, password or pattern, has no account or telemetry, and needs
+administrator approval only for the USB repairs. More in [SECURITY.md](SECURITY.md).
 
 ## How it works
 
-- `src/Rex.Mirror` is the WPF desktop app. It embeds scrcpy's window as a child of its own viewport,
-  scales that surface for zoom, draws the soft background behind it, and draws the pattern guide,
-  navigator and fullscreen HUD on owned transparent windows.
-- `src/Rex.Core` holds everything without a UI: configuration, ADB client, scrcpy arguments, the
-  scrcpy installer, state, geometry and the pipe protocol. The app and the CLI share it.
-- `src/Rex.Cli` is `rex.exe`. Commands that need the live mirror talk to the app over a per-user
-  named pipe; everything else uses ADB directly.
-- `installer/` builds `AndroidHeadlessMirror-Setup.exe` (Inno Setup): the published app and CLI,
-  plus the latest scrcpy release, downloaded and SHA-256 verified by `rex setup`.
-- `tests/` contains the xUnit suite, a fake `adb.exe` and a fake `scrcpy.exe` that let the whole
-  app run end to end in CI without a phone, plus the Playwright checks for the website.
+- `src/Rex.Mirror` is the WPF desktop app. It embeds scrcpy's window inside its own, scales it for
+  zoom, and draws the soft background, pattern guide, navigator and fullscreen controls around it.
+- `src/Rex.Core` holds everything without a window: settings, the ADB client, scrcpy arguments,
+  the scrcpy installer, state, geometry and the pipe protocol. The app and the command line share it.
+- `src/Rex.Cli` is `rex.exe`. Commands that need the open window talk to the app over a per-user
+  named pipe; the rest use ADB directly.
+- `installer/` builds the installer; `docs/` is the website; `tests/` runs the whole app end to end
+  in CI against a fake `adb.exe` and a fake `scrcpy.exe`.
 
-Installed, the app keeps `config.json`, `state.json`, logs and captures under
-`%LocalAppData%\REX\Android Headless Mirror`. In a checkout, the repository folder is the root.
-
-## When the phone does not show up
-
-- **Windows sees the phone, ADB does not.** Windows sometimes binds a generic driver to the phone's
-  USB debugging interface without the ADB interface GUID, typically after the phone changes USB
-  mode or port. The app detects this and offers **Repair USB driver**; `rex usb` lists what Windows
-  has and `rex usb repair` registers it (one administrator approval).
-- **"USB device not recognised".** Windows gave up reading the phone (Device Manager shows
-  *Unknown USB Device (Device Descriptor Request Failed)*). The app notices within a few seconds and
-  offers **Fix USB**, which resets the device through one administrator approval, and **Fix
-  automatically from now on**, which sets up a Windows task so later occurrences are reset without
-  asking (at most once every 90 seconds, three times per occurrence). If Windows still cannot read
-  the phone, try a port on the PC itself rather than a hub, another cable, turning off USB selective
-  suspend, and *File transfer* in the phone's USB options. `rex usb status` shows what Windows
-  reports; `rex usb repair --dry-run` and `rex usb enable-auto-repair --dry-run` say exactly what
-  would run; `rex usb disable-auto-repair` removes the task. The switch lives in Settings →
-  Connection & advanced.
-- **The phone asks to allow USB debugging.** Unlock it, tick *Always allow from this computer*, Allow.
-- **Nothing at all.** Try another cable or port; charge-only cables have no data lines.
-
-## Security notes
-
-- USB debugging gives this PC full control of the phone. Only authorise computers you trust.
-- Wireless ADB is off by default. USB remains the recovery path.
-- The app never stores or injects a PIN, password or pattern. After a reboot some phones require the
-  first unlock on the device itself; that is an Android boundary, not something the app bypasses.
-- Nothing needs administrator rights except the optional USB repairs, which always go through the
-  Windows administrator prompt. The automatic USB repair is a scheduled task that runs only Windows'
-  own `pnputil.exe` from System32, with fixed arguments that touch only devices the USB hub already
-  failed to read; it never runs anything from the app's folder. REX has no account or telemetry and does not upload the
-  mirrored screen, control data, lock information or phone content. Setup and updates connect to
-  GitHub only to download REX and the official scrcpy distribution.
-
-## Development
-
-```powershell
-REX.bat                                   # builds tools\rex from this checkout on first use, then opens the app
-REX.bat --build                           # rebuilds after a change
-dotnet build Rex.sln
-dotnet test --project tests/Rex.Tests/Rex.Tests.csproj
-npm ci; npm run test:pages
-./installer/build.ps1 -Version 2.0.4      # needs Inno Setup 6; writes dist/AndroidHeadlessMirror-Setup.exe
-```
-
-The test suite runs the real app against the fake phone tooling and saves screenshots under
-`artifacts/screens`. Pull-request CI builds, tests and packages a synthetic installer. After those
-same gates pass on `main`, CI publishes the version from `Directory.Build.props` only when that
-GitHub release does not exist yet. Published assets are immutable, and the website resolves its
-download button from the latest release.
+Building, testing and the rules every change follows are in [CONTRIBUTING.md](CONTRIBUTING.md).

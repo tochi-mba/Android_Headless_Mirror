@@ -402,34 +402,5 @@ public static class Commands
         }
     }
 
-    private static void PrintHelp()
-    {
-        Console.WriteLine("""
-            REX · Android Headless Mirror command line
-
-              rex open                          Open the app (or bring it to the front)
-              rex status                        App, mirror and phone state
-              rex devices                       Phones visible to ADB
-              rex stop | rex quit               Stop the mirror | exit the app
-              rex action <name> [--serial S]    Send an action (rex action list)
-              rex zoom <in|out|reset>           PC-side zoom of the open mirror
-              rex screenshot [--serial S]       Save a PNG of the phone screen
-              rex phone list [filter]           Every phone setting this phone exposes, with its value
-              rex phone set <setting> <value>   Change one (rex phone list shows the ids)
-              rex phone reset <setting>         Delete the key so Android uses its default
-              rex android list|get|set|delete   Raw Android settings provider keys
-              rex config list|get|set|restore   App settings (config.json)
-              rex autostart on|off              Start with Windows
-              rex lock-mode <serial> <mode>     pattern | other | none
-              rex reset-lock [serial|ALL]       Forget lock-screen answers
-              rex setup                         Install scrcpy without the app
-              rex usb [list]                    ADB interfaces, and USB devices Windows could not read
-              rex usb repair [--dry-run]        Repair both (asks for administrator approval)
-              rex usb enable-auto-repair        Fix "USB device not recognised" without asking (asks once)
-              rex usb disable-auto-repair       Remove that again; run-auto-repair starts it now
-              rex diagnostics                   Full report
-
-            Machine mode (one JSON document, never prompts): rex agent <command>, rex --json <command>
-            """);
-    }
+    private static void PrintHelp() => Console.WriteLine(CliReference.HelpText());
 }

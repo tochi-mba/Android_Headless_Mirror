@@ -98,6 +98,8 @@
                   ToolTip="Set up a Windows task that resets failed USB devices without asking again. Windows asks for administrator approval once." />
           <Button x:Name="NoticeUsbHide" Content="Hide" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Margin="0,2,0,2" Click="OnUsbHide" Visibility="Collapsed"
                   ToolTip="Say nothing more about it until the phone comes back or is unplugged" />
+          <Button x:Name="NoticeWhatsNew" Content="What's new" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnWhatsNew" Visibility="Collapsed"
+                  ToolTip="What changed in this version, on the website" />
           <Button x:Name="NoticeDismiss" Content="Got it" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="14,4" Margin="0,2,0,2" Click="OnDismissTip" Visibility="Collapsed" />
         </WrapPanel>
       </Grid>

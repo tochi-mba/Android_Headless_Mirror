@@ -51,6 +51,9 @@ public sealed record UiState
     public bool SidebarVisible { get; set; } = true;
     public string SidebarTab { get; set; } = "controls";
 
+    /// <summary>The version that last ran, so an update can say once what is new. Empty before the first run.</summary>
+    public string LastRunVersion { get; set; } = string.Empty;
+
     /// <summary>Settings groups the person left open, in display order.</summary>
     public List<string> SettingsOpen { get; set; } = ["GroupDisplay"];
 

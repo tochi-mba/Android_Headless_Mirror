@@ -28,6 +28,7 @@ public partial class SettingsPanel
         SelectTag(SidebarSide, c.App.SidebarSide);
         BuildQuickButtonChoices(c.App.TopBarButtons);
         ShowHints.IsChecked = c.App.ShowHints;
+        ShowWhatsNew.IsChecked = c.App.ShowWhatsNew;
         ShowFrameRate.IsChecked = c.App.ShowFrameRate;
         NotifyConnections.IsChecked = c.App.NotifyConnections;
         SelectTag(ScreenshotFormat, c.App.ScreenshotFormat);
@@ -45,6 +46,7 @@ public partial class SettingsPanel
         c.App.AlwaysOnTop = AlwaysOnTop.IsChecked == true;
         c.App.SidebarSide = SelectedTag(SidebarSide, "right");
         c.App.ShowHints = ShowHints.IsChecked == true;
+        c.App.ShowWhatsNew = ShowWhatsNew.IsChecked == true;
         c.App.ShowFrameRate = ShowFrameRate.IsChecked == true;
         c.App.NotifyConnections = NotifyConnections.IsChecked == true;
         c.App.ScreenshotFormat = SelectedTag(ScreenshotFormat, "png");

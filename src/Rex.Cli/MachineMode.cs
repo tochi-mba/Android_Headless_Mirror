@@ -66,7 +66,7 @@ public static class MachineMode
     {
         ["protocolVersion"] = ProtocolVersion,
         ["mode"] = "non-interactive-json",
-        ["commands"] = new JsonArray("capabilities", "status", "devices", "diagnostics", "usb", "open", "stop", "quit", "action", "zoom", "screenshot", "phone", "android", "config", "autostart", "lock-mode", "reset-lock"),
+        ["commands"] = new JsonArray(CliReference.MachineCommands.Select(x => (JsonNode)x).ToArray()),
         ["usb"] = new JsonArray(UsbCommands.Verbs.Select(x => (JsonNode)x).ToArray()),
         ["actions"] = new JsonArray(MirrorActions.All.Select(a => (JsonNode)new JsonObject { ["id"] = a.Id, ["label"] = a.Label, ["kind"] = a.Kind.ToString().ToLowerInvariant(), ["detail"] = a.Detail }).ToArray()),
         ["phoneSettings"] = new JsonArray(PhoneSettings.Ids.Concat(["rotation"]).Select(x => (JsonNode)x).ToArray()),

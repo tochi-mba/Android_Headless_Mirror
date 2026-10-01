@@ -3,6 +3,12 @@
 Android Headless Mirror mirrors an Android phone into one Windows window (WPF) around scrcpy and
 ADB. This file is the contract for coding agents and automation working in or against this repository.
 
+Contents: [Machine interface](#machine-interface) · [Layout and paths](#layout-and-paths) ·
+[Architecture](#architecture) · [Invariants](#invariants) · [Testing](#testing) ·
+[Generated files](#generated-files-never-commit). People start with [README.md](README.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md); every command is described on the
+[command line page](https://tochi-mba.github.io/Android_Headless_Mirror/cli.html).
+
 ## Machine interface
 
 Use the CLI in machine mode. All three spellings are equivalent and select the same protocol:
@@ -87,6 +93,9 @@ src/Rex.Core            UI-free library shared by the app and the CLI
   AmbientLayout         soft-background geometry: image size, margins, tint hue, navigator corner
   Ipc                   pipe protocol between rex.exe and the app
   MirrorActions         the single list of user actions, shortcuts and ADB-action dispatcher
+  SettingsCatalogue     every config.json value and where it is changed; which ones apply at the next start
+  SiteLinks             every web address the app and the CLI send people to
+  WhatsNew              when the window says once, after an update, which version this is
 src/Rex.Mirror          WPF app (RexMirror.exe)
   Mirror/MirrorHost     HwndHost that embeds scrcpy and scales it for zoom
   Mirror/MirrorGroupPanel lays out the main view and its copies side by side
@@ -98,14 +107,20 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Session/*             supervisor: device watching, scrcpy lifecycle, actions, copies (CopiesController)
   Services/*            composition root, pipe server, command router, tray icon, UsbDoctor
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
-  Views/Settings/*      settings groups in separate controls and SettingsCatalogue's config-path audit
+  Views/Settings/*      settings groups in separate controls
+  Services/UrlOpener    opens the app's own https pages (REX_FAKE_BROWSER_LOG in tests)
 src/Rex.Cli             rex.exe: human commands and MachineMode
+  CliReference          every command once: rex help, capabilities and the site's command line page read it
 tests/Rex.Tests         xUnit: unit, contract, end-to-end and UI-automation tests
   Support/AppProcess    drives a real RexMirror.exe: pipe, real input, screenshots, CLI
   Support/AppAutomation UI Automation over the window (x:Name is the AutomationId)
+  Site/*                the writers of docs/settings, shortcuts, cli and changelog .html (SiteTests compares them)
+  SiteScreenshots       the website's pictures from the real window (REX_SITE_SHOTS=1, CI)
 tests/Rex.FakeAdb       deterministic adb.exe stand-in (scenario JSON, call log)
 tests/Rex.FakeScrcpy    scrcpy.exe stand-in: a real window the app embeds
-docs/                   GitHub Pages site; its download button points at the latest release asset
+docs/                   GitHub Pages site, nine plain HTML pages; its download button points at the latest release asset
+scripts/check-site.mjs  the check the Pages workflow and the site tests run before anything publishes
+CHANGELOG.md            what changed in each version, newest first; changelog.html is made from it
 ```
 
 ## Invariants
@@ -265,16 +280,28 @@ docs/                   GitHub Pages site; its download button points at the lat
   UI tests can reach it. Anything new in the window needs a test in `AppUiTests`.
 - WPF raises `ValueChanged` on sliders while XAML loads. Handlers that touch other controls must
   return until the panel has its host.
+- The website and the docs cannot drift from the app. docs/settings.html, shortcuts.html, cli.html
+  and changelog.html are made from SettingsCatalogue and the Settings tab's markup, `Shortcuts`,
+  `CliReference` and CHANGELOG.md; `SiteTests` fails when a committed page differs, and
+  `REX_WRITE_SITE=1` rewrites them. Every page shares index.html's header and footer, has one h1,
+  is in the sitemap and passes `scripts/check-site.mjs`, axe and the no-sideways-scroll test.
+- Every user-visible change adds a CHANGELOG.md entry; its newest heading is the version in
+  Directory.Build.props.
+- `rex help` and machine mode's `capabilities` read `CliReference`; a command added to either
+  dispatcher without a reference entry fails `TheReferenceHasExactlyTheCommandsRexAccepts`.
+- The app opens only https addresses from `SiteLinks`, through `UrlOpener`.
 - No file over 1,000 lines. No dead code. Warnings are errors. Scripts are limited to `REX.bat`,
-  `assets/make-icon.ps1`, `installer/build.ps1` and `installer/prepare-upgrade.ps1`.
+  `assets/make-icon.ps1`, `installer/build.ps1`, `installer/prepare-upgrade.ps1` and the Node
+  scripts in `scripts/`.
 
 ## Testing
 
 ```powershell
 dotnet build Rex.sln
 dotnet test --project tests/Rex.Tests/Rex.Tests.csproj
-npm ci; npm run test:pages
+npm ci; npm run check:site; npm run test:pages
 ./installer/build.ps1 -Version 0.0.0
+$env:REX_WRITE_SITE = "1"; dotnet test --project tests/Rex.Tests/Rex.Tests.csproj -- --filter-class Rex.Tests.SiteTests   # rewrite the made pages
 ```
 
 The end-to-end tests launch `RexMirror.exe` with `--root <temp package>` against `tests/Rex.FakeAdb`

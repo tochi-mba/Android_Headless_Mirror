@@ -5,6 +5,7 @@
   "description": "Browser regression tests for the Android Headless Mirror GitHub Pages site.",
   "scripts": {
     "test:pages": "playwright test tests/pages.spec.js",
+    "check:site": "node scripts/check-site.mjs",
     "build:og": "node scripts/build-og.mjs"
   },
   "devDependencies": {

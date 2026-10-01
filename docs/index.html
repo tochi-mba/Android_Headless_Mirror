@@ -7,8 +7,8 @@
 <meta name="robots" content="index,follow">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#080A09">
-<meta property="og:title" content="Android Headless Mirror - REX Technologies">
-<meta property="og:description" content="Your Android phone, in one window on your Windows PC. Automatic over USB, real touchpad gestures, phone controls and settings.">
+<meta property="og:title" content="Android Headless Mirror - your phone in one window - REX Technologies">
+<meta property="og:description" content="Android Headless Mirror puts your Android phone in one window on your Windows PC. Automatic over USB, real touchpad gestures, phone controls and settings, all built on scrcpy and ADB.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tochi-mba.github.io/Android_Headless_Mirror/">
 <meta property="og:image" content="https://tochi-mba.github.io/Android_Headless_Mirror/og.png">
@@ -25,7 +25,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.classList.replace("no-js","js");</script>
-<noscript><style>@media(max-width:760px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
+<noscript><style>@media(max-width:1040px){.site-nav{display:flex!important;position:static!important;flex-direction:column}.menu-button{display:none!important}}</style></noscript>
 <title>Android Headless Mirror - your phone in one window - REX Technologies</title>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Android Headless Mirror",
@@ -52,18 +52,19 @@
 
 <header class="site-header">
   <div class="container nav-wrap">
-    <a class="brand" href="#top" aria-label="Android Headless Mirror, by REX Technologies">
+    <a class="brand" href="./" aria-label="Android Headless Mirror, by REX Technologies, home">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="4" width="16" height="24" rx="4"/><path d="M12 10h8M13 23h6"/><path d="M4 12v8M28 12v8"/></svg></span>
       <span class="brand-lockup"><span class="brand-company">REX Technologies</span><span class="brand-name">Android Headless Mirror</span></span>
     </a>
     <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav"><span class="sr-only">Toggle navigation</span><span></span><span></span></button>
     <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
-      <a href="#how">How it works</a>
-      <a href="#features">Features</a>
-      <a href="#gestures">Gestures</a>
-      <a href="#install">Install</a>
-      <a href="#cli">CLI</a>
-      <a href="#faq">FAQ</a>
+      <a href="features.html">Features</a>
+      <a href="guide.html">Guide</a>
+      <a href="shortcuts.html">Shortcuts</a>
+      <a href="settings.html">Settings</a>
+      <a href="cli.html">Command line</a>
+      <a href="help.html">Help</a>
+      <a href="changelog.html">What's new</a>
       <a class="nav-github" href="https://github.com/tochi-mba/Android_Headless_Mirror" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
     </nav>
   </div>
@@ -120,6 +121,15 @@
     </div>
   </section>
 
+  <nav class="page-index container" aria-label="On this page">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#gestures">Gestures</a>
+    <a href="#install">Install</a>
+    <a href="#cli">Command line</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+
   <section class="section container" id="how">
     <div class="section-heading reveal">
       <div class="eyebrow signal">Simple by design</div>
@@ -137,16 +147,17 @@
     <div class="section-heading reveal">
       <div class="eyebrow signal">Built for daily use</div>
       <h2>Everything in one place.</h2>
+      <p>Each one in detail, with the settings that shape it, on the <a href="features.html">features page</a>.</p>
     </div>
     <div class="feature-grid">
-      <article class="feature-card reveal"><h3>One window. True fullscreen.</h3><p>Controls, Phone, Settings and Info stay in the side panel. Press F11 to fill your display. A small translucent bar of controls fades away; drag it wherever you want it and move the pointer back there to bring it out again.</p></article>
-      <article class="feature-card reveal"><h3>Zoom that actually works</h3><p>Alt + wheel or Alt + pinch scales the real video surface, so clicks land where you see them. A small navigator shows where you are; drag it to pan.</p></article>
-      <article class="feature-card reveal"><h3>Phone controls</h3><p>Home, back, recents, power, sleep and wake, volume, notifications, quick settings, rotation, clipboard both ways and screenshots.</p></article>
-      <article class="feature-card reveal"><h3>Phone settings</h3><p>Brightness, timeout, forced rotation, dark mode, text size, animations, stay awake, Wi‑Fi, mobile data, airplane mode, display size and density.</p></article>
-      <article class="feature-card reveal"><h3>Raw Android settings, guarded</h3><p>Browse and edit the Android settings provider with search and risk labels. Keys that would cut off ADB are protected so you cannot lock yourself out.</p></article>
-      <article class="feature-card reveal"><h3>A keyboard is enough</h3><p>The mirror shows up on the phone as a plugged‑in keyboard, so numbers, symbols and AltGr type as they should. Press Ctrl+Alt+K and the arrow keys, Enter, L and M browse a feed without touching the mouse.</p></article>
-      <article class="feature-card reveal"><h3>Copies, side by side</h3><p>Hold the phone upright and add live copies of it next to each other, as many as fit the window at full height. Every copy takes touch and typing, and zooming one zooms them all.</p></article>
-      <article class="feature-card reveal"><h3>Black lock screen? Still usable</h3><p>Some phones mirror their lock screen as black. For pattern locks the app draws a nine‑dot guide from Android's own layout, with keyboard calibration as a fallback.</p></article>
+      <article class="feature-card reveal"><h3>One window. True fullscreen.</h3><p>Controls, Phone, Settings and Info stay in the side panel. Press F11 to fill your display. A small translucent bar of controls fades away; drag it wherever you want it and move the pointer back there to bring it out again.</p><a class="card-link" href="features.html#one-window">More about this <span aria-hidden="true">→</span></a></article>
+      <article class="feature-card reveal"><h3>Zoom that actually works</h3><p>Alt + wheel or Alt + pinch scales the real video surface, so clicks land where you see them. A small navigator shows where you are; drag it to pan.</p><a class="card-link" href="features.html#zoom">More about this <span aria-hidden="true">→</span></a></article>
+      <article class="feature-card reveal"><h3>Phone controls</h3><p>Home, back, recents, power, sleep and wake, volume, notifications, quick settings, rotation, clipboard both ways and screenshots.</p><a class="card-link" href="features.html#phone-controls">More about this <span aria-hidden="true">→</span></a></article>
+      <article class="feature-card reveal"><h3>Phone settings</h3><p>Brightness, timeout, forced rotation, dark mode, text size, animations, stay awake, Wi‑Fi, mobile data, airplane mode, display size and density.</p><a class="card-link" href="features.html#phone-settings">More about this <span aria-hidden="true">→</span></a></article>
+      <article class="feature-card reveal"><h3>Raw Android settings, guarded</h3><p>Browse and edit the Android settings provider with search and risk labels. Keys that would cut off ADB are protected so you cannot lock yourself out.</p><a class="card-link" href="features.html#android-settings">More about this <span aria-hidden="true">→</span></a></article>
+      <article class="feature-card reveal"><h3>A keyboard is enough</h3><p>The mirror shows up on the phone as a plugged‑in keyboard, so numbers, symbols and AltGr type as they should. Press Ctrl+Alt+K and the arrow keys, Enter, L and M browse a feed without touching the mouse.</p><a class="card-link" href="features.html#keyboard">More about this <span aria-hidden="true">→</span></a></article>
+      <article class="feature-card reveal"><h3>Copies, side by side</h3><p>Hold the phone upright and add live copies of it next to each other, as many as fit the window at full height. Every copy takes touch and typing, and zooming one zooms them all.</p><a class="card-link" href="features.html#copies">More about this <span aria-hidden="true">→</span></a></article>
+      <article class="feature-card reveal"><h3>Black lock screen? Still usable</h3><p>Some phones mirror their lock screen as black. For pattern locks the app draws a nine‑dot guide from Android's own layout, with keyboard calibration as a fallback.</p><a class="card-link" href="features.html#lock-screen">More about this <span aria-hidden="true">→</span></a></article>
     </div>
   </section>
 
@@ -176,34 +187,13 @@
     </div>
     <div class="shortcut-table reveal">
       <div><kbd>F11</kbd><kbd>Esc</kbd><span>Fill the display, and leave it</span></div>
-      <div><kbd>F1</kbd><span>Show the tour again</span></div>
-      <div><kbd>Ctrl+Alt+B</kbd><span>Show or hide the side panel</span></div>
-      <div><kbd>Ctrl+Alt+1</kbd><kbd>Ctrl+Alt+2</kbd><kbd>Ctrl+Alt+3</kbd><kbd>Ctrl+Alt+4</kbd><span>Controls, Phone, Settings, Info</span></div>
+      <div><kbd>Ctrl+Alt+1</kbd><kbd>Ctrl+Alt+4</kbd><span>The side panel's tabs, Controls to Info</span></div>
       <div><kbd>Ctrl+Alt+H</kbd><kbd>Ctrl+Alt+S</kbd><span>Home, and save a screenshot</span></div>
-      <div><kbd>Ctrl+Alt+Backspace</kbd><kbd>Ctrl+Alt+R</kbd><span>Back, and recent apps</span></div>
-      <div><kbd>Ctrl+Alt+Up</kbd><kbd>Ctrl+Alt+Down</kbd><span>Previous or next item in a feed</span></div>
-      <div><kbd>Ctrl+Alt+Enter</kbd><span>Tap the centre to open, play, or pause</span></div>
       <div><kbd>Ctrl+Alt+K</kbd><span>Browse mode on or off: plain keys drive the phone</span></div>
-      <div><kbd>Ctrl+Alt+N</kbd><kbd>Ctrl+Alt+W</kbd><span>Add a copy of the phone beside it, and close the last one</span></div>
-      <div><kbd>Ctrl+Alt+Plus</kbd><kbd>Ctrl+Alt+Minus</kbd><kbd>Ctrl+Alt+0</kbd><span>Zoom the PC view in, out, and back to fit</span></div>
-      <div><kbd>Ctrl+Alt+U</kbd><kbd>Ctrl+Alt+L</kbd><kbd>Ctrl+Alt+A</kbd><span>Portrait, landscape, or let the phone decide</span></div>
-      <div><kbd>Ctrl+Alt+Left</kbd><kbd>Ctrl+Alt+Right</kbd><span>Turn the PC view</span></div>
-      <div><kbd>Ctrl+Alt+P</kbd><kbd>Ctrl+Alt+C</kbd><span>Show the pattern guide, and line it up</span></div>
       <div><kbd>Alt + wheel</kbd><kbd>Alt + pinch</kbd><kbd>Alt + drag</kbd><span>Zoom and pan the PC view</span></div>
       <div><kbd>Two fingers</kbd><span>Pinch, rotate and pan on the phone</span></div>
     </div>
-    <div class="section-heading reveal browse-heading">
-      <div class="eyebrow signal">Browse mode</div>
-      <h3>Ctrl+Alt+K, then just the keys a feed expects.</h3>
-      <p>While browse mode is on, these keys act on the phone instead of typing into it. Letters still type, so a search box works. Esc goes back to typing.</p>
-    </div>
-    <div class="shortcut-table reveal">
-      <div><kbd>Down</kbd><kbd>Up</kbd><span>Next or previous item in a feed</span></div>
-      <div><kbd>Right</kbd><kbd>Left</kbd><span>Next or previous story, photo or page</span></div>
-      <div><kbd>Enter</kbd><kbd>Space</kbd><span>Tap the centre: open, play or pause</span></div>
-      <div><kbd>L</kbd><kbd>M</kbd><span>Like, and mute</span></div>
-      <div><kbd>Backspace</kbd><span>Back</span></div>
-    </div>
+    <p class="section-more reveal"><a href="shortcuts.html">Every shortcut, and what each does <span aria-hidden="true">→</span></a></p>
   </section>
 
   <section class="section container" id="install">
@@ -241,12 +231,14 @@ rex phone set brightness 180      friendly phone settings
 rex android list global --filter animation
 rex config set Mirror.MaxFps 90   one-step undo: rex config restore
 rex agent capabilities            the machine-readable contract</code></pre>
+    <p class="section-more reveal"><a href="cli.html">Every command, with examples <span aria-hidden="true">→</span></a></p>
   </section>
 
   <section class="section container" id="faq">
     <div class="section-heading reveal">
       <div class="eyebrow signal">Questions</div>
       <h2>FAQ</h2>
+      <p>Something not working? <a href="help.html">Help</a> goes through it by symptom.</p>
     </div>
     <div class="faq reveal">
       <details><summary>Does it work with phones other than the Galaxy S21 Ultra?</summary><p>REX is designed for Android devices supported by ADB and scrcpy. Current hardware testing is primarily on the Galaxy S21 Ultra, so other phones and OEM builds may expose different encoder, settings or lock-screen behaviour.</p></details>
@@ -264,10 +256,11 @@ rex agent capabilities            the machine-readable contract</code></pre>
   <div class="container footer-wrap">
     <span>© <span id="year">2026</span> REX Technologies · Android Headless Mirror</span>
     <span>Built on <a href="https://github.com/Genymobile/scrcpy" target="_blank" rel="noopener noreferrer">scrcpy</a> and Android Debug Bridge.</span>
-    <span class="footer-links">
-      <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases" target="_blank" rel="noopener noreferrer">What's new <span aria-hidden="true">↗</span></a>
-      <a href="#top">Back to top <span aria-hidden="true">↑</span></a>
-    </span>
+    <nav class="footer-links" aria-label="More">
+      <a href="changelog.html">What's new</a>
+      <a href="help.html">Help</a>
+      <a href="https://github.com/tochi-mba/Android_Headless_Mirror/releases" target="_blank" rel="noopener noreferrer">Releases <span aria-hidden="true">↗</span></a>
+    </nav>
   </div>
 </footer>
 <script src="app.js" defer></script>

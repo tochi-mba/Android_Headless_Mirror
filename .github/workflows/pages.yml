@@ -6,6 +6,7 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/pages.yml"
+      - "scripts/check-site.mjs"
   workflow_dispatch:
 
 permissions:
@@ -27,6 +28,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # A static site has no compiler: this is the check that stops a broken link, a missing
+      # picture or a page left out of the sitemap from going live.
+      - name: Check the site
+        run: node scripts/check-site.mjs
 
       - name: Configure Pages
         uses: actions/configure-pages@v6

@@ -321,6 +321,17 @@ public sealed record InputSettings
     /// <summary>What a secondary mouse button can do, in the words config.json uses.</summary>
     public static readonly string[] ButtonActions = ["click", "nothing", "back", "home", "recents", "notifications"];
 
+    /// <summary>What a mouse button can be set to do, in the words the Settings tab and the site show.</summary>
+    public static readonly IReadOnlyList<(string Action, string Label)> ButtonChoices =
+    [
+        ("back", "Back"),
+        ("home", "Home"),
+        ("recents", "Recent apps"),
+        ("notifications", "Notifications"),
+        ("click", "Click on the phone"),
+        ("nothing", "Nothing"),
+    ];
+
     public static readonly string[] GamepadModes = ["disabled", "uhid"];
 
     /// <summary>What the right button does: back (scrcpy's own choice), home, recents, notifications, click (on the phone) or nothing.</summary>
@@ -722,6 +733,9 @@ public sealed record AppSettings
 
     /// <summary>Put each new screenshot on the clipboard as well, ready to paste.</summary>
     public bool CopyScreenshots { get; set; }
+
+    /// <summary>After an update, say once in the bar above the mirror which version this is.</summary>
+    public bool ShowWhatsNew { get; set; } = true;
 
     public AppSettings Copy() => this with { TopBarButtons = [.. TopBarButtons] };
 

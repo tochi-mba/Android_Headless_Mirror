@@ -300,6 +300,12 @@ internal sealed class MirrorForm : Form
             return;
         }
 
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, "home-screen")))
+        {
+            DrawHomeScreen(g, rect);
+            return;
+        }
+
         using var brush = new LinearGradientBrush(rect, Color.FromArgb(26, 32, 27), Color.FromArgb(56, 70, 58), 90f);
         g.FillRectangle(brush, rect);
         var fixture = Path.Combine(AppContext.BaseDirectory, "preview.png");
@@ -315,6 +321,65 @@ internal sealed class MirrorForm : Form
         using var font = new Font("Segoe UI", 14f, FontStyle.Bold);
         var copy = _port == "27183" ? string.Empty : " · copy " + (int.Parse(_port, CultureInfo.InvariantCulture) - 27183).ToString(CultureInfo.InvariantCulture);
         g.DrawString($"fake scrcpy{copy}\n{rect.Width}×{rect.Height}", font, Brushes.White, 20, 20);
+    }
+
+    /// <summary>
+    /// A made-up home screen for the website's pictures: a clock, a search bar and rounded tiles in
+    /// the app's own colours. Nothing in it comes from a real phone, an app or a brand.
+    /// </summary>
+    private static void DrawHomeScreen(Graphics g, Rectangle rect)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        using (var background = new LinearGradientBrush(rect, Color.FromArgb(20, 27, 22), Color.FromArgb(44, 58, 47), 90f))
+        {
+            g.FillRectangle(background, rect);
+        }
+
+        var unit = Math.Max(1f, rect.Width / 360f);
+        using var text = new SolidBrush(Color.FromArgb(242, 245, 238));
+        using var small = new Font("Segoe UI", 9f * unit, FontStyle.Bold);
+        using var clock = new Font("Segoe UI", 34f * unit, FontStyle.Regular);
+        g.DrawString("9:41", small, text, 18 * unit, 10 * unit);
+        g.FillRectangle(text, rect.Width - 40 * unit, 14 * unit, 20 * unit, 9 * unit);
+        g.DrawString("9:41", clock, text, 22 * unit, 70 * unit);
+        using var muted = new SolidBrush(Color.FromArgb(133, 141, 131));
+        using var date = new Font("Segoe UI", 11f * unit);
+        g.DrawString("Thursday 1 October", date, muted, 26 * unit, 128 * unit);
+
+        Color[] colours =
+        [
+            Color.FromArgb(215, 255, 63), Color.FromArgb(255, 119, 77), Color.FromArgb(88, 166, 255), Color.FromArgb(186, 140, 255),
+            Color.FromArgb(72, 214, 166), Color.FromArgb(255, 196, 77), Color.FromArgb(242, 245, 238), Color.FromArgb(255, 105, 150),
+        ];
+        var size = 54 * unit;
+        var gap = (rect.Width - 4 * size) / 5f;
+        for (var row = 0; row < 4; row++)
+        {
+            for (var column = 0; column < 4; column++)
+            {
+                var x = gap + column * (size + gap);
+                var y = 210 * unit + row * (size + 30 * unit);
+                FillRounded(g, colours[(row * 4 + column) % colours.Length], x, y, size, size, 16 * unit);
+            }
+        }
+
+        FillRounded(g, Color.FromArgb(48, 242, 245, 238), 18 * unit, rect.Height - 150 * unit, rect.Width - 36 * unit, 44 * unit, 22 * unit);
+        for (var column = 0; column < 4; column++)
+        {
+            FillRounded(g, colours[column + 4], gap + column * (size + gap), rect.Height - 90 * unit, size, size, 16 * unit);
+        }
+    }
+
+    private static void FillRounded(Graphics g, Color colour, float x, float y, float width, float height, float radius)
+    {
+        using var path = new GraphicsPath();
+        path.AddArc(x, y, radius * 2, radius * 2, 180, 90);
+        path.AddArc(x + width - radius * 2, y, radius * 2, radius * 2, 270, 90);
+        path.AddArc(x + width - radius * 2, y + height - radius * 2, radius * 2, radius * 2, 0, 90);
+        path.AddArc(x, y + height - radius * 2, radius * 2, radius * 2, 90, 90);
+        path.CloseFigure();
+        using var brush = new SolidBrush(colour);
+        g.FillPath(brush, path);
     }
 
     protected override void OnResize(EventArgs e)

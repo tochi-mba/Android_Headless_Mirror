@@ -183,13 +183,19 @@ public partial class MainWindow
         }
 
         NoticeDismiss.Visibility = question ? Visibility.Collapsed : Visibility.Visible;
+        NoticeWhatsNew.Visibility = Visibility.Collapsed;
         _usbNoticeShowing = false;
         ShowUsbAnswers(UsbNotice.None);
     }
 
     private void OnDismissTip(object sender, RoutedEventArgs e)
     {
-        if (_tipShowing is { } id)
+        if (_tipShowing == WhatsNewNotice)
+        {
+            RememberThisVersion();
+            _tipShowing = null;
+        }
+        else if (_tipShowing is { } id)
         {
             MarkTipSeen(id);
             _tipShowing = null;

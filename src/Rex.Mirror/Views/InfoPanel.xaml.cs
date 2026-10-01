@@ -26,6 +26,27 @@ public partial class InfoPanel : UserControl
         ShortcutGestures.ItemsSource = Rows(Shortcuts.All.Where(s => !s.IsKey));
         // The heading is set in capitals; the key is written the way it is everywhere else.
         BrowseHeading.Text = "BROWSE MODE · " + Shortcuts.Gesture("browse");
+        HelpWhatsNew.ToolTip = $"What changed in {CommandRouter.AppVersion}, on the website";
+        System.Windows.Automation.AutomationProperties.SetName(HelpWhatsNew, $"What's new in {CommandRouter.AppVersion}");
+    }
+
+    /// <summary>The page each Help button opens, and how the status line names it.</summary>
+    internal static (string Url, string What) HelpLink(string tag) => tag switch
+    {
+        "guide" => (SiteLinks.Guide, "the user guide"),
+        "settings" => (SiteLinks.SettingsPage, "every setting"),
+        "shortcuts" => (SiteLinks.ShortcutsPage, "the keyboard shortcuts"),
+        "changelog" => (SiteLinks.ChangelogFor(CommandRouter.AppVersion), "what is new"),
+        _ => (SiteLinks.NewIssue(CommandRouter.AppVersion), "a new problem report"),
+    };
+
+    private void OnHelpLink(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string tag })
+        {
+            var (url, what) = HelpLink(tag);
+            _window?.OpenSitePage(url, what);
+        }
     }
 
     public void Attach(MainWindow window, AppHost host)

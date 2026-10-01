@@ -51,10 +51,13 @@ public static partial class ScrcpyArguments
     /// <summary>
     /// The launch settings a running session is compared against to offer a restart. The frame
     /// rate counter is left out: the app switches it on and off in the running session itself.
+    /// A recording stands for itself by its folder and its format, not by the moment it started.
     /// </summary>
     public static IReadOnlyList<string> LaunchSettings(RexConfig config, bool isTcp) =>
         Build(config, "", isTcp, "", null,
-            config.Mirror.RecordOnStart ? config.Mirror.RecordDirectory : null)
+            config.Mirror.RecordOnStart
+                ? Path.Combine(config.Mirror.RecordDirectory, RecordingFileName(config.Mirror.RecordFormat, DateTime.MinValue))
+                : null)
             .Where(argument => argument != PrintFps)
             .ToArray();
 
