@@ -546,6 +546,9 @@ public partial class MainWindow : Window
         }
         else _sidebarWheelBounds = Rect.Empty;
         ReleaseStaleAltHold();
+        // Cheap, and catches what events miss: the window shown before it has a width, a size
+        // that settles after the last layout.
+        UpdateRoom();
         var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         if (visible)
         {
