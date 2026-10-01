@@ -149,6 +149,7 @@ public partial class MainWindow : Window
             }
         };
 
+        InitFiles();
         ControlsPanel.Attach(this, host);
         PhonePanel.Attach(this, host);
         AttachApps();
@@ -244,6 +245,7 @@ public partial class MainWindow : Window
             _overlay.Close();
             _hooks.Dispose();
             _copies?.Dispose();
+            _files?.Dispose();
             StopSound();
             return;
         }
@@ -405,6 +407,7 @@ public partial class MainWindow : Window
 
     private void OnMirrorReady(ScrcpyProcess scrcpy)
     {
+        FollowScrcpyTransfers(scrcpy);
         var session = _host.Session;
         if (session.Identity is { DisplayWidth: > 0, DisplayHeight: > 0 } identity)
         {
@@ -520,6 +523,7 @@ public partial class MainWindow : Window
         }
 
         ApplyCopiesConfig();
+        ApplyFilesConfig();
         _host.Session.ApplyFrameRateSetting();
         ApplyWindowPreferences();
         SettingsPanel.Refresh();
@@ -551,6 +555,7 @@ public partial class MainWindow : Window
         }
         else _sidebarWheelBounds = Rect.Empty;
         ReleaseStaleAltHold();
+        ReleaseFilesDrag();
         // Cheap, and catches what events miss: the window shown before it has a width, a size
         // that settles after the last layout.
         UpdateRoom();
@@ -693,6 +698,12 @@ public partial class MainWindow : Window
                 return Copies.Add();
             case "copy-remove":
                 return Copies.Remove();
+            case "send-files":
+                await SendFilesAsync();
+                return AndroidResult.Success();
+            case "send-copied-files":
+                await SendCopiedFilesAsync();
+                return AndroidResult.Success();
             case "sound-up" or "sound-down" or "sound-mute":
                 return RunSound(id);
             default:

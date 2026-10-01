@@ -102,6 +102,10 @@ public sealed class TransferTests
         Assert.Empty(queue.Take());
         Assert.True(queue.Progress(jobs[0].Id, 45));
         Assert.Equal(45, jobs[0].Sent);
+        Thread.Sleep(10);
+        Assert.True(queue.Progress(jobs[0].Id, 55));
+        Assert.True(jobs[0].BytesPerSecond > 0);
+        Assert.NotNull(jobs[0].TimeLeft);
         Assert.True(queue.Finish(jobs[0].Id, true));
         Assert.Single(queue.Take());
         Assert.True(queue.Finish(jobs[1].Id, false, "no room"));
@@ -187,14 +191,22 @@ public sealed class TransferTests
     }
 
     [Fact]
-    public void ThePushTargetNeverAsksForARestart()
+    public void ThePushTargetAndDropSwitchReachTheMainSession()
     {
         var config = new RexConfig();
         var before = ScrcpyArguments.LaunchSettings(config, false);
         config.Transfer.Folder = "/sdcard/Documents/";
-        Assert.Equal(before, ScrcpyArguments.LaunchSettings(config, false));
+        Assert.NotEqual(before, ScrcpyArguments.LaunchSettings(config, false));
         Assert.Contains("--push-target=/sdcard/Documents/", ScrcpyArguments.Build(config, "S", false, "T", null, null));
         Assert.DoesNotContain(ScrcpyArguments.Build(config, "S", false, "copy", null, null, copyIndex: 0), a => a.StartsWith(ScrcpyArguments.PushTarget, StringComparison.Ordinal));
+        config.Transfer.Enabled = false;
+        Assert.Contains(ScrcpyArguments.NoFileDrop, ScrcpyArguments.Build(config, "S", false, "T", null, null));
+        Assert.DoesNotContain(ScrcpyArguments.NoFileDrop, ScrcpyArguments.Build(config, "S", false, "copy", null, null, copyIndex: 0));
+        config.Transfer.Enabled = true;
+        config.Mirror.ExtraArgs = "--push-target=/sdcard/Old/";
+        var main = ScrcpyArguments.Build(config, "S", false, "T", null, null);
+        Assert.Single(main, argument => argument.StartsWith(ScrcpyArguments.PushTarget, StringComparison.Ordinal));
+        Assert.Contains("--push-target=/sdcard/Documents/", main);
     }
 
     [Fact]
@@ -225,12 +237,15 @@ public sealed class TransferTests
         Assert.Equal(["one.txt", "two.txt"], (await adb.ListNamesAsync("S", "/sdcard/Download/", ct)).Order().ToArray());
         Assert.Empty(await adb.ListNamesAsync("S", "/data/", ct));
         Assert.True((await adb.DeleteFileAsync("S", "/sdcard/Download/a b.txt", ct)).Ok);
+        Assert.True((await adb.DeleteEntryAsync("S", "/sdcard/Download/folder", recursive: true, ct)).Ok);
         Assert.True((await adb.ScanMediaAsync("S", "/sdcard/Pictures/a.jpg", ct)).Ok);
         Assert.True((await adb.OpenFolderAsync("S", "/sdcard/Download/", ct)).Ok);
         Assert.False((await adb.OpenFolderAsync("S", "/data/", ct)).Ok);
         Assert.Equal("/sdcard/Download/a b.txt", AdbClient.RemotePath("/sdcard/Download/", "a b.txt"));
         Assert.Throws<ArgumentException>(() => AdbClient.RemotePath("/data/", "a"));
         Assert.Throws<ArgumentException>(() => AdbClient.RemotePath("/sdcard/", "a/b"));
+        Assert.False((await adb.DeleteEntryAsync("S", "/data/local/tmp/nope", recursive: true, ct)).Ok);
+        Assert.Contains(runner.Calls, call => call.Arguments.Contains("rm -rf -- /sdcard/Download/folder"));
 
         runner.Respond = _ => new ProcessResult(1, "", "no device");
         Assert.False((await adb.InstallAsync("S", "app.apk", new InstallFlags(), ct)).Ok);

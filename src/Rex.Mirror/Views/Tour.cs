@@ -9,27 +9,31 @@ public sealed record TourStep(string Target, string Title, string Body, string S
 /// <summary>
 /// What a first-time user is shown, once.
 ///
-/// Six stops, each pointing at something already on screen rather than describing it in the
+/// Seven stops, each pointing at something already on screen rather than describing it in the
 /// abstract. The steps adapt to what is actually there: with no phone connected the first stop
 /// explains the empty window instead of the mirror.
 /// </summary>
 public static class Tour
 {
     /// <summary>Raised when the tour changes enough that people who saw the old one should see it again.</summary>
-    public const int Version = 1;
+    public const int Version = 2;
 
     public static IReadOnlyList<TourStep> Steps(bool mirroring) =>
     [
         new("MirrorArea",
             mirroring ? "Your phone, here" : "Your phone appears here",
             mirroring
-                ? "The phone's own screen stays off while this one is live. Click and type straight into it."
+                ? "The phone's own screen stays off while this one is live. Click and type straight into it, or drop files here to send them."
                 : "Plug an Android phone in with USB debugging turned on and it opens here by itself, with its own screen off.",
             "right"),
         new("SidebarTabs",
             "Everything else is in here",
-            "Controls for the phone, the phone's own settings, this app's settings, and what it knows about the connection.",
+            "Controls—including sending files—the phone's apps and settings, this app's settings, and what it knows about the connection.",
             "left"),
+        new("TabApps",
+            "Every app, by name",
+            "Find and open any app on the phone. Star the ones you use most and they get tiles in Controls and keys of their own.",
+            "bottom"),
         new("QuickActions",
             "The things you reach for",
             "Home, back, recents, turning the phone's screen off and saving a screenshot, without opening a panel.",

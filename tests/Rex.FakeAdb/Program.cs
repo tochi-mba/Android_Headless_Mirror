@@ -101,12 +101,46 @@ switch (command)
     case "exec-out":
         return ExecOut(rest);
 
+    case "push":
+        return Push(rest);
+
+    case "install":
+        return Install(rest);
+
     case "shell":
         return Shell(rest);
 
     default:
         Console.Error.WriteLine($"fake adb: unknown command '{command}'");
         return 1;
+}
+
+int Push(string[] rest)
+{
+    var markerFolder = Path.GetDirectoryName(log) ?? AppContext.BaseDirectory;
+    if (File.Exists(Path.Combine(markerFolder, "slow-push")))
+    {
+        Thread.Sleep(60_000);
+    }
+
+    if (File.Exists(Path.Combine(markerFolder, "fail-push")))
+    {
+        Console.Error.WriteLine("adb: error: failed to copy: No space left on device");
+        return 1;
+    }
+
+    return rest.Length >= 2 ? Write("1 file pushed, 0 skipped\n") : 1;
+}
+
+int Install(string[] rest)
+{
+    var markerFolder = Path.GetDirectoryName(log) ?? AppContext.BaseDirectory;
+    if (File.Exists(Path.Combine(markerFolder, "fail-install")))
+    {
+        return Write("Failure [INSTALL_FAILED_VERSION_DOWNGRADE]\n", 1);
+    }
+
+    return rest.Any(path => path.EndsWith(".apk", StringComparison.OrdinalIgnoreCase)) ? Write("Success\n") : 1;
 }
 
 int ExecOut(string[] rest)
@@ -198,6 +232,34 @@ int Shell(string[] rest)
         return Settings(rest);
     }
 
+    if (line.StartsWith("ls -1 ", StringComparison.Ordinal))
+    {
+        var folder = Unquote(line[6..]);
+        var names = scenario.RemoteFiles.Keys
+            .Where(path => path.StartsWith(folder, StringComparison.Ordinal) && !path[folder.Length..].Contains('/'))
+            .Select(path => path[folder.Length..]);
+        return Write(string.Join('\n', names) + (scenario.RemoteFiles.Count > 0 ? "\n" : string.Empty));
+    }
+
+    if (line.StartsWith("stat -c %s ", StringComparison.Ordinal))
+    {
+        var path = Unquote(line[11..]);
+        return scenario.RemoteFiles.TryGetValue(path, out var size) ? Write(size.ToString(CultureInfo.InvariantCulture) + "\n") : 1;
+    }
+
+    if (line.StartsWith("rm -f -- ", StringComparison.Ordinal) || line.StartsWith("rm -rf -- ", StringComparison.Ordinal))
+    {
+        var recursive = line.StartsWith("rm -rf", StringComparison.Ordinal);
+        var path = Unquote(line[(recursive ? 10 : 9)..]);
+        foreach (var key in scenario.RemoteFiles.Keys.Where(key => key == path || recursive && key.StartsWith(path + "/", StringComparison.Ordinal)).ToArray())
+        {
+            scenario.RemoteFiles.Remove(key);
+        }
+
+        scenario.Save();
+        return 0;
+    }
+
     if (rest[0] == "dumpsys" && rest.Length >= 2 && rest[1] == "battery")
     {
         return Write("Current Battery Service state:\n  AC powered: false\n  USB powered: true\n  status: 2\n  level: 74\n  scale: 100\n");
@@ -232,6 +294,12 @@ int Shell(string[] rest)
     }
 
     return 0;
+}
+
+static string Unquote(string value)
+{
+    var text = value.Trim();
+    return text.Length >= 2 && text[0] == '\'' && text[^1] == '\'' ? text[1..^1].Replace("'\"'\"'", "'", StringComparison.Ordinal) : text;
 }
 
 int Settings(string[] parts)
@@ -330,6 +398,7 @@ internal sealed class Scenario
     public Dictionary<string, string> Properties { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, Dictionary<string, string>> Settings { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> Overrides { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, long> RemoteFiles { get; set; } = new(StringComparer.Ordinal);
     public int DisplayWidth { get; set; } = 1080;
     public int DisplayHeight { get; set; } = 2400;
     public bool KeyguardLocked { get; set; }

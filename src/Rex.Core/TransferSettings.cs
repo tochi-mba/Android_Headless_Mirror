@@ -16,7 +16,7 @@ public sealed record TransferSettings
     public const int MostHistory = 100;
     public const int LargestAskMb = 102400;
 
-    /// <summary>Files dropped on the window are sent.</summary>
+    /// <summary>The desktop window accepts files from drops, its controls and File Explorer.</summary>
     public bool Enabled { get; set; } = true;
 
     /// <summary>The phone folder files go to, ending with a slash.</summary>

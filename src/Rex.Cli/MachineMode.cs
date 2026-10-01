@@ -48,6 +48,8 @@ public static class MachineMode
                 "zoom" => await ZoomAsync(context, positional).ConfigureAwait(false),
                 "sound" => await SoundAsync(context, positional).ConfigureAwait(false),
                 "app" => await AppCommands.MachineAsync(context, args).ConfigureAwait(false),
+                "push" => await FileCommands.MachineAsync(command, args, context).ConfigureAwait(false),
+                "install" => await FileCommands.MachineAsync(command, args, context).ConfigureAwait(false),
                 "screenshot" => await ScreenshotAsync(context, Arguments.Option(args, "--serial")).ConfigureAwait(false),
                 "phone" => await PhoneAsync(context, positional, Arguments.Option(args, "--serial")).ConfigureAwait(false),
                 "android" => await AndroidAsync(context, positional, Arguments.Option(args, "--serial"), Arguments.Option(args, "--filter")).ConfigureAwait(false),

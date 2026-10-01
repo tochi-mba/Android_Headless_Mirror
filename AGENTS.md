@@ -40,6 +40,8 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `zoom <in|out|reset>`, `screenshot`, `phone get|set <setting> <value>`,
 `android list|get|set|delete <system|secure|global> [key] [value] [--filter text]`,
 `sound [0-100|up|down|mute|unmute|toggle]`, `app list [search] [--system]|open <name|package> [--fresh]|close <package>|info <package>|favourite <package> on|off`,
+`push <files or folders...> [--to /sdcard/folder/] [--serial S]`,
+`install <apk...> [--downgrade] [--grant] [--test] [--no-replace] [--serial S]`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
 

@@ -114,8 +114,17 @@
         </StackPanel>
       </Border>
 
+      <Border x:Name="FirstUsePreview" Margin="0,14,0,0" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="10" Padding="14,11"
+              AutomationProperties.Name="Once the mirror opens">
+        <StackPanel>
+          <TextBlock Text="Once the mirror opens" FontWeight="SemiBold" />
+          <TextBlock x:Name="FirstUsePreviewText" Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                     Text="Click or type straight into the phone. The Apps tab opens apps by name; drop files onto the window, or choose Send files in Controls, to put them on the phone." />
+        </StackPanel>
+      </Border>
+
       <HeaderedContentControl Style="{StaticResource SettingRow}" Margin="0,18,0,0" Header="Start with Windows and wait for the phone in the tray">
-        <CheckBox x:Name="StartWithWindows" Checked="OnStartWithWindows" Unchecked="OnStartWithWindows" />
+        <CheckBox x:Name="StartWithWindows" Checked="OnStartWithWindows" Unchecked="OnStartWithWindows" AutomationProperties.Name="Start with Windows and wait for the phone in the tray" />
       </HeaderedContentControl>
 
       <Grid Margin="0,14,0,0">

@@ -66,6 +66,7 @@
       <a href="#zoom">Zoom</a>
       <a href="#sound">Sound</a>
       <a href="#apps">Apps</a>
+      <a href="#files">Send files</a>
       <a href="#keyboard">Keyboard</a>
       <a href="#from-anywhere">From anywhere</a>
       <a href="#copies">Copies</a>
@@ -128,6 +129,17 @@
         <li>Press <kbd>Ctrl+Alt+Shift+1</kbd> for the first favourite, up to <kbd>Ctrl+Alt+Shift+9</kbd>. Move them up and down from their menu to change which key opens which.</li>
       </ol>
       <dl class="ref-facts"><div><dt>Keys</dt><dd><kbd>Ctrl+Alt+2</kbd>, <kbd>Ctrl+Alt+Shift+1</kbd> to 9</dd></div><div><dt>Settings</dt><dd><a href="settings.html#group-apps">Apps</a></dd></div></dl>
+    </section>
+    <section class="recipe" id="files" aria-labelledby="files-title">
+      <h2 id="files-title">Send files, folders or an app to the phone</h2>
+      <p>Files go only into the phone's shared storage. APK files are installed instead of copied when that setting is on.</p>
+      <ol class="recipe-steps">
+        <li>Drop files or a folder onto the window, or choose <strong>Send files…</strong> in Controls.</li>
+        <li>To reuse File Explorer's clipboard, copy the files and press <kbd>Ctrl+Alt+V</kbd>.</li>
+        <li>If an APK or a large batch needs approval, check the question and choose <strong>Install</strong> or <strong>Send</strong>.</li>
+        <li>Watch the item in Controls. Cancel stops its own ADB process and removes a partial copy; <strong>Try again</strong> puts it back in the queue.</li>
+      </ol>
+      <dl class="ref-facts"><div><dt>Keys</dt><dd><kbd>Ctrl+Alt+V</kbd></dd></div><div><dt>Settings</dt><dd><a href="settings.html#group-files">Files</a></dd></div><div><dt>Command line</dt><dd><a href="cli.html#cmd-push-files-or-folders-to-sdcard-folder-serial-s"><code>rex push</code></a>, <a href="cli.html#cmd-install-apk-downgrade-grant-test-no-replace-serial-s"><code>rex install</code></a></dd></div></dl>
     </section>
     <section class="recipe" id="keyboard" aria-labelledby="keyboard-title">
       <h2 id="keyboard-title">Type, and browse a feed without the mouse</h2>

@@ -25,11 +25,18 @@ public sealed partial class AppUiTests
             await app.WaitForPhaseAsync("mirroring", Startup);
             var started = await app.WaitForStatusAsync(s => s["tour"]!["visible"]!.GetValue<bool>(), Startup, "the tour");
             Assert.Equal(1, started["tour"]!["step"]!.GetValue<int>());
-            Assert.True(started["tour"]!["steps"]!.GetValue<int>() >= 4);
+            Assert.True(started["tour"]!["steps"]!.GetValue<int>() >= 5);
+            Assert.Contains("drop files", app.Ui.Read("StepBody", item => item.Name), StringComparison.OrdinalIgnoreCase);
             await app.SaveScreenshotAsync("ui-tour-first-step.png");
 
             app.Ui.Invoke("NextButton");
             await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 2, Soon, "the second step");
+            Assert.Contains("sending files", app.Ui.Read("StepBody", item => item.Name), StringComparison.OrdinalIgnoreCase);
+            app.Ui.Invoke("NextButton");
+            await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 3, Soon, "the Apps step");
+            Assert.Equal("Every app, by name", app.Ui.Read("StepTitle", item => item.Name));
+            app.Ui.Invoke("BackButton");
+            await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 2, Soon, "the second step again");
             app.Ui.Invoke("BackButton");
             await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 1, Soon, "the first step again");
 
@@ -453,6 +460,9 @@ public sealed partial class AppUiTests
         package.WriteScenario(new { Devices = Array.Empty<object>() });
         using var app = new AppProcess(package);
         await app.WaitForStatusAsync(s => s["onboarding"]!.GetValue<bool>(), Startup, "first-run guide");
+        var firstUse = app.Ui.Read("FirstUsePreviewText", item => item.Name);
+        Assert.Contains("Apps tab", firstUse, StringComparison.Ordinal);
+        Assert.Contains("drop files", firstUse, StringComparison.OrdinalIgnoreCase);
         app.Ui.Invoke("SkipButton");
         await app.WaitForStatusAsync(s => !s["onboarding"]!.GetValue<bool>(), Soon, "guide dismissed");
         Assert.True(new StateStore(package.Paths.State).Ui.SetupDismissed);

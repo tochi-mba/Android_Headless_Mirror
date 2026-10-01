@@ -179,6 +179,24 @@
     </dl>
     <div class="command-row"><code>rex app favourite com.spotify.music on</code><button class="copy-button" type="button" data-copy="rex app favourite com.spotify.music on">Copy</button></div>
   </article>
+  <article class="ref-row cli-row" id="cmd-push-files-or-folders-to-sdcard-folder-serial-s">
+    <h3><code>rex push &lt;files or folders…&gt; [--to /sdcard/folder/] [--serial S]</code></h3>
+    <p class="ref-hint">Copy files or folders into the phone's shared storage.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex push photo.jpg --to /sdcard/Pictures/</code><button class="copy-button" type="button" data-copy="rex push photo.jpg --to /sdcard/Pictures/">Copy</button></div>
+  </article>
+  <article class="ref-row cli-row" id="cmd-install-apk-downgrade-grant-test-no-replace-serial-s">
+    <h3><code>rex install &lt;apk…&gt; [--downgrade] [--grant] [--test] [--no-replace] [--serial S]</code></h3>
+    <p class="ref-hint">Install one or more APK files, with optional update flags.</p>
+    <dl class="ref-facts">
+      <div><dt>Output</dt><dd>Both: plain text, or JSON with <code>--json</code></dd></div>
+      <div><dt>Needs the app</dt><dd>No</dd></div>
+    </dl>
+    <div class="command-row"><code>rex install app.apk --grant</code><button class="copy-button" type="button" data-copy="rex install app.apk --grant">Copy</button></div>
+  </article>
   <article class="ref-row cli-row" id="cmd-screenshot-serial-s">
     <h3><code>rex screenshot [--serial S]</code></h3>
     <p class="ref-hint">Save a picture of the phone screen.</p>

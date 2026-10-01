@@ -58,12 +58,13 @@ public static partial class ScrcpyArguments
             config.Mirror.RecordOnStart
                 ? Path.Combine(config.Mirror.RecordDirectory, RecordingFileName(config.Mirror.RecordFormat, DateTime.MinValue))
                 : null)
-            .Where(argument => argument != PrintFps && !argument.StartsWith(PushTarget, StringComparison.Ordinal))
+            .Where(argument => argument != PrintFps)
             .ToArray();
 
     /// <summary>scrcpy's frame rate counter, which prints the rate to the console every second.</summary>
     public const string PrintFps = "--print-fps";
     public const string PushTarget = "--push-target=";
+    public const string NoFileDrop = "--no-file-drop";
 
     [GeneratedRegex(@"^\s*INFO:\s+(\d{1,4})\s+fps\b")]
     private static partial Regex FrameRatePattern();
@@ -268,14 +269,20 @@ public static partial class ScrcpyArguments
             args.Add("--record=" + recordPath);
         }
 
-        // Keep scrcpy's own drop support consistent with drops the window catches. This is left
-        // out of LaunchSettings because changing a folder must not ask to restart the mirror.
+        args.AddRange(SplitExtraArgs(mirror.ExtraArgs));
+
+        // Keep scrcpy's own drop support consistent with drops the window catches. The target is
+        // last so this typed setting wins over a legacy raw argument. Like every launch-only
+        // scrcpy option, changing it offers a restart so direct drops cannot keep using the old folder.
         if (!isCopy)
         {
+            args.RemoveAll(argument => argument.StartsWith(PushTarget, StringComparison.Ordinal));
             args.Add(PushTarget + config.Transfer.Folder);
+            if (!config.Transfer.Enabled)
+            {
+                args.Add(NoFileDrop);
+            }
         }
-
-        args.AddRange(SplitExtraArgs(mirror.ExtraArgs));
 
         // After the extra arguments, so it wins over an orientation given there: the main view may
         // have been turned since it started, and a copy opens showing the picture the same way.

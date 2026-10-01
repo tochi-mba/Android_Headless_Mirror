@@ -19,6 +19,8 @@ namespace Rex.Core;
 /// <param name="SoundLowering">How far and how long the sound is lowered: it is lowered while typing.</param>
 /// <param name="AppsRecent">How many recent apps are remembered: they are shown.</param>
 /// <param name="AppsOnControls">How many favourites the Controls tab shows: it shows them.</param>
+/// <param name="Transfer">File-transfer choices: accepting files is on.</param>
+/// <param name="TransferInstall">APK install choices: accepting files and installing APKs are on.</param>
 public sealed record SettingsDependencies(
     bool Sensitivity,
     bool Zoom,
@@ -33,7 +35,9 @@ public sealed record SettingsDependencies(
     bool Sound,
     bool SoundLowering,
     bool AppsRecent,
-    bool AppsOnControls)
+    bool AppsOnControls,
+    bool Transfer,
+    bool TransferInstall)
 {
     public static SettingsDependencies Of(RexConfig config) => new(
         Sensitivity: config.Touchpad.Enabled && config.Touchpad.TwoFingerToAndroid,
@@ -49,5 +53,7 @@ public sealed record SettingsDependencies(
         Sound: config.Mirror.Audio,
         SoundLowering: config.Mirror.Audio && config.Sound.LowerWhileTyping,
         AppsRecent: config.Apps.ShowRecent,
-        AppsOnControls: config.Apps.FavouritesOnControls);
+        AppsOnControls: config.Apps.FavouritesOnControls,
+        Transfer: config.Transfer.Enabled,
+        TransferInstall: config.Transfer.Enabled && config.Transfer.InstallApks);
 }
