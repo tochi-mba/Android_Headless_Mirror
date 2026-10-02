@@ -47,6 +47,8 @@ public sealed class AppHost : IDisposable
     private FileSystemWatcher? _configWatcher;
     private DispatcherTimer? _configReload;
     private string _lastConfigText = string.Empty;
+    private DateTime _configWrittenUtc;
+    private DateTime _configCheckedUtc;
 
     public static AppHost Create(LaunchOptions options)
     {
@@ -77,6 +79,7 @@ public sealed class AppHost : IDisposable
     private void WatchConfigFile()
     {
         _lastConfigText = ReadConfigText();
+        _configWrittenUtc = File.GetLastWriteTimeUtc(Paths.Config);
         _configReload = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
         _configReload.Tick += (_, _) =>
         {
@@ -98,6 +101,31 @@ public sealed class AppHost : IDisposable
         _configWatcher.Created += touched;
         _configWatcher.Renamed += (sender, e) => touched(sender, e);
         _configWatcher.EnableRaisingEvents = true;
+    }
+
+    /// <summary>
+    /// A file watcher can miss a change (a busy disk, a network folder, its buffer full), and then
+    /// nothing reloads. The window's tick calls this; every two seconds it looks at when config.json
+    /// was last written and, if that moved, reloads as a watched change would.
+    /// </summary>
+    public void CheckConfigFile()
+    {
+        var now = DateTime.UtcNow;
+        if (_configReload is null || now - _configCheckedUtc < TimeSpan.FromSeconds(2))
+        {
+            return;
+        }
+
+        _configCheckedUtc = now;
+        var written = File.GetLastWriteTimeUtc(Paths.Config);
+        if (written != _configWrittenUtc)
+        {
+            _configWrittenUtc = written;
+            if (!_configReload.IsEnabled)
+            {
+                _configReload.Start();
+            }
+        }
     }
 
     private string ReadConfigText()
