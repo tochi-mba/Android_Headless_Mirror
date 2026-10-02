@@ -194,7 +194,7 @@ public static class SettingsCatalogue
         "Input.RightClick", "Input.MiddleClick", "Input.BackButton", "Input.ForwardButton",
         "Input.ShiftClicks", "Input.KeyRepeat", "Input.MouseHover", "Input.ClipboardAutosync",
         "Input.LegacyPaste", "Input.Gamepad",
-        "Transfer.Enabled", "Transfer.Folder",
+        "Transfer.Enabled",
     };
 
     /// <summary>Whether a setting applies at once, or the next time the mirror starts.</summary>

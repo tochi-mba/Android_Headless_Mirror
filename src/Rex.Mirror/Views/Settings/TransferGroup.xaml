@@ -1,7 +1,7 @@
 <UserControl x:Class="Rex.Mirror.Views.Settings.TransferGroup"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Expander x:Name="GroupFiles" Header="Files" Margin="0,12,0,0"><StackPanel>
+  <Expander x:Name="GroupFiles" Header="Sending files" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
                Text="Drop, choose or paste files to copy them into the phone's shared storage. APK files may be installed instead." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Accept files from this PC"><CheckBox x:Name="TransferEnabled" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>

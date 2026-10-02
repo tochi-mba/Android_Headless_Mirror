@@ -95,6 +95,7 @@ public sealed partial class AppProcess : IDisposable
         // Never the PC's real audio sessions.
         start.Environment[Rex.Mirror.Services.Sound.FakePhoneSound.Variable] = _package.SoundFile;
         start.Environment[Rex.Mirror.Services.Files.SendToMenu.FolderVariable] = _package.SendToFolder;
+        start.Environment[Rex.Mirror.Services.TestHooks.Variable] = "1";
         start.Environment.Remove(ToolLocator.AdbOverride);
         start.Environment.Remove(ToolLocator.ScrcpyOverride);
         var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start RexMirror.exe.");

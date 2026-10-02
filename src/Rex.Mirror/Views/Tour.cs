@@ -9,14 +9,14 @@ public sealed record TourStep(string Target, string Title, string Body, string S
 /// <summary>
 /// What a first-time user is shown, once.
 ///
-/// Seven stops, each pointing at something already on screen rather than describing it in the
+/// A stop for each part of the window, each pointing at something already on screen rather than describing it in the
 /// abstract. The steps adapt to what is actually there: with no phone connected the first stop
 /// explains the empty window instead of the mirror.
 /// </summary>
 public static class Tour
 {
     /// <summary>Raised when the tour changes enough that people who saw the old one should see it again.</summary>
-    public const int Version = 2;
+    public const int Version = 1;
 
     public static IReadOnlyList<TourStep> Steps(bool mirroring) =>
     [
@@ -28,7 +28,7 @@ public static class Tour
             "right"),
         new("SidebarTabs",
             "Everything else is in here",
-            "Controls—including sending files—the phone's apps and settings, this app's settings, and what it knows about the connection.",
+            "Controls for the phone and for sending it files, its apps and its own settings, this app's settings, and what it knows about the connection.",
             "left"),
         new("TabApps",
             "Every app, by name",

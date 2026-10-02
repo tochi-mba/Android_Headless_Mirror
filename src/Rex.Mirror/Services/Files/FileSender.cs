@@ -203,7 +203,7 @@ public sealed class FileSender : IDisposable
         {
             lock (_gate) _queue.Cancel(job.Id);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
         {
             _host.Log.Error("Could not send " + job.Item.Entry.Path, ex);
             lock (_gate) _queue.Finish(job.Id, false, ex.Message);

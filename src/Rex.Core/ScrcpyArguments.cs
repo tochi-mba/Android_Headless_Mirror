@@ -58,7 +58,7 @@ public static partial class ScrcpyArguments
             config.Mirror.RecordOnStart
                 ? Path.Combine(config.Mirror.RecordDirectory, RecordingFileName(config.Mirror.RecordFormat, DateTime.MinValue))
                 : null)
-            .Where(argument => argument != PrintFps)
+            .Where(argument => argument != PrintFps && !argument.StartsWith(PushTarget, StringComparison.Ordinal))
             .ToArray();
 
     /// <summary>scrcpy's frame rate counter, which prints the rate to the console every second.</summary>
@@ -271,9 +271,10 @@ public static partial class ScrcpyArguments
 
         args.AddRange(SplitExtraArgs(mirror.ExtraArgs));
 
-        // Keep scrcpy's own drop support consistent with drops the window catches. The target is
-        // last so this typed setting wins over a legacy raw argument. Like every launch-only
-        // scrcpy option, changing it offers a restart so direct drops cannot keep using the old folder.
+        // scrcpy's own drops (a file let go straight onto the picture) go where the window's do.
+        // The typed setting wins over one in the extra arguments. A new folder applies at once to
+        // the window's drops and to scrcpy's at its next start, so it never asks for a restart
+        // (LaunchSettings leaves it out); turning drops off does, since scrcpy takes them itself.
         if (!isCopy)
         {
             args.RemoveAll(argument => argument.StartsWith(PushTarget, StringComparison.Ordinal));

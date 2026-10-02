@@ -1,6 +1,4 @@
-using System.Buffers.Binary;
 using System.IO.Compression;
-using System.Text;
 using Rex.Core;
 using Rex.Tests.Support;
 
@@ -196,11 +194,13 @@ public sealed class TransferTests
         var config = new RexConfig();
         var before = ScrcpyArguments.LaunchSettings(config, false);
         config.Transfer.Folder = "/sdcard/Documents/";
-        Assert.NotEqual(before, ScrcpyArguments.LaunchSettings(config, false));
+        // A new folder never asks for a restart: the window's own drops use it at once.
+        Assert.Equal(before, ScrcpyArguments.LaunchSettings(config, false));
         Assert.Contains("--push-target=/sdcard/Documents/", ScrcpyArguments.Build(config, "S", false, "T", null, null));
         Assert.DoesNotContain(ScrcpyArguments.Build(config, "S", false, "copy", null, null, copyIndex: 0), a => a.StartsWith(ScrcpyArguments.PushTarget, StringComparison.Ordinal));
         config.Transfer.Enabled = false;
         Assert.Contains(ScrcpyArguments.NoFileDrop, ScrcpyArguments.Build(config, "S", false, "T", null, null));
+        Assert.NotEqual(before, ScrcpyArguments.LaunchSettings(config, false));
         Assert.DoesNotContain(ScrcpyArguments.NoFileDrop, ScrcpyArguments.Build(config, "S", false, "copy", null, null, copyIndex: 0));
         config.Transfer.Enabled = true;
         config.Mirror.ExtraArgs = "--push-target=/sdcard/Old/";
@@ -239,6 +239,10 @@ public sealed class TransferTests
         Assert.True((await adb.DeleteFileAsync("S", "/sdcard/Download/a b.txt", ct)).Ok);
         Assert.True((await adb.DeleteEntryAsync("S", "/sdcard/Download/folder", recursive: true, ct)).Ok);
         Assert.True((await adb.ScanMediaAsync("S", "/sdcard/Pictures/a.jpg", ct)).Ok);
+        // The file name is the person's own, so it reaches the phone's shell quoted as one argument.
+        Assert.True((await adb.ScanMediaAsync("S", "/sdcard/Pictures/it's $(reboot).jpg", ct)).Ok);
+        Assert.Contains(runner.Calls, call => call.Arguments.Contains(
+            "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d 'file:///sdcard/Pictures/it'\"'\"'s $(reboot).jpg'"));
         Assert.True((await adb.OpenFolderAsync("S", "/sdcard/Download/", ct)).Ok);
         Assert.False((await adb.OpenFolderAsync("S", "/data/", ct)).Ok);
         Assert.Equal("/sdcard/Download/a b.txt", AdbClient.RemotePath("/sdcard/Download/", "a b.txt"));
@@ -263,7 +267,7 @@ public sealed class TransferTests
             using (var zip = ZipFile.Open(apk, ZipArchiveMode.Create))
             {
                 using var output = zip.CreateEntry("AndroidManifest.xml").Open();
-                output.Write(BinaryManifest("com.example.app", "2.4"));
+                output.Write(TestApk.Manifest("com.example.app", "2.4"));
             }
 
             Assert.Equal(new ApkIdentity("com.example.app", "2.4"), ApkManifest.Read(apk));
@@ -280,48 +284,4 @@ public sealed class TransferTests
             Directory.Delete(root, recursive: true);
         }
     }
-
-    private static byte[] BinaryManifest(string package, string version)
-    {
-        string[] strings = ["manifest", "package", "versionName", package, version];
-        var stringData = new List<byte>();
-        var offsets = new List<int>();
-        foreach (var value in strings)
-        {
-            offsets.Add(stringData.Count);
-            var bytes = Encoding.UTF8.GetBytes(value);
-            stringData.Add((byte)value.Length);
-            stringData.Add((byte)bytes.Length);
-            stringData.AddRange(bytes);
-            stringData.Add(0);
-        }
-
-        while (stringData.Count % 4 != 0) stringData.Add(0);
-        var poolSize = 28 + offsets.Count * 4 + stringData.Count;
-        var pool = new byte[poolSize];
-        Put16(pool, 0, 0x0001); Put16(pool, 2, 28); Put32(pool, 4, poolSize);
-        Put32(pool, 8, strings.Length); Put32(pool, 16, 0x100); Put32(pool, 20, 28 + offsets.Count * 4);
-        for (var i = 0; i < offsets.Count; i++) Put32(pool, 28 + i * 4, offsets[i]);
-        stringData.CopyTo(pool, 28 + offsets.Count * 4);
-
-        var element = new byte[36 + 40];
-        Put16(element, 0, 0x0102); Put16(element, 2, 16); Put32(element, 4, element.Length);
-        Put32(element, 16, -1); Put32(element, 20, 0); Put16(element, 24, 20); Put16(element, 26, 20); Put16(element, 28, 2);
-        Attribute(element, 36, 1, 3);
-        Attribute(element, 56, 2, 4);
-
-        var xml = new byte[8 + pool.Length + element.Length];
-        Put16(xml, 0, 0x0003); Put16(xml, 2, 8); Put32(xml, 4, xml.Length);
-        pool.CopyTo(xml, 8); element.CopyTo(xml, 8 + pool.Length);
-        return xml;
-    }
-
-    private static void Attribute(byte[] bytes, int at, int name, int value)
-    {
-        Put32(bytes, at, -1); Put32(bytes, at + 4, name); Put32(bytes, at + 8, value);
-        Put16(bytes, at + 12, 8); bytes[at + 15] = 3; Put32(bytes, at + 16, value);
-    }
-
-    private static void Put16(byte[] bytes, int at, int value) => BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(at, 2), (ushort)value);
-    private static void Put32(byte[] bytes, int at, int value) => BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(at, 4), unchecked((uint)value));
 }

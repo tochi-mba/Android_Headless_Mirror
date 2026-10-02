@@ -75,9 +75,13 @@ public sealed partial class AdbClient
         return AndroidResult.From(await ShellCommandAsync(serial, option + ShellQuoting.Quote(remotePath), cancellationToken).ConfigureAwait(false));
     }
 
+    /// <summary>
+    /// Tells the Gallery a file arrived. The phone's shell reads this line, and a file name is the
+    /// person's own (spaces, quotes, "$(...)"), so the address is quoted as one argument.
+    /// </summary>
     public async Task<AndroidResult> ScanMediaAsync(string serial, string remotePath, CancellationToken cancellationToken = default) =>
-        AndroidResult.From(await ShellAsync(serial,
-            ["am", "broadcast", "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE", "-d", "file://" + remotePath], cancellationToken).ConfigureAwait(false));
+        AndroidResult.From(await ShellCommandAsync(serial,
+            "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d " + ShellQuoting.Quote("file://" + remotePath), cancellationToken).ConfigureAwait(false));
 
     public async Task<AndroidResult> OpenFolderAsync(string serial, string remoteFolder, CancellationToken cancellationToken = default)
     {

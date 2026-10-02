@@ -129,7 +129,36 @@ int Push(string[] rest)
         return 1;
     }
 
-    return rest.Length >= 2 ? Write("1 file pushed, 0 skipped\n") : 1;
+    if (rest.Length < 2)
+    {
+        return 1;
+    }
+
+    // The file lands on the fake phone. With PushMillis set it arrives over that long: stat sees
+    // it grow from when the push began, as a real phone's storage would while adb copies.
+    var local = rest[0];
+    var remote = rest[1].EndsWith('/') ? rest[1] + Path.GetFileName(Path.TrimEndingDirectorySeparator(local)) : rest[1];
+    var size = File.Exists(local) ? new FileInfo(local).Length
+        : Directory.Exists(local) ? Directory.EnumerateFiles(local, "*", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length)
+        : -1;
+    if (size < 0)
+    {
+        Console.Error.WriteLine($"adb: error: cannot stat '{local}': No such file or directory");
+        return 1;
+    }
+
+    if (scenario.PushMillis > 0)
+    {
+        scenario.Pushing[remote] = new PushInProgress { StartedUtcTicks = DateTime.UtcNow.Ticks, Size = size, Millis = scenario.PushMillis };
+        scenario.Save();
+        Thread.Sleep(scenario.PushMillis);
+        scenario = Scenario.Load(scenario.Path);
+        scenario.Pushing.Remove(remote);
+    }
+
+    scenario.RemoteFiles[remote] = size;
+    scenario.Save();
+    return Write("1 file pushed, 0 skipped\n");
 }
 
 int Install(string[] rest)
@@ -244,6 +273,12 @@ int Shell(string[] rest)
     if (line.StartsWith("stat -c %s ", StringComparison.Ordinal))
     {
         var path = Unquote(line[11..]);
+        if (scenario.Pushing.TryGetValue(path, out var pushing))
+        {
+            var part = Math.Clamp((DateTime.UtcNow.Ticks - pushing.StartedUtcTicks) / (double)TimeSpan.FromMilliseconds(pushing.Millis).Ticks, 0, 1);
+            return Write(((long)(pushing.Size * part)).ToString(CultureInfo.InvariantCulture) + "\n");
+        }
+
         return scenario.RemoteFiles.TryGetValue(path, out var size) ? Write(size.ToString(CultureInfo.InvariantCulture) + "\n") : 1;
     }
 
@@ -388,6 +423,14 @@ internal sealed class FakeDevice
     public string Model { get; set; } = "Fake Phone";
 }
 
+/// <summary>A push on its way to the fake phone: when it began, how big it is, how long it takes.</summary>
+internal sealed class PushInProgress
+{
+    public long StartedUtcTicks { get; set; }
+    public long Size { get; set; }
+    public int Millis { get; set; }
+}
+
 internal sealed class Scenario
 {
     public static readonly byte[] TinyPng = Convert.FromBase64String(
@@ -399,6 +442,12 @@ internal sealed class Scenario
     public Dictionary<string, Dictionary<string, string>> Settings { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> Overrides { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, long> RemoteFiles { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>How long a push takes; 0 is at once.</summary>
+    public int PushMillis { get; set; }
+
+    /// <summary>Pushes on their way, by phone path.</summary>
+    public Dictionary<string, PushInProgress> Pushing { get; set; } = new(StringComparer.Ordinal);
     public int DisplayWidth { get; set; } = 1080;
     public int DisplayHeight { get; set; } = 2400;
     public bool KeyguardLocked { get; set; }
@@ -421,7 +470,7 @@ internal sealed class Scenario
         Scenario scenario;
         if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
         {
-            scenario = JsonSerializer.Deserialize(File.ReadAllText(path), ScenarioJson.Default.Scenario) ?? Default();
+            scenario = JsonSerializer.Deserialize(ReadShared(path), ScenarioJson.Default.Scenario) ?? Default();
             scenario.Path = path;
         }
         else
@@ -436,6 +485,10 @@ internal sealed class Scenario
         return scenario;
     }
 
+    /// <summary>
+    /// Writes the scenario whole, then swaps it in: several fake adb processes read it at once (a
+    /// push in progress and the app asking how far it has got), and none may see half a file.
+    /// </summary>
     public void Save()
     {
         if (Path is null)
@@ -443,7 +496,36 @@ internal sealed class Scenario
             return;
         }
 
-        File.WriteAllText(Path, JsonSerializer.Serialize(this, ScenarioJson.Default.Scenario));
+        var temp = Path + "." + Environment.ProcessId.ToString(CultureInfo.InvariantCulture) + ".tmp";
+        File.WriteAllText(temp, JsonSerializer.Serialize(this, ScenarioJson.Default.Scenario));
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, Path, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && attempt < 100)
+            {
+                Thread.Sleep(10);
+            }
+        }
+    }
+
+    /// <summary>Reads the file, waiting out a moment when another fake adb is swapping it in.</summary>
+    private static string ReadShared(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return File.ReadAllText(path);
+            }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && attempt < 100)
+            {
+                Thread.Sleep(10);
+            }
+        }
     }
 
     public static Scenario Default() => new()
