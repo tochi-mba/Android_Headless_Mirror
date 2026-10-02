@@ -83,25 +83,13 @@ public sealed class AppHost : IDisposable
     {
         _lastConfigText = ReadConfigText();
         _configWrittenUtc = File.GetLastWriteTimeUtc(Paths.Config);
-        _configReload = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        // Normal, not Background: the window's 33 ms tick runs at Render, and on a busy PC it can
+        // keep Background work from ever getting a turn, so a reload would wait for good.
+        _configReload = new DispatcherTimer(DispatcherPriority.Normal) { Interval = TimeSpan.FromMilliseconds(300) };
         _configReload.Tick += (_, _) =>
         {
             _configReload.Stop();
-            var text = ReadConfigText();
-            if (text.Length == 0)
-            {
-                // Caught while Windows replaced the file: the next look at its write time tries again.
-                _configWrittenUtc = default;
-                return;
-            }
-
-            if (text == _lastConfigText)
-            {
-                return;
-            }
-
-            _lastConfigText = text;
-            ReloadConfigFromDisk();
+            RereadConfig();
         };
 
         var dispatcher = Dispatcher.CurrentDispatcher;
@@ -131,12 +119,29 @@ public sealed class AppHost : IDisposable
         if (written != _configWrittenUtc)
         {
             _configWrittenUtc = written;
-            Log.Info("config.json's write time moved; reading it again.");
-            if (!_configReload.IsEnabled)
-            {
-                _configReload.Start();
-            }
+            _configReload.Stop();
+            RereadConfig();
         }
+    }
+
+    /// <summary>Reloads config.json when its text is not what the app last wrote or read.</summary>
+    private void RereadConfig()
+    {
+        var text = ReadConfigText();
+        if (text.Length == 0)
+        {
+            // Caught while Windows replaced the file: the next look at its write time tries again.
+            _configWrittenUtc = default;
+            return;
+        }
+
+        if (text == _lastConfigText)
+        {
+            return;
+        }
+
+        _lastConfigText = text;
+        ReloadConfigFromDisk();
     }
 
     private string ReadConfigText()
