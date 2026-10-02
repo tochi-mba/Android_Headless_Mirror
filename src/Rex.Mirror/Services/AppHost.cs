@@ -85,7 +85,14 @@ public sealed class AppHost : IDisposable
         {
             _configReload.Stop();
             var text = ReadConfigText();
-            if (text.Length == 0 || text == _lastConfigText)
+            if (text.Length == 0)
+            {
+                // Caught while Windows replaced the file: the next look at its write time tries again.
+                _configWrittenUtc = default;
+                return;
+            }
+
+            if (text == _lastConfigText)
             {
                 return;
             }
