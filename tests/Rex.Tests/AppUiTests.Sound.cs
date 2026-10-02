@@ -67,12 +67,17 @@ public sealed partial class AppUiTests
         await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "the offer to restart without sound");
         Assert.True((await app.SendAsync(new IpcRequest("session-restart"))).Ok);
         await app.WaitForStatusAsync(s => s["mirroring"]!.GetValue<bool>() && !s["restartRequired"]!.GetValue<bool>(), Startup, "the mirror without sound");
-        if (!app.Ui.Exists("SoundProblem"))
+        // The restart may close the panel as the window changes hands; the button opens it again.
+        await app.WaitUntilAsync(() =>
         {
-            app.Ui.Invoke("QuickSound");
-        }
+            if (!app.Ui.Exists("SoundProblem"))
+            {
+                app.Ui.Invoke("QuickSound");
+                return false;
+            }
 
-        await app.WaitUntilAsync(() => app.Ui.Read("SoundProblem", i => i.Name) == SoundProblems.AudioOff, Soon, "the panel to say sound is off");
+            return app.Ui.Read("SoundProblem", i => i.Name) == SoundProblems.AudioOff;
+        }, Soon, "the panel to say sound is off");
         app.Ui.Invoke("SoundTurnOn");
         await app.WaitUntilAsync(() => ConfigFile.Load(package.Paths.Config).Mirror.Audio, Soon, "phone sound to be turned on");
         await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "the offer to restart");

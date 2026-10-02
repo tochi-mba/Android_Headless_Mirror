@@ -123,6 +123,8 @@ public sealed partial class AppEndToEndTests
         using var package = new TestPackage(withFakeTools: true);
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        // Real keys go to whatever window is in front.
+        await app.FocusAsync();
 
         await app.PressCtrlAltKeyAsync(0x28); // Down: next feed item.
         await app.WaitUntilAsync(
