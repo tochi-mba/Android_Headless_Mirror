@@ -31,7 +31,7 @@ public sealed partial class AppUiTests
 
             app.Ui.Invoke("NextButton");
             await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 2, Soon, "the second step");
-            Assert.Contains("sending files", app.Ui.Read("StepBody", item => item.Name), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("sending it files", app.Ui.Read("StepBody", item => item.Name), StringComparison.OrdinalIgnoreCase);
             app.Ui.Invoke("NextButton");
             await app.WaitForStatusAsync(s => s["tour"]!["step"]!.GetValue<int>() == 3, Soon, "the Apps step");
             Assert.Equal("Every app, by name", app.Ui.Read("StepTitle", item => item.Name));
