@@ -200,7 +200,11 @@ public sealed partial class AppEndToEndTests
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
 
         Assert.Equal(2, (await app.SendAsync(Paths("push", first, second))).Data!["queued"]!.GetValue<int>());
-        await app.WaitForStatusAsync(s => StateOf(s, "first.bin") == "sending" && StateOf(s, "second.bin") == "waiting", FileTimeout, "one sending and one waiting");
+        // Bytes arriving on the fake phone mean its push has begun and has saved what it changed; only
+        // then may the phone leave, or that save would put the phone back.
+        await app.WaitForStatusAsync(
+            s => Item(s, "first.bin")?["percent"]!.GetValue<int>() > 0 && StateOf(s, "second.bin") == "waiting",
+            FileTimeout, "the first file arriving and the second waiting");
 
         WritePhone(package, connected: false);
         var gone = await app.WaitForStatusAsync(s => StateOf(s, "first.bin") == "cancelled" && StateOf(s, "second.bin") == "cancelled", TimeSpan.FromSeconds(30), "both cancelled");
