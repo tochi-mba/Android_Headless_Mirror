@@ -132,7 +132,7 @@ public sealed partial class AppEndToEndTests
         await app.WaitUntilAsync(() => package.AdbCalls().Any(c => c.Contains("MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/beach.jpg", StringComparison.Ordinal)), FileTimeout, "the Gallery told");
 
         new ConfigStore(package.Paths.Config).Set("Transfer.ScanMedia", "false");
-        await app.WaitForStatusAsync(_ => ConfigFile.Load(package.Paths.Config).Transfer.ScanMedia == false, FileTimeout, "the setting");
+        await app.WaitForStatusAsync(s => !FilesOf(s)["scanMedia"]!.GetValue<bool>(), FileTimeout, "the app to have the setting");
         await app.SendAsync(Paths("push", quiet));
         await app.WaitForStatusAsync(s => StateOf(s, "quiet.jpg") == "done", FileTimeout, "the second photo to arrive");
         Assert.DoesNotContain(package.AdbCalls(), c => c.Contains("file:///sdcard/Download/quiet.jpg", StringComparison.Ordinal));
@@ -192,7 +192,8 @@ public sealed partial class AppEndToEndTests
     {
         TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
-        WritePhone(package, pushMillis: 8000);
+        // Long enough that the phone is seen to have gone well before the first file could arrive.
+        WritePhone(package, pushMillis: 20_000);
         var first = MakeFile(package, "first.bin", 4096);
         var second = MakeFile(package, "second.bin", 4096);
         using var app = new AppProcess(package);
@@ -202,7 +203,7 @@ public sealed partial class AppEndToEndTests
         await app.WaitForStatusAsync(s => StateOf(s, "first.bin") == "sending" && StateOf(s, "second.bin") == "waiting", FileTimeout, "one sending and one waiting");
 
         WritePhone(package, connected: false);
-        var gone = await app.WaitForStatusAsync(s => StateOf(s, "first.bin") == "cancelled" && StateOf(s, "second.bin") == "cancelled", FileTimeout, "both cancelled");
+        var gone = await app.WaitForStatusAsync(s => StateOf(s, "first.bin") == "cancelled" && StateOf(s, "second.bin") == "cancelled", TimeSpan.FromSeconds(30), "both cancelled");
         Assert.Equal(0, FilesOf(gone)["done"]!.GetValue<int>());
         await app.QuitAsync();
     }

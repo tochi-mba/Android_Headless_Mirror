@@ -205,11 +205,14 @@ public static partial class CommandRouter
         }
     }
 
-    private static JsonObject FilesStatus(MainWindow window)
+    private static JsonObject FilesStatus(AppHost host, MainWindow window)
     {
         var jobs = window.Transfers;
         return new JsonObject
         {
+            // What the app is using now, which a change to config.json reaches a moment later.
+            ["folder"] = host.Config.Transfer.Folder,
+            ["scanMedia"] = host.Config.Transfer.ScanMedia,
             ["armed"] = window.FilesArmed,
             ["hint"] = window.FilesHint,
             ["waiting"] = jobs.Count(job => job.State == TransferState.Waiting),
@@ -342,7 +345,7 @@ public static partial class CommandRouter
             ["copies"] = host.Window is { } copies ? CopiesStatus(copies) : null,
             ["sound"] = host.Window is { } sounding ? SoundStatus(sounding) : null,
             ["apps"] = host.Window is { } listing ? AppsStatus(host, listing) : null,
-            ["files"] = host.Window is { } files ? FilesStatus(files) : null,
+            ["files"] = host.Window is { } files ? FilesStatus(host, files) : null,
             ["window"] = host.Window is { } shown ? new JsonObject
             {
                 ["topmost"] = shown.Topmost,
