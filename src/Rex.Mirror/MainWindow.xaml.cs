@@ -556,6 +556,7 @@ public partial class MainWindow : Window
         else _sidebarWheelBounds = Rect.Empty;
         ReleaseStaleAltHold();
         ReleaseFilesDrag();
+        _host.CheckConfigFile();
         // Cheap, and catches what events miss: the window shown before it has a width, a size
         // that settles after the last layout.
         UpdateRoom();
