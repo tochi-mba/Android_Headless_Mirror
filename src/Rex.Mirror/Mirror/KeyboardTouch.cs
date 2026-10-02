@@ -27,6 +27,8 @@ public sealed class KeyboardTouch
     private readonly TouchInjector _injector;
     private readonly Action<string> _log;
     private bool _running;
+    private Task? _current;
+    private bool _waiting;
 
     public KeyboardTouch(MirrorHost host, TouchInjector injector, Action<string> log)
     {
@@ -53,11 +55,45 @@ public sealed class KeyboardTouch
             return AndroidResult.Failure($"'{action}' is not a gesture.");
         }
 
+        // A gesture asked for while another of these plays waits its turn, so Down then Enter
+        // pressed quickly both land, in order. One waits at most: a held key does not pile up.
+        if (_running)
+        {
+            if (_waiting || _current is not { } playing)
+            {
+                return AndroidResult.Failure("Finish the current touch gesture first.");
+            }
+
+            _waiting = true;
+            try
+            {
+                await playing.ConfigureAwait(true);
+            }
+            finally
+            {
+                _waiting = false;
+            }
+        }
+
         if (_running || _injector.AnyDown)
         {
             return AndroidResult.Failure("Finish the current touch gesture first.");
         }
 
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _current = done.Task;
+        try
+        {
+            return await PlayAsync(action).ConfigureAwait(true);
+        }
+        finally
+        {
+            done.SetResult();
+        }
+    }
+
+    private async Task<AndroidResult> PlayAsync(string action)
+    {
         var surface = _host.HasChild
             ? TouchpadBridge.VisibleSurface(_host.SurfaceScreenRect, _host.ViewportScreenRect)
             : default;
