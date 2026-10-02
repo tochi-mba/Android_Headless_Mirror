@@ -121,9 +121,7 @@ public sealed partial class AppEndToEndTests
         Assert.DoesNotContain(package.AdbCalls(), line => line.Contains("screencap", StringComparison.Ordinal));
 
         // Switching the picture off leaves the frame; the mode stays adjustable while zoomed.
-        var config = ConfigFile.Load(package.Paths.Config);
-        config.Zoom.NavigatorPicture = false;
-        ConfigFile.Save(package.Paths.Config, config);
+        package.EditConfig(c => c.Zoom.NavigatorPicture = false);
         await app.WaitForStatusAsync(s => s["navigatorVisible"]!.GetValue<bool>() && !s["navigatorPicture"]!.GetValue<bool>(), StartupTimeout, "navigator without its picture");
         await app.QuitAsync();
     }
@@ -154,9 +152,7 @@ public sealed partial class AppEndToEndTests
         using var lit = await CaptureWhenAsync(app, bitmap => MarginColour(bitmap) > 0.2, "the soft background to be on screen");
 
         // Turning it off in the config file also exercises the live reload the settings panel uses.
-        var config = ConfigFile.Load(package.Paths.Config);
-        config.Ambient.Enabled = false;
-        ConfigFile.Save(package.Paths.Config, config);
+        package.EditConfig(c => c.Ambient.Enabled = false);
         await app.WaitForStatusAsync(s => !s["ambientVisible"]!.GetValue<bool>(), StartupTimeout, "soft background off");
         using var dark = await CaptureWhenAsync(app, bitmap => MarginColour(bitmap) < 0.1, "the soft background to leave the screen");
 
@@ -387,11 +383,12 @@ public sealed partial class AppEndToEndTests
         Assert.Equal(placed.Y, after.Y);
 
         // Choosing a position again pins them back, wherever they were dragged to.
-        var config = ConfigFile.Load(package.Paths.Config);
-        config.Hud.Position = "bottom";
-        config.Hud.X = null;
-        config.Hud.Y = null;
-        ConfigFile.Save(package.Paths.Config, config);
+        package.EditConfig(c =>
+        {
+            c.Hud.Position = "bottom";
+            c.Hud.X = null;
+            c.Hud.Y = null;
+        });
         await app.WaitForStatusAsync(
             data => data["hudBar"]!["top"]!.GetValue<double>() > monitor.Top + (monitor.Height * 0.8),
             TimeSpan.FromSeconds(15),

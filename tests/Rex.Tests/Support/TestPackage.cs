@@ -40,6 +40,18 @@ public sealed class TestPackage : IDisposable
 
     public string Root { get; }
     public AppPaths Paths { get; }
+
+    /// <summary>
+    /// Changes config.json under the lock the app writes it with, as rex config set does, so an
+    /// edit made while the app runs can never be lost to a write of its own at the same moment.
+    /// </summary>
+    public void EditConfig(Action<RexConfig> mutate)
+    {
+        using var transaction = CrossProcessFileLock.Acquire(Paths.Config);
+        var config = ConfigFile.Load(Paths.Config);
+        mutate(config);
+        ConfigFile.Save(Paths.Config, config);
+    }
     public string ToolsFolder => Path.Combine(Root, "tools", "scrcpy", "v9.9-fake");
     public string FakeAdbLog => Path.Combine(ToolsFolder, "fake-adb.log");
     public string FakeScrcpyLog => Path.Combine(ToolsFolder, "fake-scrcpy.log");
