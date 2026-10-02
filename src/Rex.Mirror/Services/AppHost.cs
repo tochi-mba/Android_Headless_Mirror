@@ -39,6 +39,9 @@ public sealed class AppHost : IDisposable
 
     public event Action? ConfigChanged;
 
+    /// <summary>How many times config.json was reloaded after a change made outside the app.</summary>
+    public int ConfigReloads { get; private set; }
+
     /// <summary>Raised for live previews (slider drags); the write to disk follows shortly after.</summary>
     public event Action? ConfigPreviewed;
 
@@ -128,6 +131,7 @@ public sealed class AppHost : IDisposable
         if (written != _configWrittenUtc)
         {
             _configWrittenUtc = written;
+            Log.Info("config.json's write time moved; reading it again.");
             if (!_configReload.IsEnabled)
             {
                 _configReload.Start();
@@ -224,6 +228,8 @@ public sealed class AppHost : IDisposable
             return;
         }
 
+        ConfigReloads++;
+        Log.Info("config.json was changed outside the app; reloaded it.");
         ConfigChanged?.Invoke();
     }
 
