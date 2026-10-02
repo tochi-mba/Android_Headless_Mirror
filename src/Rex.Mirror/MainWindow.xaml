@@ -124,6 +124,12 @@
         <mirror:MirrorGroupPanel x:Name="Group">
           <mirror:MirrorHost x:Name="Host" />
         </mirror:MirrorGroupPanel>
+        <!-- Over the gap between the phone and a second screen; the gap is the window's own, so it takes the mouse. -->
+        <Canvas x:Name="SplitterLayer">
+          <Thumb x:Name="ViewSplitter" Style="{StaticResource ViewSplitterThumb}" Visibility="Collapsed" Focusable="True"
+                 AutomationProperties.Name="Resize the phone and the second screen"
+                 ToolTip="Drag to share the space · arrow keys when focused · double-click to put it back" />
+        </Canvas>
         <Grid x:Name="EmptyState" Background="{StaticResource Ink}">
           <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420" Margin="24">
             <Grid Width="96" Height="96" HorizontalAlignment="Center" Margin="0,0,0,22">

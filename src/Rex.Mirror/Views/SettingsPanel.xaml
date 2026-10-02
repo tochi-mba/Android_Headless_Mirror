@@ -377,6 +377,7 @@
             ToolTip="Quicker swipes fling further, as they do under a finger." />
     </StackPanel></Expander>
     <settings:CopiesGroup x:Name="CopiesSettingsGroup" />
+    <settings:SecondScreenGroup x:Name="SecondScreenSettingsGroup" />
     <settings:AppsGroup x:Name="AppsSettingsGroup" />
     <settings:TransferGroup x:Name="TransferSettingsGroup" />
     <settings:HudGroup x:Name="HudSettingsGroup" />

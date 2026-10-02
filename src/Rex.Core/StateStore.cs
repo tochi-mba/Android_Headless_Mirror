@@ -54,6 +54,9 @@ public sealed record DeviceProfile
     /// <summary>The apps opened from this PC, last opened first.</summary>
     public IReadOnlyList<RecentApp> RecentApps { get; set; } = [];
 
+    /// <summary>The app the second screen last had on this phone, to open it again.</summary>
+    public string SecondScreenApp { get; set; } = string.Empty;
+
     public DateTimeOffset? LastSeenUtc { get; set; }
 }
 
@@ -77,6 +80,9 @@ public sealed record UiState
 
     /// <summary>0 means the panel has never been resized; the window then uses its own default.</summary>
     public double SidebarWidth { get; set; }
+
+    /// <summary>The phone's share of the mirror area beside a second screen, from the splitter; 0 is its natural size.</summary>
+    public double ViewSplit { get; set; }
 
     /// <summary>The user left the first-run guide before a phone was ever mirrored.</summary>
     public bool SetupDismissed { get; set; }

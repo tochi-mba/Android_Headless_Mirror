@@ -42,3 +42,9 @@ TransferProgress.cs
 TransferQueue.cs
 ApkManifest.cs
 AdbClient.Files.cs
+SecondScreenSettings.cs
+ScreenSpec.cs
+ScrcpyArguments.Screen.cs
+ViewsLayout.cs
+SecondScreenPlan.cs
+ActionRouting.cs

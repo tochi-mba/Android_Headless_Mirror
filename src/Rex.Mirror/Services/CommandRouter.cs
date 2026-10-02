@@ -97,6 +97,11 @@ public static partial class CommandRouter
             case "action":
             {
                 var id = request.Arg("name");
+                if (window?.RunOnSecondScreen(id) is { } routed)
+                {
+                    return routed.Ok ? IpcResponse.Success(new JsonObject { ["action"] = id, ["text"] = routed.Text }) : IpcResponse.Fail(routed.Text);
+                }
+
                 var result = await session.RunActionAsync(id, appId => window is null
                     ? Task.FromResult(AndroidResult.Failure("The window is not available."))
                     : window.ApplyAppActionAsync(appId)).ConfigureAwait(true);
@@ -109,6 +114,9 @@ public static partial class CommandRouter
 
             case "open-app":
                 return await OpenAppAsync(host, request).ConfigureAwait(true);
+
+            case "screen":
+                return await ScreenAsync(host, request).ConfigureAwait(true);
 
             case "push":
             {
@@ -347,6 +355,7 @@ public static partial class CommandRouter
             ["sound"] = host.Window is { } sounding ? SoundStatus(sounding) : null,
             ["apps"] = host.Window is { } listing ? AppsStatus(host, listing) : null,
             ["files"] = host.Window is { } files ? FilesStatus(host, files) : null,
+            ["secondScreen"] = host.Window is { } screen ? ScreenStatus(host, screen) : null,
             ["window"] = host.Window is { } shown ? new JsonObject
             {
                 ["topmost"] = shown.Topmost,

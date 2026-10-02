@@ -28,6 +28,8 @@ public sealed record RexConfig
     public GlobalKeysSettings GlobalKeys { get; set; } = new();
     public AppsSettings Apps { get; set; } = new();
     public TransferSettings Transfer { get; set; } = new();
+    public SecondScreenSettings SecondScreen { get; set; } = new();
+    public ViewsSettings Views { get; set; } = new();
     public LoggingSettings Logging { get; set; } = new();
 
     /// <summary>Clamps every value into its supported range. Called after load and before save.</summary>
@@ -49,6 +51,8 @@ public sealed record RexConfig
         GlobalKeys.Normalize();
         Apps.Normalize();
         Transfer.Normalize();
+        SecondScreen.Normalize();
+        Views.Normalize();
         Logging.Normalize();
     }
 
@@ -69,6 +73,8 @@ public sealed record RexConfig
         GlobalKeys = GlobalKeys.Copy(),
         Apps = Apps.Copy(),
         Transfer = Transfer.Copy(),
+        SecondScreen = SecondScreen.Copy(),
+        Views = Views.Copy(),
         Logging = Logging.Copy(),
     };
 
@@ -93,6 +99,8 @@ public sealed record RexConfig
         GlobalKeys = copy.GlobalKeys;
         Apps = copy.Apps;
         Transfer = copy.Transfer;
+        SecondScreen = copy.SecondScreen;
+        Views = copy.Views;
         Logging = copy.Logging;
     }
 

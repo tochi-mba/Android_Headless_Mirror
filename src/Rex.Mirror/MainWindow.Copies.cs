@@ -78,7 +78,8 @@ public partial class MainWindow : ICopyViews
     /// </summary>
     private int RoomForCopies()
     {
-        if (_copies is null || !IsVisible || WindowState == WindowState.Minimized || !CopiesLayout.IsUpright(Group.Aspect) || Group.ActualWidth <= 0)
+        // Copies wait while a second screen shares the area with the phone.
+        if (_copies is null || _screenView is not null || !IsVisible || WindowState == WindowState.Minimized || !CopiesLayout.IsUpright(Group.Aspect) || Group.ActualWidth <= 0)
         {
             return 0;
         }
