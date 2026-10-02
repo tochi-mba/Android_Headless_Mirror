@@ -1,0 +1,23 @@
+{
+  "$schema": "https://tochi-mba.github.io/schema/project.schema.json",
+  "slug": "android-headless-mirror",
+  "name": "Android Headless Mirror",
+  "tagline": "Your Android phone, in one window on your Windows PC, with its own screen off.",
+  "description": "Plug the phone in and it appears on screen. The app waits in the tray, opens when an authorised phone connects and restarts the mirror if it crashes. Two fingers on a Windows Precision Touchpad become two fingers on the phone. A GPU-rendered soft background, a live navigator, phone controls and phone settings all live in a single window, with a first-run tour and a command-line interface. Every release ships with its website, Playwright tests for the site and UI Automation tests against the real window.",
+  "highlights": [
+    "Real touchpad gestures mapped to the phone: pinch, rotate, pan",
+    "Blurred live background rendered on the graphics card at 60 fps",
+    "Per-user installer, no admin rights, scrcpy bundled, auto-update",
+    "Repository rules that keep the site, the app and the CLI in agreement",
+    "A first-run tour, one-time hints and a command-line interface"
+  ],
+  "stack": ["C#", ".NET", "WPF", "scrcpy", "ADB", "Playwright"],
+  "category": "product",
+  "status": "active",
+  "featured": true,
+  "order": 30,
+  "display": true,
+  "links": {
+    "download": "https://github.com/tochi-mba/Android_Headless_Mirror/releases/latest"
+  }
+}
