@@ -121,7 +121,7 @@ public static partial class CommandRouter
             // A drag and a drop as Windows would deliver them, for tests: real OLE dragging cannot be
             // driven from a test, so these call what the window's own drag handlers call.
             case "drag" when TestHooks.Enabled && window is not null:
-                return window.ArmForDrag(PathsOf(request)) ? IpcResponse.Success(new JsonObject { ["hint"] = window.FilesHint }) : IpcResponse.Fail("Nothing can be dropped.");
+                return window.ArmForDrag(PathsOf(request), fromTest: true) ? IpcResponse.Success(new JsonObject { ["hint"] = window.FilesHint }) : IpcResponse.Fail("Nothing can be dropped.");
 
             case "drop" when TestHooks.Enabled && window is not null:
                 return IpcResponse.Success(new JsonObject { ["queued"] = await window.SendPathsAsync(PathsOf(request), dropped: true).ConfigureAwait(true) });

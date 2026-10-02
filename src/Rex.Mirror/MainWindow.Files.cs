@@ -21,6 +21,7 @@ public partial class MainWindow
     private ClashAnswer? _nameClashForBatch;
     private string _draggedKey = string.Empty;
     private IReadOnlyList<TransferItem> _draggedItems = [];
+    private bool _dragHeldByTest;
 
     internal IReadOnlyList<TransferJob> Transfers => _files?.Jobs ?? [];
     internal bool FilesArmed => _filesArmed;
@@ -98,8 +99,10 @@ public partial class MainWindow
     /// A drag of these paths is over the window: says what dropping them would do and arms the
     /// overlay so a drop over the picture reaches this app. False when nothing can be dropped.
     /// </summary>
-    internal bool ArmForDrag(string[] paths)
+    internal bool ArmForDrag(string[] paths, bool fromTest = false)
     {
+        // A test's drag has no mouse button held, which the window's tick reads as a drag let go.
+        _dragHeldByTest = fromTest;
         if (!_host.Config.Transfer.Enabled || paths.Length == 0 || AppsSerial is not { } serial)
         {
             return false;
@@ -138,6 +141,7 @@ public partial class MainWindow
         _filesHint = string.Empty;
         _draggedKey = string.Empty;
         _draggedItems = [];
+        _dragHeldByTest = false;
         _overlay.ArmFiles(false);
     }
 
@@ -302,7 +306,7 @@ public partial class MainWindow
 
     private void ReleaseFilesDrag()
     {
-        if (_filesArmed && !NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON))
+        if (_filesArmed && !_dragHeldByTest && !NativeMethods.IsKeyDown(NativeMethods.VK_LBUTTON))
         {
             DisarmFiles();
         }

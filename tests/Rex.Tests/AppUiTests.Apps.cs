@@ -143,6 +143,8 @@ public sealed partial class AppUiTests
         // An app that came with the phone is never offered for uninstalling.
         app.Ui.SetText("AppsSearch", "settings");
         await app.WaitUntilAsync(() => app.Ui.Exists("app-matches-com.android.settings"), Soon, "the system app");
+        // The confirm sheet and the list read again after uninstalling can leave another window in front.
+        await app.FocusAsync();
         app.Ui.Focus("app-matches-com.android.settings");
         await app.PressChordAsync(KeyShift, KeyF10);
         Assert.DoesNotContain(app.Ui.OpenMenuItems(), i => i.Current.Name == "Uninstall…");
