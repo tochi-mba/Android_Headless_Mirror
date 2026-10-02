@@ -124,19 +124,26 @@ public sealed partial class AppEndToEndTests
         using var package = new TestPackage(withFakeTools: true);
         var photo = MakeFile(package, "beach.jpg", 2048);
         var quiet = MakeFile(package, "quiet.jpg", 2048);
-        using var app = new AppProcess(package);
-        await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+        using (var app = new AppProcess(package))
+        {
+            await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+            await app.SendAsync(Paths("push", photo));
+            await app.WaitForStatusAsync(s => StateOf(s, "beach.jpg") == "done", FileTimeout, "the photo to arrive");
+            await app.WaitUntilAsync(() => package.AdbCalls().Any(c => c.Contains("MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/beach.jpg", StringComparison.Ordinal)), FileTimeout, "the Gallery told");
+            await app.QuitAsync();
+        }
 
-        await app.SendAsync(Paths("push", photo));
-        await app.WaitForStatusAsync(s => StateOf(s, "beach.jpg") == "done", FileTimeout, "the photo to arrive");
-        await app.WaitUntilAsync(() => package.AdbCalls().Any(c => c.Contains("MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/beach.jpg", StringComparison.Ordinal)), FileTimeout, "the Gallery told");
-
+        // With the setting off from the start, the next photo arrives without the Gallery being told.
         new ConfigStore(package.Paths.Config).Set("Transfer.ScanMedia", "false");
-        await app.WaitForStatusAsync(s => !FilesOf(s)["scanMedia"]!.GetValue<bool>(), FileTimeout, "the app to have the setting");
-        await app.SendAsync(Paths("push", quiet));
-        await app.WaitForStatusAsync(s => StateOf(s, "quiet.jpg") == "done", FileTimeout, "the second photo to arrive");
-        Assert.DoesNotContain(package.AdbCalls(), c => c.Contains("file:///sdcard/Download/quiet.jpg", StringComparison.Ordinal));
-        await app.QuitAsync();
+        using (var app = new AppProcess(package))
+        {
+            await app.WaitForPhaseAsync("mirroring", StartupTimeout);
+            Assert.False(FilesOf((await app.SendAsync(new IpcRequest("status"))).Data!.AsObject())["scanMedia"]!.GetValue<bool>());
+            await app.SendAsync(Paths("push", quiet));
+            await app.WaitForStatusAsync(s => StateOf(s, "quiet.jpg") == "done", FileTimeout, "the second photo to arrive");
+            Assert.DoesNotContain(package.AdbCalls(), c => c.Contains("file:///sdcard/Download/quiet.jpg", StringComparison.Ordinal));
+            await app.QuitAsync();
+        }
     }
 
     [Fact(Timeout = 180_000)]
