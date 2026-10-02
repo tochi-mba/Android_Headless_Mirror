@@ -303,6 +303,7 @@ public static partial class CommandRouter
             ["navigatorVisible"] = host.Window?.NavigatorVisible ?? false,
             ["navigatorPicture"] = host.Window?.NavigatorPictureVisible ?? false,
             ["configReloads"] = host.ConfigReloads,
+            ["pictureShown"] = host.Window?.PictureShown ?? false,
             ["capture"] = host.Window?.CapturePath,
             // Where the navigator is and whether it is being dragged, so a test can grab it.
             ["navigator"] = host.Window is { } nav ? new JsonObject

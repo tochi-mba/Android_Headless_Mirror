@@ -13,6 +13,7 @@ namespace Rex.Mirror.Mirror;
 /// </summary>
 public sealed class MirrorHost : HwndHost
 {
+    private bool _shown = true;
     private IntPtr _viewport;
     private IntPtr _child;
     private IntPtr _winEventHook;
@@ -204,6 +205,7 @@ public sealed class MirrorHost : HwndHost
         _zoom = 1.0;
         _view = ZoomView.Identity;
         Relayout();
+        ApplyShown();
         FocusChild();
     }
 
@@ -287,12 +289,29 @@ public sealed class MirrorHost : HwndHost
     /// <summary>Whether the native viewport is showing on screen right now.</summary>
     public bool IsShown => _viewport != IntPtr.Zero && NativeMethods.IsWindowVisible(_viewport);
 
-    /// <summary>Hides the native viewport so WPF content (empty state, setup) can show in its place.</summary>
+    /// <summary>
+    /// Hides the native viewport so WPF content (empty state, setup, a question) can show in its
+    /// place. HwndHost shows or hides its window to match the element's own visibility every time
+    /// it arranges it, so a native hide alone is undone by the next layout: the element is made
+    /// Hidden too, which keeps its place in the layout and keeps the window hidden for good.
+    /// </summary>
     public void SetShown(bool shown)
     {
-        if (_viewport != IntPtr.Zero)
+        _shown = shown;
+        var visibility = shown ? Visibility.Visible : Visibility.Hidden;
+        if (Visibility != visibility)
         {
-            NativeMethods.ShowWindow(_viewport, shown ? NativeMethods.SW_SHOWNOACTIVATE : NativeMethods.SW_HIDE);
+            Visibility = visibility;
+        }
+
+        ApplyShown();
+    }
+
+    private void ApplyShown()
+    {
+        if (_viewport != IntPtr.Zero && IsShown != _shown)
+        {
+            NativeMethods.ShowWindow(_viewport, _shown ? NativeMethods.SW_SHOWNOACTIVATE : NativeMethods.SW_HIDE);
         }
     }
 
@@ -578,6 +597,9 @@ public sealed class MirrorHost : HwndHost
     {
         base.OnWindowPositionChanged(rcBoundingBox);
         Relayout();
+        // HwndHost may show its native child while arranging it. Keep an explicit request to hide
+        // authoritative, or the mirror can cover a WPF confirmation sheet during a late layout.
+        ApplyShown();
     }
 
     protected override IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

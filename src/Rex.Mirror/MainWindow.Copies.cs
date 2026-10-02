@@ -280,7 +280,7 @@ public partial class MainWindow : ICopyViews
     /// </summary>
     private void UpdateCopiesShown()
     {
-        var mirroring = _host.Session.IsMirroring && !OnboardingView.IsNeeded(_host);
+        var mirroring = PictureShowable;
         for (var i = 1; i < Group.Children.Count; i++)
         {
             if (Group.Children[i] is MirrorHost view)
