@@ -4,6 +4,25 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.8.0 - 2026-10-02
+
+### Added
+
+- A **second screen** for one app: the app runs on a display of its own on the phone, shown in the
+  window beside the phone or instead of it, while the phone shows something else. By default it is
+  exactly the size of its place in the window, so nothing is letterboxed and text stays sharp;
+  1280 x 720, 1920 x 1080, 2560 x 1440, the phone's own size or your own are there too.
+- Open it from **Controls → Second screen**, the Apps tab (an app's menu, or "Clicking an app opens
+  it" set to a second screen or to ask), Ctrl+Alt+D, or `rex screen open YouTube`.
+- Home, Back, Recents and the notification shade act on the view that has the keyboard: on the
+  second screen they go to its display. A name on each view and an outline round the one in use
+  show which is which; a splitter between them sets how the space is shared.
+- Closing it moves its app back to the phone (or closes it, as set), and it can come back with its
+  app whenever the mirror starts. Copies wait while it is open, and come back after.
+- Settings has a **Second screen & views** group: where it goes, its size, upright or on its side,
+  text size, resolution, Android's navigation bar, where the on-screen keyboard appears, and how
+  views are arranged and marked.
+
 ## 2.7.0 - 2026-10-02
 
 ### Added

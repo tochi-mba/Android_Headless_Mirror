@@ -45,6 +45,24 @@
       <Button x:Name="AllApps" Content="All apps…" Click="OnAllApps" Margin="0,6,0,0" ToolTip="The Apps tab · Ctrl+Alt+2" />
     </StackPanel>
 
+    <StackPanel x:Name="ScreenSection">
+      <TextBlock Text="SECOND SCREEN" Style="{StaticResource Eyebrow}" />
+      <TextBlock x:Name="ScreenStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite" />
+      <Button x:Name="ScreenOpen" Content="Open an app on a second screen…" Click="OnScreenOpen" ToolTipService.ShowOnDisabled="True" />
+      <StackPanel x:Name="ScreenOpenControls" Visibility="Collapsed">
+        <UniformGrid Columns="2" Margin="-3,0">
+          <Button x:Name="ScreenSwitch" Content="Switch app…" Margin="3,0" Click="OnScreenOpen" ToolTip="Choose another app for the second screen; the screen stays" />
+          <Button x:Name="ScreenClose" Content="Close it" Margin="3,0" Click="OnScreenClose" />
+        </UniformGrid>
+        <UniformGrid Columns="2" Margin="-3,6,-3,0">
+          <RadioButton x:Name="ScreenBeside" Style="{StaticResource Segment}" Content="Beside the phone" GroupName="ScreenPlacement" Margin="3,0"
+                       HorizontalContentAlignment="Center" Checked="OnScreenPlacement" />
+          <RadioButton x:Name="ScreenInstead" Style="{StaticResource Segment}" Content="Instead of it" GroupName="ScreenPlacement" Margin="3,0"
+                       HorizontalContentAlignment="Center" Checked="OnScreenPlacement" AutomationProperties.Name="Instead of the phone" />
+        </UniformGrid>
+      </StackPanel>
+    </StackPanel>
+
     <TextBlock Text="PHONE" Style="{StaticResource Eyebrow}" />
     <ItemsControl x:Name="NavigationTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
 

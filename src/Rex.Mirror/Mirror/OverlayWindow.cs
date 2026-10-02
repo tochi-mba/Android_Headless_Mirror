@@ -20,7 +20,7 @@ namespace Rex.Mirror.Mirror;
 /// soft background, which covers the whole margin, is drawn by the main window (AmbientView).
 /// It never takes focus: the navigator and Alt-drag panning are the only parts that accept the mouse.
 /// </summary>
-public sealed class OverlayWindow : Window
+public sealed partial class OverlayWindow : Window
 {
     private const double NavigatorMargin = 12;
 

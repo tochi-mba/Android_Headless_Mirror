@@ -66,6 +66,35 @@ public sealed class MirrorHost : HwndHost
     /// <summary>Zoom back out to the whole picture when it turns between upright and on its side.</summary>
     public bool ResetZoomOnTurn { get; set; }
 
+    /// <summary>
+    /// The picture is made exactly the viewport's size, whatever shape the video says it is: a
+    /// second screen that follows the window has a display resized to match, so it never letterboxes.
+    /// </summary>
+    public bool FillsViewport { get; set; }
+
+    /// <summary>
+    /// While true the picture keeps the size it has: a second screen whose display follows the view
+    /// is made again at every new size, so while the window is being dragged it waits for the end.
+    /// Turning it off fits the picture to the viewport at once.
+    /// </summary>
+    public bool Frozen
+    {
+        get => _frozen;
+        set
+        {
+            if (_frozen != value)
+            {
+                _frozen = value;
+                if (!value)
+                {
+                    Relayout();
+                }
+            }
+        }
+    }
+
+    private bool _frozen;
+
     /// <summary>Viewport size in physical pixels.</summary>
     public (int Width, int Height) ViewportPixels
     {
@@ -118,6 +147,12 @@ public sealed class MirrorHost : HwndHost
     /// <summary>Adopts a new video shape and re-fits the picture to the viewport.</summary>
     private void SetAspect(double aspect)
     {
+        if (FillsViewport)
+        {
+            Relayout();
+            return;
+        }
+
         if (Math.Abs(aspect - _videoAspect) < 0.001)
         {
             Relayout();
@@ -416,6 +451,11 @@ public sealed class MirrorHost : HwndHost
             return;
         }
 
+        if (FillsViewport)
+        {
+            _videoAspect = (double)width / height;
+        }
+
         var fit = ZoomMath.FitRect(width, height, _videoAspect, 1.0);
         var anchorX = _view.SurfaceWidth > 0 ? width / 2.0 : fit.X + fit.Width / 2;
         var anchorY = _view.SurfaceHeight > 0 ? height / 2.0 : fit.Y + fit.Height / 2;
@@ -425,7 +465,7 @@ public sealed class MirrorHost : HwndHost
 
     private void Apply()
     {
-        if (HasChild)
+        if (HasChild && !_frozen)
         {
             _applying = true;
             try

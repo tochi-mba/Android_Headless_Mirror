@@ -195,6 +195,7 @@
     "ReadOnConnect": true,
     "OpenFresh": false,
     "CloseWhenMirrorStops": false,
+    "OpenOn": "phone",
     "Hidden": []
   },
   "Transfer": {
@@ -220,6 +221,28 @@
     "CancelWhenPhoneLeaves": true,
     "History": 20,
     "SendToMenu": false
+  },
+  "SecondScreen": {
+    "Placement": "beside",
+    "Side": "right",
+    "Size": "follow",
+    "CustomWidth": 1920,
+    "CustomHeight": 1080,
+    "Portrait": false,
+    "Dpi": 0,
+    "MaxSize": 0,
+    "Decorations": true,
+    "KeepAppsOnClose": true,
+    "Keyboard": "here",
+    "ReopenOnStart": false,
+    "ResizeWhileDragging": false,
+    "MinWidth": 360
+  },
+  "Views": {
+    "Arrangement": "auto",
+    "Outline": "auto",
+    "Captions": "auto",
+    "Splitter": true
   },
   "Logging": {
     "Enabled": true,

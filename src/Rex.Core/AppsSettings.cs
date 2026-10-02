@@ -8,6 +8,7 @@ public sealed record AppsSettings
 {
     public static readonly IReadOnlyList<string> SortChoices = ["name", "recent", "most-used"];
     public static readonly IReadOnlyList<string> LayoutChoices = ["list", "grid"];
+    public static readonly IReadOnlyList<string> OpenOnChoices = ["phone", "second-screen", "ask"];
     public const int MostRecent = 50;
     public const int MostOnControls = 12;
     public const int MostHidden = 500;
@@ -51,6 +52,9 @@ public sealed record AppsSettings
     /// <summary>When the mirror stops, close the apps that were opened from this app.</summary>
     public bool CloseWhenMirrorStops { get; set; }
 
+    /// <summary>Clicking an app opens it on the phone, on a second screen, or asks which.</summary>
+    public string OpenOn { get; set; } = "phone";
+
     /// <summary>Packages left out of the lists (still favourites if starred).</summary>
     public List<string> Hidden { get; set; } = [];
 
@@ -60,6 +64,7 @@ public sealed record AppsSettings
     {
         SortBy = MirrorSettings.OneOf(SortChoices, SortBy, "name");
         Layout = MirrorSettings.OneOf(LayoutChoices, Layout, "list");
+        OpenOn = MirrorSettings.OneOf(OpenOnChoices, OpenOn, "phone");
         RecentCount = Math.Clamp(RecentCount, 0, MostRecent);
         FavouritesOnControlsMost = Math.Clamp(FavouritesOnControlsMost, 1, MostOnControls);
         Hidden = (Hidden ?? [])

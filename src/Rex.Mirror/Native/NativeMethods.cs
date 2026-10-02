@@ -149,6 +149,8 @@ internal static partial class NativeMethods
     public const int WM_POINTERDOWN = 0x0246;
     public const int WM_POINTERUP = 0x0247;
     public const int WM_POINTERCAPTURECHANGED = 0x024C;
+    public const int WM_ENTERSIZEMOVE = 0x0231;
+    public const int WM_EXITSIZEMOVE = 0x0232;
     public const int WM_SETFOCUS = 0x0007;
     public const int HTTRANSPARENT = -1;
     public const int HTCLIENT = 1;

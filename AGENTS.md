@@ -42,6 +42,7 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `sound [0-100|up|down|mute|unmute|toggle]`, `app list [search] [--system]|open <name|package> [--fresh]|close <package>|info <package>|favourite <package> on|off`,
 `push <files or folders...> [--to /sdcard/folder/] [--serial S]`,
 `install <apk...> [--downgrade] [--grant] [--test] [--no-replace] [--serial S]`,
+`screen [open <app> [--instead|--beside] [--size S] [--fresh]|app <app>|close]`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
 
@@ -120,6 +121,7 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Services/TestHooks    pipe commands for what a test cannot do for real (drag, drop); only with REX_TEST_HOOKS=1
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
   Views/AppsPanel*      the Apps tab: rows made once per list and filtered while searching
+  MainWindow.SecondScreen/Splitter  the second screen's view and session, the splitter, the marks over views
   Views/Settings/*      settings groups in separate controls
   Services/UrlOpener    opens the app's own https pages (REX_FAKE_BROWSER_LOG in tests)
 src/Rex.Cli             rex.exe: human commands and MachineMode
@@ -197,6 +199,12 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   up. A drop that reaches scrcpy anyway goes to the same folder (`--push-target`) and its lines are
   read into the same transfer list. Tests drag and drop through `drag`/`drop` pipe commands, which
   exist only with `REX_TEST_HOOKS=1`; `AppProcess` sets it.
+- The second screen is a copy's session (no cleanup, no audio, no power options) with a display of
+  its own (`ScrcpyArguments.BuildScreen`): ports 27190 to 27199, `--new-display`, and `-x` when it
+  follows the view, which then takes no window size. It is the group panel's second child, laid out
+  with the phone by `ViewsLayout`; copies have no room while it is open. `SecondScreenPlan` decides
+  (one retry, then the reason). While it has the keyboard, `ActionRouting` sends display keys to its
+  own session as scrcpy shortcuts; the phone's view and session never change for it.
 - The phone's apps are read with `scrcpy --list-apps --no-cleanup` (`AppLister`), once per
   connection after the mirror is up, never polled. Every scrcpy server start (the mirror, a copy,
   the app list) goes through `SessionController.ServerStart`, so two never start at once. A

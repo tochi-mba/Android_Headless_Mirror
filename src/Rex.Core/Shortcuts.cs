@@ -41,6 +41,7 @@ public static class Shortcuts
         new("copy-add", "Ctrl+Alt+N", "Add a copy of the phone beside it"),
         new("copy-remove", "Ctrl+Alt+W", "Remove the last copy"),
         new("send-copied-files", "Ctrl+Alt+V", "Send files copied in File Explorer to the phone"),
+        new("second-screen", "Ctrl+Alt+D", "Open or close the second screen"),
         new("screenshot", "Ctrl+Alt+S", "Save a screenshot"),
         new("zoom-in", "Ctrl+Alt+Plus", "Zoom the PC view in"),
         new("zoom-out", "Ctrl+Alt+Minus", "Zoom the PC view out"),

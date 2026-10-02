@@ -167,6 +167,11 @@ public partial class MainWindow
 
     private IntPtr WindowHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (msg is NativeMethods.WM_ENTERSIZEMOVE or NativeMethods.WM_EXITSIZEMOVE)
+        {
+            HoldScreenWhileSizing(msg == NativeMethods.WM_ENTERSIZEMOVE);
+        }
+
         if (msg is NativeMethods.WM_POINTERDOWN or NativeMethods.WM_POINTERUPDATE or NativeMethods.WM_POINTERUP or NativeMethods.WM_POINTERCAPTURECHANGED)
         {
             if (_touchpad.HandlePointerMessage(msg, wParam))

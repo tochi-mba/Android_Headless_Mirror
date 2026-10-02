@@ -7,6 +7,19 @@
                Text="Connect a phone to see its apps." />
 
     <StackPanel x:Name="Body">
+      <!-- While an app is being chosen for the second screen, the tab says so and a click opens it there. -->
+      <Border x:Name="ChoosingBanner" Background="{StaticResource SignalWash}" BorderBrush="{StaticResource Signal}" BorderThickness="1" CornerRadius="8"
+              Padding="10,8" Margin="0,8,0,0" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="ChoosingText" Text="Choose an app for the second screen" VerticalAlignment="Center" TextWrapping="Wrap" />
+          <Button x:Name="ChoosingCancel" Grid.Column="1" Content="Cancel" Margin="8,0,0,0" Padding="10,3" MinHeight="28" Click="OnChoosingCancel"
+                  ToolTip="Stop choosing · Esc" />
+        </Grid>
+      </Border>
       <Grid Margin="0,8,0,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
