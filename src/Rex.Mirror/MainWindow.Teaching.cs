@@ -98,7 +98,7 @@ public partial class MainWindow
         ConfirmApplyToAll.Visibility = Visibility.Collapsed;
         ConfirmRisk.Text = risk?.ToUpperInvariant() ?? string.Empty;
         ConfirmRisk.Visibility = string.IsNullOrWhiteSpace(risk) ? Visibility.Collapsed : Visibility.Visible;
-        ConfirmSheet.Visibility = Visibility.Visible;
+        ShowConfirmSheet(true);
         AutomationProperties.SetName(ConfirmSheet, title + ". " + body);
         PreviewKeyDown -= OnConfirmKey;
         PreviewKeyDown += OnConfirmKey;
@@ -128,7 +128,7 @@ public partial class MainWindow
         ConfirmApplyToAll.Content = applyToAllText ?? string.Empty;
         ConfirmApplyToAll.IsChecked = false;
         ConfirmApplyToAll.Visibility = applyToAllText is null ? Visibility.Collapsed : Visibility.Visible;
-        ConfirmSheet.Visibility = Visibility.Visible;
+        ShowConfirmSheet(true);
         AutomationProperties.SetName(ConfirmSheet, title + ". " + body);
         PreviewKeyDown -= OnConfirmKey;
         PreviewKeyDown += OnConfirmKey;
@@ -147,10 +147,26 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// The phone's picture is a window of its own, drawn over anything the app draws where it is,
+    /// so while the sheet asks, the pictures and the overlay step aside instead of cutting through it.
+    /// </summary>
+    private void ShowConfirmSheet(bool shown)
+    {
+        ConfirmSheet.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        Host.SetShown(PictureShowable);
+        UpdateCopiesShown();
+        TrackOverlay();
+    }
+
+    /// <summary>Whether the phone's own picture may be on screen: mirroring, past the first-run guide, and nothing asking over it.</summary>
+    private bool PictureShowable =>
+        _host.Session.IsMirroring && !OnboardingView.IsNeeded(_host) && ConfirmSheet.Visibility != Visibility.Visible;
+
     private void CloseConfirm(bool accepted)
     {
         PreviewKeyDown -= OnConfirmKey;
-        ConfirmSheet.Visibility = Visibility.Collapsed;
+        ShowConfirmSheet(false);
         var pending = _confirm;
         _confirm = null;
         pending?.TrySetResult(accepted);
@@ -159,7 +175,7 @@ public partial class MainWindow
     private void CloseChoice(string? choice)
     {
         PreviewKeyDown -= OnConfirmKey;
-        ConfirmSheet.Visibility = Visibility.Collapsed;
+        ShowConfirmSheet(false);
         var pending = _confirmChoice;
         _confirmChoice = null;
         pending?.TrySetResult((choice, ConfirmApplyToAll.IsChecked == true));
