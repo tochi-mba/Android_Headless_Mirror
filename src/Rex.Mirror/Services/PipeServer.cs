@@ -67,6 +67,26 @@ public sealed class PipeServer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Runs a request on the window's thread. Whatever goes wrong there is answered with what it
+    /// was and logged: only the client going away ends a connection without an answer.
+    /// </summary>
+    private async Task<IpcResponse> HandleAsync(IpcRequest request)
+    {
+        try
+        {
+            return await _dispatcher
+                .InvokeAsync(() => CommandRouter.HandleAsync(_host, request))
+                .Task.Unwrap()
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _host.Log.Error($"The '{request.Command}' request failed", ex);
+            return IpcResponse.Fail($"The '{request.Command}' request failed: {ex.Message}");
+        }
+    }
+
     private async Task ServeClientAsync(NamedPipeServerStream pipe, CancellationToken cancellationToken)
     {
         var slotAcquired = false;
@@ -117,10 +137,7 @@ public sealed class PipeServer : IDisposable
                 }
                 else
                 {
-                    response = await _dispatcher
-                        .InvokeAsync(() => CommandRouter.HandleAsync(_host, request!))
-                        .Task.Unwrap()
-                        .ConfigureAwait(false);
+                    response = await HandleAsync(request!).ConfigureAwait(false);
                 }
 
                 await WriteResponseAsync(pipe, response, cancellationToken).ConfigureAwait(false);
