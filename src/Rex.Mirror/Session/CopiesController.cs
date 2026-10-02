@@ -225,7 +225,7 @@ public sealed class CopiesController : IDisposable
         }
 
         var scrcpy = launch.Process!;
-        view.SetShown(true);
+        view.SetShown(_host.Window?.PictureShowable ?? true);
         view.Attach(scrcpy.Hwnd, scrcpy.ThreadId, (uint)scrcpy.ProcessId);
         if (scrcpy.VideoSize is { } size)
         {

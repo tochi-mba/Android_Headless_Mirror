@@ -4,7 +4,7 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
-## 2.8.0 - 2026-10-02
+## 2.8.0 - 2026-10-03
 
 ### Added
 
@@ -22,6 +22,12 @@ was built and tested by CI; the installer for each published one is on the
 - Settings has a **Second screen & views** group: where it goes, its size, upright or on its side,
   text size, resolution, Android's navigation bar, where the on-screen keyboard appears, and how
   views are arranged and marked.
+
+### Fixed
+
+- A question asked in the window, such as whether to install an app or uninstall one, is no longer
+  cut in half by the phone's picture: the picture steps aside while it asks.
+- A change made to `config.json` outside the app is picked up even while the PC is busy.
 
 ## 2.7.0 - 2026-10-02
 

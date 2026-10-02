@@ -55,9 +55,12 @@ public sealed partial class AppUiTests
 
         var cancelled = app.SendAsync(PushRequest(apk));
         await app.WaitUntilAsync(() => app.Ui.Read("ConfirmAccept", item => item.Name) == "Install", Soon, "the install question");
+        // The phone's picture is a window of its own: it steps aside so the question is whole.
+        await app.WaitForStatusAsync(s => !s["pictureShown"]!.GetValue<bool>(), Soon, "the picture to step aside for the question");
         await app.SaveScreenshotAsync("ui-files-install-question.png");
         app.Ui.Invoke("ConfirmCancel");
         Assert.Equal(0, (await cancelled).Data!["queued"]!.GetValue<int>());
+        await app.WaitForStatusAsync(s => s["pictureShown"]!.GetValue<bool>(), Soon, "the picture to come back");
         Assert.DoesNotContain(package.AdbCalls(), call => call.Contains(" install ", StringComparison.Ordinal));
 
         var accepted = app.SendAsync(PushRequest(apk));

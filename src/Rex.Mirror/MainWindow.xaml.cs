@@ -53,6 +53,9 @@ public partial class MainWindow : Window
     public double SidebarWidthDip => Math.Round(SidebarColumn.ActualWidth);
     public bool AmbientVisible => Ambient.IsShowing;
     public bool NavigatorPictureVisible => _overlay.NavigatorPictureAvailable;
+
+    /// <summary>Whether the phone's own picture is on screen now (it steps aside while a question is asked over it).</summary>
+    public bool PictureShown => Host.IsShown;
     public string CapturePath => _liveCapture.Path;
     public bool NavigatorVisible => _overlay.NavigatorVisible;
     public bool NavigatorDragging => _overlay.NavigatorDragging;
@@ -325,7 +328,7 @@ public partial class MainWindow : Window
         Onboarding.Visibility = onboarding ? Visibility.Visible : Visibility.Collapsed;
         MirrorArea.Visibility = onboarding ? Visibility.Collapsed : Visibility.Visible;
         Sidebar.Visibility = onboarding ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);
-        Host.SetShown(mirroring && !onboarding);
+        Host.SetShown(PictureShowable);
         UpdateCopiesShown();
         if (onboarding)
         {
@@ -416,7 +419,8 @@ public partial class MainWindow : Window
             Host.SetVideoSize(identity.DisplayWidth, identity.DisplayHeight, reported: false);
         }
 
-        Host.SetShown(true);
+        // Not unconditionally: a question may be asking over the window while the capture lands.
+        Host.SetShown(PictureShowable);
         Host.Attach(scrcpy.Hwnd, scrcpy.ThreadId, (uint)scrcpy.ProcessId);
         // A new mirror shows a live picture, whatever the last one was left at.
         SetPaused(false);
@@ -562,7 +566,7 @@ public partial class MainWindow : Window
         // Cheap, and catches what events miss: the window shown before it has a width, a size
         // that settles after the last layout.
         UpdateRoom();
-        var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
+        var visible = PictureShowable && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         if (visible)
         {
             foreach (var view in AllViews)
