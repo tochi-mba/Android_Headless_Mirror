@@ -113,20 +113,18 @@ public static partial class CommandRouter
             case "push":
             {
                 if (window is null) return IpcResponse.Fail("The window is not available.");
-                string[] paths;
-                try
-                {
-                    paths = JsonSerializer.Deserialize<string[]>(request.Arg("paths")) ?? [];
-                }
-                catch (JsonException)
-                {
-                    return IpcResponse.Fail("The file list is not valid.");
-                }
-
+                var paths = PathsOf(request);
                 if (paths.Length == 0) return IpcResponse.Fail("No files were given.");
-                var queued = window.QueueLaunchFiles(paths);
-                return IpcResponse.Success(new JsonObject { ["queued"] = queued });
+                return IpcResponse.Success(new JsonObject { ["queued"] = await window.PushFromOutsideAsync(paths).ConfigureAwait(true) });
             }
+
+            // A drag and a drop as Windows would deliver them, for tests: real OLE dragging cannot be
+            // driven from a test, so these call what the window's own drag handlers call.
+            case "drag" when TestHooks.Enabled && window is not null:
+                return window.ArmForDrag(PathsOf(request)) ? IpcResponse.Success(new JsonObject { ["hint"] = window.FilesHint }) : IpcResponse.Fail("Nothing can be dropped.");
+
+            case "drop" when TestHooks.Enabled && window is not null:
+                return IpcResponse.Success(new JsonObject { ["queued"] = await window.SendPathsAsync(PathsOf(request), dropped: true).ConfigureAwait(true) });
 
             default:
                 return IpcResponse.Fail($"Unknown command '{request.Command}'.");
@@ -193,6 +191,18 @@ public static partial class CommandRouter
                 };
             }).ToArray()),
         };
+    }
+
+    private static string[] PathsOf(IpcRequest request)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(request.Arg("paths")) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     private static JsonObject FilesStatus(MainWindow window)

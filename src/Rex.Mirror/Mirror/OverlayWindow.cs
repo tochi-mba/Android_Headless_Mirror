@@ -28,18 +28,20 @@ public sealed class OverlayWindow : Window
     private const double NavigatorFrame = 7;
 
     private readonly Canvas _canvas = new();
+    // Palette brushes, so High Contrast answers for the drop hint as it does for the rest.
     private readonly Border _dropHint = new()
     {
-        Background = new SolidColorBrush(Color.FromArgb(0xE8, 0x08, 0x0A, 0x09)),
-        BorderBrush = new SolidColorBrush(Color.FromRgb(0xD7, 0xFF, 0x3F)),
+        Background = (Brush)Application.Current.FindResource("Panel"),
+        BorderBrush = (Brush)Application.Current.FindResource("Signal"),
         BorderThickness = new Thickness(2),
         CornerRadius = new CornerRadius(14),
         Padding = new Thickness(18, 12, 18, 12),
+        Opacity = 0.94,
         Visibility = Visibility.Collapsed,
         IsHitTestVisible = false,
         Child = new TextBlock
         {
-            Foreground = new SolidColorBrush(Color.FromRgb(0xF2, 0xF5, 0xEE)),
+            Foreground = (Brush)Application.Current.FindResource("Text"),
             FontWeight = FontWeights.SemiBold,
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,

@@ -73,7 +73,7 @@ public static class ApkManifest
                 at += size;
             }
         }
-        catch (Exception ex) when (ex is ArgumentOutOfRangeException or OverflowException or DecoderFallbackException)
+        catch (Exception ex) when (ex is ArgumentOutOfRangeException or IndexOutOfRangeException or OverflowException or DecoderFallbackException)
         {
             return null;
         }

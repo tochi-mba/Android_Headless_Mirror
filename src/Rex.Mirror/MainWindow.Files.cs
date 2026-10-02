@@ -19,6 +19,8 @@ public partial class MainWindow
     private string _filesHint = string.Empty;
     private IReadOnlyList<string> _pendingLaunchFiles = [];
     private ClashAnswer? _nameClashForBatch;
+    private string _draggedKey = string.Empty;
+    private IReadOnlyList<TransferItem> _draggedItems = [];
 
     internal IReadOnlyList<TransferJob> Transfers => _files?.Jobs ?? [];
     internal bool FilesArmed => _filesArmed;
@@ -31,16 +33,23 @@ public partial class MainWindow
         _files.Changed += () => Dispatcher.BeginInvoke(RefreshFiles);
         _files.Completed += job => Dispatcher.BeginInvoke(() => OnFileCompleted(job));
         _overlay.FilesDropped += paths => Dispatcher.BeginInvoke(async () => await SendPathsAsync(paths, dropped: true));
-        _overlay.FilesDragLeft += () => Dispatcher.BeginInvoke(DisarmFiles);
+        _overlay.FilesDragLeft += () => Dispatcher.BeginInvoke(DisarmIfOutside);
         _host.Session.Changed += OnFilesPhonesChanged;
         RootGrid.AllowDrop = _host.Config.Transfer.Enabled;
         RootGrid.DragEnter += OnFilesDrag;
         RootGrid.DragOver += OnFilesDrag;
-        RootGrid.DragLeave += (_, _) => DisarmFiles();
+        RootGrid.DragLeave += (_, _) => DisarmIfOutside();
         RootGrid.Drop += OnFilesDrop;
         TaskbarItemInfo = new TaskbarItemInfo();
         ApplyFilesConfig();
     }
+
+    /// <summary>
+    /// Files handed over by File Explorer's Send to, a second launch or the command line: sent at
+    /// once, after any question, when a phone is there; otherwise kept until one connects.
+    /// </summary>
+    internal async Task<int> PushFromOutsideAsync(IReadOnlyList<string> paths) =>
+        AppsSerial is null ? QueueLaunchFiles(paths) : await SendPathsAsync(paths, dropped: false);
 
     internal int QueueLaunchFiles(IReadOnlyList<string> paths)
     {
@@ -75,39 +84,79 @@ public partial class MainWindow
 
     private void OnFilesDrag(object sender, DragEventArgs e)
     {
-        var paths = FileDrop(e.Data);
-        if (!_host.Config.Transfer.Enabled || paths.Length == 0 || AppsSerial is not { } serial)
+        if (!ArmForDrag(FileDrop(e.Data)))
         {
             e.Effects = DragDropEffects.None;
             return;
         }
 
-        var items = TransferPlan.Plan(paths.Select(LocalEntry.Read).Where(entry => entry is not null).Cast<LocalEntry>(), _host.Config.Transfer);
+        e.Effects = DragDropEffects.Copy;
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// A drag of these paths is over the window: says what dropping them would do and arms the
+    /// overlay so a drop over the picture reaches this app. False when nothing can be dropped.
+    /// </summary>
+    internal bool ArmForDrag(string[] paths)
+    {
+        if (!_host.Config.Transfer.Enabled || paths.Length == 0 || AppsSerial is not { } serial)
+        {
+            return false;
+        }
+
+        // DragOver comes many times a second; what the drag holds is read from the disk once.
+        var key = string.Join('|', paths);
+        if (key != _draggedKey)
+        {
+            _draggedKey = key;
+            _draggedItems = TransferPlan.Plan(paths.Select(LocalEntry.Read).Where(entry => entry is not null).Cast<LocalEntry>(), _host.Config.Transfer);
+        }
+
+        var items = _draggedItems;
         var phone = _host.Session.Identity?.DisplayName ?? serial;
         _filesArmed = true;
         _filesHint = TransferPlan.Describe(items, phone);
         _overlay.ArmFiles(true, _filesHint);
-        e.Effects = DragDropEffects.Copy;
-        e.Handled = true;
+        return true;
     }
 
     private async void OnFilesDrop(object sender, DragEventArgs e)
     {
         var paths = FileDrop(e.Data);
+        e.Handled = true;
         DisarmFiles();
         if (paths.Length > 0)
         {
             await SendPathsAsync(paths, dropped: true);
         }
-
-        e.Handled = true;
     }
 
     private void DisarmFiles()
     {
         _filesArmed = false;
         _filesHint = string.Empty;
+        _draggedKey = string.Empty;
+        _draggedItems = [];
         _overlay.ArmFiles(false);
+    }
+
+    /// <summary>
+    /// A drag going from the window's margin onto the picture leaves the window for the overlay
+    /// above it, and the other way round: both are the window as far as a drop is concerned. Only a
+    /// drag that has left the window altogether disarms; one let go elsewhere is caught by the tick.
+    /// </summary>
+    private void DisarmIfOutside()
+    {
+        if (!_filesArmed || _source is null || !NativeMethods.GetCursorPos(out var at) || !NativeMethods.GetWindowRect(_source.Handle, out var window))
+        {
+            return;
+        }
+
+        if (at.X < window.Left || at.X >= window.Right || at.Y < window.Top || at.Y >= window.Bottom)
+        {
+            DisarmFiles();
+        }
     }
 
     private void ApplyFilesConfig()

@@ -116,6 +116,8 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Session/*             supervisor: device watching, scrcpy lifecycle, actions, copies (CopiesController)
   Services/*            composition root, pipe server, command router, tray icon, UsbDoctor
   Services/Sound/*      the phone's sound on this PC: scrcpy's own Core Audio session (REX_FAKE_AUDIO in tests)
+  Services/Files/*      sending files: the transfer queue's runner (FileSender) and File Explorer's Send to (REX_SENDTO_DIR in tests)
+  Services/TestHooks    pipe commands for what a test cannot do for real (drag, drop); only with REX_TEST_HOOKS=1
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
   Views/AppsPanel*      the Apps tab: rows made once per list and filtered while searching
   Views/Settings/*      settings groups in separate controls
@@ -188,6 +190,13 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   their own words and icons. The session is looked for only until it is found, the rules are
   checked four times a second, the fading timer runs only while fading and the meter only while
   the sound panel is open. Tests set `REX_FAKE_AUDIO`, and `AppProcess` always does.
+- Files reach the phone only inside its shared storage (`TransferSettings.IsValidFolder`), and any
+  phone path that passes through the phone's shell is quoted. While a drag is over the window the
+  overlay is armed (one alpha step opaque), so a drop over the picture comes to this app rather
+  than to scrcpy; it disarms on the drop, when the drag leaves the window, or when the button is
+  up. A drop that reaches scrcpy anyway goes to the same folder (`--push-target`) and its lines are
+  read into the same transfer list. Tests drag and drop through `drag`/`drop` pipe commands, which
+  exist only with `REX_TEST_HOOKS=1`; `AppProcess` sets it.
 - The phone's apps are read with `scrcpy --list-apps --no-cleanup` (`AppLister`), once per
   connection after the mirror is up, never polled. Every scrcpy server start (the mirror, a copy,
   the app list) goes through `SessionController.ServerStart`, so two never start at once. A

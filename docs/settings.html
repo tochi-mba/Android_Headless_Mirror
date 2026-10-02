@@ -73,7 +73,7 @@
       <li><a href="#group-input">Mouse, touchpad &amp; keyboard</a></li>
       <li><a href="#group-copies">Copies of the phone</a></li>
       <li><a href="#group-apps">Apps</a></li>
-      <li><a href="#group-files">Files</a></li>
+      <li><a href="#group-files">Sending files</a></li>
       <li><a href="#group-hud">Fullscreen controls</a></li>
       <li><a href="#group-lock-screen">Lock screen</a></li>
       <li><a href="#group-captures">Screenshots &amp; recording</a></li>
@@ -211,10 +211,10 @@
       <article class="ref-row" id="Apps.Hidden"><h3>Show every hidden app again</h3><dl class="ref-facts"><div><dt>Default</dt><dd>None</dd></div><div><dt>Choices</dt><dd>A list, chosen in the window</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Apps.Hidden</code></dd></div></dl></article>
     </section>
     <section class="ref-group" id="group-files" aria-labelledby="group-files-title">
-      <h2 id="group-files-title">Files</h2>
+      <h2 id="group-files-title">Sending files</h2>
       <p class="ref-intro">Drop, choose or paste files to copy them into the phone's shared storage. APK files may be installed instead.</p>
       <article class="ref-row" id="Transfer.Enabled"><h3>Accept files from this PC</h3><dl class="ref-facts"><div><dt>Default</dt><dd>On</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>The next time the mirror starts</dd></div><div><dt>In config.json</dt><dd><code>Transfer.Enabled</code></dd></div></dl><p class="ref-command"><code>rex config set Transfer.Enabled false</code></p></article>
-      <article class="ref-row" id="Transfer.Folder"><h3>Send files to</h3><dl class="ref-facts"><div><dt>Default</dt><dd>/sdcard/Download/</dd></div><div><dt>Choices</dt><dd>Text</dd></div><div><dt>Applies</dt><dd>The next time the mirror starts</dd></div><div><dt>In config.json</dt><dd><code>Transfer.Folder</code></dd></div></dl></article>
+      <article class="ref-row" id="Transfer.Folder"><h3>Send files to</h3><dl class="ref-facts"><div><dt>Default</dt><dd>/sdcard/Download/</dd></div><div><dt>Choices</dt><dd>Text</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Transfer.Folder</code></dd></div></dl></article>
       <article class="ref-row" id="Transfer.SortMedia"><h3>Put photos, videos and music in their own folders</h3><dl class="ref-facts"><div><dt>Default</dt><dd>Off</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Transfer.SortMedia</code></dd></div></dl><p class="ref-command"><code>rex config set Transfer.SortMedia true</code></p></article>
       <article class="ref-row" id="Transfer.Folders"><h3>Dropped folders</h3><dl class="ref-facts"><div><dt>Default</dt><dd>Send the whole folder</dd></div><div><dt>Choices</dt><dd>Send the whole folder · Refuse folders</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Transfer.Folders</code></dd></div></dl><p class="ref-command"><code>rex config set Transfer.Folders refuse</code></p></article>
       <article class="ref-row" id="Transfer.InstallApks"><h3>Install apps (.apk) instead of copying them</h3><dl class="ref-facts"><div><dt>Default</dt><dd>On</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Transfer.InstallApks</code></dd></div></dl><p class="ref-command"><code>rex config set Transfer.InstallApks false</code></p></article>
