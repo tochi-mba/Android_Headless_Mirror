@@ -24,6 +24,30 @@ public partial class AppsPanel : UserControl
     private string _rowsFor = string.Empty;
     private bool _showHidden;
 
+    /// <summary>True while the next app chosen opens on the second screen.</summary>
+    public bool ChoosingForScreen { get; private set; }
+
+    /// <summary>Starts choosing an app for the second screen: the banner shows and a click opens the app there.</summary>
+    public void ChooseForScreen()
+    {
+        ChoosingForScreen = true;
+        ChoosingBanner.Visibility = Visibility.Visible;
+        AppsSearch.Focus();
+    }
+
+    /// <summary>Stops choosing, after a choice or when cancelled.</summary>
+    public void StopChoosing()
+    {
+        ChoosingForScreen = false;
+        ChoosingBanner.Visibility = Visibility.Collapsed;
+    }
+
+    private void OnChoosingCancel(object sender, RoutedEventArgs e)
+    {
+        StopChoosing();
+        _window?.GiveKeyboardBack();
+    }
+
     public AppsPanel() => InitializeComponent();
 
     /// <summary>The phone whose apps are shown, or empty when there is none.</summary>
@@ -192,6 +216,13 @@ public partial class AppsPanel : UserControl
     /// <summary>Esc clears the search; the arrow keys move between apps; Down from the search box goes to the first.</summary>
     private void OnKey(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && ChoosingForScreen && AppsSearch.Text.Length == 0)
+        {
+            OnChoosingCancel(this, e);
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key == Key.Escape && AppsSearch.Text.Length > 0)
         {
             AppsSearch.Clear();

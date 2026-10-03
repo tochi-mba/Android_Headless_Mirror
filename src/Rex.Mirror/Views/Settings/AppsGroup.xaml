@@ -12,6 +12,13 @@
       <CheckBox x:Name="AppsShowSystem" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Show system apps" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show package names"><CheckBox x:Name="AppsShowPackages" Checked="OnOption" Unchecked="OnOption" /></HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Clicking an app opens it">
+      <ComboBox x:Name="AppsOpenOn" SelectionChanged="OnOption" AutomationProperties.Name="Clicking an app opens it">
+        <ComboBoxItem Content="On the phone" Tag="phone" />
+        <ComboBoxItem Content="On a second screen" Tag="second-screen" />
+        <ComboBoxItem Content="Ask each time" Tag="ask" />
+      </ComboBox>
+    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Sort apps by">
       <ComboBox x:Name="AppsSortBy" SelectionChanged="OnOption" AutomationProperties.Name="Sort apps by">
         <ComboBoxItem Content="Name" Tag="name" />

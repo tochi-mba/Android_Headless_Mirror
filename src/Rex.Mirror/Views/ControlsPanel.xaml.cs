@@ -175,6 +175,7 @@ public partial class ControlsPanel : UserControl
         RefreshFiles();
 
         RefreshFavourites();
+        RefreshScreen();
 
         var guide = _window.Guide;
         PatternSection.Visibility = guide is not null ? Visibility.Visible : Visibility.Collapsed;
@@ -334,6 +335,44 @@ public partial class ControlsPanel : UserControl
     }
 
     private void OnAllApps(object sender, RoutedEventArgs e) => _window?.ShowTab("apps");
+
+    /// <summary>The SECOND SCREEN section: what it is doing, and what can be done to it now.</summary>
+    private void RefreshScreen()
+    {
+        var window = _window!;
+        var state = window.ScreenState;
+        var open = state is ScreenState.Showing or ScreenState.Opening;
+        ScreenStatus.Text = window.ScreenWords;
+        ScreenOpen.Visibility = open ? Visibility.Collapsed : Visibility.Visible;
+        ScreenOpenControls.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        var why = window.WhyNoSecondScreen;
+        ScreenOpen.IsEnabled = why is null;
+        ScreenOpen.ToolTip = why ?? Shortcuts.Tip("Choose an app to run on a display of its own, beside the phone or instead of it", "second-screen");
+        AutomationProperties.SetHelpText(ScreenOpen, why ?? string.Empty);
+        ScreenClose.ToolTip = Shortcuts.Tip(_host!.Config.SecondScreen.KeepAppsOnClose ? "Close the second screen; its app moves to the phone" : "Close the second screen and its app", "second-screen");
+        Sync(() =>
+        {
+            var instead = _host.Config.SecondScreen.Placement == "instead";
+            ScreenBeside.IsChecked = !instead;
+            ScreenInstead.IsChecked = instead;
+        });
+    }
+
+    private void OnScreenOpen(object sender, RoutedEventArgs e) => _window?.ChooseAppForSecondScreen();
+
+    private void OnScreenClose(object sender, RoutedEventArgs e) => _window?.CloseSecondScreen();
+
+    private void OnScreenPlacement(object sender, RoutedEventArgs e)
+    {
+        if (_syncing || _host is null)
+        {
+            return;
+        }
+
+        var placement = ScreenInstead.IsChecked == true ? "instead" : "beside";
+        _host.UpdateConfig(c => c.SecondScreen.Placement = placement);
+        _window?.GiveKeyboardBack();
+    }
 
     /// <summary>
     /// Turns a control on or off with the phone, and says why while it is off: a greyed button

@@ -32,6 +32,7 @@ public sealed class ScrcpyProcess : IDisposable
 
             NoteSound(e.Data);
             NoteFileTransfer(e.Data);
+            NoteDisplay(e.Data);
 
             lock (_stderr)
             {
@@ -58,6 +59,7 @@ public sealed class ScrcpyProcess : IDisposable
             {
                 NoteSound(e.Data);
                 NoteFileTransfer(e.Data);
+                NoteDisplay(e.Data);
             }
         };
         process.BeginErrorReadLine();
@@ -87,6 +89,9 @@ public sealed class ScrcpyProcess : IDisposable
 
     /// <summary>scrcpy's built-in drag/drop pusher reported a step. Raised on a reader thread.</summary>
     public event Action<ScrcpyArguments.FileTransferLine>? FileTransfer;
+
+    /// <summary>The id of the display scrcpy made on the phone (a second screen's), once it has said; null for the phone's own.</summary>
+    public int? DisplayId { get; private set; }
 
     public int ProcessId => _process.Id;
     public IntPtr Hwnd { get; private set; }
@@ -169,6 +174,14 @@ public sealed class ScrcpyProcess : IDisposable
         {
             SoundProblem = why;
             SoundRefused?.Invoke(why);
+        }
+    }
+
+    private void NoteDisplay(string? line)
+    {
+        if (DisplayId is null && ScreenSpec.ParseNewDisplay(line) is { } display)
+        {
+            DisplayId = display.Id;
         }
     }
 

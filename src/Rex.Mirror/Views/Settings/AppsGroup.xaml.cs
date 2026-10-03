@@ -31,6 +31,7 @@ public partial class AppsGroup : UserControl, ISettingsGroup
         {
             AppsShowSystem.IsChecked = apps.ShowSystem;
             AppsShowPackages.IsChecked = apps.ShowPackages;
+            SelectTag(AppsOpenOn, apps.OpenOn);
             SelectTag(AppsSortBy, apps.SortBy);
             SelectTag(AppsLayout, apps.Layout);
             AppsShowRecent.IsChecked = apps.ShowRecent;
@@ -74,6 +75,7 @@ public partial class AppsGroup : UserControl, ISettingsGroup
         {
             c.Apps.ShowSystem = AppsShowSystem.IsChecked == true;
             c.Apps.ShowPackages = AppsShowPackages.IsChecked == true;
+            c.Apps.OpenOn = SelectedTag(AppsOpenOn, "phone");
             c.Apps.SortBy = SelectedTag(AppsSortBy, "name");
             c.Apps.Layout = SelectedTag(AppsLayout, "list");
             c.Apps.ShowRecent = AppsShowRecent.IsChecked == true;

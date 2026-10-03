@@ -98,7 +98,13 @@ public partial class AppsPanel
         AutomationProperties.SetHelpText(open, "Opens it on the phone. Shift opens it fresh; the menu key shows more.");
         open.ToolTip = entry.Missing ? "Not on this phone any more" : $"{app.Name} · {app.Package}\nShift+click opens it fresh";
         ToolTipService.SetShowOnDisabled(open, true);
-        open.Click += async (_, _) => await _window!.OpenAppAsync(app, fresh: Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || _host!.Config.Apps.OpenFresh);
+        open.Click += async (_, _) =>
+        {
+            var fresh = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || _host!.Config.Apps.OpenFresh;
+            var onScreen = ChoosingForScreen;
+            StopChoosing();
+            await _window!.OpenFromAppsAsync(app, fresh, onScreen);
+        };
         open.ContextMenuOpening += (_, _) => FillMenu(section, entry);
         return open;
     }
@@ -139,6 +145,7 @@ public partial class AppsPanel
 
         Add("Open", "open", () => _ = _window!.OpenAppAsync(app, fresh: false));
         Add("Open fresh", "open-fresh", () => _ = _window!.OpenAppAsync(app, fresh: true));
+        Add("Open on a second screen", "open-screen", () => _ = _window!.OpenOnSecondScreenAsync(app.Package, fresh: false));
         Add(entry.Favourite ? "Remove from favourites" : "Add to favourites", "favourite", () => Favourite(app.Package, !entry.Favourite));
         if (section == AppOrder.Favourites)
         {

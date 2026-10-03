@@ -51,6 +51,8 @@ public static class CliReference
             Human: true, Machine: true, NeedsApp: false),
         new("install", FileCommands.InstallUsage, "Install one or more APK files, with optional update flags.", "rex install app.apk --grant",
             Human: true, Machine: true, NeedsApp: false),
+        new("screen", ScreenCommands.Usage, "A second screen for one app, beside the phone or instead of it: open it, switch its app, close it, or see what it is doing.", "rex screen open YouTube --size 1080p",
+            Human: true, Machine: true, NeedsApp: true),
         new("screenshot", "rex screenshot [--serial S]", "Save a picture of the phone screen.", "rex screenshot",
             Human: true, Machine: true, NeedsApp: false),
         new("phone", "rex phone list|get [filter]", "Every phone setting this phone offers, with its value.", "rex phone list bright",

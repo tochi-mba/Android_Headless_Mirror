@@ -25,6 +25,9 @@ public sealed partial class StateStore
         profile.FavouriteApps = AppOrder.Move(profile.FavouriteApps ?? [], package, delta);
     });
 
+    /// <summary>Remembers the app the second screen has, for opening it again later.</summary>
+    public void SetSecondScreenApp(string serial, string package) => Update(state => GetOrAdd(state, serial).SecondScreenApp = package);
+
     /// <summary>Notes that an app was opened, keeping at most <paramref name="keep"/> recent apps.</summary>
     public void NoteAppOpened(string serial, string package, DateTimeOffset now, int keep) => Update(state =>
     {

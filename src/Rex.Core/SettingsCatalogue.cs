@@ -175,6 +175,26 @@ public static class SettingsCatalogue
         ["Transfer.CancelWhenPhoneLeaves"] = "TransferCancelOnLeave",
         ["Transfer.History"] = "TransferHistory",
         ["Transfer.SendToMenu"] = "TransferSendToMenu",
+
+        ["Apps.OpenOn"] = "AppsOpenOn",
+        ["SecondScreen.Placement"] = "ScreenPlacement",
+        ["SecondScreen.Side"] = "ScreenSide",
+        ["SecondScreen.Size"] = "ScreenSize",
+        ["SecondScreen.CustomWidth"] = "ScreenCustomWidth",
+        ["SecondScreen.CustomHeight"] = "ScreenCustomHeight",
+        ["SecondScreen.Portrait"] = "ScreenPortrait",
+        ["SecondScreen.Dpi"] = "ScreenDpi",
+        ["SecondScreen.MaxSize"] = "ScreenMaxSize",
+        ["SecondScreen.Decorations"] = "ScreenDecorations",
+        ["SecondScreen.KeepAppsOnClose"] = "ScreenKeepApps",
+        ["SecondScreen.Keyboard"] = "ScreenKeyboard",
+        ["SecondScreen.ReopenOnStart"] = "ScreenReopen",
+        ["SecondScreen.ResizeWhileDragging"] = "ScreenResizeWhileDragging",
+        ["SecondScreen.MinWidth"] = "ScreenMinWidth",
+        ["Views.Arrangement"] = "ViewsArrangement",
+        ["Views.Outline"] = "ViewsOutline",
+        ["Views.Captions"] = "ViewsCaptions",
+        ["Views.Splitter"] = "ViewsSplitter",
     };
 
     /// <summary>

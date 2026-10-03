@@ -309,12 +309,14 @@ public sealed class AppsTests
             store.NoteAppOpened("S1", "com.example.beta", Now.AddMinutes(1), 2);
             store.NoteAppOpened("S1", "com.example.alpha", Now.AddMinutes(2), 2);
             store.NoteAppOpened("S1", "com.example.delta", Now.AddMinutes(3), 2);
+            store.SetSecondScreenApp("S1", "com.example.gamma");
 
             var again = new StateStore(path).GetDevice("S1")!;
             Assert.Equal<PhoneApp>(Shelf, again.Apps!);
             Assert.Equal(Now, again.AppsReadUtc);
             Assert.Equal(["com.example.alpha", "com.example.delta"], again.FavouriteApps);
             Assert.Equal(["com.example.delta", "com.example.alpha"], again.RecentApps.Select(r => r.Package));
+            Assert.Equal("com.example.gamma", again.SecondScreenApp);
 
             // A phone seen before this version has no apps, favourites or recent apps yet.
             store.RememberDevice("S2", "Old phone", "X");

@@ -20,6 +20,9 @@ namespace Rex.Core;
 /// <param name="AppsRecent">How many recent apps are remembered: they are shown.</param>
 /// <param name="AppsOnControls">How many favourites the Controls tab shows: it shows them.</param>
 /// <param name="Transfer">File-transfer choices: accepting files is on.</param>
+/// <param name="ScreenCustom">The second screen's own width and height: its size is set to your own.</param>
+/// <param name="ScreenFixed">Upright and the resolution limit: the second screen has a fixed size.</param>
+/// <param name="ScreenBeside">Side, minimum width and the splitter: the second screen goes beside the phone.</param>
 /// <param name="TransferInstall">APK install choices: accepting files and installing APKs are on.</param>
 public sealed record SettingsDependencies(
     bool Sensitivity,
@@ -37,7 +40,10 @@ public sealed record SettingsDependencies(
     bool AppsRecent,
     bool AppsOnControls,
     bool Transfer,
-    bool TransferInstall)
+    bool TransferInstall,
+    bool ScreenCustom,
+    bool ScreenFixed,
+    bool ScreenBeside)
 {
     public static SettingsDependencies Of(RexConfig config) => new(
         Sensitivity: config.Touchpad.Enabled && config.Touchpad.TwoFingerToAndroid,
@@ -55,5 +61,8 @@ public sealed record SettingsDependencies(
         AppsRecent: config.Apps.ShowRecent,
         AppsOnControls: config.Apps.FavouritesOnControls,
         Transfer: config.Transfer.Enabled,
-        TransferInstall: config.Transfer.Enabled && config.Transfer.InstallApks);
+        TransferInstall: config.Transfer.Enabled && config.Transfer.InstallApks,
+        ScreenCustom: config.SecondScreen.Size == "custom",
+        ScreenFixed: config.SecondScreen.Size != "follow",
+        ScreenBeside: config.SecondScreen.Placement == "beside");
 }

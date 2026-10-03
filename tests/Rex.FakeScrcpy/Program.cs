@@ -89,6 +89,19 @@ internal static class Program
             return int.TryParse(Environment.GetEnvironmentVariable("REX_FAKE_SCRCPY_EXIT_CODE"), out var code) ? code : 1;
         }
 
+        // A second screen: the phone makes a display and says its id, as real scrcpy prints it.
+        var newDisplay = args.FirstOrDefault(a => a.StartsWith("--new-display=", StringComparison.Ordinal));
+        if (newDisplay is not null)
+        {
+            var value = newDisplay["--new-display=".Length..];
+            var startApp = args.FirstOrDefault(a => a.StartsWith("--start-app=", StringComparison.Ordinal))?["--start-app=".Length..] ?? string.Empty;
+            var size = value.Split('/')[0];
+            var dpi = value.Contains('/', StringComparison.Ordinal) ? value.Split('/')[1] : "320";
+            Log($"new-display {value} flex={args.Contains("--flex-display")} start-app={startApp}");
+            Console.Out.WriteLine($"[server] INFO: New display: {size}/{dpi} (id=7)");
+            Console.Out.Flush();
+        }
+
         Application.EnableVisualStyles();
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.Run(new MirrorForm(args));
@@ -473,6 +486,12 @@ internal sealed class MirrorForm : Form
     {
         base.OnResize(e);
         Invalidate();
+
+        // A display that follows its window is made again at the window's new size.
+        if (_args.Contains("--flex-display") && ClientSize.Width > 0 && ClientSize.Height > 0)
+        {
+            Program.Log($"display resized {ClientSize.Width}x{ClientSize.Height} at={_port}");
+        }
     }
 
     protected override void WndProc(ref Message m)

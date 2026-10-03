@@ -53,6 +53,9 @@ public partial class MainWindow : Window
     public double SidebarWidthDip => Math.Round(SidebarColumn.ActualWidth);
     public bool AmbientVisible => Ambient.IsShowing;
     public bool NavigatorPictureVisible => _overlay.NavigatorPictureAvailable;
+
+    /// <summary>Whether the phone's own picture is on screen now (it steps aside while a question is asked over it).</summary>
+    public bool PictureShown => Host.IsShown;
     public string CapturePath => _liveCapture.Path;
     public bool NavigatorVisible => _overlay.NavigatorVisible;
     public bool NavigatorDragging => _overlay.NavigatorDragging;
@@ -150,6 +153,8 @@ public partial class MainWindow : Window
         };
 
         InitFiles();
+        AttachSecondScreen();
+        AttachSplitter();
         ControlsPanel.Attach(this, host);
         PhonePanel.Attach(this, host);
         AttachApps();
@@ -323,7 +328,7 @@ public partial class MainWindow : Window
         Onboarding.Visibility = onboarding ? Visibility.Visible : Visibility.Collapsed;
         MirrorArea.Visibility = onboarding ? Visibility.Collapsed : Visibility.Visible;
         Sidebar.Visibility = onboarding ? Visibility.Collapsed : (_sidebarWanted && !_fullscreen ? Visibility.Visible : Visibility.Collapsed);
-        Host.SetShown(mirroring && !onboarding);
+        Host.SetShown(PictureShowable);
         UpdateCopiesShown();
         if (onboarding)
         {
@@ -560,18 +565,21 @@ public partial class MainWindow : Window
         // Cheap, and catches what events miss: the window shown before it has a width, a size
         // that settles after the last layout.
         UpdateRoom();
-        var visible = _host.Session.IsMirroring && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
+        var visible = PictureShowable && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
         if (visible)
         {
             foreach (var view in AllViews)
             {
                 view.SyncChildShape();
             }
+
+            _screenView?.SyncChildShape();
         }
 
         _overlay.ReleaseStuckDrags();
         // The overlay covers the whole mirror area: with copies the main view is only one cell of it.
         _overlay.Track(visible ? AreaScreenRect() : default, visible);
+        UpdateViewMarks(visible);
         _overlay.UpdateHud(_fullscreen && visible, Host.Zoom, _host.Config.Hud);
         if (visible)
         {
@@ -695,6 +703,8 @@ public partial class MainWindow : Window
             case "screenshot":
                 _ = SaveScreenshotAsync();
                 return AndroidResult.Success("Saving…");
+            case "second-screen":
+                return await ToggleSecondScreenAsync();
             case "copy-add":
                 return Copies.Add();
             case "copy-remove":
@@ -725,6 +735,13 @@ public partial class MainWindow : Window
     /// <summary>Plays an action and shows what it did in the status bar; returns the same words.</summary>
     private async Task<(bool Ok, string Text)> RunActionCoreAsync(string id)
     {
+        // While the second screen has the keyboard, what acts on a display goes to its own.
+        if (RunOnSecondScreen(id) is { } routed)
+        {
+            SetStatus(routed.Text, !routed.Ok);
+            return routed;
+        }
+
         var result = await _host.Session.RunActionAsync(id, ApplyAppActionAsync);
         NoteAction(id, result.Ok);
         var text = result.Ok ? (string.IsNullOrWhiteSpace(result.Text) ? MirrorActions.Find(id)?.Label ?? id : result.Text) : result.Text;
