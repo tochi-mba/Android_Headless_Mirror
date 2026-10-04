@@ -100,7 +100,18 @@ public sealed partial class AppUiTests
         app.Ui.Select("TabSettings");
         Assert.True(app.Ui.IsOn("AmbientEnabled"));
 
-        var (x, y) = app.Ui.Centre(app.Ui.FindText("Soft background around the phone"));
+        var label = app.Ui.FindText("Soft background around the phone");
+        // A collapsed group above Display can push this row just below a shorter desktop's
+        // viewport. Scroll only when needed, then measure the real on-screen label: the point of
+        // this test is the physical row click, not whether the default window happens to be tall.
+        if (label.Current.IsOffscreen)
+        {
+            await app.ScrollSidebarAsync(-3);
+            label = app.Ui.FindText("Soft background around the phone");
+        }
+
+        Assert.False(label.Current.IsOffscreen, "The setting label must be on screen before the physical click.");
+        var (x, y) = app.Ui.Centre(label);
         await app.ClickAsync(x, y);
         await app.WaitUntilAsync(() => !ConfigFile.Load(package.Paths.Config).Ambient.Enabled, Soon, "the label click to turn the switch off");
         Assert.False(app.Ui.IsOn("AmbientEnabled"));
