@@ -67,33 +67,34 @@ public sealed partial class AppUiTests
         await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "the offer to restart without sound");
         Assert.True((await app.SendAsync(new IpcRequest("session-restart"))).Ok);
         await app.WaitForStatusAsync(s => s["mirroring"]!.GetValue<bool>() && !s["restartRequired"]!.GetValue<bool>(), Startup, "the mirror without sound");
-        // The restart may close the panel as the window changes hands, even between finding its
-        // button and pressing it; the sound button opens it again until the press lands.
-        await app.WaitUntilAsync(() =>
+        // The restart may close the popup. A collapsed popup can still leave its children in the
+        // UI Automation tree, so Exists("SoundTurnOn") is not proof that the button can be used.
+        // Reopen from the app's own state, wait until the real button is visible, then invoke it.
+        var afterRestart = await app.WaitForStatusAsync(
+            s => s["mirroring"]!.GetValue<bool>() &&
+                 SoundOf(s)["why"]?.GetValue<string>() == SoundProblems.AudioOff,
+            Startup,
+            "the mirror without sound to report its panel state");
+        if (!SoundOf(afterRestart)["panelOpen"]!.GetValue<bool>())
         {
-            if (ConfigFile.Load(package.Paths.Config).Mirror.Audio)
-            {
-                return true;
-            }
+            app.Ui.Invoke("QuickSound");
+            await app.WaitForStatusAsync(
+                s => SoundOf(s)["panelOpen"]!.GetValue<bool>(),
+                Soon,
+                "the sound panel to reopen");
+        }
 
-            try
-            {
-                if (!app.Ui.Exists("SoundTurnOn"))
-                {
-                    app.Ui.Invoke("QuickSound");
-                }
-                else if (app.Ui.Read("SoundProblem", i => i.Name) == SoundProblems.AudioOff)
-                {
-                    app.Ui.Invoke("SoundTurnOn");
-                }
-            }
-            catch (Exception ex) when (ex is TimeoutException or System.Windows.Automation.ElementNotAvailableException)
-            {
-                // The panel closed under the press; the next round opens it again.
-            }
-
-            return false;
-        }, Soon, "phone sound to be turned on from the panel");
+        await app.WaitUntilAsync(
+            () => app.Ui.Exists("SoundTurnOn") &&
+                  !app.Ui.Read("SoundTurnOn", i => i.IsOffscreen) &&
+                  app.Ui.Read("SoundProblem", i => i.Name) == SoundProblems.AudioOff,
+            Soon,
+            "the visible turn-sound-on button");
+        app.Ui.Invoke("SoundTurnOn");
+        await app.WaitUntilAsync(
+            () => ConfigFile.Load(package.Paths.Config).Mirror.Audio,
+            Soon,
+            "phone sound to be turned on from the panel");
         await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "the offer to restart");
         await app.QuitAsync();
     }
