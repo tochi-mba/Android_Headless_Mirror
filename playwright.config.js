@@ -1,4 +1,6 @@
 const { defineConfig, devices } = require('@playwright/test');
+const sitePort = process.env.REX_SITE_TEST_PORT || '4173';
+const siteUrl = `http://127.0.0.1:${sitePort}`;
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -11,7 +13,7 @@ module.exports = defineConfig({
     ? [['line'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
     : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: siteUrl,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -28,9 +30,10 @@ module.exports = defineConfig({
     },
   ],
   webServer: {
-    command: 'python3 -m http.server 4173 --directory docs --bind 127.0.0.1',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
+    command: `python3 -m http.server ${sitePort} --directory docs --bind 127.0.0.1`,
+    url: siteUrl,
+    // Reusing an arbitrary process on this port can make every assertion inspect the wrong site.
+    reuseExistingServer: false,
     timeout: 20000,
   },
 });

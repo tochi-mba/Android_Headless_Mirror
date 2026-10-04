@@ -15,6 +15,8 @@
     <TextBlock x:Name="FilterEmpty" Style="{StaticResource MutedText}" Margin="0,8,0,0" Visibility="Collapsed"
                Text="Nothing here mentions that. Phone settings live in the Phone tab." />
 
+    <settings:ProfilesGroup x:Name="ProfilesSettingsGroup" />
+
     <Expander x:Name="GroupDisplay" Header="Display" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
                Text="Resolution, frame rate, bit rate and codec apply the next time the mirror starts. Everything below them previews as you change it." />

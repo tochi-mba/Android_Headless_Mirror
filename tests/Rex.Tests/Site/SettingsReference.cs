@@ -118,6 +118,11 @@ internal static class SettingsReference
             // The mouse buttons share one list of choices, made in code from InputSettings.
             choices = InputSettings.ButtonChoices.Select(c => new SettingChoice(c.Action, c.Label)).ToArray();
         }
+        else if (kind == "choice" && choices.Count == 0 && path.StartsWith("Profiles.When", StringComparison.Ordinal))
+        {
+            // The rules offer the person's own profiles too; the page names what every PC has.
+            choices = ProfilePresets.RuleChoices([]).Select(c => new SettingChoice(c.Value, c.Label)).ToArray();
+        }
 
         if (TrueFalseChoices.TryGetValue(path, out var truth))
         {

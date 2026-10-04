@@ -118,6 +118,9 @@ public static partial class CommandRouter
             case "screen":
                 return await ScreenAsync(host, request).ConfigureAwait(true);
 
+            case "profile":
+                return Profile(host, request);
+
             case "push":
             {
                 if (window is null) return IpcResponse.Fail("The window is not available.");
@@ -289,6 +292,7 @@ public static partial class CommandRouter
                 ["height"] = Math.Round(hud.HudBarRect.Height),
             } : null,
             ["onboarding"] = host.Window?.OnboardingVisible ?? false,
+            ["updateOnboarding"] = host.Window?.UpdateOnboardingVisible ?? false,
             // What the app is teaching right now, so a test can drive the tour and the hints.
             ["tour"] = host.Window is { } teaching ? new JsonObject
             {
@@ -357,6 +361,7 @@ public static partial class CommandRouter
             ["apps"] = host.Window is { } listing ? AppsStatus(host, listing) : null,
             ["files"] = host.Window is { } files ? FilesStatus(host, files) : null,
             ["secondScreen"] = host.Window is { } screen ? ScreenStatus(host, screen) : null,
+            ["profiles"] = ProfilesStatus(host),
             ["window"] = host.Window is { } shown ? new JsonObject
             {
                 ["topmost"] = shown.Topmost,

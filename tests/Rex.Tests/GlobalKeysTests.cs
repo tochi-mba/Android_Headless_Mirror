@@ -361,7 +361,8 @@ public sealed class GlobalKeysTests
         Assert.Null(WindowKeys.ActionFor('0', KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift));
         Assert.Null(WindowKeys.ActionFor('1', KeyMods.Ctrl | KeyMods.Alt | KeyMods.Shift | KeyMods.Win));
         Assert.Equal("tour", WindowKeys.ActionFor(KeyChord.F1, KeyMods.None));
-        Assert.Null(WindowKeys.ActionFor(KeyChord.F1, KeyMods.Ctrl | KeyMods.Alt));
+        Assert.Equal("profile-1", WindowKeys.ActionFor(KeyChord.F1, KeyMods.Ctrl | KeyMods.Alt));
+        Assert.Null(WindowKeys.ActionFor(KeyChord.F1, KeyMods.Ctrl));
         Assert.Null(WindowKeys.ActionFor(KeyChord.F1 + 10, KeyMods.Shift));
         // Keys from anywhere, browse keys and gestures are not the window's.
         Assert.DoesNotContain(WindowKeys.All, k => k.Id == GlobalKeyRules.ShowHide || Shortcuts.Find(k.Id)!.Browse);

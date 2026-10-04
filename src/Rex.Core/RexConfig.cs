@@ -30,6 +30,7 @@ public sealed record RexConfig
     public TransferSettings Transfer { get; set; } = new();
     public SecondScreenSettings SecondScreen { get; set; } = new();
     public ViewsSettings Views { get; set; } = new();
+    public ProfilesSettings Profiles { get; set; } = new();
     public LoggingSettings Logging { get; set; } = new();
 
     /// <summary>Clamps every value into its supported range. Called after load and before save.</summary>
@@ -53,6 +54,7 @@ public sealed record RexConfig
         Transfer.Normalize();
         SecondScreen.Normalize();
         Views.Normalize();
+        Profiles.Normalize();
         Logging.Normalize();
     }
 
@@ -75,6 +77,7 @@ public sealed record RexConfig
         Transfer = Transfer.Copy(),
         SecondScreen = SecondScreen.Copy(),
         Views = Views.Copy(),
+        Profiles = Profiles.Copy(),
         Logging = Logging.Copy(),
     };
 
@@ -101,6 +104,7 @@ public sealed record RexConfig
         Transfer = copy.Transfer;
         SecondScreen = copy.SecondScreen;
         Views = copy.Views;
+        Profiles = copy.Profiles;
         Logging = copy.Logging;
     }
 

@@ -74,6 +74,11 @@ public sealed class TestPackage : IDisposable
     public string FailInstallMarker => Path.Combine(ToolsFolder, "fail-install");
     public string FakeScrcpyDrop => Path.Combine(ToolsFolder, "fake-scrcpy-drop.txt");
     public string SendToFolder => Path.Combine(Root, "send-to");
+
+    /// <summary>This PC's power for the app (<c>REX_FAKE_POWER</c>): "battery" or "mains"; no file means no battery.</summary>
+    public string PowerFile => Path.Combine(Root, "power.txt");
+
+    public void SetPower(string power) => File.WriteAllText(PowerFile, power);
     public string SendToShortcut => Path.Combine(SendToFolder, Rex.Mirror.Services.Files.SendToMenu.Name);
 
     /// <summary>With this present, the fake phone says it is too old to send its sound.</summary>

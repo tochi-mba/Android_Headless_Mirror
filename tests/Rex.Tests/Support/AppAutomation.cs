@@ -28,6 +28,9 @@ public sealed class AppAutomation(IntPtr window)
     public bool Exists(string automationId) =>
         Bounded(() => FindBy(AutomationElement.AutomationIdProperty, automationId), $"look for '{automationId}'") is not null;
 
+    public bool ExistsNamed(string name) =>
+        Bounded(() => FindBy(AutomationElement.NameProperty, name), $"look for '{name}'") is not null;
+
     /// <summary>Reads one current property of an element: its name, whether it is enabled, its help text.</summary>
     public T Read<T>(string automationId, Func<AutomationElement.AutomationElementInformation, T> read)
     {

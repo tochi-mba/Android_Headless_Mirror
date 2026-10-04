@@ -205,7 +205,7 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <TextBlock x:Name="StatusText" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Text="Starting…"
-                   AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="Status" />
+                   AutomationProperties.LiveSetting="Polite" />
         <TextBlock x:Name="FrameRateText" Grid.Column="1" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource Signal}"
                    VerticalAlignment="Center" Margin="12,0" Visibility="Collapsed" ToolTip="Frames a second the mirror is showing, from scrcpy's own counter" />
         <TextBlock x:Name="HintText" Grid.Column="2" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center" Text="Alt + wheel zoom · Alt + drag pan · F11 fullscreen" />
@@ -230,6 +230,9 @@
         </StackPanel>
       </Border>
     </Grid>
+
+    <!-- A version-aware tour of feature-sized changes, never the first-run setup again. -->
+    <views:UpdateOnboardingView x:Name="UpdateOnboarding" Grid.RowSpan="4" />
 
     <!-- The tour covers everything, so it comes last -->
     <views:TourOverlay x:Name="TourLayer" Grid.RowSpan="4" />

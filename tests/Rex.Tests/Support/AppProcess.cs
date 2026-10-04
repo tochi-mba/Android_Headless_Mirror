@@ -95,6 +95,8 @@ public sealed partial class AppProcess : IDisposable
         // Never the PC's real audio sessions.
         start.Environment[Rex.Mirror.Services.Sound.FakePhoneSound.Variable] = _package.SoundFile;
         start.Environment[Rex.Mirror.Services.Files.SendToMenu.FolderVariable] = _package.SendToFolder;
+        // This PC's power, as a file a test writes: no file is a PC with no battery.
+        start.Environment[Rex.Mirror.Services.ProfileRunner.FakePowerVariable] = _package.PowerFile;
         start.Environment[Rex.Mirror.Services.TestHooks.Variable] = "1";
         start.Environment.Remove(ToolLocator.AdbOverride);
         start.Environment.Remove(ToolLocator.ScrcpyOverride);

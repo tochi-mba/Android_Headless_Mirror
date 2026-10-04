@@ -143,6 +143,7 @@ public partial class MainWindow
             "pattern-calibrate" => () => _guide?.StartCalibration(),
             // Off, a favourite's key goes on to the phone like any other key.
             _ when Shortcuts.Favourite(id) is > 0 and var number => _host.Config.Apps.FavouriteKeys ? () => OpenFavourite(number) : null,
+            _ when Shortcuts.ProfileNumber(id) is > 0 and var number => ProfileKey(number),
             _ when id.StartsWith("tab-", StringComparison.Ordinal) => () =>
             {
                 if (!_sidebarWanted)

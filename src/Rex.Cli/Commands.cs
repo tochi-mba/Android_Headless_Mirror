@@ -89,6 +89,9 @@ public static class Commands
             case "screen":
                 return await ScreenCommands.RunAsync(args, context).ConfigureAwait(false);
 
+            case "profile":
+                return await ProfileCommands.HumanAsync(args, context).ConfigureAwait(false);
+
             case "push":
                 return await FileCommands.PushAsync(args, context).ConfigureAwait(false);
 

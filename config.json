@@ -244,6 +244,16 @@
     "Captions": "auto",
     "Splitter": true
   },
+  "Profiles": {
+    "PerPhone": true,
+    "WhenFullscreen": "",
+    "WhenOnBattery": "",
+    "AfterApplying": "offer",
+    "Keys": true,
+    "InTray": true,
+    "Announce": true,
+    "PutBack": true
+  },
   "Logging": {
     "Enabled": true,
     "MaxBytes": 2097152,
