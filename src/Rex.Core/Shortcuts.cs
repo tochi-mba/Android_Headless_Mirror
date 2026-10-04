@@ -57,6 +57,7 @@ public static class Shortcuts
         new("sound-down", "Ctrl+Alt+PageDown", "The phone's sound quieter on this PC"),
         new("sound-mute", "Ctrl+Alt+Shift+M", "Mute or unmute the phone's sound on this PC"),
         .. Enumerable.Range(1, FavouriteKeys).Select(n => new Shortcut(FavouritePrefix + n, "Ctrl+Alt+Shift+" + n, $"Open favourite app {n}")),
+        .. Enumerable.Range(1, ProfileKeys).Select(n => new Shortcut(ProfilePrefix + n, "Ctrl+Alt+F" + n, $"Apply profile {n}")),
         new(GlobalKeyRules.ShowHide, GlobalKeysSettings.DefaultShowHide, "Show or hide the window, from anywhere", Global: true),
         new("browse-next", "Down", "Next item in a feed (swipe up)", Browse: true, Action: "swipe-up"),
         new("browse-previous", "Up", "Previous item in a feed (swipe down)", Browse: true, Action: "swipe-down"),
@@ -75,6 +76,14 @@ public static class Shortcuts
     /// <summary>How many favourite apps have a key of their own, and the start of those keys' ids.</summary>
     public const int FavouriteKeys = 9;
     public const string FavouritePrefix = "favourite-";
+
+    /// <summary>How many profiles have a key of their own, and the start of those keys' ids.</summary>
+    public const int ProfileKeys = 9;
+    public const string ProfilePrefix = "profile-";
+
+    /// <summary>The profile (1 to 9) a shortcut id applies, or 0 when it is not one of those keys.</summary>
+    public static int ProfileNumber(string? id) =>
+        id is not null && id.StartsWith(ProfilePrefix, StringComparison.Ordinal) && int.TryParse(id.AsSpan(ProfilePrefix.Length), out var n) ? n : 0;
 
     /// <summary>The favourite (1 to 9) a shortcut id opens, or 0 when it is not one of those keys.</summary>
     public static int Favourite(string? id) =>

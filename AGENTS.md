@@ -43,6 +43,7 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `push <files or folders...> [--to /sdcard/folder/] [--serial S]`,
 `install <apk...> [--downgrade] [--grant] [--test] [--no-replace] [--serial S]`,
 `screen [open <app> [--instead|--beside] [--size S] [--fresh]|app <app>|close]`,
+`profile list|show <name>|apply <name>|save <name> [--groups A,B] [--all]|rename <old> <new>|delete <name>|export <name> <file>|import <file>`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
 
@@ -118,6 +119,7 @@ src/Rex.Mirror          WPF app (RexMirror.exe)
   Services/*            composition root, pipe server, command router, tray icon, UsbDoctor
   Services/Sound/*      the phone's sound on this PC: scrcpy's own Core Audio session (REX_FAKE_AUDIO in tests)
   Services/Files/*      sending files: the transfer queue's runner (FileSender) and File Explorer's Send to (REX_SENDTO_DIR in tests)
+  Services/ProfileRunner  profiles in the app: applied by hand, key, tray or pipe, and by themselves (REX_FAKE_POWER in tests)
   Services/TestHooks    pipe commands for what a test cannot do for real (drag, drop); only with REX_TEST_HOOKS=1
   Views/*               the side-panel tabs and the guided first run (OnboardingView)
   Views/AppsPanel*      the Apps tab: rows made once per list and filtered while searching
@@ -199,6 +201,12 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   up. A drop that reaches scrcpy anyway goes to the same folder (`--push-target`) and its lines are
   read into the same transfer list. Tests drag and drop through `drag`/`drop` pipe commands, which
   exist only with `REX_TEST_HOOKS=1`; `AppProcess` sets it.
+- A profile is a list of config.json paths and values (`profiles/<name>.json`, order in `order.json`).
+  Applying one is a single config write through `ConfigPaths` and sets only its own paths; settings
+  it has that this version does not know are counted, never fatal. `ProfileBook` does the work for
+  the app and the CLI alike; while the app runs, `rex profile` goes through the pipe. An automatic
+  profile (fullscreen, then battery, then the phone's own) keeps what it changed in
+  `profiles/.automatic.json` and puts back only the values still as it left them.
 - The second screen is a copy's session (no cleanup, no audio, no power options) with a display of
   its own (`ScrcpyArguments.BuildScreen`): ports 27190 to 27199, `--new-display`, and `-x` when it
   follows the view, which then takes no window size. It is the group panel's second child, laid out

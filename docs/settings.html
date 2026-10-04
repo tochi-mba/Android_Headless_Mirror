@@ -65,6 +65,7 @@
   <nav class="doc-contents" aria-label="Groups of settings">
     <p class="doc-contents-title">Groups</p>
     <ol>
+      <li><a href="#group-profiles">Profiles</a></li>
       <li><a href="#group-display">Display</a></li>
       <li><a href="#group-audio">Audio</a></li>
       <li><a href="#group-sound">Sound on this PC</a></li>
@@ -91,6 +92,18 @@
       <input id="settings-filter" class="filter-input" type="search" autocomplete="off" spellcheck="false" placeholder="Words, or a path such as Mirror.MaxFps" data-filter=".ref-row" data-filter-groups=".ref-group" data-filter-count="settings-filter-count" data-filter-noun="setting">
       <p class="filter-count" id="settings-filter-count" role="status" aria-live="polite"></p>
     </div>
+    <section class="ref-group" id="group-profiles" aria-labelledby="group-profiles-title">
+      <h2 id="group-profiles-title">Profiles</h2>
+      <p class="ref-intro">A profile is a list of settings to switch to in one go: one for games, one for films, one for battery. Applying one changes only the settings in it.</p>
+      <article class="ref-row" id="Profiles.WhenFullscreen"><h3>In fullscreen use</h3><dl class="ref-facts"><div><dt>Default</dt><dd>None</dd></div><div><dt>Choices</dt><dd>None · Lowest latency (preset) · Best picture (preset) · Battery saver (preset) · Presentation (preset) · Gaming (preset) · Quiet (preset)</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.WhenFullscreen</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.WhenFullscreen Lowest latency</code></p></article>
+      <article class="ref-row" id="Profiles.WhenOnBattery"><h3>On battery use</h3><dl class="ref-facts"><div><dt>Default</dt><dd>None</dd></div><div><dt>Choices</dt><dd>None · Lowest latency (preset) · Best picture (preset) · Battery saver (preset) · Presentation (preset) · Gaming (preset) · Quiet (preset)</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.WhenOnBattery</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.WhenOnBattery Lowest latency</code></p></article>
+      <article class="ref-row" id="Profiles.PerPhone"><h3>Use each phone's own profile when it connects</h3><dl class="ref-facts"><div><dt>Default</dt><dd>On</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.PerPhone</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.PerPhone false</code></p></article>
+      <article class="ref-row" id="Profiles.PutBack"><h3>Put back what an automatic profile changed when it ends</h3><dl class="ref-facts"><div><dt>Default</dt><dd>On</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.PutBack</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.PutBack false</code></p></article>
+      <article class="ref-row" id="Profiles.Announce"><h3>Say when a profile switches by itself</h3><dl class="ref-facts"><div><dt>Default</dt><dd>On</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.Announce</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.Announce false</code></p></article>
+      <article class="ref-row" id="Profiles.AfterApplying"><h3>When a profile changes how the mirror starts</h3><dl class="ref-facts"><div><dt>Default</dt><dd>Offer a restart</dd></div><div><dt>Choices</dt><dd>Offer a restart · Restart the mirror at once</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.AfterApplying</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.AfterApplying restart</code></p></article>
+      <article class="ref-row" id="Profiles.Keys"><h3>Ctrl+Alt+F1 to F9 apply profiles 1 to 9</h3><dl class="ref-facts"><div><dt>Default</dt><dd>On</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.Keys</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.Keys false</code></p></article>
+      <article class="ref-row" id="Profiles.InTray"><h3>Profiles in the tray menu</h3><dl class="ref-facts"><div><dt>Default</dt><dd>On</dd></div><div><dt>Choices</dt><dd>On or off</dd></div><div><dt>Applies</dt><dd>At once</dd></div><div><dt>In config.json</dt><dd><code>Profiles.InTray</code></dd></div></dl><p class="ref-command"><code>rex config set Profiles.InTray false</code></p></article>
+    </section>
     <section class="ref-group" id="group-display" aria-labelledby="group-display-title">
       <h2 id="group-display-title">Display</h2>
       <p class="ref-intro">Resolution, frame rate, bit rate and codec apply the next time the mirror starts. Everything below them previews as you change it.</p>

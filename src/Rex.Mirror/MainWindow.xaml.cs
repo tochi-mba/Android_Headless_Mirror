@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     public bool HudVisible => _overlay.HudVisible;
     public RectD HudBarRect => _overlay.HudBarRect;
     public bool OnboardingVisible => Onboarding.Visibility == Visibility.Visible;
+    public bool UpdateOnboardingVisible => UpdateOnboarding.Visibility == Visibility.Visible;
     public bool SidebarVisible => Sidebar.Visibility == Visibility.Visible;
     public double SidebarWidthDip => Math.Round(SidebarColumn.ActualWidth);
     public bool AmbientVisible => Ambient.IsShowing;
@@ -158,9 +159,11 @@ public partial class MainWindow : Window
         ControlsPanel.Attach(this, host);
         PhonePanel.Attach(this, host);
         AttachApps();
+        AttachProfiles();
         SettingsPanel.Attach(this, host);
         InfoPanel.Attach(this, host);
         Onboarding.Attach(this, host);
+        UpdateOnboarding.Attach(this);
         InitSound();
 
         host.Session.Changed += OnSessionChanged;
@@ -563,6 +566,7 @@ public partial class MainWindow : Window
         ReleaseStaleAltHold();
         ReleaseFilesDrag();
         _host.CheckConfigFile();
+        _host.Profiles.CheckPower();
         // Cheap, and catches what events miss: the window shown before it has a width, a size
         // that settles after the last layout.
         UpdateRoom();

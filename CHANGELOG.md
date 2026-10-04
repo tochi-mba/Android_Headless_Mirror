@@ -4,6 +4,28 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.9.0 - 2026-10-04
+
+### Added
+
+- **Profiles**: named lists of settings to switch to in one go, one for games, one for films, one
+  for battery. Applying one changes only the settings in it; the rest stay as you have them.
+- Save the settings you have now as a profile from **Settings → Profiles**, with only what differs
+  from how the app ships or every setting, and only the groups you choose. Update, rename,
+  duplicate, reorder, export and import them; each says how many of its settings have changed since.
+- Six presets to apply as they are or start from: Lowest latency, Best picture, Battery saver,
+  Presentation, Gaming and Quiet. Each lists what it changes before you apply it.
+- Profiles that switch by themselves: one for fullscreen, one for when this PC runs on battery, and
+  each phone's own when it connects. When one ends it puts back exactly what it changed, unless you
+  changed that setting meanwhile.
+- Ctrl+Alt+F1 to F9 apply the first nine profiles, the tray menu has a Profiles submenu, and
+  `rex profile list|show|apply|save|rename|delete|export|import` works with or without the app.
+- A profile that changes how the mirror starts offers a restart, or restarts the mirror at once, as
+  you choose.
+- **What's new, only when there is something new.** After an update that brought features you did
+  not have, the window shows just those, once, with **Show me around** pointing at each one where it
+  lives. An update with only fixes says which version this is and nothing more.
+
 ## 2.8.0 - 2026-10-03
 
 ### Added

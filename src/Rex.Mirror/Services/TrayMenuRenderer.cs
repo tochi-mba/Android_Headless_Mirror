@@ -41,11 +41,23 @@ internal sealed class TrayMenuRenderer : WinForms.ToolStripProfessionalRenderer
         foreach (WinForms.ToolStripItem item in menu.Items)
         {
             item.ForeColor = Text;
-            if (item is WinForms.ToolStripMenuItem)
+            if (item is WinForms.ToolStripMenuItem menuItem)
             {
                 item.Padding = new WinForms.Padding(4, 5, 4, 5);
+                // A submenu is a menu of its own, painted the same way.
+                if (menuItem.HasDropDownItems)
+                {
+                    Apply(menuItem.DropDown);
+                }
             }
         }
+    }
+
+    protected override void OnRenderArrow(WinForms.ToolStripArrowRenderEventArgs e)
+    {
+        // The stock arrow is black too.
+        e.ArrowColor = e.Item?.Enabled == false ? Muted : Text;
+        base.OnRenderArrow(e);
     }
 
     protected override void OnRenderItemText(WinForms.ToolStripItemTextRenderEventArgs e)

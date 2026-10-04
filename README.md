@@ -47,6 +47,8 @@ delete that folder.
   this PC, remembered for each phone, and it can mute itself while the window is away.
 - **A second screen for one app.** Run an app on a display of its own beside the phone, or
   instead of it, at exactly the size of its place in the window (Ctrl+Alt+D).
+- **Profiles for every mood.** Save your settings for games, films or battery and switch with
+  Ctrl+Alt+F1 to Ctrl+Alt+F9, from the tray, or by themselves in fullscreen and on battery.
 - **Every app, one click away.** The Apps tab lists the phone's apps by name; type to find one,
   star the ones you use and open them with Ctrl+Alt+Shift+1 to 9.
 - **Files go straight to the phone.** Drop them on the window, choose them, paste copied files with
@@ -75,6 +77,7 @@ All of it, with the settings that shape each part, is on the
 | Jump between the side tabs      | Ctrl+Alt+1 to Ctrl+Alt+5; Ctrl+Alt+B hides the panel             |
 | Open an app on the phone        | Ctrl+Alt+2, type its name, Enter; favourites on Ctrl+Alt+Shift+1 to 9 |
 | Run an app on a second screen   | Ctrl+Alt+D, or Controls → Second screen                            |
+| Switch to a profile             | Ctrl+Alt+F1 to Ctrl+Alt+F9, the tray's Profiles menu, or Settings → Profiles |
 | Send files to the phone         | Drop them on the window, choose **Send files**, or copy them and press Ctrl+Alt+V |
 | Quieter, louder or mute on this PC | Ctrl+Alt+PageDown, Ctrl+Alt+PageUp, Ctrl+Alt+Shift+M, or the sound button |
 | Take a screenshot               | Ctrl+Alt+S, or the camera in the top bar                         |

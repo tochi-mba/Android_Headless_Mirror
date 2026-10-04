@@ -154,6 +154,12 @@ public partial class MainWindow
     private void ShowConfirmSheet(bool shown)
     {
         ConfirmSheet.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        SyncPictureShown();
+    }
+
+    /// <summary>Puts the phone's pictures and the overlay away, or back, as <see cref="PictureShowable"/> says now.</summary>
+    private void SyncPictureShown()
+    {
         Host.SetShown(PictureShowable);
         UpdateCopiesShown();
         TrackOverlay();
@@ -161,7 +167,8 @@ public partial class MainWindow
 
     /// <summary>Whether the phone's own picture may be on screen: mirroring, past the first-run guide, and nothing asking over it.</summary>
     internal bool PictureShowable =>
-        _host.Session.IsMirroring && !OnboardingView.IsNeeded(_host) && ConfirmSheet.Visibility != Visibility.Visible;
+        _host.Session.IsMirroring && !OnboardingView.IsNeeded(_host) &&
+        ConfirmSheet.Visibility != Visibility.Visible && !UpdateOnboardingVisible && !_touringUpdate;
 
     private void CloseConfirm(bool accepted)
     {

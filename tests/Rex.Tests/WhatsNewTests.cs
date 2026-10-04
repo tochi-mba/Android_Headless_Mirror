@@ -1,4 +1,5 @@
 using Rex.Core;
+using Rex.Tests.Support;
 using Rex.Mirror.Services;
 using Rex.Mirror.Views;
 
@@ -19,6 +20,51 @@ public sealed class WhatsNewTests
     [InlineData("2.3.9", "2.10.0", true, true)]
     public void WhatsNewIsOfferedOnlyAfterAnUpdate(string? lastRun, string current, bool enabled, bool offered) =>
         Assert.Equal(offered, WhatsNew.ShouldOffer(lastRun, current, enabled));
+
+    [Fact]
+    public void UpdateOnboardingContainsOnlyFeatureReleasesThePersonMissed()
+    {
+        Assert.Equal(["Profiles for the way you use the mirror"],
+            WhatsNew.FeaturesBetween("2.8.0", "2.9.0").Select(feature => feature.Title));
+        Assert.Equal(["Every app, by name", "Send files straight to the phone", "A second screen for one app", "Profiles for the way you use the mirror"],
+            WhatsNew.FeaturesBetween("2.5.0", "2.9.0").Select(feature => feature.Title));
+        Assert.Empty(WhatsNew.FeaturesBetween("2.3.3", "2.3.4"));
+        Assert.Empty(WhatsNew.FeaturesBetween(null, "2.9.0"));
+        Assert.Empty(WhatsNew.FeaturesBetween("3.0.0", "2.9.0"));
+        Assert.All(WhatsNew.Features, feature =>
+        {
+            Assert.True(Version.TryParse(feature.Version, out _));
+            Assert.False(string.IsNullOrWhiteSpace(feature.Title));
+            Assert.False(string.IsNullOrWhiteSpace(feature.Body));
+            Assert.False(string.IsNullOrWhiteSpace(feature.Where));
+            Assert.False(string.IsNullOrWhiteSpace(feature.Target));
+        });
+    }
+
+    [Fact]
+    public void EveryReleaseThatAddedSomethingHasItsCard()
+    {
+        // From the first release with a card on, a version whose notes add anything must teach it
+        // after an update, or the people who update would never hear of it.
+        var lines = File.ReadAllLines(Path.Combine(RepoPaths.Root, "CHANGELOG.md"));
+        var adding = new List<string>();
+        string? version = null;
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("## ", StringComparison.Ordinal))
+            {
+                version = line[3..].Split(' ')[0];
+            }
+            else if (line == "### Added" && version is not null && Version.Parse(version) >= Version.Parse(WhatsNew.Features[0].Version))
+            {
+                adding.Add(version);
+            }
+        }
+
+        Assert.NotEmpty(adding);
+        Assert.All(adding, v => Assert.Contains(WhatsNew.Features, feature => feature.Version == v));
+        Assert.Equal(WhatsNew.Features.OrderBy(f => Version.Parse(f.Version)).Select(f => f.Version), WhatsNew.Features.Select(f => f.Version));
+    }
 
     [Fact]
     public void EveryHelpButtonLeadsToItsOwnPage()

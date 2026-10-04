@@ -48,3 +48,10 @@ ScrcpyArguments.Screen.cs
 ViewsLayout.cs
 SecondScreenPlan.cs
 ActionRouting.cs
+ConfigPaths.cs
+Profile.cs
+ProfilePresets.cs
+ProfileStore.cs
+ProfilePolicy.cs
+ProfileBook.cs
+ProfileVerbs.cs

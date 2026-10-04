@@ -57,6 +57,9 @@ public sealed record DeviceProfile
     /// <summary>The app the second screen last had on this phone, to open it again.</summary>
     public string SecondScreenApp { get; set; } = string.Empty;
 
+    /// <summary>This phone's own profile, applied when it connects; empty for none.</summary>
+    public string Profile { get; set; } = string.Empty;
+
     public DateTimeOffset? LastSeenUtc { get; set; }
 }
 
@@ -83,6 +86,9 @@ public sealed record UiState
 
     /// <summary>The phone's share of the mirror area beside a second screen, from the splitter; 0 is its natural size.</summary>
     public double ViewSplit { get; set; }
+
+    /// <summary>The profile last applied by hand; empty for your own settings.</summary>
+    public string Profile { get; set; } = string.Empty;
 
     /// <summary>The user left the first-run guide before a phone was ever mirrored.</summary>
     public bool SetupDismissed { get; set; }

@@ -444,4 +444,67 @@ public sealed class CliTests
         Assert.DoesNotContain("KEYCODE_", text);
         Assert.Equal(LockScreenModes.Pattern, new StateStore(package.Paths.State).GetDevice("FAKE123")!.LockScreenMode);
     }
+
+    [Fact]
+    public async Task Profile_SaveApplyShareAndDeleteWithoutTheApp()
+    {
+        using var package = new TestPackage();
+        Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, "rex-tests-nobody-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var context = new CliContext(package.Paths);
+            async Task<JsonObject> Run(params string[] args)
+            {
+                var result = await MachineMode.RunAsync(["profile", .. args], context);
+                return JsonNode.Parse(result.Json)!.AsObject();
+            }
+
+            package.EditConfig(c => c.Mirror.MaxFps = 30);
+            var saved = await Run("save", "Mine");
+            Assert.True(saved["ok"]!.GetValue<bool>(), saved.ToJsonString());
+            Assert.Equal(30, saved["data"]!["settings"]!["Mirror.MaxFps"]!.GetValue<int>());
+
+            package.EditConfig(c => c.Mirror.MaxFps = 60);
+            Assert.True((await Run("apply", "mine"))["ok"]!.GetValue<bool>());
+            Assert.Equal(30, ConfigFile.Load(package.Paths.Config).Mirror.MaxFps);
+            Assert.Equal("Mine", new StateStore(package.Paths.State).Ui.Profile);
+
+            var listed = await Run("list");
+            Assert.Equal("Mine", listed["data"]!["current"]!.GetValue<string>());
+            Assert.True((await Run("show", "Gaming"))["data"]!["preset"]!.GetValue<bool>());
+
+            Assert.True((await Run("rename", "Mine", "Ours"))["ok"]!.GetValue<bool>());
+            var file = Path.Combine(package.Root, "ours.json");
+            Assert.True((await Run("export", "Ours", file))["ok"]!.GetValue<bool>());
+            Assert.Equal("Ours (2)", (await Run("import", file))["data"]!["name"]!.GetValue<string>());
+            Assert.True((await Run("delete", "Ours"))["ok"]!.GetValue<bool>());
+
+            var missing = await Run("apply", "Nothing");
+            Assert.False(missing["ok"]!.GetValue<bool>());
+            Assert.Equal("KeyNotFoundException", missing["error"]!["type"]!.GetValue<string>());
+            var usage = await Run("rename", "Ours (2)");
+            Assert.Equal("ArgumentException", usage["error"]!["type"]!.GetValue<string>());
+            Assert.Contains(ProfileRequest.Usage, usage["error"]!["message"]!.GetValue<string>(), StringComparison.Ordinal);
+
+            // The human form says the same in words, and a relative file is taken from where rex runs.
+            using var output = new StringWriter();
+            var original = Console.Out;
+            Console.SetOut(output);
+            try
+            {
+                Assert.Equal(0, await Commands.RunAsync(["profile", "apply", "Quiet"], context));
+            }
+            finally
+            {
+                Console.SetOut(original);
+            }
+
+            Assert.Contains("Quiet applied", output.ToString(), StringComparison.Ordinal);
+            Assert.Equal(Path.GetFullPath("x.json"), ProfileCommands.Request(["profile", "export", "Ours (2)", "x.json"]).File);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, null);
+        }
+    }
 }

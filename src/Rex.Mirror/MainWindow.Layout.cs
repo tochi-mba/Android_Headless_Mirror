@@ -108,6 +108,7 @@ public partial class MainWindow
     {
         _fullscreenTransition = true;
         _fullscreen = !_fullscreen;
+        ProfilesFollowFullscreen();
         if (_fullscreen)
         {
             _restoreState = WindowState;

@@ -23,6 +23,7 @@ public sealed class AppHost : IDisposable
         Runner = new ProcessRunner();
         Session = new SessionController(this);
         Usb = new UsbDoctor(this, UsbSystem.FromEnvironment(Runner));
+        Profiles = new ProfileRunner(this);
     }
 
     public AppPaths Paths { get; }
@@ -34,6 +35,9 @@ public sealed class AppHost : IDisposable
 
     /// <summary>Notices a phone Windows could not read over USB and gets it repaired.</summary>
     public UsbDoctor Usb { get; }
+
+    /// <summary>Profiles: applied by hand, by key, and by themselves.</summary>
+    public ProfileRunner Profiles { get; }
     public MainWindow? Window { get; private set; }
     public TrayIcon? Tray => _tray;
 

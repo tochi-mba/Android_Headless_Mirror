@@ -25,7 +25,7 @@ public partial class SettingsPanel : UserControl
     public SettingsPanel()
     {
         InitializeComponent();
-        _settingsGroups = [SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, GlobalKeysSettingsGroup];
+        _settingsGroups = [ProfilesSettingsGroup, SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, GlobalKeysSettingsGroup];
         PolishRows();
         StampConfigPaths();
     }
@@ -65,9 +65,24 @@ public partial class SettingsPanel : UserControl
             if (named.TryGetValue(controlName, out var control))
             {
                 SettingRows.SetConfigPath(control, path);
+                DependencyObject? up = control;
+                while (up is not null && up is not HeaderedContentControl)
+                {
+                    up = LogicalTreeHelper.GetParent(up);
+                }
+
+                if (up is HeaderedContentControl row && LabelOf(row) is { Length: > 0 } label)
+                {
+                    _labels[path] = label;
+                }
             }
         }
     }
+
+    private readonly Dictionary<string, string> _labels = new(StringComparer.Ordinal);
+
+    /// <summary>A setting's words as its row shows them, or its config path when it has no row.</summary>
+    internal string LabelFor(string path) => _labels.TryGetValue(path, out var label) ? label : path;
 
     /// <summary>Settings whose parent is off stay in sight but cannot be changed (<see cref="SettingsDependencies"/>).</summary>
     private void ApplyDependencies(RexConfig c)
