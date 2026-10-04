@@ -101,16 +101,29 @@ public sealed partial class AppUiTests
         Assert.True(app.Ui.IsOn("AmbientEnabled"));
 
         var label = app.Ui.FindText("Soft background around the phone");
-        // A collapsed group above Display can push this row just below a shorter desktop's
-        // viewport. Scroll only when needed, then measure the real on-screen label: the point of
-        // this test is the physical row click, not whether the default window happens to be tall.
-        if (label.Current.IsOffscreen)
+        // UI Automation reports IsOffscreen=false when even a sliver of an element is visible.
+        // With Profiles above Display, this label can therefore be "on screen" while its centre is
+        // actually below the ScrollViewer and a physical click lands on the window chrome instead.
+        // Scroll like a user until the label's centre is comfortably inside the window, then click it.
+        for (var attempt = 0; attempt < 8; attempt++)
         {
-            await app.ScrollSidebarAsync(-3);
+            var bounds = label.Current.BoundingRectangle;
+            var window = app.WindowBounds();
+            var centreY = bounds.Top + bounds.Height / 2;
+            if (!label.Current.IsOffscreen && centreY >= window.Top + 170 && centreY <= window.Bottom - 90)
+            {
+                break;
+            }
+
+            await app.ScrollSidebarAsync(-1);
             label = app.Ui.FindText("Soft background around the phone");
         }
 
+        var finalBounds = label.Current.BoundingRectangle;
+        var finalWindow = app.WindowBounds();
+        var finalCentreY = finalBounds.Top + finalBounds.Height / 2;
         Assert.False(label.Current.IsOffscreen, "The setting label must be on screen before the physical click.");
+        Assert.InRange(finalCentreY, finalWindow.Top + 170, finalWindow.Bottom - 90);
         var (x, y) = app.Ui.Centre(label);
         await app.ClickAsync(x, y);
         await app.WaitUntilAsync(() => !ConfigFile.Load(package.Paths.Config).Ambient.Enabled, Soon, "the label click to turn the switch off");
