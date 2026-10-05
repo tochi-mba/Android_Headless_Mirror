@@ -95,7 +95,7 @@ public partial class SettingsPanel
     }
 
     internal IEnumerable<Expander> Groups() =>
-        [GroupOf(ProfilesSettingsGroup), GroupDisplay, GroupAudio, GroupOf(SoundSettingsGroup), GroupSession, GroupZoom, GroupInput, GroupOf(CopiesSettingsGroup), GroupOf(SecondScreenSettingsGroup), GroupOf(AppsSettingsGroup), GroupOf(TransferSettingsGroup), GroupOf(HudSettingsGroup), GroupLockScreen, GroupCaptures, GroupStartup, GroupOf(GlobalKeysSettingsGroup), GroupAdvanced];
+        [GroupOf(ProfilesSettingsGroup), GroupDisplay, GroupAudio, GroupOf(SoundSettingsGroup), GroupSession, GroupZoom, GroupInput, GroupOf(CopiesSettingsGroup), GroupOf(SecondScreenSettingsGroup), GroupOf(SecondPhoneSettingsGroup), GroupOf(AppsSettingsGroup), GroupOf(TransferSettingsGroup), GroupOf(HudSettingsGroup), GroupLockScreen, GroupCaptures, GroupStartup, GroupOf(GlobalKeysSettingsGroup), GroupAdvanced];
 
     private static Expander GroupOf(ISettingsGroup group) => group.Group;
 

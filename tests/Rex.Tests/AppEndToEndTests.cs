@@ -431,7 +431,8 @@ public sealed partial class AppEndToEndTests
     [Fact]
     public async Task TwoPhones_AreOfferedAndTheChoiceIsRemembered()
     {
-        using var package = new TestPackage(withFakeTools: true);
+        // This is about the chip choosing the main phone; showing one beside has tests of its own.
+        using var package = new TestPackage(withFakeTools: true, configure: c => c.SecondPhone.WhenConnected = "never");
         package.WriteScenario(new
         {
             Devices = new[]
@@ -460,8 +461,11 @@ public sealed partial class AppEndToEndTests
 
         // The chip opens a menu in the app's own style listing both, with what each one is doing.
         app.Ui.Invoke("DeviceChip");
-        var items = app.Ui.OpenMenuItems();
-        Assert.True(items.Count == 2, "The picker should list the two phones, not: " + string.Join(" | ", items.Select(i => $"{i.Current.Name} [{i.Current.ClassName}]")));
+        // The two phones, then what can be done about the second one beside the first.
+        var all = app.Ui.OpenMenuItems();
+        Assert.Contains(all, i => i.Current.Name == "Show Second Phone beside");
+        var items = all.Where(i => i.Current.Name.Contains(" · ", StringComparison.Ordinal)).ToArray();
+        Assert.True(items.Length == 2, "The picker should list the two phones, not: " + string.Join(" | ", all.Select(i => $"{i.Current.Name} [{i.Current.ClassName}]")));
         Assert.Equal("Fake Phone, USB · mirroring now", items[0].Current.Name);
         Assert.Equal("Second Phone, USB · ready", items[1].Current.Name);
         await app.SaveScreenshotAsync("phone-picker.png");

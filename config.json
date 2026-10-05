@@ -254,6 +254,18 @@
     "Announce": true,
     "PutBack": true
   },
+  "SecondPhone": {
+    "Enabled": true,
+    "WhenConnected": "ask",
+    "Remember": true,
+    "Side": "right",
+    "Sound": "main",
+    "ScreenOff": "same",
+    "MaxSize": 0,
+    "BitRate": "",
+    "PauseWhenHidden": false,
+    "FollowsProfile": false
+  },
   "Logging": {
     "Enabled": true,
     "MaxBytes": 2097152,

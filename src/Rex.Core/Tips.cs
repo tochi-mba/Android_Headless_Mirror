@@ -27,7 +27,7 @@ public static class Tips
         new(FirstRiskyWrite, "About those risk labels",
             "Settings marked risky can change how the phone behaves until you set them back. Every one of them can be put back to the phone's own default with Default."),
         new(SecondPhone, "Two phones are connected",
-            "The chip at the top now lists them. Pick the one you want to mirror and the app remembers it for next time."),
+            "The chip at the top now lists them. Pick the one to mirror, or show the other beside it, and the app remembers it for next time."),
         new(HardwareKeyboard, "Typing works like a plugged-in keyboard",
             "Numbers, symbols and AltGr follow the layout Android has for a physical keyboard. If a key types the wrong character, Keyboard layout in Controls opens the Android setting that fixes it."),
         new(FirstBrowse, "Browse mode is on",

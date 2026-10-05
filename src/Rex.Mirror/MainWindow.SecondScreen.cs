@@ -382,19 +382,22 @@ public partial class MainWindow
     /// </summary>
     private void UpdateViewMarks(bool visible)
     {
+        var captions = new List<(Rect, string)>();
+        Rect? outline = null;
+        // Two phones name themselves; with a second screen too, it is named beside them.
+        var phones = visible && MarkPhones(captions, ref outline);
         if (!visible || _screenView is null || Group.Arrangement is not { } arrangement)
         {
-            _overlay.ShowMarks([], null);
+            _overlay.ShowMarks(captions, outline);
             return;
         }
 
         static Rect Box(RectD r) => new(r.X, r.Y, r.Width, r.Height);
         var views = _host.Config.Views;
         var several = arrangement.Phone is not null;
-        var captions = new List<(Rect, string)>();
         if (ViewsSettings.Shows(views.Captions, several))
         {
-            if (arrangement.Phone is { } phone)
+            if (!phones && arrangement.Phone is { } phone)
             {
                 captions.Add((Box(phone), "Phone · " + (_host.Session.Identity?.DisplayName ?? "your phone")));
             }
@@ -402,10 +405,14 @@ public partial class MainWindow
             captions.Add((Box(arrangement.Screen), "Second screen · " + AppName(_screen.App)));
         }
 
-        Rect? outline = !ViewsSettings.Shows(views.Outline, several) ? null
-            : ScreenActive ? Box(arrangement.Screen)
-            : arrangement.Phone is { } held ? Box(held)
-            : null;
+        if (ViewsSettings.Shows(views.Outline, several))
+        {
+            outline = ScreenActive ? Box(arrangement.Screen)
+                : phones ? outline
+                : arrangement.Phone is { } held ? Box(held)
+                : null;
+        }
+
         _overlay.ShowMarks(captions, outline);
     }
 

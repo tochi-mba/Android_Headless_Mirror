@@ -220,12 +220,24 @@ int Shell(string[] rest)
 
     if (rest[0] == "getprop")
     {
-        if (rest.Length == 1)
+        // The shared properties, this phone's own over them, and a phone on USB's serial as its own.
+        var properties = new Dictionary<string, string>(scenario.Properties, StringComparer.Ordinal);
+        foreach (var (key, own) in device.Properties)
         {
-            return Write(string.Join('\n', scenario.Properties.Select(p => $"[{p.Key}]: [{p.Value}]")) + "\n");
+            properties[key] = own;
         }
 
-        return Write((scenario.Properties.TryGetValue(rest[1], out var value) ? value : string.Empty) + "\n");
+        if (!properties.ContainsKey("ro.serialno") && !device.Serial.Contains(':', StringComparison.Ordinal))
+        {
+            properties["ro.serialno"] = device.Serial;
+        }
+
+        if (rest.Length == 1)
+        {
+            return Write(string.Join('\n', properties.Select(p => $"[{p.Key}]: [{p.Value}]")) + "\n");
+        }
+
+        return Write((properties.TryGetValue(rest[1], out var value) ? value : string.Empty) + "\n");
     }
 
     if (rest[0] == "wm" && rest.Length >= 2 && rest[1] == "size")
@@ -237,7 +249,9 @@ int Shell(string[] rest)
             return 0;
         }
 
-        var text = $"Physical size: {scenario.DisplayWidth}x{scenario.DisplayHeight}\n";
+        var text = device.DisplayWidth > 0 && device.DisplayHeight > 0
+            ? $"Physical size: {device.DisplayWidth}x{device.DisplayHeight}\n"
+            : $"Physical size: {scenario.DisplayWidth}x{scenario.DisplayHeight}\n";
         if (scenario.Overrides.TryGetValue("wm.size", out var over) && over != "reset")
         {
             text += $"Override size: {over}\n";
@@ -421,6 +435,14 @@ internal sealed class FakeDevice
     public string State { get; set; } = "device";
     public string Product { get; set; } = "fake";
     public string Model { get; set; } = "Fake Phone";
+
+    /// <summary>This phone's own properties, over the scenario's shared ones, so two phones can differ.</summary>
+    public Dictionary<string, string> Properties { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>This phone's own screen size; 0 for the scenario's.</summary>
+    public int DisplayWidth { get; set; }
+
+    public int DisplayHeight { get; set; }
 }
 
 /// <summary>A push on its way to the fake phone: when it began, how big it is, how long it takes.</summary>

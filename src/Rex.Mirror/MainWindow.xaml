@@ -106,6 +106,11 @@
                   ToolTip="Say nothing more about it until the phone comes back or is unplugged" />
           <Button x:Name="NoticeWhatsNew" Content="What's new" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnWhatsNew" Visibility="Collapsed"
                   ToolTip="What changed in this version, on the website" />
+          <Button x:Name="NoticeBeside" Content="Show it beside" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnBesideAnswer" Tag="show" Visibility="Collapsed" />
+          <Button x:Name="NoticeBesideNotNow" Content="Not now" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnBesideAnswer" Tag="not-now" Visibility="Collapsed"
+                  ToolTip="Ask again next time it connects" />
+          <Button x:Name="NoticeBesideNever" Content="Never for this phone" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Margin="0,2,0,2" Click="OnBesideAnswer" Tag="never" Visibility="Collapsed"
+                  ToolTip="Never ask about this phone again; it can still be shown from the phone menu" />
           <Button x:Name="NoticeDismiss" Content="Got it" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="14,4" Margin="0,2,0,2" Click="OnDismissTip" Visibility="Collapsed" />
         </WrapPanel>
       </Grid>
@@ -170,7 +175,23 @@
           <!-- Half the 16 DIP gutter is padding and half is margin inside the scrolled area, so a focus
                ring may reach past the content's edge without being clipped. -->
           <!-- Pinned above the tabs' content, so it is seen from any tab and at any scroll. -->
-          <Border x:Name="RestartBar" Grid.Row="1" Background="{StaticResource SignalWash}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8"
+          <StackPanel Grid.Row="1">
+          <!-- With two phones shown, which one the tabs act on, and the way to the other. -->
+          <Border x:Name="PhoneStrip" Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8"
+                  Padding="10,6" Margin="16,4,24,4" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="THESE TABS ACT ON" Style="{StaticResource Eyebrow}" Margin="0" />
+                <TextBlock x:Name="PhoneStripName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <Button x:Name="PhoneStripSwitch" Grid.Column="1" MinHeight="28" Padding="10,3" Margin="8,0,0,0" Click="OnPhoneStripSwitch" />
+            </Grid>
+          </Border>
+          <Border x:Name="RestartBar" Background="{StaticResource SignalWash}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8"
                   Padding="10,8" Margin="16,4,24,4" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite">
             <Grid>
               <Grid.ColumnDefinitions>
@@ -181,6 +202,7 @@
               <Button x:Name="RestartNow" Grid.Column="1" Content="Restart now" Style="{StaticResource PrimaryButton}" MinHeight="28" Padding="10,3" Margin="8,0,0,0" Click="OnRestartNow" />
             </Grid>
           </Border>
+          </StackPanel>
           <ScrollViewer x:Name="SidebarScroll" Grid.Row="2" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,16">
             <Grid Margin="8,0">
               <views:ControlsPanel x:Name="ControlsPanel" />

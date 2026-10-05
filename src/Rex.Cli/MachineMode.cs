@@ -50,6 +50,7 @@ public static class MachineMode
                 "app" => await AppCommands.MachineAsync(context, args).ConfigureAwait(false),
                 "screen" => await ScreenCommands.MachineAsync(args, context).ConfigureAwait(false),
                 "profile" => await ProfileCommands.MachineAsync(args, context).ConfigureAwait(false),
+                "phones" => await PhoneCommands.MachineAsync(args, context).ConfigureAwait(false),
                 "push" => await FileCommands.MachineAsync(command, args, context).ConfigureAwait(false),
                 "install" => await FileCommands.MachineAsync(command, args, context).ConfigureAwait(false),
                 "screenshot" => await ScreenshotAsync(context, Arguments.Option(args, "--serial")).ConfigureAwait(false),

@@ -155,6 +155,7 @@ public partial class MainWindow : Window
 
         InitFiles();
         AttachSecondScreen();
+        AttachPhones();
         AttachSplitter();
         ControlsPanel.Attach(this, host);
         PhonePanel.Attach(this, host);
@@ -308,6 +309,11 @@ public partial class MainWindow : Window
                 meta.Add(session.Battery.Level + "%" + (session.Battery.Charging ? " ⚡" : string.Empty));
             }
 
+            if (_other is not null)
+            {
+                meta.Add("2 phones");
+            }
+
             DeviceMeta.Text = string.Join(" · ", meta);
         }
         else
@@ -391,7 +397,9 @@ public partial class MainWindow : Window
             NoticeBar.Visibility = Visibility.Collapsed;
         }
 
-        if (session.Devices.Count > 1)
+        // With a second phone the notice bar asks about showing it beside; the hint about the
+        // chip is for when it will not (the feature off, or only from the phone menu).
+        if (session.Devices.Count > 1 && !(_host.Config.SecondPhone.Enabled && _host.Config.SecondPhone.WhenConnected == "ask"))
         {
             ShowTipOnce(Tips.SecondPhone);
         }
@@ -566,6 +574,7 @@ public partial class MainWindow : Window
         ReleaseStaleAltHold();
         ReleaseFilesDrag();
         _host.CheckConfigFile();
+        TickPhones();
         _host.Profiles.CheckPower();
         // Cheap, and catches what events miss: the window shown before it has a width, a size
         // that settles after the last layout.
@@ -710,6 +719,10 @@ public partial class MainWindow : Window
                 return AndroidResult.Success("Saving…");
             case "second-screen":
                 return await ToggleSecondScreenAsync();
+            case "phone-switch":
+                return SwitchPhone();
+            case "phone-beside":
+                return await ToggleBesideAsync();
             case "copy-add":
                 return Copies.Add();
             case "copy-remove":
@@ -740,6 +753,13 @@ public partial class MainWindow : Window
     /// <summary>Plays an action and shows what it did in the status bar; returns the same words.</summary>
     private async Task<(bool Ok, string Text)> RunActionCoreAsync(string id)
     {
+        // While the phone beside is in use, what acts on a phone goes to it.
+        if (await RunOnOtherPhoneAsync(id) is { } beside)
+        {
+            SetStatus(beside.Text, !beside.Ok);
+            return beside;
+        }
+
         // While the second screen has the keyboard, what acts on a display goes to its own.
         if (RunOnSecondScreen(id) is { } routed)
         {
@@ -754,9 +774,9 @@ public partial class MainWindow : Window
         return (result.Ok, text);
     }
 
-    private async Task<(bool Ok, string Text)> SaveScreenshotAsync()
+    private async Task<(bool Ok, string Text)> SaveScreenshotAsync(string? serial = null)
     {
-        try { return await SaveScreenshotCoreAsync(); }
+        try { return await SaveScreenshotCoreAsync(serial); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
             _host.Log.Error("Could not save a screenshot", ex);
@@ -765,9 +785,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<(bool Ok, string Text)> SaveScreenshotCoreAsync()
+    private async Task<(bool Ok, string Text)> SaveScreenshotCoreAsync(string? serial)
     {
-        var (ok, text) = await _host.Session.SaveScreenshotAsync();
+        var (ok, text) = await _host.Session.SaveScreenshotAsync(serial);
         var said = ok ? "Screenshot saved: " + Path.GetFileName(text) : text;
         SetStatus(said, !ok);
         if (ok)

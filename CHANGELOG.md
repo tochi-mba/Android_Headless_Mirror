@@ -4,6 +4,28 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.10.0 - 2026-10-05
+
+### Added
+
+- **Two phones side by side.** When a second, different phone connects, the notice bar asks whether
+  to show it beside the first (or it is shown at once, or only from the phone menu, as set). Each
+  phone gets a view of its own in its own shape, side by side or one above the other, and a session
+  of its own: its own screen-off, staying awake, resolution and bit rate, and its own restarts.
+- The side panel, the keys and the buttons act on the phone you clicked; a strip above the tabs
+  says which, with a button for the other. **Ctrl+Alt+O** switches, and screenshots, gestures,
+  the Phone tab, Apps, Info and the sound button all follow.
+- From the phone menu: show a ready phone beside, use either phone, make the one beside the main
+  phone, or stop showing it. The phone shown beside comes back by itself when it connects again.
+- A phone on USB and on Wi-Fi at once is one phone, never shown beside itself. Two phones of the
+  same model are told apart by the end of their serials.
+- Sound on this PC from the main phone, from the phone you are using (the other is muted here), or
+  from both.
+- `rex phones` lists every phone and where it shows, and shows one beside, stops it, switches or
+  swaps them while the app runs.
+- A **Second phone** group in Settings for all of it, including pausing it while the window is
+  hidden and applying its own profile while you use it.
+
 ## 2.9.0 - 2026-10-04
 
 ### Added

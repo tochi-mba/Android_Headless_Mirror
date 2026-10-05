@@ -60,6 +60,9 @@ public sealed record DeviceProfile
     /// <summary>This phone's own profile, applied when it connects; empty for none.</summary>
     public string Profile { get; set; } = string.Empty;
 
+    /// <summary>What was said about showing this phone beside another: nothing yet, or never (<see cref="ShowBesideAnswers"/>).</summary>
+    public string ShowBeside { get; set; } = string.Empty;
+
     public DateTimeOffset? LastSeenUtc { get; set; }
 }
 
@@ -89,6 +92,9 @@ public sealed record UiState
 
     /// <summary>The profile last applied by hand; empty for your own settings.</summary>
     public string Profile { get; set; } = string.Empty;
+
+    /// <summary>The phone last shown beside the main one, to bring back when it connects; empty for none.</summary>
+    public string SecondPhone { get; set; } = string.Empty;
 
     /// <summary>The user left the first-run guide before a phone was ever mirrored.</summary>
     public bool SetupDismissed { get; set; }

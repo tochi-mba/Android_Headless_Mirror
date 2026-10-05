@@ -15,6 +15,11 @@ namespace Rex.Mirror.Mirror;
 ///
 /// While a second screen is open it is the second child, and the phone and it share the area as
 /// <see cref="ViewsLayout"/> says (copies wait meanwhile, with no room).
+///
+/// A second, different phone shown beside comes next (the second child, or the third after a
+/// second screen). The two phones share the area in their own shapes (<see cref="TwoPhonesLayout"/>);
+/// with a second screen as well, the two phones are laid out as one picture beside it and then
+/// split between them. Copies wait while two phones show.
 /// </summary>
 public sealed class MirrorGroupPanel : Panel
 {
@@ -40,14 +45,32 @@ public sealed class MirrorGroupPanel : Panel
     /// <summary>How the phone and the second screen were placed last, or null without a second screen.</summary>
     public ViewsArrangement? Arrangement { get; private set; }
 
+    /// <summary>The other phone's view while one is shown beside; laid out with the main phone, not as a copy.</summary>
+    public UIElement? Other { get; set; }
+
+    /// <summary>The other phone's picture, its width over its height.</summary>
+    public double OtherAspect { get; set; } = 1080.0 / 2400.0;
+
+    public SecondPhoneSettings PhoneSettings { get; set; } = new();
+
+    /// <summary>How the two phones were placed last (in this panel), or null with one phone.</summary>
+    public PhonesArrangement? Phones { get; private set; }
+
     /// <summary>Raised after every arrangement, with the cell each shown view got (DIPs, in this panel).</summary>
     public event Action<IReadOnlyList<Rect>>? Arranged;
 
     private bool HasScreen => Screen is not null && Children.Count > 1 && ReferenceEquals(Children[1], Screen);
 
+    /// <summary>Where the other phone's view belongs among the children: after the main view and any second screen.</summary>
+    public int OtherIndex => HasScreen ? 2 : 1;
+
+    private bool HasOther => Other is not null && Children.Count > OtherIndex && ReferenceEquals(Children[OtherIndex], Other);
+
     /// <summary>The number of views that would be shown for the given size, without arranging.</summary>
     public int ShownFor(double width) =>
-        HasScreen ? 2 : Children.Count <= 1 || !CopiesLayout.IsUpright(Aspect) ? 1 : CopiesLayout.ShownCount(Children.Count, width, Gap);
+        HasOther ? OtherIndex + 1
+        : HasScreen ? 2
+        : Children.Count <= 1 || !CopiesLayout.IsUpright(Aspect) ? 1 : CopiesLayout.ShownCount(Children.Count, width, Gap);
 
     protected override Size MeasureOverride(Size availableSize)
     {
@@ -91,6 +114,31 @@ public sealed class MirrorGroupPanel : Panel
 
     private IReadOnlyList<RectD> Cells(double width, double height)
     {
+        var none = new RectD(0, 0, 0, 0);
+        if (HasOther && !HasScreen)
+        {
+            Arrangement = null;
+            Phones = TwoPhonesLayout.Arrange(width, height, Aspect, OtherAspect, PhoneSettings.Side, ViewsSettings.Arrangement, Gap);
+            return [Phones.Main, Phones.Other ?? none];
+        }
+
+        if (HasOther)
+        {
+            // Both phones as one picture beside the second screen, then shared between them.
+            Arrangement = ViewsLayout.Arrange(width, height, TwoPhonesLayout.PairAspect(Aspect, OtherAspect, stacked: false), ScreenSettings, ViewsSettings, Gap, Split);
+            if (Arrangement.Phone is not { } region)
+            {
+                Phones = null;
+                return [none, Arrangement.Screen, none];
+            }
+
+            var inner = TwoPhonesLayout.Arrange(region.Width, region.Height, Aspect, OtherAspect, PhoneSettings.Side, "side", Gap);
+            RectD Moved(RectD r) => new(r.X + region.X, r.Y + region.Y, r.Width, r.Height);
+            Phones = inner with { Main = Moved(inner.Main), Other = inner.Other is { } o ? Moved(o) : null };
+            return [Phones.Main, Arrangement.Screen, Phones.Other ?? none];
+        }
+
+        Phones = null;
         if (!HasScreen)
         {
             Arrangement = null;
@@ -99,6 +147,6 @@ public sealed class MirrorGroupPanel : Panel
 
         // The phone gets no cell at all when the second screen is instead of it, or squeezed out.
         Arrangement = ViewsLayout.Arrange(width, height, Aspect, ScreenSettings, ViewsSettings, Gap, Split);
-        return [Arrangement.Phone ?? new RectD(0, 0, 0, 0), Arrangement.Screen];
+        return [Arrangement.Phone ?? none, Arrangement.Screen];
     }
 }

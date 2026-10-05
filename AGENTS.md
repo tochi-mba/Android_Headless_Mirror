@@ -43,6 +43,7 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `push <files or folders...> [--to /sdcard/folder/] [--serial S]`,
 `install <apk...> [--downgrade] [--grant] [--test] [--no-replace] [--serial S]`,
 `screen [open <app> [--instead|--beside] [--size S] [--fresh]|app <app>|close]`,
+`phones [beside [serial]|stop|switch|make-main]`,
 `profile list|show <name>|apply <name>|save <name> [--groups A,B] [--all]|rename <old> <new>|delete <name>|export <name> <file>|import <file>`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
@@ -201,6 +202,12 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   up. A drop that reaches scrcpy anyway goes to the same folder (`--push-target`) and its lines are
   read into the same transfer list. Tests drag and drop through `drag`/`drop` pipe commands, which
   exist only with `REX_TEST_HOOKS=1`; `AppProcess` sets it.
+- A second, different phone beside the main one is a full session of its own
+  (`ScrcpyArguments.BuildOtherPhone`, port 27200) in a view the group panel lays out with the main
+  phone (`TwoPhonesLayout`); `PhonePick` never shows one phone beside itself (hardware serial), and
+  the main session never picks the phone beside (`SessionController.ShownBeside`). The side panel,
+  keys and buttons act on `MainWindow.TargetPhone`, the phone whose view was used last;
+  `ActionRouting.ForOtherPhone` says where an action goes while that is the phone beside.
 - A profile is a list of config.json paths and values (`profiles/<name>.json`, order in `order.json`).
   Applying one is a single config write through `ConfigPaths` and sets only its own paths; settings
   it has that this version does not know are counted, never fatal. `ProfileBook` does the work for

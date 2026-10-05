@@ -203,6 +203,16 @@ public static class SettingsCatalogue
         ["Views.Outline"] = "ViewsOutline",
         ["Views.Captions"] = "ViewsCaptions",
         ["Views.Splitter"] = "ViewsSplitter",
+        ["SecondPhone.Enabled"] = "SecondPhoneEnabled",
+        ["SecondPhone.WhenConnected"] = "SecondPhoneWhen",
+        ["SecondPhone.Remember"] = "SecondPhoneRemember",
+        ["SecondPhone.Side"] = "SecondPhoneSide",
+        ["SecondPhone.Sound"] = "SecondPhoneSound",
+        ["SecondPhone.ScreenOff"] = "SecondPhoneScreenOff",
+        ["SecondPhone.MaxSize"] = "SecondPhoneMaxSize",
+        ["SecondPhone.BitRate"] = "SecondPhoneBitRate",
+        ["SecondPhone.PauseWhenHidden"] = "SecondPhonePause",
+        ["SecondPhone.FollowsProfile"] = "SecondPhoneProfile",
     };
 
     /// <summary>

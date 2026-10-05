@@ -166,9 +166,11 @@ public partial class MainWindow
     }
 
     /// <summary>Whether the phone's own picture may be on screen: mirroring, past the first-run guide, and nothing asking over it.</summary>
-    internal bool PictureShowable =>
-        _host.Session.IsMirroring && !OnboardingView.IsNeeded(_host) &&
-        ConfirmSheet.Visibility != Visibility.Visible && !UpdateOnboardingVisible && !_touringUpdate;
+    internal bool PictureShowable => _host.Session.IsMirroring && NothingOverMirror;
+
+    /// <summary>Nothing is drawn where the phones' pictures go: no first-run guide, question, update onboarding or update tour.</summary>
+    private bool NothingOverMirror =>
+        !OnboardingView.IsNeeded(_host) && ConfirmSheet.Visibility != Visibility.Visible && !UpdateOnboardingVisible && !_touringUpdate;
 
     private void CloseConfirm(bool accepted)
     {
@@ -267,6 +269,8 @@ public partial class MainWindow
             button.Visibility = question ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        ShowBesideButtons(false);
+
         NoticeDismiss.Visibility = question ? Visibility.Collapsed : Visibility.Visible;
         NoticeWhatsNew.Visibility = Visibility.Collapsed;
         _usbNoticeShowing = false;
@@ -320,7 +324,65 @@ public partial class MainWindow
             menu.Items.Add(item);
         }
 
+        AddBesideItems(menu);
         menu.IsOpen = true;
+    }
+
+    /// <summary>
+    /// What can be done about a second phone from the phone menu: with one beside, using either,
+    /// making it the main phone or no longer showing it; without, showing a ready phone beside.
+    /// </summary>
+    private void AddBesideItems(ContextMenu menu)
+    {
+        void Add(string header, string id, Func<Task<AndroidResult>> act)
+        {
+            var item = new MenuItem { Header = header };
+            System.Windows.Automation.AutomationProperties.SetAutomationId(item, "phone-menu-" + id);
+            item.Click += async (_, _) =>
+            {
+                var result = await act();
+                SetStatus(result.Text, !result.Ok);
+            };
+            menu.Items.Add(item);
+        }
+
+        var main = _host.Session.ActiveDevice;
+        if (_other is { } other)
+        {
+            menu.Items.Add(new Separator());
+            var to = OtherActive ? main?.Serial : other.Serial;
+            if (to is not null)
+            {
+                Add("Use " + NameOf(to), "use", () => Task.FromResult(SwitchPhone()));
+            }
+
+            Add($"Make {NameOf(other.Serial)} the main phone", "make-main", () => Task.FromResult(MakeOtherTheMain()));
+            Add($"Stop showing {NameOf(other.Serial)} beside", "stop-beside", () =>
+            {
+                StopOther(byPerson: true);
+                return Task.FromResult(AndroidResult.Success("Only one phone is shown now"));
+            });
+            return;
+        }
+
+        if (main is null || !_host.Config.SecondPhone.Enabled || !_host.Session.IsMirroring)
+        {
+            return;
+        }
+
+        var beside = _host.Session.Devices
+            .Where(d => d.IsReady && d.Serial != main.Serial && PhonePick.Other([d], main, _hardware, null, new HashSet<string>()) is not null)
+            .ToArray();
+        if (beside.Length == 0)
+        {
+            return;
+        }
+
+        menu.Items.Add(new Separator());
+        foreach (var device in beside)
+        {
+            Add($"Show {NameOf(device.Serial)} beside", "beside-" + device.Serial, () => ShowBesideAsync(device));
+        }
     }
 
     /// <summary>

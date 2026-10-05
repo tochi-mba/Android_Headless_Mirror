@@ -175,7 +175,7 @@ public sealed class MirrorHost : HwndHost
         }
     }
 
-    public void Attach(IntPtr childHwnd, uint threadId, uint processId)
+    public void Attach(IntPtr childHwnd, uint threadId, uint processId, bool focus = true)
     {
         Detach();
         _child = childHwnd;
@@ -206,7 +206,11 @@ public sealed class MirrorHost : HwndHost
         _view = ZoomView.Identity;
         Relayout();
         ApplyShown();
-        FocusChild();
+        // A view that appears beside another (the second phone) leaves the keyboard where it was.
+        if (focus)
+        {
+            FocusChild();
+        }
     }
 
     public void Detach()

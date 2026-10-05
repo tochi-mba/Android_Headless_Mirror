@@ -7,15 +7,17 @@ namespace Rex.Core;
 /// <param name="Behind">Another window is in front.</param>
 /// <param name="Locked">This PC is locked.</param>
 /// <param name="SinceLastKey">How long ago the last key was typed into the phone.</param>
-public sealed record SoundInputs(double Volume, bool Muted, bool Hidden, bool Behind, bool Locked, TimeSpan SinceLastKey);
+/// <param name="OtherPhoneInUse">Two phones show, only the one in use is heard, and it is the other one.</param>
+public sealed record SoundInputs(double Volume, bool Muted, bool Hidden, bool Behind, bool Locked, TimeSpan SinceLastKey, bool OtherPhoneInUse = false);
 
 /// <summary>The level and mute to play at, and the words for a rule that is acting, if any.</summary>
 public sealed record SoundTarget(double Level, bool Muted, string? Why);
 
 /// <summary>
 /// Decides the sound from the person's choice and the rules. The person's own mute comes first and
-/// needs no words; then this PC locked, the window hidden, the window behind others, and last the
-/// lowering while typing. Only the first reason that applies is said.
+/// needs no words; then the other phone being the one in use, this PC locked, the window hidden,
+/// the window behind others, and last the lowering while typing. Only the first reason that
+/// applies is said.
 /// </summary>
 public static class SoundPolicy
 {
@@ -23,6 +25,7 @@ public static class SoundPolicy
     public const string WhyHidden = "Muted while the window is hidden";
     public const string WhyBehind = "Muted while another window is in front";
     public const string WhyTyping = "Lowered while you type";
+    public const string WhyOtherPhone = "Muted while you use the other phone";
 
     /// <summary>
     /// How long ago the last key went to the phone, from two <c>Environment.TickCount64</c> readings;
@@ -40,7 +43,8 @@ public static class SoundPolicy
             return new SoundTarget(now.Volume, true, null);
         }
 
-        var silenced = (now.Locked && settings.MuteWhenLocked) ? WhyLocked
+        var silenced = now.OtherPhoneInUse ? WhyOtherPhone
+            : (now.Locked && settings.MuteWhenLocked) ? WhyLocked
             : (now.Hidden && settings.MuteWhenHidden) ? WhyHidden
             : (now.Behind && settings.MuteWhenBehind) ? WhyBehind
             : null;

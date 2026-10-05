@@ -421,7 +421,7 @@ public partial class ControlsPanel : UserControl
     /// </summary>
     public async Task RefreshRotationAsync()
     {
-        var serial = _host?.Session.ActiveDevice?.Serial;
+        var serial = _window?.TargetPhone?.Serial;
         var adb = _host?.Session.Adb;
         if (adb is null || string.IsNullOrEmpty(serial))
         {

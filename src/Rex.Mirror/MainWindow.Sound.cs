@@ -17,7 +17,8 @@ public partial class MainWindow
     private PhoneSound? _sound;
     private bool _pcLocked;
 
-    internal PhoneSound PhoneSound => _sound!;
+    /// <summary>The sound of the phone in use: the main phone's, or the phone beside's when its session carries one.</summary>
+    internal PhoneSound PhoneSound => TargetSound;
 
     /// <summary>How many channels the phone's sound has on this PC; 0 when unknown, or before the sound exists while the window is built.</summary>
     internal int SoundChannels => _sound?.Channels ?? 0;
@@ -87,7 +88,9 @@ public partial class MainWindow
         NativeMethods.GetWindowThreadProcessId(NativeMethods.GetForegroundWindow(), out var foregroundProcess);
         var behind = !hidden && foregroundProcess != Environment.ProcessId && !InFront;
         var typing = FocusInsideControl() ? TimeSpan.MaxValue : SoundPolicy.SinceLastKey(Environment.TickCount64, _hooks.LastKeyToPhone);
-        return new SoundWindow(hidden, behind, _pcLocked, typing);
+        // With the sound from the phone in use, the main phone is quiet while the phone beside is in use.
+        var otherInUse = _host.Config.SecondPhone.Sound == "active" && OtherActive;
+        return new SoundWindow(hidden, behind, _pcLocked, typing, otherInUse);
     }
 
     private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
@@ -107,7 +110,8 @@ public partial class MainWindow
 
     private void ShowSound()
     {
-        var sound = _sound!;
+        var sound = TargetSound;
+        SoundPanel.Use(sound);
         var (icon, words) = !sound.Available ? ("IconPcSoundOff", sound.Problem!)
             : sound.Muted ? ("IconPcMute", "muted")
             : sound.Volume < 0.34 ? ("IconPcSound", SoundPanelWords(sound))
@@ -155,7 +159,7 @@ public partial class MainWindow
     /// <summary>The sound actions: louder, quieter, and mute on this PC. They say the new level.</summary>
     private AndroidResult RunSound(string id)
     {
-        var sound = _sound!;
+        var sound = TargetSound;
         if (!sound.Available)
         {
             return AndroidResult.Failure(sound.Problem!);

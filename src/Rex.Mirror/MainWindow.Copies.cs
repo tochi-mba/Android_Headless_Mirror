@@ -78,8 +78,8 @@ public partial class MainWindow : ICopyViews
     /// </summary>
     private int RoomForCopies()
     {
-        // Copies wait while a second screen shares the area with the phone.
-        if (_copies is null || _screenView is not null || !IsVisible || WindowState == WindowState.Minimized || !CopiesLayout.IsUpright(Group.Aspect) || Group.ActualWidth <= 0)
+        // Copies wait while a second screen or a second phone shares the area with the phone.
+        if (_copies is null || _screenView is not null || _otherView is not null || !IsVisible || WindowState == WindowState.Minimized || !CopiesLayout.IsUpright(Group.Aspect) || Group.ActualWidth <= 0)
         {
             return 0;
         }
@@ -292,7 +292,8 @@ public partial class MainWindow : ICopyViews
                     view.Visibility = visibility;
                 }
 
-                view.SetShown(room && mirroring && view.HasChild);
+                // The phone beside has a session of its own: it shows whether or not the main one does.
+                view.SetShown(room && view.HasChild && (ReferenceEquals(view, _otherView) ? NothingOverMirror : mirroring));
             }
         }
     }
