@@ -174,7 +174,8 @@ public static class MachineMode
         var bytes = await adb.ScreencapAsync(target).ConfigureAwait(false) ?? throw new InvalidOperationException("The phone did not return a screenshot.");
         var directory = context.Paths.ScreenshotFolder(context.Config.Load().App.ScreenshotDirectory);
         Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture) + ".png");
+        var path = Path.Combine(directory, CaptureName.Unique(context.Config.Load().App.CaptureNames, DateTime.Now,
+            Commands.PhoneNamed(context, target).Name, Commands.PhoneNamed(context, target).Model, ".png", name => File.Exists(Path.Combine(directory, name))));
         await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(false);
         return Success("screenshot", new JsonObject { ["serial"] = target, ["path"] = path });
     }

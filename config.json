@@ -105,7 +105,8 @@
     "NavigatorPicture": true,
     "NavigatorOpacity": 0.92,
     "NavigatorFrameRate": 30,
-    "NavigatorAlways": false
+    "NavigatorAlways": false,
+    "KeyStep": 0.25
   },
   "Copies": {
     "Most": 3,
@@ -127,7 +128,8 @@
     "EdgeFade": 0,
     "TintStrength": 0,
     "TintHue": 75,
-    "FrameRate": 15
+    "FrameRate": 15,
+    "WhenZoomed": "show"
   },
   "Hud": {
     "Enabled": true,
@@ -157,7 +159,8 @@
     "AutoDiscoverGeometry": true,
     "CalibrationEnabled": true,
     "ShowCursorTrail": true,
-    "Opacity": 0.9
+    "Opacity": 0.9,
+    "DotSize": 1
   },
   "App": {
     "RunInBackground": true,
@@ -180,7 +183,17 @@
     "ShowFrameRate": false,
     "ScreenshotFormat": "png",
     "CopyScreenshots": false,
-    "ShowWhatsNew": true
+    "ShowWhatsNew": true,
+    "ShowTopBar": true,
+    "ShowStatusBar": true,
+    "PanelScale": 1,
+    "RememberPlacement": true,
+    "FitWindowOnStart": false,
+    "ConfirmQuit": false,
+    "NotifyMirrorStops": false,
+    "CaptureNames": "android-{date}-{time}",
+    "ScreenshotFlash": false,
+    "OpenScreenshots": false
   },
   "GlobalKeys": {
     "Enabled": true,
@@ -281,6 +294,7 @@
   "Logging": {
     "Enabled": true,
     "MaxBytes": 2097152,
-    "KeepFiles": 5
+    "KeepFiles": 5,
+    "Verbose": false
   }
 }

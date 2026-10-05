@@ -97,6 +97,9 @@ public sealed partial class SessionController : IDisposable
     public event Action<ScrcpyProcess>? MirrorReady;
     public event Action? MirrorEnded;
 
+    /// <summary>Raised on the UI thread when the mirror ended without being stopped or restarted on purpose, with what the status says.</summary>
+    public event Action<string>? EndedByItself;
+
     public void Start()
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
@@ -299,7 +302,8 @@ public sealed partial class SessionController : IDisposable
         {
             var directory = _host.Paths.Inside(config.Mirror.RecordDirectory);
             Directory.CreateDirectory(directory);
-            recordPath = Path.Combine(directory, ScrcpyArguments.RecordingFileName(config.Mirror.RecordFormat, DateTime.Now));
+            recordPath = Path.Combine(directory, ScrcpyArguments.RecordingFileName(config.Mirror.RecordFormat, DateTime.Now, config.App.CaptureNames,
+                identity.DisplayName, identity.Model, name => File.Exists(Path.Combine(directory, name))));
         }
 
         var launchRect = await OnUi(() => LaunchRect?.Invoke()).ConfigureAwait(false);
@@ -448,11 +452,16 @@ public sealed partial class SessionController : IDisposable
                 : "Mirror closed. Press Start, or reconnect the phone.");
         }
 
+        var byItself = !userStopped && !_restartRequested && phoneStillReady;
         _restartRequested = false;
         scrcpy.Dispose();
         ActiveDevice = null;
         Identity = null;
         Changed?.Invoke();
+        if (byItself)
+        {
+            EndedByItself?.Invoke(Message);
+        }
     }
 
     private bool TryUseCompatibilityKeyboard(ScrcpyProcess scrcpy)
@@ -701,7 +710,10 @@ public sealed partial class SessionController : IDisposable
         var directory = _host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory);
         Directory.CreateDirectory(directory);
         var format = _host.Config.App.ScreenshotFormat;
-        var path = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ScreenshotFile.Extension(format));
+        var phone = device.Serial == ActiveDevice?.Serial && Identity is { } shown ? shown : null;
+        var path = Path.Combine(directory, CaptureName.Unique(_host.Config.App.CaptureNames, DateTime.Now,
+            phone?.DisplayName ?? device.Model.Replace('_', ' '), phone?.Model ?? device.Model, ScreenshotFile.Extension(format),
+            name => File.Exists(Path.Combine(directory, name))));
         try
         {
             await File.WriteAllBytesAsync(path, ScreenshotFile.Encode(bytes, format)).ConfigureAwait(true);

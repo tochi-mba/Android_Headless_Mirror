@@ -41,6 +41,8 @@ public partial class MainWindow
     {
         var app = _host.Config.App;
         Topmost = app.AlwaysOnTop;
+        ApplyBars();
+        ApplyPanelScale();
         ApplySidebarSide(app.SidebarSide == "left");
         ApplyQuickButtons(app.TopBarButtons);
         HintText.Visibility = app.ShowHints ? Visibility.Visible : Visibility.Collapsed;

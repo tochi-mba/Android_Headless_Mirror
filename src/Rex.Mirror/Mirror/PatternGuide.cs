@@ -406,7 +406,7 @@ public sealed class PatternGuide : IDisposable
         NormalizedBounds = PatternGeometry.BoundsFromPoints(layout.Points, new RectD(0, 0, surface.Width, surface.Height));
 
         var points = layout.Points.Select(p => new PointD(p.X + surface.X, p.Y + surface.Y)).ToArray();
-        var radius = Math.Max(5, layout.ContentRect.Width * PatternGeometry.DotRadiusRelativeToWidth);
+        var radius = Math.Max(5, layout.ContentRect.Width * PatternGeometry.DotRadiusRelativeToWidth * _host.Config.PatternGuide.DotSize);
         _patternPoints = points;
         _patternRadius = radius;
         var label = IsCalibrating

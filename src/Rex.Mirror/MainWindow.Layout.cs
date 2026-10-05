@@ -15,6 +15,13 @@ public partial class MainWindow
     private void ApplyPlacement()
     {
         var placement = _host.State.Ui;
+        if (!_host.Config.App.RememberPlacement)
+        {
+            // Centred at its usual size; where it was is still kept, for when the setting is on again.
+            WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            return;
+        }
+
         if (placement.Width >= 600 && placement.Height >= 400)
         {
             Width = placement.Width;
@@ -141,8 +148,7 @@ public partial class MainWindow
             Width = _windowedBounds.Width;
             Height = _windowedBounds.Height;
             WindowState = _restoreState == WindowState.Minimized ? WindowState.Normal : _restoreState;
-            TopBar.Visibility = Visibility.Visible;
-            StatusBar.Visibility = Visibility.Visible;
+            ApplyBars();
             SetSidebarVisible(_sidebarWanted);
             OnSessionChanged();
         }

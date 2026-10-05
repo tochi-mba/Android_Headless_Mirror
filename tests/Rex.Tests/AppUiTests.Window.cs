@@ -21,7 +21,7 @@ public sealed partial class AppUiTests
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
         app.Ui.Select("TabSettings");
-        app.Ui.ExpandGroup("GroupStartup");
+        app.Ui.ExpandGroup("GroupWindow");
 
         app.Ui.Toggle("AlwaysOnTop", on: true);
         await app.WaitForStatusAsync(s => Window(s)["topmost"]!.GetValue<bool>(), Soon, "the window to stay on top");

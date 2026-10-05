@@ -4,6 +4,29 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.13.0 - 2026-10-05
+
+### Added
+
+- **Window**, a group of its own in Settings: the **top bar** and the **status bar** can each be
+  hidden, the **side panel's size** goes from 80% to 150%, the window can **open where it was**
+  or in the middle of the screen, **fit itself to the phone** as each mirror starts, and **ask
+  before quitting** while a phone is mirrored. Startup & window is now Startup & tray.
+- **Fit the window to the phone** (Ctrl+Alt+F, and an action for the fullscreen controls and the
+  command line): the window takes the shape of the phone, its copies or both phones.
+- **Name screenshots and recordings** with {date}, {time}, {phone}, {model} and {n}; **flash the
+  view** as a screenshot is taken, and **open each screenshot** once it is saved.
+- How far the **zoom keys and buttons** step, whether the **soft background stays while zoomed
+  in**, the lock screen guide's **dot size**, a word from the tray when **the mirror stops by
+  itself**, and **writing every phone command in the log** for a bug report (where the screen
+  was touched is left out).
+
+### Fixed
+
+- Two screenshots taken in the same second no longer overwrite each other, in the app and from
+  the command line.
+- A screenshot taken over the pipe now flashes and opens like one taken in the window.
+
 ## 2.12.0 - 2026-10-05
 
 ### Added

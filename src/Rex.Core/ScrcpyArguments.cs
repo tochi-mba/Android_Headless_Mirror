@@ -43,15 +43,19 @@ public static partial class ScrcpyArguments
             ? CompatibilityKeyboardMode
             : FullKeyboardMode;
 
-    /// <summary>A new recording's file name; scrcpy writes the container its extension names.</summary>
-    public static string RecordingFileName(string format, DateTime startedAt) =>
-        "android-" + startedAt.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + "." +
-        MirrorSettings.OneOf(MirrorSettings.RecordFormats, format, "mp4");
+    /// <summary>
+    /// A new recording's file name, named as screenshots are (<see cref="CaptureName"/>); scrcpy
+    /// writes the container its extension names. A name already taken is never overwritten.
+    /// </summary>
+    public static string RecordingFileName(string format, DateTime startedAt, string template = CaptureName.Default,
+        string phone = "", string model = "", Func<string, bool>? taken = null) =>
+        CaptureName.Unique(template, startedAt, phone, model, "." + MirrorSettings.OneOf(MirrorSettings.RecordFormats, format, "mp4"), taken ?? (_ => false));
 
     /// <summary>
     /// The launch settings a running session is compared against to offer a restart. The frame
     /// rate counter is left out: the app switches it on and off in the running session itself.
-    /// A recording stands for itself by its folder and its format, not by the moment it started.
+    /// A recording stands for itself by its folder and its format, not by the moment it started
+    /// or the name it is given.
     /// </summary>
     public static IReadOnlyList<string> LaunchSettings(RexConfig config, bool isTcp) =>
         Build(config, "", isTcp, "", null,

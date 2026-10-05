@@ -153,7 +153,7 @@ public sealed partial class AppUiTests
         await app.WaitUntilAsync(() => package.Sound() is { Left: 1, Right: 0.6 }, Soon, "the balance on the fake mixer");
 
         // The top bar's sound button follows its chip.
-        app.Ui.ExpandGroup("GroupStartup");
+        app.Ui.ExpandGroup("GroupWindow");
         Assert.True(app.Ui.Exists("QuickSound"));
         app.Ui.Toggle("quick-button sound", on: false);
         await app.WaitUntilAsync(() => !app.Ui.Exists("QuickSound"), Soon, "the sound button to go");

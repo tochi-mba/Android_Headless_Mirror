@@ -204,7 +204,8 @@
           </Border>
           </StackPanel>
           <ScrollViewer x:Name="SidebarScroll" Grid.Row="2" VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled" Padding="8,4,8,16">
-            <Grid Margin="8,0">
+            <!-- What Side panel size scales: the tabs above keep their size, so their names never wrap. -->
+            <Grid x:Name="SidebarContent" Margin="8,0">
               <views:ControlsPanel x:Name="ControlsPanel" />
               <views:AppsPanel x:Name="AppsPanel" Visibility="Collapsed" />
               <views:PhonePanel x:Name="PhonePanel" Visibility="Collapsed" />

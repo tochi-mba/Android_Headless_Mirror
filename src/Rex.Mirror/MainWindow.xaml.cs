@@ -171,6 +171,7 @@ public partial class MainWindow : Window
         host.Usb.Changed += OnUsbChanged;
         host.Session.MirrorReady += OnMirrorReady;
         host.Session.MirrorEnded += OnMirrorEnded;
+        host.Session.EndedByItself += OnMirrorEndedByItself;
         host.Session.LaunchRect = LaunchRect;
         host.ConfigChanged += OnConfigChanged;
         host.ConfigPreviewed += () => { Host.MaxZoom = _host.Config.Zoom.MaxZoom; PreviewCopies(); TrackOverlay(); };
@@ -264,6 +265,13 @@ public partial class MainWindow : Window
             e.Cancel = true;
             SavePlacement();
             HideToTray();
+            return;
+        }
+
+        if (AsksBeforeQuitting)
+        {
+            e.Cancel = true;
+            _ = QuitAskingAsync();
             return;
         }
 
@@ -424,6 +432,7 @@ public partial class MainWindow : Window
     private void OnMirrorReady(ScrcpyProcess scrcpy)
     {
         FollowScrcpyTransfers(scrcpy);
+        _fitOnStart = _host.Config.App.FitWindowOnStart;
         var session = _host.Session;
         if (session.Identity is { DisplayWidth: > 0, DisplayHeight: > 0 } identity)
         {
@@ -565,14 +574,14 @@ public partial class MainWindow : Window
     {
         if (SidebarScroll.IsVisible && _source is not null)
         {
-            var origin = SidebarScroll.PointToScreen(new Point());
-            var scale = VisualTreeHelper.GetDpi(SidebarScroll);
-            _sidebarWheelBounds = new Rect(origin.X, origin.Y, SidebarScroll.ActualWidth * scale.DpiScaleX,
-                SidebarScroll.ActualHeight * scale.DpiScaleY);
+            // Both corners through the screen, so the panel's own scale is counted as well as the DPI.
+            _sidebarWheelBounds = new Rect(SidebarScroll.PointToScreen(new Point()),
+                SidebarScroll.PointToScreen(new Point(SidebarScroll.ActualWidth, SidebarScroll.ActualHeight)));
         }
         else _sidebarWheelBounds = Rect.Empty;
         ReleaseStaleAltHold();
         ReleaseFilesDrag();
+        FitWhenReady();
         _host.CheckConfigFile();
         TickPhones();
         _host.Profiles.CheckPower();
@@ -623,7 +632,8 @@ public partial class MainWindow : Window
         var aspect = view.SurfaceHeight > 0 ? view.SurfaceWidth / view.SurfaceHeight : 0.45;
         _overlay.UpdateNavigator(show, aspect, Host.VisibleFraction(), zoom);
         // A blurred wash is the opposite of what High Contrast is for, so it stands down there.
-        var ambient = _host.Config.Ambient.Enabled && Host.HasChild && !SystemParameters.HighContrast;
+        var ambient = _host.Config.Ambient.Enabled && Host.HasChild && !SystemParameters.HighContrast &&
+                      !(_host.Config.Ambient.WhenZoomed == "hide" && view.IsZoomed);
         Ambient.Update(ambient, PicturesInArea(), _host.Config.Ambient);
         _ambientWanted = ambient;
         _previewWanted = show && zoom.NavigatorPicture;
@@ -703,11 +713,13 @@ public partial class MainWindow : Window
             case var gesture when MirrorActions.IsGesture(gesture):
                 return await _keyboardTouch.RunAsync(gesture);
             case "zoom-in":
-                Host.ZoomStep(1, step: 0.25);
+                Host.ZoomStep(1, step: _host.Config.Zoom.KeyStep);
                 return AndroidResult.Success($"{Host.Zoom * 100:0}%");
             case "zoom-out":
-                Host.ZoomStep(-1, step: 0.25);
+                Host.ZoomStep(-1, step: _host.Config.Zoom.KeyStep);
                 return AndroidResult.Success($"{Host.Zoom * 100:0}%");
+            case "fit-window":
+                return FitWindowToPhone();
             case "zoom-reset":
                 Host.ResetZoom();
                 return AndroidResult.Success("100%");
@@ -788,6 +800,11 @@ public partial class MainWindow : Window
     private async Task<(bool Ok, string Text)> SaveScreenshotCoreAsync(string? serial)
     {
         var (ok, text) = await _host.Session.SaveScreenshotAsync(serial);
+        if (ok)
+        {
+            AfterScreenshot(text);
+        }
+
         var said = ok ? "Screenshot saved: " + Path.GetFileName(text) : text;
         SetStatus(said, !ok);
         if (ok)

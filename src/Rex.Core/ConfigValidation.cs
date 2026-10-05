@@ -28,6 +28,9 @@ public static class ConfigValidation
             case "Transfer.Folder":
                 Refuse(TransferSettings.WhyNotFolder(raw));
                 break;
+            case "App.CaptureNames":
+                Refuse(CaptureName.WhyNot(raw));
+                break;
             case "Mirror.Crop":
                 Refuse(MirrorSettings.WhyNotCrop(raw));
                 break;
