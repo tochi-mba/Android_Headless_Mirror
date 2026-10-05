@@ -30,6 +30,16 @@ public static partial class ScrcpyArguments
         own.Session.StartApp = string.Empty;
         own.App.ShowFrameRate = false;
         own.Mirror.Audio = config.Mirror.Audio && other.OtherHasSound;
+        // What is about the main phone's own screen and hardware, and when its mirror ends, is not
+        // the other phone's: an encoder by name, a crop or a turn set for one phone means nothing
+        // on another, and sound the other phone may not have must not stop its picture.
+        own.Mirror.VideoEncoder = string.Empty;
+        own.Mirror.Crop = string.Empty;
+        own.Mirror.CaptureOrientation = string.Empty;
+        own.Mirror.StartOrientation = DisplayOrientation.Name(DisplayOrientation.Upright);
+        own.Mirror.Angle = 0;
+        own.Mirror.TimeLimitMinutes = 0;
+        own.Mirror.RequireAudio = false;
         if (other.MaxSize > 0)
         {
             own.Mirror.MaxSize = other.MaxSize;

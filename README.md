@@ -47,6 +47,8 @@ delete that folder.
   this PC, remembered for each phone, and it can mute itself while the window is away.
 - **A second screen for one app.** Run an app on a display of its own beside the phone, or
   instead of it, at exactly the size of its place in the window (Ctrl+Alt+D).
+- **More of scrcpy, without typing options.** The video encoder, part of the screen, a picture
+  that stays one way or tilts, taps shown on the phone and a time limit are all in Settings.
 - **Every setting in one place.** Every value the app keeps has a control in Settings; Changed
   lists what you changed and puts any of it, or a whole group, back.
 - **Two phones side by side.** A second, different phone beside the first, each fully usable;

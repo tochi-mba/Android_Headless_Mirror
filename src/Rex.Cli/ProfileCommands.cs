@@ -32,7 +32,7 @@ public static class ProfileCommands
     public static async Task<ProfileResult> RunAsync(string[] args, CliContext context)
     {
         var request = Request(args);
-        var response = await context.Ipc.SendAsync(new IpcRequest("profile", request.ToFields()), TimeSpan.FromSeconds(30)).ConfigureAwait(false);
+        var response = await context.Ipc.SendAsync(new IpcRequest("profile", request.ToFields())).ConfigureAwait(false);
         if (response is null)
         {
             return ProfileVerbs.Run(ProfileBook.ForFiles(context.Paths), request, DateTimeOffset.UtcNow);

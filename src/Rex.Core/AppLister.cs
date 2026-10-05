@@ -34,7 +34,7 @@ public static class AppLister
     }
 
     /// <summary>scrcpy's last error line without its prefix, else whatever it said.</summary>
-    private static string Why(ProcessResult result)
+    internal static string Why(ProcessResult result)
     {
         var error = result.StdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .LastOrDefault(l => l.Contains("ERROR:", StringComparison.Ordinal));

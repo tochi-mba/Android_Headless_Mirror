@@ -43,7 +43,7 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `push <files or folders...> [--to /sdcard/folder/] [--serial S]`,
 `install <apk...> [--downgrade] [--grant] [--test] [--no-replace] [--serial S]`,
 `screen [open <app> [--instead|--beside] [--size S] [--fresh]|app <app>|close]`,
-`phones [beside [serial]|stop|switch|make-main]`,
+`phones [beside [serial]|stop|switch|make-main]`, `encoders [--serial S]`,
 `profile list|show <name>|apply <name>|save <name> [--groups A,B] [--all]|rename <old> <new>|delete <name>|export <name> <file>|import <file>`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
@@ -225,7 +225,14 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   the app list) goes through `SessionController.ServerStart`, so two never start at once. A
   package reaches `am` or `pm` only after `PackageName` has checked it, as one argument; apps that
   came with the phone are never uninstalled. `rex app` goes through the running app when it shows
-  that phone, and straight to the phone otherwise.
+  that phone, and straight to the phone otherwise. The phone's video encoders are read the same
+  way (`EncoderList`, `scrcpy --list-encoders --no-cleanup`), only when asked, through the gate.
+- What the phone sends as the picture (`MirrorSettings` encoder, crop, capture orientation, angle,
+  smoothing) reaches the main session and its copies; a second screen keeps only the encoder and
+  smoothing, and the other phone only what is about this PC. Taps shown on the phone, the time
+  limit, the start orientation and needing sound are the main session's. A mirror that ends at its
+  time limit (`MirrorTimeLimit`) is a stop, never a crash to restart; `Session.RestartLimit` is how
+  many restarts in a row the main session and the other phone get.
 - Left Alt pressed on its own belongs to the PC view (zoom, pinch, pan). While it is held,
   `MirrorHost.HoldKeyboard` moves keyboard focus from scrcpy to the viewport, from inside the
   keyboard hook so it happens before Windows routes the key; otherwise the hardware keyboard shows

@@ -24,6 +24,16 @@ public static class SettingsCatalogue
         ["Mirror.RecordOnStart"] = "Record",
         ["Mirror.ExtraArgs"] = "ExtraArgs",
         ["Mirror.CompatibilityKeyboard"] = "CompatibilityKeyboard",
+        ["Mirror.VideoEncoder"] = "VideoEncoder",
+        ["Mirror.Crop"] = "Crop",
+        ["Mirror.CaptureOrientation"] = "CaptureOrientation",
+        ["Mirror.StartOrientation"] = "StartOrientation",
+        ["Mirror.Angle"] = "Angle",
+        ["Mirror.SmoothScaling"] = "SmoothScaling",
+        ["Mirror.ShowTouches"] = "ShowTouches",
+        ["Mirror.TimeLimitMinutes"] = "TimeLimit",
+        ["Mirror.AudioOutputBufferMs"] = "AudioOutputBuffer",
+        ["Mirror.RequireAudio"] = "RequireAudio",
 
         ["Sound.Volume"] = "SoundLevel",
         ["Sound.Muted"] = "SoundMuted",
@@ -49,6 +59,7 @@ public static class SettingsCatalogue
         ["Session.ScreenOffTimeoutSeconds"] = "ScreenOffTimeout",
         ["Session.KeepPcAwake"] = "KeepPcAwake",
         ["Session.StartApp"] = "StartApp",
+        ["Session.RestartLimit"] = "RestartLimit",
 
         ["Wireless.Enabled"] = "Wireless",
         ["Wireless.EnableTcpipWhenUsbAvailable"] = "WirelessTcpip",
@@ -86,6 +97,7 @@ public static class SettingsCatalogue
         ["Copies.Gap"] = "CopiesGap",
         ["Copies.MaxSize"] = "CopiesMaxSize",
         ["Copies.Remember"] = "CopiesRemember",
+        ["Copies.MaxFps"] = "CopiesMaxFps",
 
         ["Ambient.Enabled"] = "AmbientEnabled",
         ["Ambient.Opacity"] = "AmbientOpacity",
@@ -254,6 +266,9 @@ public static class SettingsCatalogue
         "Input.ShiftClicks", "Input.KeyRepeat", "Input.MouseHover", "Input.ClipboardAutosync",
         "Input.LegacyPaste", "Input.Gamepad",
         "Transfer.Enabled",
+        "Mirror.VideoEncoder", "Mirror.Crop", "Mirror.CaptureOrientation", "Mirror.StartOrientation",
+        "Mirror.Angle", "Mirror.SmoothScaling", "Mirror.ShowTouches", "Mirror.TimeLimitMinutes",
+        "Mirror.AudioOutputBufferMs", "Mirror.RequireAudio",
     };
 
     /// <summary>Whether a setting applies at once, or the next time the mirror starts.</summary>

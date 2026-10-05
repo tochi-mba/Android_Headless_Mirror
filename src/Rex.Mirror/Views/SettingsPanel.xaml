@@ -32,7 +32,7 @@
 
     <Expander x:Name="GroupDisplay" Header="Picture" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
-               Text="Resolution, frame rate, bit rate and codec apply the next time the mirror starts. Everything below them previews as you change it." />
+               Text="Everything up to Show taps on the phone applies the next time the mirror starts. The soft background previews as you change it." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Resolution">
       <ComboBox x:Name="MaxSize" SelectionChanged="OnMirrorChanged">
         <ComboBoxItem Content="Native" Tag="0" />
@@ -67,6 +67,84 @@
         <ComboBoxItem Content="H.265" Tag="h265" />
         <ComboBoxItem Content="AV1" Tag="av1" />
       </ComboBox>
+    </HeaderedContentControl>
+    <!-- One row for the search: the encoder, what was read, and the button that reads them. -->
+    <StackPanel Tag="row">
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="Video encoder" />
+          <TextBlock Text="The part of the phone that makes the video. Its own choice suits almost every phone." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <ComboBox x:Name="VideoEncoder" SelectionChanged="OnPictureChanged" AutomationProperties.Name="Video encoder">
+          <ComboBoxItem Content="The phone's choice" Tag="" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <Grid Margin="0,6,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="VideoEncoderNote" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,8,0"
+                   AutomationProperties.LiveSetting="Polite" />
+        <Button x:Name="VideoEncoderRead" Grid.Column="1" Content="Read the phone's encoders" Click="OnReadEncoders" />
+      </Grid>
+    </StackPanel>
+    <!-- One row for the search: the box, how to write it and why it was refused. -->
+    <StackPanel Tag="row">
+      <TextBlock Text="Show only part of the screen" Margin="0,10,0,4" />
+      <TextBox x:Name="Crop" LostKeyboardFocus="OnCrop" KeyDown="OnCropKey" TextChanged="OnCropText" AutomationProperties.Name="Show only part of the screen"
+               ToolTip="Width:height:x:y in the phone's pixels. Empty shows the whole screen." />
+      <TextBlock Text="Width:height:x:y in the phone's pixels, such as 1080:1200:0:600. Empty shows all of it. Press Enter to apply." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+      <TextBlock x:Name="CropError" Foreground="{StaticResource Live}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"
+                 AutomationProperties.LiveSetting="Polite" />
+    </StackPanel>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="When the phone turns" />
+        <TextBlock Text="Keep the picture one way, however the phone is held." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <ComboBox x:Name="CaptureOrientation" SelectionChanged="OnPictureChanged" AutomationProperties.Name="When the phone turns">
+        <ComboBoxItem Content="The picture turns with it" Tag="" />
+        <ComboBoxItem Content="It stays as it started" Tag="@" />
+        <ComboBoxItem Content="It stays upright" Tag="@0" />
+        <ComboBoxItem Content="It stays turned right" Tag="@90" />
+        <ComboBoxItem Content="It stays upside down" Tag="@180" />
+        <ComboBoxItem Content="It stays turned left" Tag="@270" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Start the view turned" />
+        <TextBlock Text="Only on this PC. Ctrl+Alt+Left and Ctrl+Alt+Right still turn it." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <ComboBox x:Name="StartOrientation" SelectionChanged="OnPictureChanged" AutomationProperties.Name="Start the view turned">
+        <ComboBoxItem Content="Upright" Tag="0" />
+        <ComboBoxItem Content="Turned right" Tag="90" />
+        <ComboBoxItem Content="Upside down" Tag="180" />
+        <ComboBoxItem Content="Turned left" Tag="270" />
+        <ComboBoxItem Content="Mirrored" Tag="flip0" />
+        <ComboBoxItem Content="Mirrored and turned right" Tag="flip90" />
+        <ComboBoxItem Content="Mirrored and upside down" Tag="flip180" />
+        <ComboBoxItem Content="Mirrored and turned left" Tag="flip270" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="AngleLabel" Text="Tilt the picture" /><TextBlock x:Name="AngleValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="Angle" AutomationProperties.LabeledBy="{Binding ElementName=AngleLabel}" Minimum="0" Maximum="359" TickFrequency="1" IsSnapToTickEnabled="True"
+            SmallChange="1" LargeChange="15" Margin="0,2,0,0" ValueChanged="OnPictureSlider"
+            ToolTip="Degrees clockwise, for a phone in a stand that is not quite straight." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Smooth the picture when it is shown smaller" TextWrapping="Wrap" />
+        <TextBlock Text="Off can make small text look a little sharper." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="SmoothScaling" Checked="OnPictureChanged" Unchecked="OnPictureChanged" AutomationProperties.Name="Smooth the picture when it is shown smaller" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Show taps on the phone" />
+        <TextBlock Text="The phone draws a dot where it is touched, for recordings and for showing others. Put back when the mirror ends." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="ShowTouches" Checked="OnPictureChanged" Unchecked="OnPictureChanged" AutomationProperties.Name="Show taps on the phone" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
@@ -133,7 +211,7 @@
 
     <Expander x:Name="GroupAudio" Header="Audio" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
-               Text="Both apply the next time the mirror starts." />
+               Text="These apply the next time the mirror starts." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Phone audio on this PC">
       <CheckBox x:Name="Audio" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
@@ -177,6 +255,16 @@
     <Grid Margin="0,8,0,0"><TextBlock x:Name="AudioBufferLabel" Text="Sound buffer" /><TextBlock x:Name="AudioBufferValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="AudioBuffer" AutomationProperties.LabeledBy="{Binding ElementName=AudioBufferLabel}" Minimum="0" Maximum="500" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnRemainingSlider"
             ToolTip="Evens out a shaky connection; 0 is the lowest delay." />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="AudioOutputBufferLabel" Text="Playback buffer" /><TextBlock x:Name="AudioOutputBufferValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="AudioOutputBuffer" AutomationProperties.LabeledBy="{Binding ElementName=AudioOutputBufferLabel}" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnPictureSlider"
+            ToolTip="Raise it if the sound crackles or breaks up on this PC." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Only mirror with sound" />
+        <TextBlock Text="When the phone cannot send its sound, the mirror stops and says why instead of going on silent." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="RequireAudio" Checked="OnPictureChanged" Unchecked="OnPictureChanged" AutomationProperties.Name="Only mirror with sound" />
+    </HeaderedContentControl>
     <TextBlock x:Name="AudioDupHint" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"
                Text="Keeping audio playing on the phone needs &#8220;Everything the phone plays&#8221; or &#8220;App playback&#8221;." />
     </StackPanel></Expander>
@@ -207,6 +295,24 @@
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Restart the mirror if it crashes">
       <CheckBox x:Name="RestartOnCrash" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
+    </HeaderedContentControl>
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="RestartLimitLabel" Text="Times in a row before it stops trying" /><TextBlock x:Name="RestartLimitValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="RestartLimit" AutomationProperties.LabeledBy="{Binding ElementName=RestartLimitLabel}" Minimum="1" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnPictureSlider"
+            ToolTip="A mirror that ran for a minute counts as working again." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Stop the mirror after" />
+        <TextBlock Text="For a time limit on a shared PC, or a recording of a set length." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <ComboBox x:Name="TimeLimit" SelectionChanged="OnPictureChanged" AutomationProperties.Name="Stop the mirror after">
+        <ComboBoxItem Content="Never" Tag="0" />
+        <ComboBoxItem Content="15 minutes" Tag="15" />
+        <ComboBoxItem Content="30 minutes" Tag="30" />
+        <ComboBoxItem Content="1 hour" Tag="60" />
+        <ComboBoxItem Content="2 hours" Tag="120" />
+        <ComboBoxItem Content="4 hours" Tag="240" />
+        <ComboBoxItem Content="8 hours" Tag="480" />
+      </ComboBox>
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header><StackPanel>

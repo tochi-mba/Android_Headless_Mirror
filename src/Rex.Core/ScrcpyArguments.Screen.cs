@@ -29,7 +29,10 @@ public static partial class ScrcpyArguments
         int port = ScreenPort)
     {
         var screen = config.SecondScreen;
-        var args = Build(config, serial, isTcp, windowTitle, null, recordPath: null, keyboardMode, copyIndex: 0)
+        // Built as a copy's, but a copy's own frame rate is for copies: the screen keeps the mirror's.
+        var own = config.Copy();
+        own.Copies.MaxFps = 0;
+        var args = Build(own, serial, isTcp, windowTitle, null, recordPath: null, keyboardMode, copyIndex: 0)
             .Where(a => !a.StartsWith("--port=", StringComparison.Ordinal) &&
                         !a.StartsWith("--max-size=", StringComparison.Ordinal) &&
                         !IsScreenUnsafeExtra(a))
@@ -105,10 +108,11 @@ public static partial class ScrcpyArguments
 
     /// <summary>
     /// Extra arguments a second display cannot take: a crop of the phone's screen, another display,
-    /// another new display, or an orientation for the phone's own picture.
+    /// another new display, or an orientation or tilt for the phone's own picture.
     /// </summary>
     public static bool IsScreenUnsafeExtra(string argument) =>
         argument.StartsWith("--crop", StringComparison.Ordinal) ||
+        argument.StartsWith("--angle", StringComparison.Ordinal) ||
         argument.StartsWith("--display-id", StringComparison.Ordinal) ||
         argument.StartsWith("--new-display", StringComparison.Ordinal) ||
         argument.StartsWith("--display-orientation", StringComparison.Ordinal) ||

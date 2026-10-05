@@ -28,6 +28,20 @@ public static class ConfigValidation
             case "Transfer.Folder":
                 Refuse(TransferSettings.WhyNotFolder(raw));
                 break;
+            case "Mirror.Crop":
+                Refuse(MirrorSettings.WhyNotCrop(raw));
+                break;
+            case "Mirror.VideoEncoder":
+                Refuse(raw.Trim().Length > 0 && !MirrorSettings.IsValidEncoderName(raw)
+                    ? "An encoder's name is letters, digits, dots, dashes and underscores. Run 'rex encoders' to see the phone's."
+                    : null);
+                break;
+            case "Mirror.StartOrientation":
+                Refuse(DisplayOrientation.Parse(raw.Trim()) is null ? "Use one of " + string.Join(", ", DisplayOrientation.Names) + "." : null);
+                break;
+            case "Mirror.CaptureOrientation":
+                Refuse(MirrorSettings.CaptureOrientations.Contains(raw.Trim()) ? null : "Use one of @, @0, @90, @180 or @270, or nothing to follow the phone.");
+                break;
         }
     }
 

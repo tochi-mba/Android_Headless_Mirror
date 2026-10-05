@@ -34,7 +34,7 @@ public static class PhoneCommands
     private static async Task<JsonObject> RunAsync(string[] args, CliContext context)
     {
         var request = Request(args);
-        var response = await context.Ipc.SendAsync(request, TimeSpan.FromSeconds(60)).ConfigureAwait(false);
+        var response = await context.Ipc.SendAsync(request, answerWithin: TimeSpan.FromSeconds(60)).ConfigureAwait(false);
         if (response is null)
         {
             if (request.Arg("verb").Length > 0)

@@ -32,6 +32,7 @@ public partial class CopiesGroup : UserControl, ISettingsGroup
             CopiesMost.Value = config.Copies.Most;
             CopiesGap.Value = config.Copies.Gap;
             SelectTag(CopiesMaxSize, config.Copies.MaxSize.ToString(CultureInfo.InvariantCulture));
+            SelectTag(CopiesMaxFps, config.Copies.MaxFps.ToString(CultureInfo.InvariantCulture));
             CopiesRemember.IsChecked = config.Copies.Remember;
             ShowValues();
         }
@@ -63,6 +64,7 @@ public partial class CopiesGroup : UserControl, ISettingsGroup
         _panel?.Save(c =>
         {
             c.Copies.MaxSize = int.TryParse(SelectedTag(CopiesMaxSize, "0"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var size) ? size : 0;
+            c.Copies.MaxFps = int.TryParse(SelectedTag(CopiesMaxFps, "0"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var fps) ? fps : 0;
             c.Copies.Remember = CopiesRemember.IsChecked == true;
         });
     }

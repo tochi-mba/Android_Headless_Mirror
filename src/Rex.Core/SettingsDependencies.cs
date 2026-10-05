@@ -25,6 +25,7 @@ namespace Rex.Core;
 /// <param name="ScreenBeside">Side, minimum width and the splitter: the second screen goes beside the phone.</param>
 /// <param name="Touchpad">Two-finger gestures and pinch zoom: touchpad gestures are on.</param>
 /// <param name="TransferInstall">APK install choices: accepting files and installing APKs are on.</param>
+/// <param name="Restarts">How many times in a row a closed mirror is started again: it is started again.</param>
 public sealed record SettingsDependencies(
     bool Sensitivity,
     bool Zoom,
@@ -45,7 +46,8 @@ public sealed record SettingsDependencies(
     bool ScreenCustom,
     bool ScreenFixed,
     bool ScreenBeside,
-    bool Touchpad)
+    bool Touchpad,
+    bool Restarts)
 {
     public static SettingsDependencies Of(RexConfig config) => new(
         Sensitivity: config.Touchpad.Enabled && config.Touchpad.TwoFingerToAndroid,
@@ -67,5 +69,6 @@ public sealed record SettingsDependencies(
         ScreenCustom: config.SecondScreen.Size == "custom",
         ScreenFixed: config.SecondScreen.Size != "follow",
         ScreenBeside: config.SecondScreen.Placement == "beside",
-        Touchpad: config.Touchpad.Enabled);
+        Touchpad: config.Touchpad.Enabled,
+        Restarts: config.Session.RestartOnUnexpectedExit);
 }

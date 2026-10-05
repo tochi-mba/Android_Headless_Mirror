@@ -365,8 +365,10 @@ test.describe('the reference pages', () => {
     await filter.fill('Mirror.MaxFps');
     await expect(page.locator('#settings-filter-count')).toHaveText('1 setting matches');
     await expect(page.locator('[id="Mirror.MaxFps"]')).toBeVisible();
+    // Without its group the name is the mirror's frame rate and the copies' own.
     await filter.fill('maxfps');
-    await expect(page.locator('#settings-filter-count')).toHaveText('1 setting matches');
+    await expect(page.locator('#settings-filter-count')).toHaveText('2 settings match');
+    await expect(page.locator('[id="Copies.MaxFps"]')).toBeVisible();
     await filter.fill('copies');
     await expect(page.locator('#settings-filter-count')).toHaveText(/settings match$/);
     await expect(page.locator('#group-display')).toBeHidden();

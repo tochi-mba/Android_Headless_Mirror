@@ -62,3 +62,6 @@ TwoPhonesLayout.cs
 ScrcpyArguments.OtherPhone.cs
 WirelessAddress.cs
 SettingsChanges.cs
+MirrorSettings.cs
+EncoderList.cs
+MirrorTimeLimit.cs

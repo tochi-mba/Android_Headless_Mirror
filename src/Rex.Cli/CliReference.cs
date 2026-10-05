@@ -57,6 +57,8 @@ public static class CliReference
             Human: true, Machine: true, NeedsApp: false),
         new("phones", PhoneCommands.Usage, "Every connected phone and where it shows: the main phone, the one beside it, and the one in use. With the app running, show one beside, stop it, switch to the other, or swap them.", "rex phones beside",
             Human: true, Machine: true, NeedsApp: false),
+        new("encoders", EncoderCommands.Usage, "The phone's video encoders, to choose one with rex config set Mirror.VideoEncoder. Works with or without the app.", "rex encoders",
+            Human: true, Machine: true, NeedsApp: false),
         new("screenshot", "rex screenshot [--serial S]", "Save a picture of the phone screen.", "rex screenshot",
             Human: true, Machine: true, NeedsApp: false),
         new("phone", "rex phone list|get [filter]", "Every phone setting this phone offers, with its value.", "rex phone list bright",

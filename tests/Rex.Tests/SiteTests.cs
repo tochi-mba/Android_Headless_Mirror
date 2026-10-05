@@ -88,6 +88,8 @@ public sealed partial class SiteTests
         ["Mirror.RecordDirectory"] = ["elsewhere"],
         ["Transfer.Folder"] = ["/sdcard/Documents/"],
         ["Session.KeepActive"] = ["false"],
+        ["Mirror.VideoEncoder"] = ["c2.exynos.h264.encoder"],
+        ["Mirror.Crop"] = ["1080:1200:0:600"],
     };
 
     [Fact]

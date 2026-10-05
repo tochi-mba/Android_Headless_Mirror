@@ -120,6 +120,9 @@ public static partial class CommandRouter
             case "open-app":
                 return await OpenAppAsync(host, request).ConfigureAwait(true);
 
+            case "encoders":
+                return await EncodersAsync(host, request).ConfigureAwait(true);
+
             case "screen":
                 return await ScreenAsync(host, request).ConfigureAwait(true);
 

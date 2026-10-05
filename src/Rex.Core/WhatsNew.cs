@@ -34,6 +34,9 @@ public static class WhatsNew
         new("2.11.0", "Every setting in Settings, and a way back",
             "Every value the app keeps now has a control. Changed lists what you changed, and each one, or a whole group, can go back to how the app ships.",
             "Settings → Changed", "TabSettings"),
+        new("2.12.0", "More of scrcpy in Settings",
+            "Choose the phone's video encoder, show part of its screen, keep the picture one way, tilt it, show taps, and stop the mirror after a set time.",
+            "Settings → Picture", "TabSettings"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>
