@@ -90,6 +90,36 @@ public static partial class ScrcpyArguments
     /// </summary>
     public const string ShortcutModifier = "rctrl";
 
+    /// <summary>A video codec as people write it: H.264, H.265 or AV1.</summary>
+    public static string CodecName(string codec) => codec.ToLowerInvariant() switch
+    {
+        "h264" => "H.264",
+        "h265" => "H.265",
+        "av1" => "AV1",
+        _ => codec,
+    };
+
+    [GeneratedRegex(@"Video encoder '(?<name>[^']+)' for (?<codec>[a-z0-9]+) not found")]
+    private static partial Regex MissingEncoderPattern();
+
+    /// <summary>
+    /// What to say when scrcpy stopped because the phone has no encoder by the name it was given
+    /// (a name chosen for another codec, or for another phone), or null when that is not why.
+    /// </summary>
+    public static string? MissingEncoder(IEnumerable<string> output)
+    {
+        foreach (var line in output)
+        {
+            if (MissingEncoderPattern().Match(line) is { Success: true } match)
+            {
+                return $"The phone has no video encoder called {match.Groups["name"].Value} for {CodecName(match.Groups["codec"].Value)}. " +
+                       "Choose another in Settings, Picture, or let the phone choose.";
+            }
+        }
+
+        return null;
+    }
+
     [GeneratedRegex(@"^\d+(K|M)?$", RegexOptions.IgnoreCase)]
     private static partial Regex BitRatePattern();
 
@@ -193,9 +223,10 @@ public static partial class ScrcpyArguments
             args.Add("--max-size=" + maxSize.ToString(CultureInfo.InvariantCulture));
         }
 
-        if (mirror.MaxFps > 0)
+        var maxFps = isCopy && config.Copies.MaxFps > 0 ? config.Copies.MaxFps : mirror.MaxFps;
+        if (maxFps > 0)
         {
-            args.Add("--max-fps=" + mirror.MaxFps.ToString(CultureInfo.InvariantCulture));
+            args.Add("--max-fps=" + maxFps.ToString(CultureInfo.InvariantCulture));
         }
 
         if (IsValidBitRate(mirror.VideoBitRate))
@@ -204,6 +235,7 @@ public static partial class ScrcpyArguments
         }
 
         args.Add("--video-codec=" + mirror.VideoCodec);
+        AddPicture(args, mirror);
 
         if (mirror.VideoBufferMs > 0)
         {
@@ -248,6 +280,16 @@ public static partial class ScrcpyArguments
             {
                 args.Add("--audio-dup");
             }
+
+            if (mirror.AudioOutputBufferMs > 0)
+            {
+                args.Add("--audio-output-buffer=" + mirror.AudioOutputBufferMs.ToString(CultureInfo.InvariantCulture));
+            }
+
+            if (mirror.RequireAudio)
+            {
+                args.Add("--require-audio");
+            }
         }
 
         AddInput(args, config.Input, keyboardMode, isCopy);
@@ -267,6 +309,24 @@ public static partial class ScrcpyArguments
         if (recordPath is not null && !isCopy)
         {
             args.Add("--record=" + recordPath);
+        }
+
+        // Taps shown on the phone are a phone setting the session puts back when it ends, so only
+        // a session that cleans up may change it; a time limit ends the mirror, not a view of it.
+        if (mirror.ShowTouches && !isCopy)
+        {
+            args.Add("--show-touches");
+        }
+
+        if (mirror.TimeLimitMinutes > 0 && !isCopy)
+        {
+            args.Add("--time-limit=" + (mirror.TimeLimitMinutes * 60).ToString(CultureInfo.InvariantCulture));
+        }
+
+        // Before the extra arguments, so an orientation given there still wins, as it always has.
+        if (!isCopy && DisplayOrientation.Parse(mirror.StartOrientation) is { } start and not DisplayOrientation.Upright)
+        {
+            args.Add("--display-orientation=" + DisplayOrientation.Name(start));
         }
 
         args.AddRange(SplitExtraArgs(mirror.ExtraArgs));
@@ -293,6 +353,39 @@ public static partial class ScrcpyArguments
         }
 
         return args;
+    }
+
+    /// <summary>
+    /// What the phone sends as the picture: its encoder, a part of its screen, how it is captured
+    /// as the phone turns and tilted, and how this PC scales it. Every view of the phone shows the
+    /// same picture, so copies take these too.
+    /// </summary>
+    private static void AddPicture(List<string> args, MirrorSettings mirror)
+    {
+        if (MirrorSettings.IsValidEncoderName(mirror.VideoEncoder))
+        {
+            args.Add("--video-encoder=" + mirror.VideoEncoder.Trim());
+        }
+
+        if (mirror.Crop.Length > 0 && MirrorSettings.WhyNotCrop(mirror.Crop) is null)
+        {
+            args.Add("--crop=" + mirror.Crop.Trim());
+        }
+
+        if (mirror.CaptureOrientation.Length > 0 && MirrorSettings.CaptureOrientations.Contains(mirror.CaptureOrientation))
+        {
+            args.Add("--capture-orientation=" + mirror.CaptureOrientation);
+        }
+
+        if (mirror.Angle is > 0 and <= MirrorSettings.AngleUpperBound)
+        {
+            args.Add("--angle=" + mirror.Angle.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (!mirror.SmoothScaling)
+        {
+            args.Add("--no-mipmaps");
+        }
     }
 
     public enum FileTransferPhase

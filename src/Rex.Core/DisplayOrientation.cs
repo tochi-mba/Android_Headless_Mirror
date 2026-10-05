@@ -68,12 +68,17 @@ public static class DisplayOrientation
     public static string Name(int orientation) => Names[orientation & 7];
 
     /// <summary>
-    /// The orientation a session starts in: upright, unless the extra scrcpy arguments say
-    /// otherwise with --display-orientation or --orientation (the last one given wins, as in scrcpy).
+    /// The orientation a session starts in: the one the settings start it in, unless the extra
+    /// scrcpy arguments say otherwise with --display-orientation or --orientation (the last one
+    /// given wins, as in scrcpy).
     /// </summary>
-    public static int Initial(IReadOnlyList<string> extraArgs)
+    public static int Initial(MirrorSettings mirror) =>
+        Initial(ScrcpyArguments.SplitExtraArgs(mirror.ExtraArgs), Parse(mirror.StartOrientation) ?? Upright);
+
+    /// <summary>The orientation a session starting in <paramref name="start"/> is in once its extra arguments are read.</summary>
+    public static int Initial(IReadOnlyList<string> extraArgs, int start = Upright)
     {
-        var orientation = Upright;
+        var orientation = start;
         for (var i = 0; i < extraArgs.Count; i++)
         {
             var value = ValueOf(extraArgs, i, "--display-orientation") ?? ValueOf(extraArgs, i, "--orientation");

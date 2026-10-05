@@ -57,6 +57,24 @@ public static partial class CommandRouter
         return IpcResponse.Success(status);
     }
 
+    /// <summary>
+    /// A phone's video encoders (<c>serial</c>, or the main phone's), read through the app so the
+    /// read takes its turn with the mirror and its copies starting.
+    /// </summary>
+    private static async Task<IpcResponse> EncodersAsync(AppHost host, IpcRequest request)
+    {
+        var serial = request.Arg("serial") is { Length: > 0 } asked ? asked : host.Session.ActiveDevice?.Serial;
+        if (serial is null)
+        {
+            return IpcResponse.Fail("Connect a phone first.");
+        }
+
+        var read = await host.Session.ReadEncodersAsync(serial).ConfigureAwait(true);
+        return read.Ok
+            ? IpcResponse.Success(EncoderList.ToJson(serial, host.Config.Mirror, read.Encoders))
+            : IpcResponse.Fail("Could not read the phone's encoders: " + read.Error);
+    }
+
     /// <summary>Opens an app by its name or package (<c>app</c>), fresh when <c>fresh=true</c>.</summary>
     private static async Task<IpcResponse> OpenAppAsync(AppHost host, IpcRequest request)
     {

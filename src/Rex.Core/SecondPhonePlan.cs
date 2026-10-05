@@ -38,9 +38,6 @@ public static class ShowBesideAnswers
 /// </summary>
 public static class SecondPhonePlan
 {
-    /// <summary>The restarts in a row it is given before it stops trying, as for the main session.</summary>
-    public const int MostRestarts = 4;
-
     /// <summary>A session that ran this long was working; its count of restarts starts again.</summary>
     public static readonly TimeSpan Recovered = TimeSpan.FromMinutes(1);
 
@@ -64,10 +61,11 @@ public static class SecondPhonePlan
 
     /// <summary>
     /// After the other phone's session ended. <paramref name="restarts"/> is how many restarts in
-    /// a row it has had; a session that ran for <see cref="Recovered"/> counts as having none.
+    /// a row it has had; a session that ran for <see cref="Recovered"/> counts as having none. It
+    /// is given as many restarts in a row as the main session (<paramref name="mostRestarts"/>).
     /// </summary>
     public static (OtherPhoneAfterExit Next, int Restarts) AfterExit(
-        bool stoppedOnPurpose, bool phoneStillReady, bool restartOnExit, int restarts, TimeSpan ranFor)
+        bool stoppedOnPurpose, bool phoneStillReady, bool restartOnExit, int restarts, TimeSpan ranFor, int mostRestarts)
     {
         if (ranFor >= Recovered)
         {
@@ -84,7 +82,7 @@ public static class SecondPhonePlan
             return (OtherPhoneAfterExit.WaitForPhone, restarts);
         }
 
-        return restartOnExit && restarts < MostRestarts
+        return restartOnExit && restarts < mostRestarts
             ? (OtherPhoneAfterExit.Restart, restarts + 1)
             : (OtherPhoneAfterExit.GiveUp, restarts);
     }

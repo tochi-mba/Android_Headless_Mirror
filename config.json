@@ -18,7 +18,17 @@
     "RecordOnStart": false,
     "RecordDirectory": "captures/recordings",
     "ExtraArgs": "",
-    "CompatibilityKeyboard": false
+    "CompatibilityKeyboard": false,
+    "VideoEncoder": "",
+    "Crop": "",
+    "CaptureOrientation": "",
+    "StartOrientation": "0",
+    "Angle": 0,
+    "SmoothScaling": true,
+    "ShowTouches": false,
+    "TimeLimitMinutes": 0,
+    "AudioOutputBufferMs": 0,
+    "RequireAudio": false
   },
   "Sound": {
     "Volume": 1,
@@ -52,7 +62,8 @@
     "PreferUsb": true,
     "PreferredSerial": "",
     "PollSeconds": 1,
-    "RetrySeconds": 4
+    "RetrySeconds": 4,
+    "RestartLimit": 4
   },
   "Wireless": {
     "Enabled": false,
@@ -100,7 +111,8 @@
     "Most": 3,
     "Gap": 12,
     "MaxSize": 0,
-    "Remember": true
+    "Remember": true,
+    "MaxFps": 0
   },
   "Ambient": {
     "Enabled": true,

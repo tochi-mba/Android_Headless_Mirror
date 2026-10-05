@@ -4,6 +4,22 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.12.0 - 2026-10-05
+
+### Added
+
+- **More of scrcpy in Settings**, each applying the next time the mirror starts. In Picture: the
+  phone's **video encoder** (read from the phone with **Read the phone's encoders**), **show only
+  part of the screen**, **when the phone turns** (keep the picture upright, on its side, or as it
+  started), **start the view turned**, **tilt the picture**, **smooth the picture when it is shown
+  smaller**, and **show taps on the phone**. In Audio: a **playback buffer** for sound that
+  crackles, and **only mirror with sound**. In Phone screen & session: **stop the mirror after** a
+  set time, and how many **times in a row** a mirror that closes by itself is started again.
+- **Copy frame rate** in Copies: lighter copies at 15 to 60 fps, while the mirror keeps its own.
+- `rex encoders` lists the phone's video encoders, with or without the app running.
+- A mirror stopped by its time limit says so and stays stopped until you press Start; an encoder
+  the phone does not have is named in words instead of leaving the mirror waiting.
+
 ## 2.11.0 - 2026-10-05
 
 ### Added

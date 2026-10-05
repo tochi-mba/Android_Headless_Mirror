@@ -33,8 +33,6 @@ public enum SessionPhase
 /// </summary>
 public sealed partial class SessionController : IDisposable
 {
-    private const int MaxConsecutiveRestarts = 4;
-
     /// <summary>Polls the stopped phone must be missing from ADB before the app accepts it as unplugged.</summary>
     private const int StoppedPhoneMissedPolls = 3;
 
@@ -47,6 +45,9 @@ public sealed partial class SessionController : IDisposable
     private string _stoppedSerial = string.Empty;
     private int _restartAttempts;
     private DateTime _mirrorStartedAt;
+
+    /// <summary>The time limit, in minutes, the running mirror was started with; 0 for none.</summary>
+    private int _mirrorTimeLimit;
     private bool _restartRequested;
     private DateTime _retryAfter = DateTime.MinValue;
     private DateTime _nextWirelessAttempt = DateTime.MinValue;
@@ -355,8 +356,9 @@ public sealed partial class SessionController : IDisposable
             PendingLockQuestionSerial = askLock ? device.Serial : null;
             _activeLaunchSettings = launchSettings;
             _mirrorStartedAt = DateTime.UtcNow;
+            _mirrorTimeLimit = config.Mirror.TimeLimitMinutes;
             // A new session shows the picture as its arguments say, and playing.
-            ViewOrientation = DisplayOrientation.Initial(ScrcpyArguments.SplitExtraArgs(config.Mirror.ExtraArgs));
+            ViewOrientation = DisplayOrientation.Initial(config.Mirror);
             ViewPaused = false;
             FrameRateCounterOn = config.App.ShowFrameRate;
             SetState(SessionPhase.Mirroring, identity.DisplayName);
@@ -400,8 +402,9 @@ public sealed partial class SessionController : IDisposable
         }
 
         var config = _host.Config;
+        var ranFor = DateTime.UtcNow - _mirrorStartedAt;
         // A briefly visible window does not mean a crash loop recovered.
-        if (DateTime.UtcNow - _mirrorStartedAt >= TimeSpan.FromMinutes(1))
+        if (ranFor >= TimeSpan.FromMinutes(1))
         {
             _restartAttempts = 0;
         }
@@ -416,6 +419,12 @@ public sealed partial class SessionController : IDisposable
             _retryAfter = DateTime.MinValue;
             SetState(SessionPhase.Waiting, "Restarting mirror…");
         }
+        else if (MirrorTimeLimit.Reached(_mirrorTimeLimit, ranFor))
+        {
+            // Its time was up, as the person asked: a stop, not a crash to start again from.
+            _stoppedSerial = scrcpy.Serial;
+            SetState(SessionPhase.Stopped, MirrorTimeLimit.Stopped(_mirrorTimeLimit));
+        }
         else if (!phoneStillReady)
         {
             // The USB link dropped (phones re-enumerate when they change USB mode, e.g. on unlock).
@@ -425,7 +434,7 @@ public sealed partial class SessionController : IDisposable
             _host.Log.Info($"{scrcpy.Serial} is no longer ready in ADB; waiting for it to come back.");
             SetState(SessionPhase.Waiting, "Phone disconnected. Waiting for it to come back…");
         }
-        else if (config.Session.RestartOnUnexpectedExit && _restartAttempts < MaxConsecutiveRestarts)
+        else if (config.Session.RestartOnUnexpectedExit && _restartAttempts < config.Session.RestartLimit)
         {
             _restartAttempts++;
             _retryAfter = DateTime.UtcNow.AddSeconds(config.Session.RetrySeconds);
@@ -434,7 +443,7 @@ public sealed partial class SessionController : IDisposable
         else
         {
             _stoppedSerial = scrcpy.Serial;
-            SetState(SessionPhase.Stopped, _restartAttempts >= MaxConsecutiveRestarts
+            SetState(SessionPhase.Stopped, config.Session.RestartOnUnexpectedExit && _restartAttempts >= config.Session.RestartLimit
                 ? "The mirror keeps closing. Press Start to try again, or check Info for details."
                 : "Mirror closed. Press Start, or reconnect the phone.");
         }
@@ -512,6 +521,11 @@ public sealed partial class SessionController : IDisposable
 
     private static string ScrcpyFailureText(ScrcpyProcess scrcpy)
     {
+        if (ScrcpyArguments.MissingEncoder(scrcpy.RecentStderr) is { } encoder)
+        {
+            return encoder;
+        }
+
         var lines = scrcpy.RecentStderr
             .Where(l => l.Contains("ERROR", StringComparison.OrdinalIgnoreCase) || l.Contains("WARN", StringComparison.OrdinalIgnoreCase))
             .Select(l => l.Replace("ERROR:", string.Empty, StringComparison.Ordinal).Trim())

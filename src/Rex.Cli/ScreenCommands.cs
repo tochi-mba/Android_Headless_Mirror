@@ -50,7 +50,7 @@ public static class ScreenCommands
 
     public static async Task<int> RunAsync(string[] args, CliContext context)
     {
-        var response = await context.Ipc.SendAsync(Request(args), TimeSpan.FromSeconds(60)).ConfigureAwait(false);
+        var response = await context.Ipc.SendAsync(Request(args), answerWithin: TimeSpan.FromSeconds(60)).ConfigureAwait(false);
         if (response is null)
         {
             Console.WriteLine("The app is not running. Start it with 'rex open'.");
@@ -63,7 +63,7 @@ public static class ScreenCommands
 
     public static async Task<MachineResult> MachineAsync(string[] args, CliContext context)
     {
-        var response = await context.Ipc.SendAsync(Request(args), TimeSpan.FromSeconds(60)).ConfigureAwait(false)
+        var response = await context.Ipc.SendAsync(Request(args), answerWithin: TimeSpan.FromSeconds(60)).ConfigureAwait(false)
             ?? throw new InvalidOperationException("The app is not running. Start it with 'rex open'.");
         return response.Ok ? MachineMode.Success("screen", response.Data) : throw new InvalidOperationException(response.Error);
     }

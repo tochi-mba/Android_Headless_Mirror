@@ -286,6 +286,35 @@ public sealed class CliTests
     }
 
     [Fact]
+    public async Task Encoders_AreListedWithoutTheDesktopApp()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, "rex-tests-nobody-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var context = new CliContext(package.Paths);
+            var listed = JsonNode.Parse((await MachineMode.RunAsync(["encoders"], context)).Json)!["data"]!;
+            Assert.Equal("FAKE123", listed["serial"]!.GetValue<string>());
+            Assert.Equal("h264", listed["codec"]!.GetValue<string>());
+            Assert.Equal(string.Empty, listed["chosen"]!.GetValue<string>());
+            Assert.Equal(
+                ["c2.exynos.h264.encoder", "c2.android.avc.encoder", "c2.exynos.hevc.encoder", "c2.android.hevc.encoder", "OMX.google.h264.encoder"],
+                listed["encoders"]!.AsArray().Select(e => e!["name"]!.GetValue<string>()));
+            Assert.Contains(package.ScrcpyLog(), line => line.StartsWith("list-encoders --serial=FAKE123 --list-encoders --no-cleanup", StringComparison.Ordinal));
+
+            // One chosen with rex config set is marked as chosen in the human list.
+            Assert.Equal(0, await Commands.RunAsync(["config", "set", "Mirror.VideoEncoder", "c2.exynos.h264.encoder"], context));
+            Assert.Equal(0, await Commands.RunAsync(["encoders"], context));
+            await Assert.ThrowsAsync<FormatException>(() => Commands.RunAsync(["config", "set", "Mirror.VideoEncoder", "not one; reboot"], context));
+            Assert.Equal("c2.exynos.h264.encoder", ConfigFile.Load(package.Paths.Config).Mirror.VideoEncoder);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(Ipc.PipeNameOverride, null);
+        }
+    }
+
+    [Fact]
     public async Task App_RefusesWhatIsNotAnApp()
     {
         using var package = new TestPackage(withFakeTools: true);

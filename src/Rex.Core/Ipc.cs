@@ -155,11 +155,12 @@ public sealed class IpcClient
     public IpcClient(string? pipeName = null) => _pipeName = pipeName ?? Ipc.PipeName();
 
     /// <summary>
-    /// Returns null when the app is not running. <paramref name="timeout"/> bounds the connection;
-    /// the answer itself must arrive within <see cref="ResponseTimeout"/> so a wedged app can never
-    /// hang a caller.
+    /// Returns null when the app is not running. <paramref name="timeout"/> bounds the connection,
+    /// so it is short: a running app accepts at once. The answer must arrive within
+    /// <paramref name="answerWithin"/> (<see cref="ResponseTimeout"/> unless the request is known
+    /// to take longer), so a wedged app can never hang a caller.
     /// </summary>
-    public async Task<IpcResponse?> SendAsync(IpcRequest request, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
+    public async Task<IpcResponse?> SendAsync(IpcRequest request, TimeSpan? timeout = null, CancellationToken cancellationToken = default, TimeSpan? answerWithin = null)
     {
         await using var pipe = new NamedPipeClientStream(".", _pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         try
@@ -172,7 +173,7 @@ public sealed class IpcClient
         }
 
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        deadline.CancelAfter(ResponseTimeout);
+        deadline.CancelAfter(answerWithin ?? ResponseTimeout);
         try
         {
             var writer = new StreamWriter(pipe, new UTF8Encoding(false)) { AutoFlush = true };

@@ -105,7 +105,7 @@ public sealed partial class AppUiTests
         // With Profiles above Display, this label can therefore be "on screen" while its centre is
         // actually below the ScrollViewer and a physical click lands on the window chrome instead.
         // Scroll like a user until the label's centre is comfortably inside the window, then click it.
-        for (var attempt = 0; attempt < 8; attempt++)
+        for (var attempt = 0; attempt < 20; attempt++)
         {
             var bounds = label.Current.BoundingRectangle;
             var window = app.WindowBounds();

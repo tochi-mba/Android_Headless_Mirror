@@ -44,7 +44,8 @@ public sealed class CopiesController : IDisposable
     private bool _disposed;
 
     /// <summary>A copy that is up, with the copy resolution it was started with.</summary>
-    private sealed record RunningCopy(int Index, ScrcpyProcess Process, MirrorHost View, int MaxSize);
+    /// <summary>A copy that is running, with the resolution and frame rate it was started at.</summary>
+    private sealed record RunningCopy(int Index, ScrcpyProcess Process, MirrorHost View, int MaxSize, int MaxFps);
 
     public CopiesController(AppHost host, ICopyViews views)
     {
@@ -201,6 +202,7 @@ public sealed class CopiesController : IDisposable
     {
         _plan.Started(index);
         var maxSize = _host.Config.Copies.MaxSize;
+        var maxFps = _host.Config.Copies.MaxFps;
         var view = _views.AddCopyView(index);
         Changed?.Invoke();
         var launch = await _host.Session.LaunchCopyAsync(index, _views.CopyLaunchRect(view)).ConfigureAwait(true);
@@ -246,7 +248,7 @@ public sealed class CopiesController : IDisposable
         {
             ScrcpyShortcutSender.Send(scrcpy.Hwnd, pause);
         }
-        _copies[index] = new RunningCopy(index, scrcpy, view, maxSize);
+        _copies[index] = new RunningCopy(index, scrcpy, view, maxSize, maxFps);
         _plan.Ready(index);
         _host.Log.Info($"Copy {index + 1} is showing.");
         Changed?.Invoke();
@@ -301,7 +303,7 @@ public sealed class CopiesController : IDisposable
 
     /// <summary>
     /// Brings the copies in line with changed settings: a lower limit closes the extra ones, and a
-    /// new copy resolution starts the copies again with it. The main picture is never touched.
+    /// new copy resolution or frame rate starts the copies again with it. The main picture is never touched.
     /// </summary>
     public void ApplyConfig()
     {
@@ -311,9 +313,9 @@ public sealed class CopiesController : IDisposable
             _plan.Want(settings.Most);
         }
 
-        foreach (var copy in _copies.Values.Where(c => c.MaxSize != settings.MaxSize).ToArray())
+        foreach (var copy in _copies.Values.Where(c => c.MaxSize != settings.MaxSize || c.MaxFps != settings.MaxFps).ToArray())
         {
-            _host.Log.Info($"Copy {copy.Index + 1} restarts at the new copy resolution.");
+            _host.Log.Info($"Copy {copy.Index + 1} restarts at the new copy resolution or frame rate.");
             Stop(copy.Index);
         }
 

@@ -463,7 +463,8 @@ public partial class MainWindow
         }
 
         var ready = _host.Session.Devices.Any(d => d.Serial == device.Serial && d.IsReady);
-        var (next, restarts) = SecondPhonePlan.AfterExit(stoppedOnPurpose, ready, _host.Config.Session.RestartOnUnexpectedExit, _otherRestarts, ranFor);
+        var (next, restarts) = SecondPhonePlan.AfterExit(stoppedOnPurpose, ready, _host.Config.Session.RestartOnUnexpectedExit, _otherRestarts, ranFor,
+            _host.Config.Session.RestartLimit);
         _otherRestarts = restarts;
         OtherWhy = why;
         _host.Log.Info($"The session beside of {device.Serial} ended ({why}): {next}");

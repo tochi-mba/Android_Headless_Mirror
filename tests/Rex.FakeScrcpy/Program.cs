@@ -29,6 +29,11 @@ internal static class Program
             return ListApps(args);
         }
 
+        if (args.Contains("--list-encoders"))
+        {
+            return ListEncoders(args);
+        }
+
         if (args.Contains("--rex-test-child"))
         {
             Log("child-pid " + Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
@@ -54,6 +59,16 @@ internal static class Program
         {
             Console.Error.WriteLine("[server] ERROR: Could not create default video encoder for h264");
             Console.Error.WriteLine("[server] ERROR: Exception on thread Thread[video,5,main]");
+            return 1;
+        }
+
+        // An encoder the phone does not have for the codec asked for: real scrcpy names it and stops.
+        var encoder = args.FirstOrDefault(a => a.StartsWith("--video-encoder=", StringComparison.Ordinal))?[16..];
+        var codec = args.FirstOrDefault(a => a.StartsWith("--video-codec=", StringComparison.Ordinal))?[14..] ?? "h264";
+        if (encoder is not null && !Encoders.Any(e => e.Codec == codec && e.Name == encoder))
+        {
+            Console.Error.WriteLine($"[server] ERROR: Video encoder '{encoder}' for {codec} not found");
+            Console.Error.WriteLine("[server] ERROR: Try to use one of the available encoders:");
             return 1;
         }
 
@@ -101,6 +116,14 @@ internal static class Program
             Console.Out.WriteLine($"[server] INFO: New display: {size}/{dpi} (id=7)");
             Console.Out.Flush();
         }
+
+        // A time limit: real scrcpy ends the session by itself, without an error, once the time is up.
+        var timeLimit = args.FirstOrDefault(a => a.StartsWith("--time-limit=", StringComparison.Ordinal));
+        using var ending = timeLimit is null ? null : new System.Threading.Timer(_ =>
+        {
+            Log("time-limit reached");
+            Environment.Exit(0);
+        }, null, TimeSpan.FromSeconds(int.Parse(timeLimit["--time-limit=".Length..], CultureInfo.InvariantCulture)), Timeout.InfiniteTimeSpan);
 
         Application.EnableVisualStyles();
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
@@ -154,6 +177,32 @@ internal static class Program
         using var stdout = Console.OpenStandardOutput();
         stdout.Write(Encoding.UTF8.GetBytes(output.Append('\n').ToString()));
         Log("list-apps end");
+        return 0;
+    }
+
+    /// <summary>The fake phone's video encoders, as a Samsung phone names its own.</summary>
+    private static readonly (string Codec, string Name, string Kind)[] Encoders =
+    [
+        ("h264", "c2.exynos.h264.encoder", "hw"),
+        ("h264", "c2.android.avc.encoder", "sw"),
+        ("h265", "c2.exynos.hevc.encoder", "hw"),
+        ("h265", "c2.android.hevc.encoder", "sw"),
+    ];
+
+    /// <summary>What scrcpy --list-encoders prints: the video encoders, then the audio ones.</summary>
+    private static int ListEncoders(string[] args)
+    {
+        Log("list-encoders " + string.Join(' ', args));
+        var output = new StringBuilder("[server] INFO: List of video encoders:");
+        foreach (var (codec, name, kind) in Encoders)
+        {
+            output.Append($"\n    --video-codec={codec} --video-encoder={name.PadRight(28)} ({kind}) [vendor]");
+        }
+
+        output.Append("\n    --video-codec=h264 --video-encoder=OMX.google.h264.encoder      (sw) (alias for c2.android.avc.encoder)");
+        output.Append("\n[server] INFO: List of audio encoders:");
+        output.Append("\n    --audio-codec=opus --audio-encoder=c2.android.opus.encoder     (sw)");
+        Console.Out.Write(output.Append('\n').ToString());
         return 0;
     }
 

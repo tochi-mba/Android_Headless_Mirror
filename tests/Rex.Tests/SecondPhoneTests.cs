@@ -171,13 +171,17 @@ public sealed class SecondPhoneTests
     public void AfterItsSessionEndsItRestartsWaitsOrGivesUp()
     {
         var short_ = TimeSpan.FromSeconds(5);
-        Assert.Equal((OtherPhoneAfterExit.Stopped, 2), SecondPhonePlan.AfterExit(true, true, true, 2, short_));
-        Assert.Equal((OtherPhoneAfterExit.WaitForPhone, 2), SecondPhonePlan.AfterExit(false, false, true, 2, short_));
-        Assert.Equal((OtherPhoneAfterExit.Restart, 3), SecondPhonePlan.AfterExit(false, true, true, 2, short_));
-        Assert.Equal((OtherPhoneAfterExit.GiveUp, SecondPhonePlan.MostRestarts), SecondPhonePlan.AfterExit(false, true, true, SecondPhonePlan.MostRestarts, short_));
-        Assert.Equal((OtherPhoneAfterExit.GiveUp, 0), SecondPhonePlan.AfterExit(false, true, false, 0, short_));
+        const int most = 4;
+        Assert.Equal((OtherPhoneAfterExit.Stopped, 2), SecondPhonePlan.AfterExit(true, true, true, 2, short_, most));
+        Assert.Equal((OtherPhoneAfterExit.WaitForPhone, 2), SecondPhonePlan.AfterExit(false, false, true, 2, short_, most));
+        Assert.Equal((OtherPhoneAfterExit.Restart, 3), SecondPhonePlan.AfterExit(false, true, true, 2, short_, most));
+        Assert.Equal((OtherPhoneAfterExit.GiveUp, most), SecondPhonePlan.AfterExit(false, true, true, most, short_, most));
+        Assert.Equal((OtherPhoneAfterExit.GiveUp, 0), SecondPhonePlan.AfterExit(false, true, false, 0, short_, most));
         // A session that ran for a while was working: its count starts again.
-        Assert.Equal((OtherPhoneAfterExit.Restart, 1), SecondPhonePlan.AfterExit(false, true, true, SecondPhonePlan.MostRestarts, SecondPhonePlan.Recovered));
+        Assert.Equal((OtherPhoneAfterExit.Restart, 1), SecondPhonePlan.AfterExit(false, true, true, most, SecondPhonePlan.Recovered, most));
+        // It is given as many restarts in a row as the main session is.
+        Assert.Equal((OtherPhoneAfterExit.Restart, 5), SecondPhonePlan.AfterExit(false, true, true, 4, short_, 10));
+        Assert.Equal((OtherPhoneAfterExit.GiveUp, 1), SecondPhonePlan.AfterExit(false, true, true, 1, short_, 1));
     }
 
     [Theory]

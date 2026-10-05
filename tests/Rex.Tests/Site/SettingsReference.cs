@@ -123,6 +123,12 @@ internal static class SettingsReference
             // The rules offer the person's own profiles too; the page names what every PC has.
             choices = ProfilePresets.RuleChoices([]).Select(c => new SettingChoice(c.Value, c.Label)).ToArray();
         }
+        else if (path == "Mirror.VideoEncoder")
+        {
+            // The encoders are read from each phone, so all the page can say is that it takes a name.
+            kind = "text";
+            choices = [];
+        }
 
         if (TrueFalseChoices.TryGetValue(path, out var truth))
         {

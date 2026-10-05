@@ -175,6 +175,7 @@ public partial class SettingsPanel : UserControl
             RefreshInput(c);
             RefreshWindow(c);
             RefreshRemaining(c);
+            RefreshScrcpy(c);
             Record.IsChecked = c.Mirror.RecordOnStart;
             TurnScreenOff.IsChecked = c.Session.TurnScreenOff;
             StayAwake.IsChecked = c.Session.StayAwake;
@@ -278,7 +279,15 @@ public partial class SettingsPanel : UserControl
         c.Mirror.MaxSize = int.Parse(SelectedTag(MaxSize, "1920"), CultureInfo.InvariantCulture);
         c.Mirror.MaxFps = int.Parse(SelectedTag(MaxFps, "60"), CultureInfo.InvariantCulture);
         c.Mirror.VideoBitRate = SelectedTag(BitRate, "12M");
-        c.Mirror.VideoCodec = SelectedTag(VideoCodec, "h264");
+        var codec = SelectedTag(VideoCodec, "h264");
+        if (codec != c.Mirror.VideoCodec)
+        {
+            // An encoder makes one codec: keep it only where the phone is known to make the new one with it.
+            var known = _host!.Session.ActiveDevice is { } device ? _host.Session.EncodersOf(device.Serial) : null;
+            c.Mirror.VideoEncoder = EncoderList.KeepFor(c.Mirror.VideoEncoder, codec, known);
+        }
+
+        c.Mirror.VideoCodec = codec;
         c.Mirror.Audio = Audio.IsChecked == true;
         c.Mirror.AudioDup = AudioDup.IsChecked == true;
         c.Mirror.AudioSource = SelectedTag(AudioSource, "auto");

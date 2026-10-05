@@ -24,6 +24,20 @@
         <ComboBoxItem Content="480 px" Tag="480" />
       </ComboBox>
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Copy frame rate" />
+        <TextBlock Text="A lower one is lighter on the phone and the PC. Open copies restart with it." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <ComboBox x:Name="CopiesMaxFps" SelectionChanged="OnCopiesOption" AutomationProperties.Name="Copy frame rate">
+        <ComboBoxItem Content="Same as the mirror" Tag="0" />
+        <ComboBoxItem Content="60 fps" Tag="60" />
+        <ComboBoxItem Content="45 fps" Tag="45" />
+        <ComboBoxItem Content="30 fps" Tag="30" />
+        <ComboBoxItem Content="24 fps" Tag="24" />
+        <ComboBoxItem Content="15 fps" Tag="15" />
+      </ComboBox>
+    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Open the same copies next time">
       <CheckBox x:Name="CopiesRemember" Checked="OnCopiesOption" Unchecked="OnCopiesOption" AutomationProperties.Name="Open the same copies next time" />
     </HeaderedContentControl>

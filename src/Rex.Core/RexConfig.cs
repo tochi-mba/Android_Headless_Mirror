@@ -116,134 +116,12 @@ public sealed record RexConfig
     public void Reset() => CopyFrom(new RexConfig());
 }
 
-/// <summary>Video, audio and recording options passed to scrcpy at launch.</summary>
-public sealed record MirrorSettings
-{
-    /// <summary>The value if it is one of the choices (compared without case), else the fallback.</summary>
-    internal static string OneOf(IReadOnlyList<string> choices, string? value, string fallback)
-    {
-        var text = value?.Trim() ?? string.Empty;
-        return choices.FirstOrDefault(choice => string.Equals(choice, text, StringComparison.OrdinalIgnoreCase)) ?? fallback;
-    }
-
-    public const int MaxSizeUpperBound = 8192;
-    public const int FpsUpperBound = 240;
-    public static readonly string[] VideoCodecs = ["h264", "h265", "av1"];
-    public static readonly string[] AudioCodecs = ["opus", "aac", "flac", "raw"];
-    public const int VideoBufferUpperBound = 1000;
-
-    /// <summary>What scrcpy may capture as audio (--audio-source); "auto" is scrcpy's own choice.</summary>
-    public static readonly string[] AudioSources =
-    [
-        "auto", "output", "playback", "mic", "mic-unprocessed", "mic-camcorder", "mic-voice-recognition",
-        "mic-voice-communication", "voice-call", "voice-call-uplink", "voice-call-downlink", "voice-performance",
-    ];
-
-    public const string DefaultAudioBitRate = "128K";
-
-    /// <summary>Renderers SDL can be asked for (--render-driver); empty lets it choose.</summary>
-    public static readonly string[] RenderDrivers = ["", "direct3d", "opengl", "opengles2", "software"];
-
-    /// <summary>Containers a recording can be written in; scrcpy picks the format from the file's extension.</summary>
-    public static readonly string[] RecordFormats = ["mp4", "mkv"];
-
-    /// <summary>Longest side of the encoded video in pixels. 0 keeps the device resolution.</summary>
-    public int MaxSize { get; set; } = 1920;
-
-    /// <summary>Frame-rate cap. 0 lets scrcpy pick.</summary>
-    public int MaxFps { get; set; } = 60;
-
-    /// <summary>scrcpy bit-rate expression, for example 8M or 12000K.</summary>
-    public string VideoBitRate { get; set; } = "12M";
-
-    public string VideoCodec { get; set; } = "h264";
-    public bool Audio { get; set; } = true;
-    public string AudioCodec { get; set; } = "opus";
-    public int AudioBufferMs { get; set; } = 50;
-
-    /// <summary>Keep playing audio on the phone too (Android 13+).</summary>
-    public bool AudioDup { get; set; }
-
-    /// <summary>
-    /// What is captured as audio: "auto" (everything the phone plays, or the playback when it keeps
-    /// playing on the phone too), the whole output, the playback apps allow, a microphone, or a call.
-    /// </summary>
-    public string AudioSource { get; set; } = "auto";
-
-    /// <summary>scrcpy bit-rate expression for the audio, for example 128K.</summary>
-    public string AudioBitRate { get; set; } = DefaultAudioBitRate;
-
-    /// <summary>Delay before each frame is shown, in milliseconds, to even out a shaky connection. 0 shows frames at once.</summary>
-    public int VideoBufferMs { get; set; }
-
-    /// <summary>When the phone's encoder fails, let scrcpy try again at a lower resolution rather than stop.</summary>
-    public bool DownsizeOnError { get; set; } = true;
-
-    /// <summary>The renderer scrcpy asks SDL for; empty lets SDL choose.</summary>
-    public string RenderDriver { get; set; } = string.Empty;
-
-    /// <summary>The container recordings are written in: mp4 or mkv (which survives a recording cut short).</summary>
-    public string RecordFormat { get; set; } = "mp4";
-
-    /// <summary>Whether the audio source allows the audio to keep playing on the phone (scrcpy only duplicates the playback).</summary>
-    [JsonIgnore]
-    public bool AudioDupPossible => AudioSource is "auto" or "playback";
-
-    /// <summary>Record every session to <see cref="RecordDirectory"/>.</summary>
-    public bool RecordOnStart { get; set; }
-
-    public string RecordDirectory { get; set; } = "captures/recordings";
-
-    /// <summary>Extra raw scrcpy arguments for options the app does not expose.</summary>
-    public string ExtraArgs { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Start every session with scrcpy's raw-key (sdk) keyboard instead of the hardware (UHID)
-    /// one. Off by default: the hardware keyboard is what makes numbers, shifted symbols and AltGr
-    /// follow the phone's own layout. Turn it on when typing misbehaves on a particular phone.
-    /// </summary>
-    public bool CompatibilityKeyboard { get; set; }
-
-    public MirrorSettings Copy() => this with { };
-
-    public void Normalize()
-    {
-        MaxSize = Math.Clamp(MaxSize, 0, MaxSizeUpperBound);
-        MaxFps = Math.Clamp(MaxFps, 0, FpsUpperBound);
-        VideoBitRate = ScrcpyArguments.IsValidBitRate(VideoBitRate) ? VideoBitRate.Trim() : "12M";
-        VideoCodec = VideoCodecs.Contains(VideoCodec, StringComparer.OrdinalIgnoreCase) ? VideoCodec.ToLowerInvariant() : "h264";
-        AudioCodec = AudioCodecs.Contains(AudioCodec, StringComparer.OrdinalIgnoreCase) ? AudioCodec.ToLowerInvariant() : "opus";
-        AudioBufferMs = Math.Clamp(AudioBufferMs, 0, 5000);
-        AudioSource = OneOf(AudioSources, AudioSource, "auto");
-        AudioBitRate = ScrcpyArguments.IsValidBitRate(AudioBitRate) ? AudioBitRate.Trim().ToUpperInvariant() : DefaultAudioBitRate;
-        VideoBufferMs = Math.Clamp(VideoBufferMs, 0, VideoBufferUpperBound);
-        RenderDriver = OneOf(RenderDrivers, RenderDriver, string.Empty);
-        RecordFormat = OneOf(RecordFormats, RecordFormat, "mp4");
-        RecordDirectory = PathRules.IsSafeRelativePath(RecordDirectory) ? RecordDirectory.Trim() : "captures/recordings";
-        ExtraArgs = (ExtraArgs ?? string.Empty).Trim();
-        if (ExtraArgs.Length > 4096 || ExtraArgs.IndexOfAny(['\r', '\n', '\0']) >= 0)
-        {
-            ExtraArgs = string.Empty;
-        }
-        else
-        {
-            try
-            {
-                _ = ScrcpyArguments.SplitExtraArgs(ExtraArgs);
-            }
-            catch (FormatException)
-            {
-                ExtraArgs = string.Empty;
-            }
-        }
-    }
-}
-
 /// <summary>How a mirror session behaves on the phone and what happens when it ends.</summary>
 public sealed record SessionSettings
 {
     public const int ScreenOffTimeoutUpperBound = 86_400;
     public const int StartAppMaxLength = 200;
+    public const int RestartLimitUpperBound = 20;
 
     /// <summary>Turn the physical display off while mirroring (scrcpy --turn-screen-off).</summary>
     public bool TurnScreenOff { get; set; } = true;
@@ -291,6 +169,9 @@ public sealed record SessionSettings
     public int PollSeconds { get; set; } = 1;
     public int RetrySeconds { get; set; } = 4;
 
+    /// <summary>How many times in a row a mirror that closes by itself is started again before the app stops trying.</summary>
+    public int RestartLimit { get; set; } = 4;
+
     public SessionSettings Copy() => this with { };
 
     /// <summary>
@@ -316,6 +197,7 @@ public sealed record SessionSettings
         StartApp = IsValidStartApp(StartApp) ? StartApp.Trim() : string.Empty;
         PollSeconds = Math.Clamp(PollSeconds, 1, 30);
         RetrySeconds = Math.Clamp(RetrySeconds, 1, 60);
+        RestartLimit = Math.Clamp(RestartLimit, 1, RestartLimitUpperBound);
     }
 }
 
@@ -615,6 +497,9 @@ public sealed record CopiesSettings
     /// <summary>Bring the copies back the next time the phone is mirrored.</summary>
     public bool Remember { get; set; } = true;
 
+    /// <summary>Each copy's frame-rate cap; 0 matches the mirror's. A lower one is lighter on the phone and this PC.</summary>
+    public int MaxFps { get; set; }
+
     public CopiesSettings Copy() => this with { };
 
     public void Normalize()
@@ -622,6 +507,7 @@ public sealed record CopiesSettings
         Most = Math.Clamp(Most, 1, MostUpperBound);
         Gap = double.IsFinite(Gap) ? Math.Clamp(Gap, 0, GapUpperBound) : 12;
         MaxSize = MaxSize <= 0 ? 0 : Math.Clamp(MaxSize, SmallestMaxSize, MirrorSettings.MaxSizeUpperBound);
+        MaxFps = Math.Clamp(MaxFps, 0, MirrorSettings.FpsUpperBound);
     }
 }
 

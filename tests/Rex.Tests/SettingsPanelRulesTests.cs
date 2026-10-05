@@ -194,9 +194,12 @@ public sealed class SettingsPanelRulesTests
             Assert.Equal("1 setting matches", count.Text);
             Assert.Equal(Visibility.Visible, frameRate.Visibility);
 
+            // Without its group the name is the mirror's frame rate and the copies' own.
             filter.Text = "maxfps";
-            Assert.Equal("1 setting matches", count.Text);
+            Assert.Equal("2 settings match", count.Text);
             Assert.Equal(Visibility.Visible, frameRate.Visibility);
+            var copies = Assert.IsType<Rex.Mirror.Views.Settings.CopiesGroup>(panel.FindName("CopiesSettingsGroup"));
+            Assert.Equal(Visibility.Visible, Assert.IsType<ComboBox>(copies.FindName("CopiesMaxFps")).Visibility);
 
             filter.Text = "Config.Path.That.Does.Not.Exist";
             Assert.Equal(Visibility.Visible, Assert.IsType<TextBlock>(panel.FindName("FilterEmpty")).Visibility);

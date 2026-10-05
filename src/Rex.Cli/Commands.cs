@@ -95,6 +95,9 @@ public static class Commands
             case "phones":
                 return await PhoneCommands.HumanAsync(args, context).ConfigureAwait(false);
 
+            case "encoders":
+                return await EncoderCommands.HumanAsync(args, context).ConfigureAwait(false);
+
             case "push":
                 return await FileCommands.PushAsync(args, context).ConfigureAwait(false);
 
