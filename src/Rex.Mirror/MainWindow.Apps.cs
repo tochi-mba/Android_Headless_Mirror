@@ -14,9 +14,8 @@ public partial class MainWindow
     private readonly HashSet<string> _appsReadThisConnection = new(StringComparer.Ordinal);
     private string? _appsShownFor;
 
-    /// <summary>The phone the Apps tab shows: the one mirrored, or the only one ready.</summary>
-    internal string? AppsSerial =>
-        _host.Session.ActiveDevice?.Serial ?? _host.Session.Devices.FirstOrDefault(d => d.IsReady)?.Serial;
+    /// <summary>The phone the Apps tab shows: the phone in use (the mirrored one, or the one beside), or the only one ready.</summary>
+    internal string? AppsSerial => TargetPhone?.Serial;
 
     private void AttachApps()
     {

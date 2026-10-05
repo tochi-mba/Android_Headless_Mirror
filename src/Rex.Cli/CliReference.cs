@@ -55,6 +55,8 @@ public static class CliReference
             Human: true, Machine: true, NeedsApp: true),
         new("profile", ProfileRequest.Usage, "Profiles: lists of settings to switch to in one go. Save the settings you have now, apply one or a preset, and share them as files. Works with or without the app.", "rex profile apply Gaming",
             Human: true, Machine: true, NeedsApp: false),
+        new("phones", PhoneCommands.Usage, "Every connected phone and where it shows: the main phone, the one beside it, and the one in use. With the app running, show one beside, stop it, switch to the other, or swap them.", "rex phones beside",
+            Human: true, Machine: true, NeedsApp: false),
         new("screenshot", "rex screenshot [--serial S]", "Save a picture of the phone screen.", "rex screenshot",
             Human: true, Machine: true, NeedsApp: false),
         new("phone", "rex phone list|get [filter]", "Every phone setting this phone offers, with its value.", "rex phone list bright",

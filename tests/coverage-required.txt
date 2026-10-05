@@ -55,3 +55,8 @@ ProfileStore.cs
 ProfilePolicy.cs
 ProfileBook.cs
 ProfileVerbs.cs
+SecondPhoneSettings.cs
+PhonePick.cs
+SecondPhonePlan.cs
+TwoPhonesLayout.cs
+ScrcpyArguments.OtherPhone.cs

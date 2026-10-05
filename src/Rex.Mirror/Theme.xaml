@@ -70,6 +70,8 @@
   <Geometry x:Key="IconSliders">M4 6 H20 M4 12 H20 M4 18 H20 M8 4 V8 M16 10 V14 M10 16 V20</Geometry>
   <!-- The phone and a wider screen beside it. -->
   <Geometry x:Key="IconSecondScreen">M3 6 H8 V18 H3 Z M11 8 H21 V16 H11 Z M14 19 H18</Geometry>
+  <Geometry x:Key="IconPhoneBeside">M3 4 H10 V20 H3 Z M14 4 H21 V20 H14 Z M6 17 H7 M17 17 H18</Geometry>
+  <Geometry x:Key="IconPhoneSwitch">M2 5 H8 V19 H2 Z M16 5 H22 V19 H16 Z M10 10 H14 L12 8 M14 14 H10 L12 16</Geometry>
   <Geometry x:Key="IconApps">M5 5 H8 V8 H5 Z M10.5 5 H13.5 V8 H10.5 Z M16 5 H19 V8 H16 Z M5 10.5 H8 V13.5 H5 Z M10.5 10.5 H13.5 V13.5 H10.5 Z M16 10.5 H19 V13.5 H16 Z M5 16 H8 V19 H5 Z M10.5 16 H13.5 V19 H10.5 Z M16 16 H19 V19 H16 Z</Geometry>
   <Geometry x:Key="IconStar">M12 3.5 L14.6 8.9 L20.5 9.6 L16.1 13.6 L17.3 19.5 L12 16.6 L6.7 19.5 L7.9 13.6 L3.5 9.6 L9.4 8.9 Z</Geometry>
   <Geometry x:Key="IconInfo">M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M12 10 V17 M12 7 V7.5</Geometry>

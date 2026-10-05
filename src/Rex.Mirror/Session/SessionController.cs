@@ -206,7 +206,9 @@ public sealed partial class SessionController : IDisposable
         }
 
         var config = _host.Config;
-        var selected = DeviceSelection.Select(devices, DeviceSelection.EffectivePreferredSerial(config, _host.State), config.Session.PreferUsb);
+        // Never the phone shown beside: two sessions on one phone would undo each other.
+        var choosable = ShownBeside is { } beside ? devices.Where(d => !beside(d)).ToArray() : devices;
+        var selected = DeviceSelection.Select(choosable, DeviceSelection.EffectivePreferredSerial(config, _host.State), config.Session.PreferUsb);
         if (selected is null)
         {
             await OnUi(() => SetState(SessionPhase.Waiting, DeviceStateText.Describe(devices, UnreachableAdbInterfaces.Count > 0))).ConfigureAwait(false);
@@ -463,15 +465,15 @@ public sealed partial class SessionController : IDisposable
     /// touch: the window is in the tray, or Windows refused touch injection. The paths are the
     /// same ones a finger would take over the mirror, scaled to the phone's screen.
     /// </summary>
-    public async Task<AndroidResult> PlayGestureOverAdbAsync(string action, bool landscape)
+    public async Task<AndroidResult> PlayGestureOverAdbAsync(string action, bool landscape, string? serial = null)
     {
-        var device = ActiveDevice ?? Devices.FirstOrDefault(d => d.IsReady);
+        var device = serial is not null ? Devices.FirstOrDefault(d => d.Serial == serial && d.IsReady) : ActiveDevice ?? Devices.FirstOrDefault(d => d.IsReady);
         if (device is null || Adb is null)
         {
             return AndroidResult.Failure("No phone is connected.");
         }
 
-        var (width, height) = Identity is { DisplayWidth: > 0, DisplayHeight: > 0 } identity
+        var (width, height) = serial is null && Identity is { DisplayWidth: > 0, DisplayHeight: > 0 } identity
             ? (identity.DisplayWidth, identity.DisplayHeight)
             : await Adb.GetDisplaySizeAsync(device.Serial).ConfigureAwait(true);
         if (width <= 0 || height <= 0)
@@ -667,9 +669,10 @@ public sealed partial class SessionController : IDisposable
         }
     }
 
-    public async Task<(bool Ok, string Text)> SaveScreenshotAsync()
+    /// <summary>Saves a picture of a phone's screen: the given one, or the mirrored one.</summary>
+    public async Task<(bool Ok, string Text)> SaveScreenshotAsync(string? serial = null)
     {
-        var device = ActiveDevice ?? Devices.FirstOrDefault(d => d.IsReady);
+        var device = serial is not null ? Devices.FirstOrDefault(d => d.Serial == serial && d.IsReady) : ActiveDevice ?? Devices.FirstOrDefault(d => d.IsReady);
         if (device is null || Adb is null)
         {
             return (false, "No phone is connected.");

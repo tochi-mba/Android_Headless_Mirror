@@ -8,7 +8,8 @@ namespace Rex.Mirror.Services.Sound;
 /// <param name="Behind">Shown, but another window is in front.</param>
 /// <param name="Locked">This PC is locked.</param>
 /// <param name="SinceLastKey">How long ago a key was last typed into the phone.</param>
-public sealed record SoundWindow(bool Hidden, bool Behind, bool Locked, TimeSpan SinceLastKey);
+/// <param name="OtherPhoneInUse">Only the phone in use is heard, and it is not this one.</param>
+public sealed record SoundWindow(bool Hidden, bool Behind, bool Locked, TimeSpan SinceLastKey, bool OtherPhoneInUse = false);
 
 /// <summary>
 /// The phone's sound on this PC for the mirror that is running: finds scrcpy's audio session, keeps
@@ -262,7 +263,7 @@ public sealed class PhoneSound : IDisposable
         }
 
         var window = _window();
-        Target = SoundPolicy.Decide(new SoundInputs(Volume, Muted, window.Hidden, window.Behind, window.Locked, window.SinceLastKey), settings);
+        Target = SoundPolicy.Decide(new SoundInputs(Volume, Muted, window.Hidden, window.Behind, window.Locked, window.SinceLastKey, window.OtherPhoneInUse), settings);
         if (_appliedMuted != Target.Muted)
         {
             _session.Muted = Target.Muted;

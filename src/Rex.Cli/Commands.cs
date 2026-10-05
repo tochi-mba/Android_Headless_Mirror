@@ -92,6 +92,9 @@ public static class Commands
             case "profile":
                 return await ProfileCommands.HumanAsync(args, context).ConfigureAwait(false);
 
+            case "phones":
+                return await PhoneCommands.HumanAsync(args, context).ConfigureAwait(false);
+
             case "push":
                 return await FileCommands.PushAsync(args, context).ConfigureAwait(false);
 

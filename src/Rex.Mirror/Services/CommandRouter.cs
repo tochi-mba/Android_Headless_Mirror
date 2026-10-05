@@ -97,6 +97,11 @@ public static partial class CommandRouter
             case "action":
             {
                 var id = request.Arg("name");
+                if (window is not null && await window.RunOnOtherPhoneAsync(id).ConfigureAwait(true) is { } beside)
+                {
+                    return beside.Ok ? IpcResponse.Success(new JsonObject { ["action"] = id, ["text"] = beside.Text }) : IpcResponse.Fail(beside.Text);
+                }
+
                 if (window?.RunOnSecondScreen(id) is { } routed)
                 {
                     return routed.Ok ? IpcResponse.Success(new JsonObject { ["action"] = id, ["text"] = routed.Text }) : IpcResponse.Fail(routed.Text);
@@ -120,6 +125,9 @@ public static partial class CommandRouter
 
             case "profile":
                 return Profile(host, request);
+
+            case "phones":
+                return await PhonesAsync(host, request).ConfigureAwait(true);
 
             case "push":
             {
@@ -362,6 +370,7 @@ public static partial class CommandRouter
             ["files"] = host.Window is { } files ? FilesStatus(host, files) : null,
             ["secondScreen"] = host.Window is { } screen ? ScreenStatus(host, screen) : null,
             ["profiles"] = ProfilesStatus(host),
+            ["phones"] = host.Window is { } phones ? PhonesStatus(host, phones) : null,
             ["window"] = host.Window is { } shown ? new JsonObject
             {
                 ["topmost"] = shown.Topmost,

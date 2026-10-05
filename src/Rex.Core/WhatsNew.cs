@@ -28,6 +28,9 @@ public static class WhatsNew
         new("2.9.0", "Profiles for the way you use the mirror",
             "Save groups of settings, apply a preset, or switch profiles for fullscreen, battery power or one phone.",
             "Settings → Profiles · Ctrl+Alt+F1 to F9", "TabSettings"),
+        new("2.10.0", "Two phones side by side",
+            "Show a second, different phone beside the first, each fully usable; the side panel follows the one you click.",
+            "The phone menu · Ctrl+Alt+O switches", "DeviceChip"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>

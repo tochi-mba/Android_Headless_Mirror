@@ -90,24 +90,27 @@ public sealed partial class AppUiTests
         using var package = new TestPackage(withFakeTools: true);
         var state = new StateStore(package.Paths.State);
         state.SetLockScreenMode("FAKE123", LockScreenModes.Pattern);
-        state.SetUi(state.Ui with { LastRunVersion = "2.8.0" });
+        // Coming from the release before the newest card, that card alone is new.
+        var newest = WhatsNew.Features[^1];
+        var before = WhatsNew.Features[^2];
+        state.SetUi(state.Ui with { LastRunVersion = before.Version });
         using var app = new AppProcess(package);
         await app.WaitForPhaseAsync("mirroring", Startup);
 
-        // Coming from 2.8.0, only profiles are new: the sheet has that one card and nothing else.
+        // The sheet has that one card and nothing else.
         await app.WaitUntilAsync(() => app.Ui.Exists("UpdateOnboarding"), Soon, "the update-only onboarding");
         Assert.Equal($"New in {CommandRouter.AppVersion}", app.Ui.Read("UpdateTitle", e => e.Name));
         await app.WaitForStatusAsync(s => s["updateOnboarding"]!.GetValue<bool>() && !s["pictureShown"]!.GetValue<bool>(), Soon, "the sheet over the mirror");
-        Assert.True(app.Ui.ExistsNamed("Profiles for the way you use the mirror"));
-        Assert.False(app.Ui.ExistsNamed("A second screen for one app"));
+        Assert.True(app.Ui.ExistsNamed(newest.Title));
+        Assert.False(app.Ui.ExistsNamed(before.Title));
 
         // Showing it around is a tour of that one feature, in place, and the update counts as seen.
         app.Ui.Invoke("UpdateTour");
         var touring = await app.WaitForStatusAsync(s => s["tour"]!["visible"]!.GetValue<bool>(), Soon, "the update's tour");
         Assert.Equal(1, touring["tour"]!["steps"]!.GetValue<int>());
         Assert.False(touring["updateOnboarding"]!.GetValue<bool>());
-        Assert.Equal("Profiles for the way you use the mirror", app.Ui.Read("StepTitle", e => e.Name));
-        Assert.Contains("Ctrl+Alt+F1 to F9", app.Ui.Read("StepBody", e => e.Name), StringComparison.Ordinal);
+        Assert.Equal(newest.Title, app.Ui.Read("StepTitle", e => e.Name));
+        Assert.Contains(newest.Where, app.Ui.Read("StepBody", e => e.Name), StringComparison.Ordinal);
         await app.SaveScreenshotAsync("ui-update-tour.png");
         app.Ui.Invoke("NextButton");
         await app.WaitForStatusAsync(s => !s["tour"]!["visible"]!.GetValue<bool>() && s["pictureShown"]!.GetValue<bool>(), Soon, "the tour to end and the mirror to come back");

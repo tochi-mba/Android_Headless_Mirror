@@ -34,7 +34,7 @@ public partial class MainWindow
         var (title, text) = UsbRecoveryText.For(notice, doctor.Problems, doctor.Decision.Attempts);
         NoticeTitle.Text = title;
         NoticeText.Text = text;
-        foreach (var button in new[] { NoticePattern, NoticeOther, NoticeNone, NoticeLater, NoticeDismiss, NoticeWhatsNew })
+        foreach (var button in new[] { NoticePattern, NoticeOther, NoticeNone, NoticeLater, NoticeDismiss, NoticeWhatsNew, NoticeBeside, NoticeBesideNotNow, NoticeBesideNever })
         {
             button.Visibility = Visibility.Collapsed;
         }

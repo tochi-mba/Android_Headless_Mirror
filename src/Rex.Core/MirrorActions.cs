@@ -61,6 +61,8 @@ public static class MirrorActions
         new("copy-remove", "Remove a copy", ActionKind.App, "Close the last copy of the phone"),
         new("send-files", "Send files", ActionKind.App, "Choose files to send to the phone"),
         new("second-screen", "Second screen", ActionKind.App, "Open an app on a display of its own beside the phone, or close it"),
+        new("phone-switch", "Other phone", ActionKind.App, "Use the other phone shown beside: keys, buttons and the side panel follow it"),
+        new("phone-beside", "Phone beside", ActionKind.App, "Show another connected phone beside this one, or stop showing it"),
         new("send-copied-files", "Send copied files", ActionKind.App, "Send files copied in File Explorer to the phone"),
         new("screenshot", "Screenshot", ActionKind.App, "Save a PNG of the phone screen"),
         new("zoom-in", "Zoom in", ActionKind.App, "Magnify the PC view"),

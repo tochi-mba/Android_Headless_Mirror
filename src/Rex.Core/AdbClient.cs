@@ -20,6 +20,9 @@ public sealed record DeviceIdentity(
     int DisplayWidth,
     int DisplayHeight)
 {
+    /// <summary>The phone's own serial (<c>ro.serialno</c>): the same over USB and Wi-Fi, so one phone is never shown beside itself.</summary>
+    public string HardwareSerial { get; init; } = string.Empty;
+
     /// <summary>"Galaxy S21 Ultra", else "Samsung SM-G998B", else the serial.</summary>
     public string DisplayName
     {
@@ -127,7 +130,17 @@ public sealed partial class AdbClient
             Prop(props, "ro.build.version.release"),
             Prop(props, "ro.build.version.sdk"),
             size.Width,
-            size.Height);
+            size.Height)
+        {
+            HardwareSerial = Prop(props, "ro.serialno"),
+        };
+    }
+
+    /// <summary>A phone's own serial alone, for telling whether two ADB serials are one phone; empty when it cannot be read.</summary>
+    public async Task<string> GetHardwareSerialAsync(string serial, CancellationToken cancellationToken = default)
+    {
+        var result = await ShellAsync(serial, ["getprop", "ro.serialno"], cancellationToken).ConfigureAwait(false);
+        return result.Ok ? result.StdOut.Trim() : string.Empty;
     }
 
     public async Task<IReadOnlyDictionary<string, string>> GetPropertiesAsync(string serial, CancellationToken cancellationToken = default)

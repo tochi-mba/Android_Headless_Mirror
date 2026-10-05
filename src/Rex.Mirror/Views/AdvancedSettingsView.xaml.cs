@@ -23,21 +23,29 @@ public partial class AdvancedSettingsView : UserControl
         _host = host;
         IsVisibleChanged += (_, e) =>
         {
-            if (e.NewValue is true && _rows.Count == 0)
+            if (e.NewValue is true && (_rows.Count == 0 || Target()?.Serial != _loadedSerial))
             {
                 _ = ReloadAsync();
             }
         };
     }
 
+    /// <summary>The phone the list was read from; another phone in use means it is read again.</summary>
+    private string? _loadedSerial;
+
+    /// <summary>The phone in use changed (two phones): a list on screen is read again from it, one hidden waits until shown.</summary>
+    public void TargetChanged()
+    {
+        if (IsVisible && Target()?.Serial != _loadedSerial)
+        {
+            _ = ReloadAsync();
+        }
+    }
+
     private string CurrentNamespace => (Namespace.SelectedItem as ComboBoxItem)?.Tag as string ?? "system";
 
-    private (AdbClient Adb, string Serial)? Target()
-    {
-        var session = _host?.Session;
-        var device = session?.ActiveDevice ?? session?.Devices.FirstOrDefault(d => d.IsReady);
-        return session?.Adb is null || device is null ? null : (session.Adb, device.Serial);
-    }
+    /// <summary>The phone in use: the mirrored one, or the one beside while its view is in use.</summary>
+    private (AdbClient Adb, string Serial)? Target() => _window?.TargetPhone;
 
     private async Task ReloadAsync()
     {
@@ -48,6 +56,7 @@ public partial class AdvancedSettingsView : UserControl
         }
 
         var (ok, error, rows) = await target.Adb.ListSettingsAsync(target.Serial, CurrentNamespace);
+        _loadedSerial = target.Serial;
         _rows = ok ? rows : [];
         Status.Text = ok ? $"{rows.Count} keys" : error;
         ApplyFilter();

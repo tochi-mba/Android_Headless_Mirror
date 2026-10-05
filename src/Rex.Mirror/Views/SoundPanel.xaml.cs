@@ -41,6 +41,9 @@ public partial class SoundPanel : UserControl
         };
     }
 
+    /// <summary>The sound the panel shows and sets from now on: that of the phone in use.</summary>
+    public void Use(PhoneSound sound) => _sound = sound;
+
     public void Attach(MainWindow window, AppHost host, PhoneSound sound)
     {
         _window = window;
@@ -65,7 +68,7 @@ public partial class SoundPanel : UserControl
             SoundUnavailable.Visibility = problem is null ? Visibility.Collapsed : Visibility.Visible;
             SoundProblem.Text = problem ?? string.Empty;
             SoundTurnOn.Visibility = _host.Config.Mirror.Audio ? Visibility.Collapsed : Visibility.Visible;
-            SoundPhone.Text = _host.Session.Identity?.DisplayName ?? string.Empty;
+            SoundPhone.Text = _window?.TargetPhone is { } target ? _window.NameOf(target.Serial) : _host.Session.Identity?.DisplayName ?? string.Empty;
             SoundVolume.Value = Math.Round(_sound.Volume * 100);
             SoundVolumeValue.Text = Words(_sound.Volume, _sound.Muted);
             SoundMute.Content = _sound.Muted ? "Unmute" : "Mute";

@@ -39,12 +39,8 @@ public partial class PhonePanel : UserControl
         Advanced.Attach(window, host);
     }
 
-    private (AdbClient Adb, string Serial)? Target()
-    {
-        var session = _host?.Session;
-        var device = session?.ActiveDevice ?? session?.Devices.FirstOrDefault(d => d.IsReady);
-        return session?.Adb is null || device is null ? null : (session.Adb, device.Serial);
-    }
+    /// <summary>The phone in use: the mirrored one, or the one beside while its view is in use.</summary>
+    private (AdbClient Adb, string Serial)? Target() => _window?.TargetPhone;
 
     public void Refresh(bool force = false)
     {
@@ -92,6 +88,13 @@ public partial class PhonePanel : UserControl
             do
             {
                 _loadAgain = false;
+                // Asked again meanwhile, perhaps for another phone (the one beside, now in use):
+                // each pass reads the phone the tab is for now, not the one it started with.
+                if (Target() is { } now)
+                {
+                    (adb, serial) = now;
+                }
+
                 var values = await adb.ReadPhoneSettingsAsync(serial);
                 _loadedSerial = serial;
                 Build(values);

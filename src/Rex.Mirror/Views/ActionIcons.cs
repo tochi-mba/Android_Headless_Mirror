@@ -37,6 +37,8 @@ public static class ActionIcons
         ["paste-text"] = "IconTypeClipboard",
         ["screenshot"] = "IconCamera",
         ["second-screen"] = "IconSecondScreen",
+        ["phone-switch"] = "IconPhoneSwitch",
+        ["phone-beside"] = "IconPhoneBeside",
         ["fullscreen"] = "IconFullscreen",
         ["zoom-in"] = "IconZoomIn",
         ["zoom-out"] = "IconZoomOut",

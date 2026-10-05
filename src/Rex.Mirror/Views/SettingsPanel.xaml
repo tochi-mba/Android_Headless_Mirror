@@ -380,6 +380,7 @@
     </StackPanel></Expander>
     <settings:CopiesGroup x:Name="CopiesSettingsGroup" />
     <settings:SecondScreenGroup x:Name="SecondScreenSettingsGroup" />
+    <settings:SecondPhoneGroup x:Name="SecondPhoneSettingsGroup" />
     <settings:AppsGroup x:Name="AppsSettingsGroup" />
     <settings:TransferGroup x:Name="TransferSettingsGroup" />
     <settings:HudGroup x:Name="HudSettingsGroup" />

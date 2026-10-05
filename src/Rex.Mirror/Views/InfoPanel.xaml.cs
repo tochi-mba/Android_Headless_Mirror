@@ -78,7 +78,9 @@ public partial class InfoPanel : UserControl
 
         var session = _host.Session;
         var rows = new List<InfoRow>();
-        if (session.Identity is { } id && session.ActiveDevice is { } device)
+        // The phone in use: the mirrored one, or the one beside while its view is in use.
+        var device = _window?.TargetPhone is { } target ? session.Devices.FirstOrDefault(d => d.Serial == target.Serial) : session.ActiveDevice;
+        if ((_window?.TargetIdentity ?? session.Identity) is { } id && device is not null)
         {
             rows.Add(new InfoRow("Name", id.DisplayName));
             rows.Add(new InfoRow("Model", string.IsNullOrWhiteSpace(id.Model) ? "unknown" : id.Model));
@@ -90,7 +92,7 @@ public partial class InfoPanel : UserControl
                 rows.Add(new InfoRow("Display", $"{id.DisplayWidth} × {id.DisplayHeight}"));
             }
 
-            if (session.Battery is { } battery)
+            if ((_window?.TargetBattery ?? session.Battery) is { } battery)
             {
                 rows.Add(new InfoRow("Battery", $"{battery.Level}%{(battery.Charging ? ", charging" : string.Empty)}"));
             }
