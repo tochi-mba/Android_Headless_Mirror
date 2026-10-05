@@ -80,7 +80,8 @@ public partial class SettingsPanel
                 continue;
             }
 
-            if (child is TextBlock)
+            // Notes and a group's Put back button are not settings: they step aside while searching.
+            if (child is TextBlock or Button { Tag: "group-reset" })
             {
                 child.Visibility = searching ? Visibility.Collapsed : Visibility.Visible;
                 continue;
@@ -95,7 +96,7 @@ public partial class SettingsPanel
     }
 
     internal IEnumerable<Expander> Groups() =>
-        [GroupOf(ProfilesSettingsGroup), GroupDisplay, GroupAudio, GroupOf(SoundSettingsGroup), GroupSession, GroupZoom, GroupInput, GroupOf(CopiesSettingsGroup), GroupOf(SecondScreenSettingsGroup), GroupOf(SecondPhoneSettingsGroup), GroupOf(AppsSettingsGroup), GroupOf(TransferSettingsGroup), GroupOf(HudSettingsGroup), GroupLockScreen, GroupCaptures, GroupStartup, GroupOf(GlobalKeysSettingsGroup), GroupAdvanced];
+        [GroupOf(ProfilesSettingsGroup), GroupDisplay, GroupAudio, GroupOf(SoundSettingsGroup), GroupSession, GroupZoom, GroupInput, GroupOf(CopiesSettingsGroup), GroupOf(SecondScreenSettingsGroup), GroupOf(SecondPhoneSettingsGroup), GroupOf(AppsSettingsGroup), GroupOf(TransferSettingsGroup), GroupOf(HudSettingsGroup), GroupLockScreen, GroupCaptures, GroupStartup, GroupOf(GlobalKeysSettingsGroup), GroupOf(ConnectionSettingsGroup), GroupAdvanced];
 
     private static Expander GroupOf(ISettingsGroup group) => group.Group;
 

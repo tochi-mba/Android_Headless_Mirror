@@ -5,19 +5,32 @@
   <StackPanel>
 
     <Grid Margin="0,10,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
       <TextBox x:Name="SettingsFilter" TextChanged="OnFilter" AutomationProperties.Name="Find a setting"
                ToolTip="Show only the settings that mention this" />
       <TextBlock x:Name="FilterHint" Text="Find a setting" Style="{StaticResource MutedText}" Margin="10,0,0,0"
                  VerticalAlignment="Center" IsHitTestVisible="False" />
+      <ToggleButton x:Name="SettingsChangedOnly" Grid.Column="1" Style="{StaticResource Chip}" Content="Changed" Margin="6,0,0,0"
+                    Checked="OnChangedOnly" Unchecked="OnChangedOnly" AutomationProperties.Name="Show only what you changed" />
     </Grid>
     <TextBlock x:Name="FilterCount" Style="{StaticResource MutedText}" FontSize="11" Margin="2,4,0,0" Visibility="Collapsed"
                AutomationProperties.LiveSetting="Polite" />
     <TextBlock x:Name="FilterEmpty" Style="{StaticResource MutedText}" Margin="0,8,0,0" Visibility="Collapsed"
                Text="Nothing here mentions that. Phone settings live in the Phone tab." />
 
+    <!-- What you changed, with a way back for each; the groups step aside while it shows. -->
+    <StackPanel x:Name="ChangedList" Margin="0,12,0,0" Visibility="Collapsed">
+      <TextBlock x:Name="ChangedCount" Style="{StaticResource MutedText}" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite" />
+      <StackPanel x:Name="ChangedRows" />
+      <Button x:Name="ChangedPutAllBack" Content="Put them all back" HorizontalAlignment="Left" Margin="0,4,0,0" Click="OnPutAllBack" />
+    </StackPanel>
+
     <settings:ProfilesGroup x:Name="ProfilesSettingsGroup" />
 
-    <Expander x:Name="GroupDisplay" Header="Display" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
+    <Expander x:Name="GroupDisplay" Header="Picture" IsExpanded="True" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
                Text="Resolution, frame rate, bit rate and codec apply the next time the mirror starts. Everything below them previews as you change it." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Resolution">
@@ -153,6 +166,17 @@
         <ComboBoxItem Content="320 kbps" Tag="320K" />
       </ComboBox>
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Sound format">
+      <ComboBox x:Name="AudioCodec" SelectionChanged="OnRemainingChanged" AutomationProperties.Name="Sound format">
+        <ComboBoxItem Content="Opus (smallest)" Tag="opus" />
+        <ComboBoxItem Content="AAC" Tag="aac" />
+        <ComboBoxItem Content="FLAC (lossless)" Tag="flac" />
+        <ComboBoxItem Content="Raw (heaviest on Wi-Fi)" Tag="raw" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="AudioBufferLabel" Text="Sound buffer" /><TextBlock x:Name="AudioBufferValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="AudioBuffer" AutomationProperties.LabeledBy="{Binding ElementName=AudioBufferLabel}" Minimum="0" Maximum="500" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnRemainingSlider"
+            ToolTip="Evens out a shaky connection; 0 is the lowest delay." />
     <TextBlock x:Name="AudioDupHint" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"
                Text="Keeping audio playing on the phone needs &#8220;Everything the phone plays&#8221; or &#8220;App playback&#8221;." />
     </StackPanel></Expander>
@@ -183,6 +207,23 @@
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Restart the mirror if it crashes">
       <CheckBox x:Name="RestartOnCrash" Checked="OnSessionChanged" Unchecked="OnSessionChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Keep the phone from sleeping while mirrored" TextWrapping="Wrap" />
+        <TextBlock Text="Even on Wi-Fi, while the mirror is open." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="KeepActive" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" AutomationProperties.Name="Keep the phone from sleeping while mirrored" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Wake the phone when the mirror starts">
+      <CheckBox x:Name="WakeBeforeMirror" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Dismiss a lock screen that has no PIN or pattern" TextWrapping="Wrap" />
+        <TextBlock Text="A swipe-only lock screen gets out of the way by itself." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="DismissKeyguard" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" AutomationProperties.Name="Dismiss a lock screen that has no PIN or pattern" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
@@ -226,6 +267,12 @@
     <Expander x:Name="GroupZoom" Header="Zoom &amp; navigator" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Alt + pinch / Alt + wheel zooms the PC view">
       <CheckBox x:Name="HostZoom" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Alt + wheel zooms">
+      <CheckBox x:Name="WheelZoom" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Alt + pinch on the touchpad zooms">
+      <CheckBox x:Name="PinchZoom" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Zoom in on">
       <ComboBox x:Name="ZoomAnchor" SelectionChanged="OnWindowChanged" AutomationProperties.Name="Zoom in on">
@@ -277,6 +324,13 @@
     <Expander x:Name="GroupInput" Header="Mouse, touchpad &amp; keyboard" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
                Text="How the touchpad, the mouse buttons, the keys and the clipboard reach the phone, on every copy too. Buttons, keys and the clipboard apply the next time the mirror starts; the rest change at once." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Touchpad gestures" TextWrapping="Wrap" />
+        <TextBlock Text="Off, the touchpad only moves the pointer over the phone." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="TouchpadEnabled" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" AutomationProperties.Name="Touchpad gestures" />
+    </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -407,6 +461,21 @@
       </HeaderedContentControl.Header>
       <CheckBox x:Name="PatternDiscover" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Ask how each new phone unlocks">
+      <CheckBox x:Name="PatternAsk" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Allow lining the guide up by hand" TextWrapping="Wrap" />
+        <TextBlock Text="Ctrl+Alt+C, then the arrow keys." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="PatternCalibration" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" AutomationProperties.Name="Allow lining the guide up by hand" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Draw a trail while you drag the pattern">
+      <CheckBox x:Name="PatternTrail" Checked="OnRemainingChanged" Unchecked="OnRemainingChanged" />
+    </HeaderedContentControl>
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="PatternOpacityLabel" Text="Guide opacity" /><TextBlock x:Name="PatternOpacityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="PatternOpacity" AutomationProperties.LabeledBy="{Binding ElementName=PatternOpacityLabel}" Minimum="0.2" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnRemainingSlider" />
     <Button Content="Ask again which lock each phone uses" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OnForgetLocks" ToolTip="Ask again which lock type each phone uses" />
 
     </StackPanel></Expander>
@@ -431,6 +500,17 @@
       </HeaderedContentControl.Header>
       <CheckBox x:Name="Record" Checked="OnMirrorChanged" Unchecked="OnMirrorChanged" />
     </HeaderedContentControl>
+    <!-- One row for the search: the label, where they go and the buttons together. -->
+    <StackPanel Tag="row">
+      <TextBlock x:Name="RecordFolderLabel" Text="Save recordings to" Margin="0,8,0,0" />
+      <TextBlock x:Name="RecordLocation" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,8" />
+      <StackPanel Orientation="Horizontal">
+        <Button x:Name="RecordFolder" Content="Choose folder…" Click="OnChooseRecordFolder" Margin="0,0,6,0" AutomationProperties.Name="Choose the folder for recordings" />
+        <Button Content="Use default" Click="OnDefaultRecordFolder" AutomationProperties.Name="Save recordings to the default folder" />
+      </StackPanel>
+      <TextBlock x:Name="RecordFolderProblem" Foreground="{StaticResource Live}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed" />
+      <TextBlock Text="A folder inside the app's own folder; it applies the next time the mirror starts." Style="{StaticResource MutedText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" />
+    </StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -520,6 +600,8 @@
 
     </StackPanel></Expander>
     <settings:GlobalKeysGroup x:Name="GlobalKeysSettingsGroup" />
+    <settings:ConnectionGroup x:Name="ConnectionSettingsGroup" />
+
     <Expander x:Name="GroupAdvanced" Margin="0,12,0,0">
       <Expander.Header>
         <TextBlock Text="Connection &amp; advanced" FontWeight="SemiBold" />

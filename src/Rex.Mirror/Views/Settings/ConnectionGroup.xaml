@@ -1,0 +1,64 @@
+<UserControl x:Class="Rex.Mirror.Views.Settings.ConnectionGroup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Expander x:Name="GroupConnection" Header="Connection &amp; logs" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="How the app finds phones and what it writes down while it works." />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Prefer USB when a phone is on USB and Wi-Fi" TextWrapping="Wrap" />
+        <TextBlock Text="USB is faster and steadier; Wi-Fi is used only when there is no cable." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="PreferUsb" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Prefer USB when a phone is on USB and Wi-Fi" />
+    </HeaderedContentControl>
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="PollLabel" Text="Look for phones every" /><TextBlock x:Name="PollValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="PollSeconds" AutomationProperties.LabeledBy="{Binding ElementName=PollLabel}" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider"
+            ToolTip="Shorter finds a phone sooner; longer asks ADB less often." />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="RetryLabel" Text="Wait before trying again" /><TextBlock x:Name="RetryValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="RetrySeconds" AutomationProperties.LabeledBy="{Binding ElementName=RetryLabel}" Minimum="1" Maximum="60" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider"
+            ToolTip="After the mirror closes by itself, before it starts again." />
+
+    <TextBlock Text="PHONES ON WI-FI" Style="{StaticResource Eyebrow}" />
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Wi-Fi debugging port">
+      <TextBox x:Name="WirelessPort" Width="90" AutomationProperties.Name="Wi-Fi debugging port" ToolTip="1 to 65535; Android's own is 5555" LostKeyboardFocus="OnPort" KeyDown="OnPortKey" />
+    </HeaderedContentControl>
+    <StackPanel Tag="row">
+      <TextBlock x:Name="HostsLabel" Text="Phones to try by address" Margin="0,10,0,4" />
+      <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
+                 Text="For a phone that wireless debugging cannot find by itself. Wireless debugging on the phone shows its address." />
+      <StackPanel x:Name="HostsList" Margin="0,6,0,0" AutomationProperties.LabeledBy="{Binding ElementName=HostsLabel}" />
+      <TextBlock x:Name="HostsEmpty" Style="{StaticResource MutedText}" FontSize="11" Text="None yet." Margin="0,2,0,0" />
+      <Grid Margin="0,6,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBox x:Name="HostToAdd" AutomationProperties.Name="Address to add" ToolTip="Like 192.168.1.20, or 192.168.1.20:5555" KeyDown="OnHostKey" />
+        <Button x:Name="HostAdd" Grid.Column="1" Content="Add" Margin="6,0,0,0" Click="OnAddHost" />
+      </Grid>
+      <TextBlock x:Name="HostProblem" Foreground="{StaticResource Live}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed" AutomationProperties.LiveSetting="Polite" />
+    </StackPanel>
+
+    <TextBlock Text="THE LOG" Style="{StaticResource Eyebrow}" />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Keep a log" TextWrapping="Wrap" />
+        <TextBlock Text="What happened, for when something goes wrong. It never holds what you type or see." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="LoggingEnabled" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Keep a log" />
+    </HeaderedContentControl>
+    <StackPanel x:Name="LoggingOptions">
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Start a new log file at">
+        <ComboBox x:Name="LogSize" SelectionChanged="OnOption" AutomationProperties.Name="Start a new log file at">
+          <ComboBoxItem Content="1 MB" Tag="1048576" />
+          <ComboBoxItem Content="2 MB" Tag="2097152" />
+          <ComboBoxItem Content="5 MB" Tag="5242880" />
+          <ComboBoxItem Content="10 MB" Tag="10485760" />
+          <ComboBoxItem Content="50 MB" Tag="52428800" />
+        </ComboBox>
+      </HeaderedContentControl>
+      <Grid Margin="0,8,0,0"><TextBlock x:Name="KeepLabel" Text="Old log files to keep" /><TextBlock x:Name="KeepValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+      <Slider x:Name="LogKeep" AutomationProperties.LabeledBy="{Binding ElementName=KeepLabel}" Minimum="1" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+    </StackPanel>
+  </StackPanel></Expander>
+</UserControl>

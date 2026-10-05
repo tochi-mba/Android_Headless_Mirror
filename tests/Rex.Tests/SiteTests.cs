@@ -43,7 +43,7 @@ public sealed partial class SiteTests
     {
         AssertPageIsCurrent("settings.html");
         var ids = Ids("settings.html");
-        var everyPath = SettingsCatalogue.Controls.Keys.Concat(SettingsCatalogue.NotYet).Concat(SettingsCatalogue.Elsewhere.Keys);
+        var everyPath = SettingsCatalogue.Controls.Keys.Concat(SettingsCatalogue.Elsewhere.Keys);
         Assert.All(everyPath, path => Assert.Contains(path, ids));
         Assert.All(SettingsReference.Read(RepoPaths.Root), group => Assert.Contains(SettingsPageWriter.GroupId(group.Name), ids));
     }
@@ -94,7 +94,7 @@ public sealed partial class SiteTests
     public void EverySettingSaysWhenItAppliesAndItIsTrue()
     {
         var rows = SettingsReference.Read(RepoPaths.Root).SelectMany(group => group.Rows).ToDictionary(row => row.Path, StringComparer.Ordinal);
-        var paths = SettingsCatalogue.Controls.Keys.Concat(SettingsCatalogue.NotYet);
+        var paths = SettingsCatalogue.Controls.Keys;
         foreach (var path in paths)
         {
             var values = TryValues.TryGetValue(path, out var given) ? given
