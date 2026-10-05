@@ -92,6 +92,7 @@ public sealed partial class AppProcess : IDisposable
         start.Environment[UsbSystem.FakeRepairLogVariable] = _package.UsbRepairLog;
         // Never the PC's real browser.
         start.Environment[Rex.Mirror.Services.UrlOpener.FakeBrowserVariable] = _package.BrowserLog;
+        start.Environment[Rex.Mirror.Services.UpdateChecker.FakeReleasesVariable] = _package.ReleasesFile;
         // Never the PC's real audio sessions.
         start.Environment[Rex.Mirror.Services.Sound.FakePhoneSound.Variable] = _package.SoundFile;
         start.Environment[Rex.Mirror.Services.Files.SendToMenu.FolderVariable] = _package.SendToFolder;

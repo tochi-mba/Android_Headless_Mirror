@@ -24,6 +24,21 @@ public partial class MainWindow
 
     internal double PanelScaleShowing => SidebarContent.LayoutTransform is ScaleTransform scale ? scale.ScaleX : 1;
 
+    internal string BackdropShowing => MirrorArea.Background is SolidColorBrush { Color: var c } && c == Colors.Black ? "black" : "ink";
+
+    /// <summary>
+    /// What shows around the picture: the mirror area, and every view's own window, in the app's
+    /// ink or in black. scrcpy's letterbox follows at its next start (<see cref="ScrcpyArguments.LetterboxFor"/>).
+    /// </summary>
+    private void ApplyBackdrop()
+    {
+        var black = _host.Config.Mirror.Backdrop == "black";
+        MirrorArea.Background = black ? Brushes.Black : (Brush)FindResource("Ink");
+        var viewports = AllViews.Append(_screenView).OfType<Mirror.MirrorHost>()
+            .Select(view => view.ViewportHandle).Where(handle => handle != IntPtr.Zero).ToArray();
+        Native.NativeMethods.SetViewportBackdrop(viewports, black);
+    }
+
     /// <summary>The top bar and the status bar, as the settings say; fullscreen hides both whatever they say.</summary>
     private void ApplyBars()
     {

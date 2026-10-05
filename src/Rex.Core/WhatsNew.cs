@@ -40,6 +40,9 @@ public static class WhatsNew
         new("2.13.0", "The window your way",
             "Hide either bar, size the side panel, fit the window to the phone with Ctrl+Alt+F, and name screenshots your way. A name already taken is never overwritten.",
             "Settings → Window", "TabSettings"),
+        new("2.14.0", "A black backdrop, and controls that stay",
+            "Black around the picture for an OLED screen, the floating controls in the window and kept on screen, and an optional daily check for a newer version.",
+            "Settings → Window", "TabSettings"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>

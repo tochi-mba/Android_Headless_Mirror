@@ -4,6 +4,18 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.14.0 - 2026-10-06
+
+### Added
+
+- **Around the picture**, in Window: the app's own dark, or **black** for an OLED screen. The
+  mirror area turns at once; the edges scrcpy draws itself follow at the next start.
+- The floating controls can show **in the window too**, over the top of the mirror, and can be
+  kept on screen instead of **hiding by themselves**.
+- **Check for a newer version once a day**, in Startup & tray: off unless you turn it on. It asks
+  GitHub which version is newest and nothing else; a newer one is offered in the bar above the
+  mirror with **Download**, **What's new**, **Not now** and **Skip this version**.
+
 ## 2.13.0 - 2026-10-05
 
 ### Added

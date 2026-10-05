@@ -390,6 +390,12 @@ public sealed record HudSettings
     /// <summary>Show the one-line status message under the buttons.</summary>
     public bool ShowMessages { get; set; } = true;
 
+    /// <summary>The controls hide by themselves after <see cref="HideSeconds"/>; off, they stay on screen.</summary>
+    public bool AutoHide { get; set; } = true;
+
+    /// <summary>The same floating controls over the mirror in the window too, not only in fullscreen.</summary>
+    public bool ShowInWindow { get; set; }
+
     public HudSettings Copy() => this with { Buttons = [.. Buttons] };
 
     public void Normalize()

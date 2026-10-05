@@ -6,6 +6,16 @@
                Text="In fullscreen the controls hide themselves. Move the pointer to where you put them and they come back. Drag them anywhere by the dotted grip on their left." />
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Show the floating controls"><CheckBox x:Name="HudEnabled" Checked="OnHudChanged" Unchecked="OnHudChanged" /></HeaderedContentControl>
     <StackPanel x:Name="HudOptions">
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="In the window too" />
+          <TextBlock Text="The same bar over the top of the mirror, out of fullscreen. Handy with the top bar hidden." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <CheckBox x:Name="HudShowInWindow" Checked="OnHudChanged" Unchecked="OnHudChanged" AutomationProperties.Name="Floating controls in the window too" />
+      </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Hide them by themselves">
+        <CheckBox x:Name="HudAutoHide" Checked="OnHudChanged" Unchecked="OnHudChanged" AutomationProperties.Name="Hide the floating controls by themselves" />
+      </HeaderedContentControl>
       <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Where they sit">
         <ComboBox x:Name="HudPosition" SelectionChanged="OnHudPosition">
           <ComboBoxItem Content="Top" Tag="top" /><ComboBoxItem Content="Bottom" Tag="bottom" />

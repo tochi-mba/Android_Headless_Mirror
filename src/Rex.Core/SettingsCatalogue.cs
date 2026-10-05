@@ -112,6 +112,10 @@ public static class SettingsCatalogue
         ["App.CaptureNames"] = "CaptureNames",
         ["App.ScreenshotFlash"] = "ScreenshotFlash",
         ["App.OpenScreenshots"] = "OpenScreenshots",
+        ["App.CheckForUpdates"] = "CheckForUpdates",
+        ["Mirror.Backdrop"] = "Backdrop",
+        ["Hud.AutoHide"] = "HudAutoHide",
+        ["Hud.ShowInWindow"] = "HudShowInWindow",
 
         ["Ambient.Enabled"] = "AmbientEnabled",
         ["Ambient.Opacity"] = "AmbientOpacity",
@@ -282,7 +286,7 @@ public static class SettingsCatalogue
         "Transfer.Enabled",
         "Mirror.VideoEncoder", "Mirror.Crop", "Mirror.CaptureOrientation", "Mirror.StartOrientation",
         "Mirror.Angle", "Mirror.SmoothScaling", "Mirror.ShowTouches", "Mirror.TimeLimitMinutes",
-        "Mirror.AudioOutputBufferMs", "Mirror.RequireAudio",
+        "Mirror.AudioOutputBufferMs", "Mirror.RequireAudio", "Mirror.Backdrop",
     };
 
     /// <summary>Whether a setting applies at once, or the next time the mirror starts.</summary>

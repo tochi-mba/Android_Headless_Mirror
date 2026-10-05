@@ -22,6 +22,9 @@ public sealed record MirrorSettings
     public const int AudioOutputBufferUpperBound = 1000;
     public const int EncoderNameMaxLength = 100;
 
+    /// <summary>What may show around the picture: the app's ink, or black.</summary>
+    public static readonly string[] Backdrops = ["ink", "black"];
+
     /// <summary>How the phone's screen may be captured as it turns: following it, kept as it started, or locked.</summary>
     public static readonly string[] CaptureOrientations = ["", "@", "@0", "@90", "@180", "@270"];
 
@@ -133,6 +136,9 @@ public sealed record MirrorSettings
     /// <summary>No mirror at all when the phone cannot send its sound (scrcpy --require-audio), instead of going on silent.</summary>
     public bool RequireAudio { get; set; }
 
+    /// <summary>What shows around the picture: the app's own ink, or pure black (for an OLED screen).</summary>
+    public string Backdrop { get; set; } = "ink";
+
     public MirrorSettings Copy() => this with { };
 
     /// <summary>
@@ -190,6 +196,7 @@ public sealed record MirrorSettings
         Angle = ((Angle % 360) + 360) % 360;
         TimeLimitMinutes = Math.Clamp(TimeLimitMinutes, 0, TimeLimitUpperBound);
         AudioOutputBufferMs = Math.Clamp(AudioOutputBufferMs, 0, AudioOutputBufferUpperBound);
+        Backdrop = OneOf(Backdrops, Backdrop, "ink");
         ExtraArgs = (ExtraArgs ?? string.Empty).Trim();
         if (ExtraArgs.Length > 4096 || ExtraArgs.IndexOfAny(['\r', '\n', '\0']) >= 0)
         {

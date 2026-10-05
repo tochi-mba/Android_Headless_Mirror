@@ -69,3 +69,4 @@ AppSettings.cs
 CaptureName.cs
 WindowFit.cs
 LoggedProcessRunner.cs
+UpdateCheck.cs

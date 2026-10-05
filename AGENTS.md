@@ -227,6 +227,9 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   came with the phone are never uninstalled. `rex app` goes through the running app when it shows
   that phone, and straight to the phone otherwise. The phone's video encoders are read the same
   way (`EncoderList`, `scrcpy --list-encoders --no-cleanup`), only when asked, through the gate.
+- The update check (`UpdateCheck`, `Services/UpdateChecker`) is opt-in: with
+  `App.CheckForUpdates` off nothing is ever requested. On, it asks GitHub's latest release at most
+  once a day; tests stand in for GitHub with `REX_FAKE_RELEASES`, which `AppProcess` always sets.
 - A screenshot or recording is never written over: `CaptureName.Unique` counts {n} on, or adds
   " (2)", in the app and the command line alike. The verbose log (`LoggedProcessRunner`, on only
   with `Logging.Verbose`) never holds an `input` command's arguments: they would say where the

@@ -135,11 +135,12 @@ public sealed partial class AppEndToEndTests
 
         await app.PressCtrlAltKeyAsync(0x0D); // Enter: tap the centre.
         // A touch Windows refuses to inject (error 87 on a busy runner) is played by Android itself
-        // over ADB instead; either way the tap reaches the phone.
+        // over ADB instead; either way the tap reaches the phone. The fallback waits for the refusal
+        // first, which a busy runner can take seconds to give.
         await app.WaitUntilAsync(
             () => package.ScrcpyLog().Count(line => line.StartsWith("pointerdown", StringComparison.Ordinal)) > firstTouches ||
                   package.AdbCalls().Any(line => line.EndsWith("input tap 540 1200", StringComparison.Ordinal)),
-            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(15),
             "keyboard tap to reach the phone");
         await app.PressCtrlAltKeyAsync(0x08); // Backspace: Android back.
         await app.PressCtrlAltKeyAsync((byte)'R'); // Recent apps.

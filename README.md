@@ -137,7 +137,8 @@ symptom. In short:
 ## Security
 
 USB debugging gives this PC full control of the phone, so only allow computers you trust. The app
-never stores or types a PIN, password or pattern, has no account or telemetry, and needs
+never stores or types a PIN, password or pattern, has no account or telemetry (an optional daily
+check for a newer version is off unless you turn it on), and needs
 administrator approval only for the USB repairs. More in [SECURITY.md](SECURITY.md).
 
 ## How it works

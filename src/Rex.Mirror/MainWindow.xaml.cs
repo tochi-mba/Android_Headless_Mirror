@@ -433,6 +433,7 @@ public partial class MainWindow : Window
     {
         FollowScrcpyTransfers(scrcpy);
         _fitOnStart = _host.Config.App.FitWindowOnStart;
+        ApplyBackdrop();
         var session = _host.Session;
         if (session.Identity is { DisplayWidth: > 0, DisplayHeight: > 0 } identity)
         {
@@ -582,6 +583,7 @@ public partial class MainWindow : Window
         ReleaseStaleAltHold();
         ReleaseFilesDrag();
         FitWhenReady();
+        OfferUpdate();
         _host.CheckConfigFile();
         TickPhones();
         _host.Profiles.CheckPower();
@@ -603,7 +605,8 @@ public partial class MainWindow : Window
         // The overlay covers the whole mirror area: with copies the main view is only one cell of it.
         _overlay.Track(visible ? AreaScreenRect() : default, visible);
         UpdateViewMarks(visible);
-        _overlay.UpdateHud(_fullscreen && visible, Host.Zoom, _host.Config.Hud);
+        // In the window too when asked: the same bar, over the top of the mirror area.
+        _overlay.UpdateHud((_fullscreen || _host.Config.Hud.ShowInWindow) && visible, Host.Zoom, _host.Config.Hud);
         if (visible)
         {
             UpdateNavigator();

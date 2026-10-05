@@ -111,6 +111,12 @@
                   ToolTip="Ask again next time it connects" />
           <Button x:Name="NoticeBesideNever" Content="Never for this phone" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Margin="0,2,0,2" Click="OnBesideAnswer" Tag="never" Visibility="Collapsed"
                   ToolTip="Never ask about this phone again; it can still be shown from the phone menu" />
+          <Button x:Name="NoticeUpdateGet" Content="Download" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnUpdateAnswer" Tag="get" Visibility="Collapsed"
+                  ToolTip="The new version's page on GitHub" />
+          <Button x:Name="NoticeUpdateNotes" Content="What's new" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnUpdateAnswer" Tag="notes" Visibility="Collapsed"
+                  AutomationProperties.Name="What is new in the new version" />
+          <Button x:Name="NoticeUpdateLater" Content="Not now" MinHeight="30" Padding="12,4" Margin="0,2,6,2" Click="OnUpdateAnswer" Tag="later" Visibility="Collapsed" />
+          <Button x:Name="NoticeUpdateSkip" Content="Skip this version" Style="{StaticResource GhostButton}" MinHeight="30" Padding="10,4" Margin="0,2,0,2" Click="OnUpdateAnswer" Tag="skip" Visibility="Collapsed" />
           <Button x:Name="NoticeDismiss" Content="Got it" Style="{StaticResource PrimaryButton}" MinHeight="30" Padding="14,4" Margin="0,2,0,2" Click="OnDismissTip" Visibility="Collapsed" />
         </WrapPanel>
       </Grid>

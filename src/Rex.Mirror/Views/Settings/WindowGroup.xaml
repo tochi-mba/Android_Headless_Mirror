@@ -19,6 +19,16 @@
             ToolTip="Its text and controls larger or smaller; the panel keeps its width." />
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Around the picture" />
+        <TextBlock Text="The mirror area changes at once; the edges scrcpy draws itself, at the mirror's next start." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <ComboBox x:Name="Backdrop" SelectionChanged="OnChanged" AutomationProperties.Name="Around the picture">
+        <ComboBoxItem Content="The app's own dark" Tag="ink" />
+        <ComboBoxItem Content="Black, for an OLED screen" Tag="black" />
+      </ComboBox>
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
         <TextBlock Text="Top bar" />
         <TextBlock Text="The phone's name and its buttons. Without it, Ctrl+Alt+B still shows the side panel." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
       </StackPanel></HeaderedContentControl.Header>

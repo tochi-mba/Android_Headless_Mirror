@@ -359,6 +359,19 @@ internal static partial class NativeMethods
     [LibraryImport("gdi32.dll")]
     public static partial IntPtr CreateSolidBrush(uint color);
 
+    [LibraryImport("gdi32.dll")]
+    private static partial IntPtr GetStockObject(int fnObject);
+
+    [LibraryImport("user32.dll", EntryPoint = "SetClassLongPtrW", SetLastError = true)]
+    private static partial IntPtr SetClassLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, [MarshalAs(UnmanagedType.Bool)] bool bErase);
+
+    private const int GCLP_HBRBACKGROUND = -10;
+    private const int BLACK_BRUSH = 4;
+
     public const int WM_LBUTTONDBLCLK = 0x0203;
 
     [LibraryImport("user32.dll")]
@@ -446,6 +459,7 @@ internal static partial class NativeMethods
 
     private static WndProcDelegate? _viewportProc;
     private static IntPtr _viewportClassName;
+    private static IntPtr _inkBrush;
     public const string ViewportClassName = "RexMirrorViewport";
 
     /// <summary>Registers the viewport window class once: ink-black background, default handling.</summary>
@@ -465,10 +479,28 @@ internal static partial class NativeMethods
             lpfnWndProc = Marshal.GetFunctionPointerForDelegate(_viewportProc),
             hInstance = GetModuleHandleW(null),
             hCursor = LoadCursorW(IntPtr.Zero, new IntPtr(32512)),
-            hbrBackground = CreateSolidBrush(0x00090A08),
+            hbrBackground = _inkBrush = CreateSolidBrush(0x00090A08),
             lpszClassName = _viewportClassName,
         };
         _ = RegisterClassEx(ref wc);
+    }
+
+    /// <summary>
+    /// What every viewport paints where no picture is: the app's ink, or black. The brush belongs to
+    /// the class, so one call changes every view; each one given is painted again at once.
+    /// </summary>
+    public static void SetViewportBackdrop(IReadOnlyList<IntPtr> viewports, bool black)
+    {
+        if (_inkBrush == IntPtr.Zero || viewports.Count == 0)
+        {
+            return;
+        }
+
+        _ = SetClassLongPtr(viewports[0], GCLP_HBRBACKGROUND, black ? GetStockObject(BLACK_BRUSH) : _inkBrush);
+        foreach (var viewport in viewports)
+        {
+            _ = InvalidateRect(viewport, IntPtr.Zero, true);
+        }
     }
 
     public static string GetWindowText(IntPtr hWnd)
