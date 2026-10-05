@@ -61,6 +61,9 @@ public sealed class MirrorHost : HwndHost
 
     /// <summary>The picture's width over its height, as last reported by scrcpy or its window.</summary>
     public double VideoAspect => _videoAspect;
+
+    /// <summary>Whether scrcpy itself has said the picture's shape since this view was attached.</summary>
+    public bool VideoReported => _videoReported;
     public ZoomView View => _view;
     public double MaxZoom { get; set; } = 4.0;
 

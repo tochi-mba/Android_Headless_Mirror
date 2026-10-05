@@ -69,6 +69,7 @@ public static class MirrorActions
         new("zoom-out", "Zoom out", ActionKind.App, "Shrink the PC view"),
         new("zoom-reset", "Reset zoom", ActionKind.App, "Back to 100%"),
         new("fullscreen", "Fullscreen", ActionKind.App, "Fill the display, or go back to the window"),
+        new("fit-window", "Fit the window", ActionKind.App, "Size the window so the phone fills its area"),
         new("sound-up", "Louder on this PC", ActionKind.App, "Turn the phone's sound up on this PC; the phone's own volume stays as it is"),
         new("sound-down", "Quieter on this PC", ActionKind.App, "Turn the phone's sound down on this PC; the phone's own volume stays as it is"),
         new("sound-mute", "Mute on this PC", ActionKind.App, "Mute or unmute the phone's sound on this PC; the phone itself is not muted"),

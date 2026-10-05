@@ -65,3 +65,7 @@ SettingsChanges.cs
 MirrorSettings.cs
 EncoderList.cs
 MirrorTimeLimit.cs
+AppSettings.cs
+CaptureName.cs
+WindowFit.cs
+LoggedProcessRunner.cs

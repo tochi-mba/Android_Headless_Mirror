@@ -37,6 +37,7 @@ public partial class ConnectionGroup : UserControl, ISettingsGroup
             RetrySeconds.Value = config.Session.RetrySeconds;
             WirelessPort.Text = config.Wireless.Port.ToString(CultureInfo.InvariantCulture);
             LoggingEnabled.IsChecked = config.Logging.Enabled;
+            LoggingVerbose.IsChecked = config.Logging.Verbose;
             LogSize.SelectedItem = LogSize.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == config.Logging.MaxBytes.ToString(CultureInfo.InvariantCulture))
                 ?? LogSize.Items.OfType<ComboBoxItem>().MinBy(i => Math.Abs(long.Parse((string)i.Tag, CultureInfo.InvariantCulture) - config.Logging.MaxBytes));
             LogKeep.Value = Math.Min(config.Logging.KeepFiles, LogKeep.Maximum);
@@ -84,6 +85,7 @@ public partial class ConnectionGroup : UserControl, ISettingsGroup
         {
             c.Session.PreferUsb = PreferUsb.IsChecked == true;
             c.Logging.Enabled = LoggingEnabled.IsChecked == true;
+            c.Logging.Verbose = LoggingVerbose.IsChecked == true;
             if (LogSize.SelectedItem is ComboBoxItem { Tag: string size })
             {
                 c.Logging.MaxBytes = long.Parse(size, CultureInfo.InvariantCulture);

@@ -59,6 +59,13 @@
       </HeaderedContentControl>
       <Grid Margin="0,8,0,0"><TextBlock x:Name="KeepLabel" Text="Old log files to keep" /><TextBlock x:Name="KeepValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
       <Slider x:Name="LogKeep" AutomationProperties.LabeledBy="{Binding ElementName=KeepLabel}" Minimum="1" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnSlider" />
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="Write every phone command in the log" TextWrapping="Wrap" />
+          <TextBlock Text="For a bug report. Where the screen was touched is left out." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <CheckBox x:Name="LoggingVerbose" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Write every phone command in the log" />
+      </HeaderedContentControl>
     </StackPanel>
   </StackPanel></Expander>
 </UserControl>

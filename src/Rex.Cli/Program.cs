@@ -61,8 +61,9 @@ public sealed class CliContext
     {
         Paths = paths;
         Config = new ConfigStore(paths.Config);
-        Runner = new ProcessRunner();
-        Log = new RexLog(paths.LogFile, ConfigFile.Load(paths.Config).Logging);
+        var logging = ConfigFile.Load(paths.Config).Logging;
+        Log = new RexLog(paths.LogFile, logging);
+        Runner = new LoggedProcessRunner(new ProcessRunner(), Log.Info, () => logging.Verbose);
         Ipc = new IpcClient();
         Usb = usb ?? UsbSystem.FromEnvironment(Runner);
     }

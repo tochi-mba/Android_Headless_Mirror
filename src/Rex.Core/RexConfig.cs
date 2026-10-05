@@ -456,6 +456,11 @@ public sealed record AmbientSettings
     /// <summary>How many times per second the background follows the live video (1 to 60).</summary>
     public double FrameRate { get; set; } = 15;
 
+    public static readonly string[] WhenZoomedChoices = ["show", "hide"];
+
+    /// <summary>While the picture is zoomed in: keep the soft background ("show") or let it go ("hide").</summary>
+    public string WhenZoomed { get; set; } = "show";
+
     public AmbientSettings Copy() => this with { };
 
     public void Normalize()
@@ -471,6 +476,7 @@ public sealed record AmbientSettings
         TintStrength = double.IsFinite(TintStrength) ? Math.Clamp(TintStrength, 0, 1) : 0;
         TintHue = double.IsFinite(TintHue) ? Math.Clamp(TintHue, 0, 360) : 75;
         FrameRate = double.IsFinite(FrameRate) ? Math.Clamp(FrameRate, 1, 60) : 15;
+        WhenZoomed = MirrorSettings.OneOf(WhenZoomedChoices, WhenZoomed, "show");
     }
 }
 
@@ -557,6 +563,9 @@ public sealed record ZoomSettings
     /// <summary>Keep the navigator on screen at 100% too, as a small live preview of the whole phone.</summary>
     public bool NavigatorAlways { get; set; }
 
+    /// <summary>How far one press of a zoom key or button zooms, as a share of the picture (0.1 to 1).</summary>
+    public double KeyStep { get; set; } = 0.25;
+
     public ZoomSettings Copy() => this with { };
 
     public void Normalize()
@@ -567,6 +576,7 @@ public sealed record ZoomSettings
         NavigatorWidth = double.IsFinite(NavigatorWidth) ? Math.Clamp(NavigatorWidth, 100, 360) : 150;
         NavigatorOpacity = double.IsFinite(NavigatorOpacity) ? Math.Clamp(NavigatorOpacity, 0.2, 1) : 0.92;
         NavigatorFrameRate = double.IsFinite(NavigatorFrameRate) ? Math.Clamp(NavigatorFrameRate, 1, 60) : 30;
+        KeyStep = double.IsFinite(KeyStep) ? Math.Round(Math.Clamp(KeyStep, 0.1, 1), 2) : 0.25;
     }
 }
 
@@ -592,82 +602,15 @@ public sealed record PatternGuideSettings
 
     public double Opacity { get; set; } = 0.9;
 
+    /// <summary>How large the guide's dots are, and how near the pointer must come to one, from 0.6 to 1.6 times usual.</summary>
+    public double DotSize { get; set; } = 1.0;
+
     public PatternGuideSettings Copy() => this with { };
 
     public void Normalize()
     {
         Opacity = double.IsFinite(Opacity) ? Math.Clamp(Opacity, 0.2, 1.0) : 0.9;
-    }
-}
-
-/// <summary>Window and background behaviour of the desktop app.</summary>
-public sealed record AppSettings
-{
-    /// <summary>Keep running in the tray when the window is closed so the next phone auto-opens.</summary>
-    public bool RunInBackground { get; set; } = true;
-
-    /// <summary>Bring the window up automatically when an authorised phone connects.</summary>
-    public bool OpenOnConnect { get; set; } = true;
-
-    /// <summary>Ask before writing sensitive or advanced Android settings.</summary>
-    public bool ConfirmSensitiveWrites { get; set; } = true;
-
-    public string ScreenshotDirectory { get; set; } = "captures/screenshots";
-
-    /// <summary>
-    /// When Windows cannot read the phone over USB ("USB device not recognised"), start the
-    /// auto-repair task without asking. The task itself is set up once, with administrator
-    /// approval; with this off the app still says what is wrong and offers the repair.
-    /// </summary>
-    public bool AutoRepairUsb { get; set; } = true;
-
-    public static readonly string[] SidebarSides = ["right", "left"];
-
-    /// <summary>The phone buttons the top bar can show, in the order it shows them.</summary>
-    public static readonly string[] QuickButtons = ["home", "back", "recents", "sleep", "screenshot", "sound"];
-
-    public static readonly string[] ScreenshotFormats = ["png", "jpg"];
-
-    /// <summary>Keep the window above every other window.</summary>
-    public bool AlwaysOnTop { get; set; }
-
-    /// <summary>Which side of the mirror the side panel sits on: "right" or "left".</summary>
-    public string SidebarSide { get; set; } = "right";
-
-    /// <summary>The phone buttons in the top bar (see <see cref="QuickButtons"/>); any may be left out.</summary>
-    public List<string> TopBarButtons { get; set; } = [.. QuickButtons];
-
-    /// <summary>The shortcut hints at the right of the status bar.</summary>
-    public bool ShowHints { get; set; } = true;
-
-    /// <summary>A notification when a phone connects or goes away while the window is out of sight.</summary>
-    public bool NotifyConnections { get; set; }
-
-    /// <summary>How many frames a second the mirror is showing, live in the status bar (scrcpy --print-fps).</summary>
-    public bool ShowFrameRate { get; set; }
-
-    /// <summary>Screenshots as PNG (exactly what the phone showed) or JPG (much smaller).</summary>
-    public string ScreenshotFormat { get; set; } = "png";
-
-    /// <summary>Put each new screenshot on the clipboard as well, ready to paste.</summary>
-    public bool CopyScreenshots { get; set; }
-
-    /// <summary>After an update, say once in the bar above the mirror which version this is.</summary>
-    public bool ShowWhatsNew { get; set; } = true;
-
-    public AppSettings Copy() => this with { TopBarButtons = [.. TopBarButtons] };
-
-    public void Normalize()
-    {
-        ScreenshotDirectory = !string.IsNullOrWhiteSpace(ScreenshotDirectory) &&
-            (Path.IsPathFullyQualified(ScreenshotDirectory) || PathRules.IsSafeRelativePath(ScreenshotDirectory))
-            ? ScreenshotDirectory.Trim() : "captures/screenshots";
-        SidebarSide = MirrorSettings.OneOf(SidebarSides, SidebarSide, "right");
-        ScreenshotFormat = MirrorSettings.OneOf(ScreenshotFormats, ScreenshotFormat, "png");
-
-        // Known buttons only, each once, in the top bar's own order.
-        var wanted = (TopBarButtons ?? []).Select(id => (id ?? string.Empty).Trim().ToLowerInvariant()).ToHashSet();
-        TopBarButtons = QuickButtons.Where(wanted.Contains).ToList();
+        DotSize = double.IsFinite(DotSize) ? Math.Round(Math.Clamp(DotSize, 0.6, 1.6), 2) : 1.0;
     }
 }
 
@@ -676,6 +619,9 @@ public sealed record LoggingSettings
     public bool Enabled { get; set; } = true;
     public long MaxBytes { get; set; } = 2 * 1024 * 1024;
     public int KeepFiles { get; set; } = 5;
+
+    /// <summary>Every adb and scrcpy command in the log as well, for a bug report; taps and swipes are left out.</summary>
+    public bool Verbose { get; set; }
 
     public LoggingSettings Copy() => this with { };
 

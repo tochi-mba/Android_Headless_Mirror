@@ -216,6 +216,12 @@ public static class Commands
         return await SendAsync(context, new IpcRequest("action", new Dictionary<string, string> { ["name"] = action.Id }), "The mirror is not open.").ConfigureAwait(false);
     }
 
+    /// <summary>A phone's name and model as the app remembered them, for naming its screenshots; its serial when it has none.</summary>
+    internal static (string Name, string Model) PhoneNamed(CliContext context, string serial) =>
+        new StateStore(context.Paths.State).GetDevice(serial) is { Name.Length: > 0 } known
+            ? (known.Name, known.Model.Length > 0 ? known.Model : known.Name)
+            : (serial, serial);
+
     private static async Task<int> ScreenshotAsync(CliContext context, string? serial)
     {
         var adb = context.RequireAdb();
@@ -224,7 +230,8 @@ public static class Commands
             ?? throw new InvalidOperationException("The phone did not return a screenshot.");
         var directory = context.Paths.ScreenshotFolder(context.Config.Load().App.ScreenshotDirectory);
         Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, "android-" + DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture) + ".png");
+        var path = Path.Combine(directory, CaptureName.Unique(context.Config.Load().App.CaptureNames, DateTime.Now,
+            PhoneNamed(context, target).Name, PhoneNamed(context, target).Model, ".png", name => File.Exists(Path.Combine(directory, name))));
         await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(false);
         Console.WriteLine(path);
         return 0;

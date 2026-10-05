@@ -47,6 +47,7 @@ public static class Shortcuts
         new("zoom-in", "Ctrl+Alt+Plus", "Zoom the PC view in"),
         new("zoom-out", "Ctrl+Alt+Minus", "Zoom the PC view out"),
         new("zoom-reset", "Ctrl+Alt+0", "Fit the phone to the window"),
+        new("fit-window", "Ctrl+Alt+F", "Fit the window to the phone"),
         new("rotation-portrait", "Ctrl+Alt+U", "Lock the phone to portrait"),
         new("rotation-landscape", "Ctrl+Alt+L", "Lock the phone to landscape"),
         new("rotation-auto", "Ctrl+Alt+A", "Let the phone rotate by itself"),

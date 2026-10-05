@@ -25,7 +25,7 @@ public partial class SettingsPanel : UserControl
     public SettingsPanel()
     {
         InitializeComponent();
-        _settingsGroups = [ProfilesSettingsGroup, SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, SecondPhoneSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, GlobalKeysSettingsGroup, ConnectionSettingsGroup];
+        _settingsGroups = [ProfilesSettingsGroup, SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, SecondPhoneSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, WindowSettingsGroup, GlobalKeysSettingsGroup, ConnectionSettingsGroup];
         PolishRows();
         StampConfigPaths();
     }
@@ -200,6 +200,7 @@ public partial class SettingsPanel : UserControl
             AmbientEdgeFade.Value = c.Ambient.EdgeFade;
             AmbientTintStrength.Value = c.Ambient.TintStrength;
             AmbientTintHue.Value = c.Ambient.TintHue;
+            SelectTag(AmbientWhenZoomed, c.Ambient.WhenZoomed);
             AmbientFlip.IsChecked = c.Ambient.FlipHorizontal;
             AmbientFrameRate.Value = c.Ambient.FrameRate;
             SelectTag(NavigatorCorner, c.Zoom.NavigatorCorner);
@@ -324,6 +325,7 @@ public partial class SettingsPanel : UserControl
         c.Ambient.Placement = SelectedTag(AmbientPlacement, "around");
         c.Ambient.Scaling = SelectedTag(AmbientScaling, "cover");
         c.Ambient.FlipHorizontal = AmbientFlip.IsChecked == true;
+        c.Ambient.WhenZoomed = SelectedTag(AmbientWhenZoomed, "show");
         c.Zoom.NavigatorCorner = SelectedTag(NavigatorCorner, "bottom-right");
         c.PatternGuide.Enabled = PatternEnabled.IsChecked == true;
         c.PatternGuide.AutoShowOnKeyguard = PatternAuto.IsChecked == true;

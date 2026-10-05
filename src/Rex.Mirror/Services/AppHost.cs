@@ -20,7 +20,7 @@ public sealed class AppHost : IDisposable
         Config = config;
         State = state;
         Log = log;
-        Runner = new ProcessRunner();
+        Runner = new LoggedProcessRunner(new ProcessRunner(), message => Log.Info(message), () => Config.Logging.Verbose);
         Session = new SessionController(this);
         Usb = new UsbDoctor(this, UsbSystem.FromEnvironment(Runner));
         Profiles = new ProfileRunner(this);

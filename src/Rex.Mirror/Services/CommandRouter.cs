@@ -49,6 +49,11 @@ public static partial class CommandRouter
             case "screenshot":
             {
                 var (ok, text) = await session.SaveScreenshotAsync().ConfigureAwait(true);
+                if (ok)
+                {
+                    window?.AfterScreenshot(text);
+                }
+
                 return ok ? IpcResponse.Success(new JsonObject { ["path"] = text }) : IpcResponse.Fail(text);
             }
 
@@ -383,6 +388,12 @@ public static partial class CommandRouter
                 ["frameRate"] = shown.FrameRateShowing,
                 ["lastNotification"] = shown.LastNotification,
                 ["foreground"] = shown.InFront,
+                ["topBar"] = shown.TopBarShowing,
+                ["statusBar"] = shown.StatusBarShowing,
+                ["panelScale"] = shown.PanelScaleShowing,
+                ["width"] = Math.Round(shown.ActualWidth),
+                ["height"] = Math.Round(shown.ActualHeight),
+                ["lastFlash"] = shown.LastFlashUtc == default ? null : shown.LastFlashUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             } : null,
             ["view"] = new JsonObject
             {

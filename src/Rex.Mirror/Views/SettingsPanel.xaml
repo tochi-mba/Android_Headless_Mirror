@@ -205,6 +205,12 @@
       <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Flip horizontally">
         <CheckBox x:Name="AmbientFlip" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
       </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}" Header="While zoomed in">
+        <ComboBox x:Name="AmbientWhenZoomed" SelectionChanged="OnLiveChanged" AutomationProperties.Name="The soft background while zoomed in">
+          <ComboBoxItem Content="Keep it" Tag="show" />
+          <ComboBoxItem Content="Hide it" Tag="hide" />
+        </ComboBox>
+      </HeaderedContentControl>
       <Button Content="Reset soft background" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OnResetAmbient" />
     </StackPanel>
     </StackPanel></Expander>
@@ -426,6 +432,9 @@
     <Slider x:Name="MaximumZoom" AutomationProperties.Name="Maximum zoom" Minimum="1.5" Maximum="8" TickFrequency="0.5" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
     <Grid Margin="0,8,0,0"><TextBlock Text="Wheel zoom speed" /><TextBlock x:Name="WheelSpeedValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="WheelSpeed" AutomationProperties.Name="Wheel zoom speed" Minimum="0.05" Maximum="0.5" Margin="0,2,0,0" ValueChanged="OnAppearanceChanged" />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="ZoomKeyStepLabel" Text="Zoom keys and buttons step by" /><TextBlock x:Name="ZoomKeyStepValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="ZoomKeyStep" AutomationProperties.LabeledBy="{Binding ElementName=ZoomKeyStepLabel}" Minimum="0.1" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnWindowSlider"
+            ToolTip="How far Ctrl+Alt+Plus, Ctrl+Alt+Minus and the zoom buttons go each time." />
     </StackPanel></Expander>
     <Expander x:Name="GroupInput" Header="Mouse, touchpad &amp; keyboard" Margin="0,12,0,0"><StackPanel>
     <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
@@ -582,6 +591,9 @@
     </HeaderedContentControl>
     <Grid Margin="0,8,0,0"><TextBlock x:Name="PatternOpacityLabel" Text="Guide opacity" /><TextBlock x:Name="PatternOpacityValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
     <Slider x:Name="PatternOpacity" AutomationProperties.LabeledBy="{Binding ElementName=PatternOpacityLabel}" Minimum="0.2" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnRemainingSlider" />
+    <Grid Margin="0,8,0,0"><TextBlock x:Name="PatternDotSizeLabel" Text="Dot size" /><TextBlock x:Name="PatternDotSizeValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="PatternDotSize" AutomationProperties.LabeledBy="{Binding ElementName=PatternDotSizeLabel}" Minimum="0.6" Maximum="1.6" TickFrequency="0.05" IsSnapToTickEnabled="True" Margin="0,2,0,0" ValueChanged="OnWindowSlider"
+            ToolTip="Larger dots are easier to hit while dragging the pattern." />
     <Button Content="Ask again which lock each phone uses" Margin="0,10,0,0" HorizontalAlignment="Left" Click="OnForgetLocks" ToolTip="Ask again which lock type each phone uses" />
 
     </StackPanel></Expander>
@@ -632,6 +644,26 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Copy each screenshot to the clipboard">
       <CheckBox x:Name="CopyScreenshots" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Copy each screenshot to the clipboard" />
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Flash the view as a screenshot is taken">
+      <CheckBox x:Name="ScreenshotFlash" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Flash the view as a screenshot is taken" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Open each screenshot once it is saved" />
+        <TextBlock Text="In the app Windows opens pictures with." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="OpenScreenshots" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Open each screenshot once it is saved" />
+    </HeaderedContentControl>
+    <!-- One row for the search: the box, the words it takes, and why one was refused. -->
+    <StackPanel Tag="row">
+      <TextBlock Text="Name screenshots and recordings" Margin="0,10,0,4" />
+      <TextBox x:Name="CaptureNames" LostKeyboardFocus="OnCaptureNames" KeyDown="OnCaptureNamesKey" TextChanged="OnCaptureNamesText"
+               AutomationProperties.Name="Name screenshots and recordings" ToolTip="Like android-{date}-{time}. A name already taken is never overwritten." />
+      <TextBlock x:Name="CaptureNamesExample" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+      <TextBlock Text="{}{date}, {time}, {phone}, {model}, and {n} for a number that counts up. Press Enter to apply." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0" />
+      <TextBlock x:Name="CaptureNamesError" Foreground="{StaticResource Live}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"
+                 AutomationProperties.LiveSetting="Polite" />
+    </StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
@@ -645,7 +677,9 @@
       </ComboBox>
     </HeaderedContentControl>
     </StackPanel></Expander>
-    <Expander x:Name="GroupStartup" Header="Startup &amp; window" Margin="0,12,0,0"><StackPanel>
+    <settings:WindowGroup x:Name="WindowSettingsGroup" />
+
+    <Expander x:Name="GroupStartup" Header="Startup &amp; tray" Margin="0,12,0,0"><StackPanel>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Start with Windows">
       <CheckBox x:Name="StartWithWindows" Checked="OnStartWithWindows" Unchecked="OnStartWithWindows" />
     </HeaderedContentControl>
@@ -654,27 +688,6 @@
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Open the window when a phone connects">
       <CheckBox x:Name="OpenOnConnect" Checked="OnLiveChanged" Unchecked="OnLiveChanged" />
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Keep the window on top">
-      <CheckBox x:Name="AlwaysOnTop" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Keep the window on top" />
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Side panel">
-      <ComboBox x:Name="SidebarSide" SelectionChanged="OnWindowChanged" AutomationProperties.Name="Side panel position">
-        <ComboBoxItem Content="On the right" Tag="right" />
-        <ComboBoxItem Content="On the left" Tag="left" />
-      </ComboBox>
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRowStacked}">
-      <HeaderedContentControl.Header>
-        <StackPanel>
-          <TextBlock Text="Phone buttons in the top bar" />
-          <TextBlock Text="Tap to show or hide each one." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
-        </StackPanel>
-      </HeaderedContentControl.Header>
-      <WrapPanel x:Name="QuickButtonChoices" Margin="0,4,0,0" />
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Shortcut hints in the status bar">
-      <CheckBox x:Name="ShowHints" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Shortcut hints in the status bar" />
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
@@ -688,20 +701,18 @@
     <HeaderedContentControl Style="{StaticResource SettingRow}">
       <HeaderedContentControl.Header>
         <StackPanel>
-          <TextBlock Text="Frame rate in the status bar" />
-          <TextBlock Text="Live, from scrcpy's own counter." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
-        </StackPanel>
-      </HeaderedContentControl.Header>
-      <CheckBox x:Name="ShowFrameRate" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Frame rate in the status bar" />
-    </HeaderedContentControl>
-    <HeaderedContentControl Style="{StaticResource SettingRow}">
-      <HeaderedContentControl.Header>
-        <StackPanel>
           <TextBlock Text="Say when a phone connects or leaves" />
           <TextBlock Text="From the tray, while the window is closed or minimised." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
         </StackPanel>
       </HeaderedContentControl.Header>
       <CheckBox x:Name="NotifyConnections" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Say when a phone connects or leaves" />
+    </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Say when the mirror stops by itself" />
+        <TextBlock Text="From the tray, while the window is closed or minimised." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="NotifyMirrorStops" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Say when the mirror stops by itself" />
     </HeaderedContentControl>
 
     </StackPanel></Expander>

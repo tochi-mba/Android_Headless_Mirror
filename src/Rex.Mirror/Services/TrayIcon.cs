@@ -40,7 +40,7 @@ public sealed class TrayIcon : IDisposable
         _globalKeys.Click += (_, _) => host.UpdateConfig(c => c.GlobalKeys.Enabled = _globalKeys.Checked);
         _profiles = new WinForms.ToolStripMenuItem("Profiles");
         var quit = new WinForms.ToolStripMenuItem("Quit");
-        quit.Click += (_, _) => host.Window?.QuitApplication();
+        quit.Click += (_, _) => _ = host.Window?.QuitAskingAsync();
 
         menu.Items.AddRange([_open, new WinForms.ToolStripSeparator(), _stopStart, _profiles, _startup, _globalKeys, new WinForms.ToolStripSeparator(), quit]);
         TrayMenuRenderer.Apply(menu);

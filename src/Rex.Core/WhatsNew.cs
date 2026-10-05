@@ -37,6 +37,9 @@ public static class WhatsNew
         new("2.12.0", "More of scrcpy in Settings",
             "Choose the phone's video encoder, show part of its screen, keep the picture one way, tilt it, show taps, and stop the mirror after a set time.",
             "Settings → Picture", "TabSettings"),
+        new("2.13.0", "The window your way",
+            "Hide either bar, size the side panel, fit the window to the phone with Ctrl+Alt+F, and name screenshots your way. A name already taken is never overwritten.",
+            "Settings → Window", "TabSettings"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>

@@ -227,6 +227,11 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   came with the phone are never uninstalled. `rex app` goes through the running app when it shows
   that phone, and straight to the phone otherwise. The phone's video encoders are read the same
   way (`EncoderList`, `scrcpy --list-encoders --no-cleanup`), only when asked, through the gate.
+- A screenshot or recording is never written over: `CaptureName.Unique` counts {n} on, or adds
+  " (2)", in the app and the command line alike. The verbose log (`LoggedProcessRunner`, on only
+  with `Logging.Verbose`) never holds an `input` command's arguments: they would say where the
+  screen was touched, a pattern unlock among them. The pipe's `quit` never asks first; the
+  tray's Quit and closing the window do when `App.ConfirmQuit` says so.
 - What the phone sends as the picture (`MirrorSettings` encoder, crop, capture orientation, angle,
   smoothing) reaches the main session and its copies; a second screen keeps only the encoder and
   smoothing, and the other phone only what is about this PC. Taps shown on the phone, the time
