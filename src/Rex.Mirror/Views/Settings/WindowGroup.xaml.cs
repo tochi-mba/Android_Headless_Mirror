@@ -47,6 +47,7 @@ public partial class WindowGroup : UserControl, ISettingsGroup
             var app = config.App;
             AlwaysOnTop.IsChecked = app.AlwaysOnTop;
             SelectTag(SidebarSide, app.SidebarSide);
+            SelectTag(Backdrop, config.Mirror.Backdrop);
             PanelScale.Value = app.PanelScale;
             ShowTopBar.IsChecked = app.ShowTopBar;
             BuildQuickButtonChoices(app.TopBarButtons);
@@ -75,6 +76,7 @@ public partial class WindowGroup : UserControl, ISettingsGroup
         {
             c.App.AlwaysOnTop = AlwaysOnTop.IsChecked == true;
             c.App.SidebarSide = (SidebarSide.SelectedItem as ComboBoxItem)?.Tag as string ?? "right";
+            c.Mirror.Backdrop = (Backdrop.SelectedItem as ComboBoxItem)?.Tag as string ?? "ink";
             c.App.ShowTopBar = ShowTopBar.IsChecked == true;
             c.App.ShowStatusBar = ShowStatusBar.IsChecked == true;
             c.App.ShowHints = ShowHints.IsChecked == true;

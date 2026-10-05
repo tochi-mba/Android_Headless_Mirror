@@ -40,6 +40,9 @@ public sealed class FullscreenHud : Border
     public const string AppAction = "app:";
     public double HideSeconds { get; set; } = 3;
 
+    /// <summary>Off, the bar stays on screen instead of hiding after <see cref="HideSeconds"/>.</summary>
+    public bool AutoHide { get; set; } = true;
+
     public FullscreenHud()
     {
         Background = new SolidColorBrush(Color.FromArgb(220, 17, 21, 18));
@@ -62,6 +65,7 @@ public sealed class FullscreenHud : Border
     public void Apply(HudSettings settings)
     {
         HideSeconds = settings.HideSeconds;
+        AutoHide = settings.AutoHide;
         var signature = string.Join(",", settings.Buttons) + "|" + settings.Position + "|" + settings.Scale + "|" + settings.Opacity + "|" +
             string.Join(",", Favourites.Select(a => a.Package + "=" + a.Name));
         if (signature == _builtFor)
@@ -274,7 +278,7 @@ public sealed class FullscreenHud : Border
             _visibleUntil = DateTime.UtcNow.AddSeconds(HideSeconds);
         }
 
-        ShowHud(DateTime.UtcNow < _visibleUntil);
+        ShowHud(!AutoHide || DateTime.UtcNow < _visibleUntil);
     }
 
     private void ShowHud(bool show)

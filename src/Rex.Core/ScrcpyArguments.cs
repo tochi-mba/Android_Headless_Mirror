@@ -17,6 +17,12 @@ public static partial class ScrcpyArguments
     /// </summary>
     public const string LetterboxColour = "#080A09";
 
+    /// <summary>scrcpy's letterbox with a black backdrop.</summary>
+    public const string BlackLetterbox = "#000000";
+
+    /// <summary>What scrcpy paints around the picture for the backdrop chosen, so the bars match the mirror area.</summary>
+    public static string LetterboxFor(string backdrop) => backdrop == "black" ? BlackLetterbox : LetterboxColour;
+
     /// <summary>
     /// The local port the main session's tunnel listens on. Every session gets a port of its own:
     /// on Windows scrcpy binds with SO_REUSEADDR, so two sessions starting together on the default
@@ -153,7 +159,7 @@ public static partial class ScrcpyArguments
             "--serial=" + serial,
             "--window-title=" + windowTitle,
             "--window-borderless",
-            "--background-color=" + LetterboxColour,
+            "--background-color=" + LetterboxFor(config.Mirror.Backdrop),
             "--no-window-aspect-ratio-lock",
             "--mouse=sdk",
             "--keyboard=" + keyboardMode,

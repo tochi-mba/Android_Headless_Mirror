@@ -81,6 +81,12 @@ public sealed record UiState
     /// <summary>The version that last ran, so an update can say once what is new. Empty before the first run.</summary>
     public string LastRunVersion { get; set; } = string.Empty;
 
+    /// <summary>When GitHub was last asked for the newest version; null when it never was.</summary>
+    public DateTimeOffset? LastUpdateCheck { get; set; }
+
+    /// <summary>A newer version the person chose to skip: it is not offered again, a later one is.</summary>
+    public string SkippedVersion { get; set; } = string.Empty;
+
     /// <summary>Settings groups the person left open, in display order.</summary>
     public List<string> SettingsOpen { get; set; } = ["GroupDisplay"];
 

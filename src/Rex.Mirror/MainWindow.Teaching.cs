@@ -270,6 +270,7 @@ public partial class MainWindow
         }
 
         ShowBesideButtons(false);
+        ShowUpdateButtons(false);
 
         NoticeDismiss.Visibility = question ? Visibility.Collapsed : Visibility.Visible;
         NoticeWhatsNew.Visibility = Visibility.Collapsed;

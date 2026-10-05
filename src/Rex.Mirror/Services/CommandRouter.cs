@@ -393,6 +393,8 @@ public static partial class CommandRouter
                 ["panelScale"] = shown.PanelScaleShowing,
                 ["width"] = Math.Round(shown.ActualWidth),
                 ["height"] = Math.Round(shown.ActualHeight),
+                ["backdrop"] = shown.BackdropShowing,
+                ["updateOffered"] = shown.UpdateOffered?.ToString(),
                 ["lastFlash"] = shown.LastFlashUtc == default ? null : shown.LastFlashUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
             } : null,
             ["view"] = new JsonObject

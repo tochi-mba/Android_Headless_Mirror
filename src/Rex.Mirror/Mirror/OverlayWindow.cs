@@ -192,10 +192,10 @@ public sealed partial class OverlayWindow : Window
     }
 
     /// <summary>Reveals the HUD when the pointer reaches the strip it is pinned to, wherever that is.</summary>
-    public void UpdateHud(bool fullscreen, double zoom, HudSettings settings)
+    public void UpdateHud(bool shown, double zoom, HudSettings settings)
     {
         var inZone = false;
-        if (fullscreen && Handle != IntPtr.Zero && NativeMethods.GetCursorPos(out var cursor))
+        if (shown && Handle != IntPtr.Zero && NativeMethods.GetCursorPos(out var cursor))
         {
             NativeMethods.ScreenToClient(Handle, ref cursor);
             var zone = HudLayout.HoverZone(
@@ -203,7 +203,7 @@ public sealed partial class OverlayWindow : Window
             inZone = HudLayout.Contains(zone, cursor.X / _dpiScale, cursor.Y / _dpiScale);
         }
 
-        _hudWindow.Update(fullscreen && IsVisible && settings.Enabled, inZone, zoom, _screenPixels, _dpiScale, settings);
+        _hudWindow.Update(shown && IsVisible && settings.Enabled, inZone, zoom, _screenPixels, _dpiScale, settings);
     }
 
     public OverlayWindow(Window owner)
@@ -306,10 +306,24 @@ public sealed partial class OverlayWindow : Window
 
         if (armed)
         {
-            _dropHint.Measure(new Size(Math.Max(1, _canvas.Width - 24), Math.Max(1, _canvas.Height - 24)));
-            Canvas.SetLeft(_dropHint, Math.Max(12, (_canvas.Width - _dropHint.DesiredSize.Width) / 2));
-            Canvas.SetTop(_dropHint, Math.Max(12, (_canvas.Height - _dropHint.DesiredSize.Height) / 2));
+            PlaceDropHint();
         }
+    }
+
+    /// <summary>
+    /// Centres the drop hint in the overlay. A drag can arrive before the overlay has ever been
+    /// given its size (its width is NaN until then), so it is placed again once it has one.
+    /// </summary>
+    private void PlaceDropHint()
+    {
+        if (_dropHint.Visibility != Visibility.Visible || !double.IsFinite(_canvas.Width) || !double.IsFinite(_canvas.Height))
+        {
+            return;
+        }
+
+        _dropHint.Measure(new Size(Math.Max(1, _canvas.Width - 24), Math.Max(1, _canvas.Height - 24)));
+        Canvas.SetLeft(_dropHint, Math.Max(12, (_canvas.Width - _dropHint.DesiredSize.Width) / 2));
+        Canvas.SetTop(_dropHint, Math.Max(12, (_canvas.Height - _dropHint.DesiredSize.Height) / 2));
     }
 
     private static string[] DropPaths(IDataObject data) =>
@@ -404,6 +418,7 @@ public sealed partial class OverlayWindow : Window
         Height = screenPixels.Height / _dpiScale;
         _canvas.Width = Width;
         _canvas.Height = Height;
+        PlaceDropHint();
         PlacePicture();
     }
 

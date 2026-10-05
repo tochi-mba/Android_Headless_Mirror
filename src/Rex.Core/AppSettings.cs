@@ -85,6 +85,9 @@ public sealed record AppSettings
     /// <summary>Open each screenshot in its viewer once it is saved.</summary>
     public bool OpenScreenshots { get; set; }
 
+    /// <summary>Ask GitHub, at most once a day, whether a newer version is out. Off unless turned on: nothing is sent otherwise.</summary>
+    public bool CheckForUpdates { get; set; }
+
     public const double SmallestPanelScale = 0.8;
     public const double LargestPanelScale = 1.5;
 

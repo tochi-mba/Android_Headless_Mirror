@@ -28,7 +28,8 @@
     "ShowTouches": false,
     "TimeLimitMinutes": 0,
     "AudioOutputBufferMs": 0,
-    "RequireAudio": false
+    "RequireAudio": false,
+    "Backdrop": "ink"
   },
   "Sound": {
     "Volume": 1,
@@ -150,7 +151,9 @@
     "HideSeconds": 3,
     "Scale": 1,
     "Opacity": 1,
-    "ShowMessages": true
+    "ShowMessages": true,
+    "AutoHide": true,
+    "ShowInWindow": false
   },
   "PatternGuide": {
     "Enabled": true,
@@ -193,7 +196,8 @@
     "NotifyMirrorStops": false,
     "CaptureNames": "android-{date}-{time}",
     "ScreenshotFlash": false,
-    "OpenScreenshots": false
+    "OpenScreenshots": false,
+    "CheckForUpdates": false
   },
   "GlobalKeys": {
     "Enabled": true,

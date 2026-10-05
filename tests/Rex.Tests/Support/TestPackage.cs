@@ -96,6 +96,11 @@ public sealed class TestPackage : IDisposable
     /// <summary>Where the app writes the web addresses it would have opened in a browser.</summary>
     public string BrowserLog => Path.Combine(Root, "browser.log");
 
+    /// <summary>What GitHub says is the latest release (<c>REX_FAKE_RELEASES</c>); no file means no answer.</summary>
+    public string ReleasesFile => Path.Combine(Root, "releases.json");
+
+    public void SetLatestRelease(string tag) => File.WriteAllText(ReleasesFile, $$"""{"tag_name":"{{tag}}","html_url":"https://example.invalid"}""");
+
     public string[] OpenedPages() => ReadLiveLog(BrowserLog);
 
     public string[] UsbRepairCalls() => ReadLiveLog(UsbRepairLog);

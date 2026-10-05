@@ -30,6 +30,10 @@ public partial class HudGroup : UserControl, ISettingsGroup
             HudEnabled.IsChecked = config.Hud.Enabled;
             HudOptions.IsEnabled = config.Hud.Enabled;
             HudMessages.IsChecked = config.Hud.ShowMessages;
+            HudShowInWindow.IsChecked = config.Hud.ShowInWindow;
+            HudAutoHide.IsChecked = config.Hud.AutoHide;
+            // How long they wait means nothing while they never hide.
+            HudDelay.IsEnabled = config.Hud.AutoHide;
             SelectTag(HudPosition, config.Hud.Position);
             HudDraggedRow.Visibility = config.Hud.IsPlaced ? Visibility.Visible : Visibility.Collapsed;
             HudScale.Value = config.Hud.Scale;
@@ -48,6 +52,8 @@ public partial class HudGroup : UserControl, ISettingsGroup
     {
         c.Hud.Enabled = HudEnabled.IsChecked == true;
         c.Hud.ShowMessages = HudMessages.IsChecked == true;
+        c.Hud.ShowInWindow = HudShowInWindow.IsChecked == true;
+        c.Hud.AutoHide = HudAutoHide.IsChecked == true;
     });
 
     private void OnHudPosition(object sender, SelectionChangedEventArgs e) => Save(c =>

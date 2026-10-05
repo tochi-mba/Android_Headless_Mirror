@@ -714,6 +714,13 @@
       </StackPanel></HeaderedContentControl.Header>
       <CheckBox x:Name="NotifyMirrorStops" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Say when the mirror stops by itself" />
     </HeaderedContentControl>
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Check for a newer version once a day" TextWrapping="Wrap" />
+        <TextBlock Text="Asks GitHub which version is newest; nothing else is sent. Off unless you turn it on." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="CheckForUpdates" Checked="OnWindowChanged" Unchecked="OnWindowChanged" AutomationProperties.Name="Check for a newer version once a day" />
+    </HeaderedContentControl>
 
     </StackPanel></Expander>
     <settings:GlobalKeysGroup x:Name="GlobalKeysSettingsGroup" />

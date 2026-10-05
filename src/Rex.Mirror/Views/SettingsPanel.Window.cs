@@ -18,6 +18,7 @@ public partial class SettingsPanel
         ShowWhatsNew.IsChecked = c.App.ShowWhatsNew;
         NotifyConnections.IsChecked = c.App.NotifyConnections;
         NotifyMirrorStops.IsChecked = c.App.NotifyMirrorStops;
+        CheckForUpdates.IsChecked = c.App.CheckForUpdates;
         ScreenshotFlash.IsChecked = c.App.ScreenshotFlash;
         OpenScreenshots.IsChecked = c.App.OpenScreenshots;
         ZoomKeyStep.Value = c.Zoom.KeyStep;
@@ -47,6 +48,7 @@ public partial class SettingsPanel
         c.App.ShowWhatsNew = ShowWhatsNew.IsChecked == true;
         c.App.NotifyConnections = NotifyConnections.IsChecked == true;
         c.App.NotifyMirrorStops = NotifyMirrorStops.IsChecked == true;
+        c.App.CheckForUpdates = CheckForUpdates.IsChecked == true;
         c.App.ScreenshotFlash = ScreenshotFlash.IsChecked == true;
         c.App.OpenScreenshots = OpenScreenshots.IsChecked == true;
         c.App.ScreenshotFormat = SelectedTag(ScreenshotFormat, "png");

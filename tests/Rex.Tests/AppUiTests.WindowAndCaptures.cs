@@ -87,6 +87,30 @@ public sealed partial class AppUiTests
         await app.QuitAsync();
     }
 
+    [Fact(Timeout = 150_000)]
+    public async Task Settings_BackdropFloatingControlsAndUpdateRowsSave()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = await OpenSettingsAsync(package, "GroupWindow", "GroupHud", "GroupStartup");
+        RexConfig Saved() => ConfigFile.Load(package.Paths.Config);
+
+        app.Ui.SelectComboItem("Backdrop", "Black, for an OLED screen");
+        await app.WaitForStatusAsync(s => s["window"]!["backdrop"]!.GetValue<string>() == "black", Soon, "the mirror area to turn black");
+        // scrcpy's own edges follow at the next start, so a restart is offered.
+        await app.WaitForStatusAsync(s => s["restartRequired"]!.GetValue<bool>(), Soon, "the restart offer");
+
+        app.Ui.Toggle("HudAutoHide", on: false);
+        await app.WaitUntilAsync(() => !app.Ui.Read("HudDelay", e => e.IsEnabled), Soon, "the delay to wait for hiding");
+        app.Ui.Toggle("HudShowInWindow", on: true);
+        app.Ui.Toggle("CheckForUpdates", on: true);
+        await app.WaitUntilAsync(() => Saved() is { Mirror.Backdrop: "black", Hud: { AutoHide: false, ShowInWindow: true }, App.CheckForUpdates: true },
+            Soon, "the new rows to save");
+        await app.WaitForStatusAsync(s => s["hudVisible"]!.GetValue<bool>(), Soon, "the floating controls in the window");
+        await app.SaveScreenshotAsync("ui-floating-controls-in-window.png");
+        await app.QuitAsync();
+    }
+
     /// <summary>A small reader over a status object's fields.</summary>
     private readonly record struct JsonObjectView(System.Text.Json.Nodes.JsonObject Node)
     {

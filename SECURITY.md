@@ -25,7 +25,8 @@ happened. A fixed release goes out as soon as the fix has passed every test.
 
 - Store, type or send a PIN, password or pattern. The pattern guide only draws where the dots are.
 - Upload the mirrored screen, what you type, lock information or anything on the phone. There is
-  no account and no telemetry.
+  no account and no telemetry. The optional update check (off unless turned on) asks GitHub which
+  version is newest, at most once a day, and sends nothing else.
 - Root, flash or otherwise change the phone beyond the settings you change yourself.
 - Stop the shared ADB server (`adb kill-server`), which other programs may be using.
 - Turn on wireless ADB unless you switch it on.
