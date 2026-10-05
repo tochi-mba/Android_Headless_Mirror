@@ -4,6 +4,27 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.11.0 - 2026-10-05
+
+### Added
+
+- **Every setting has a control.** The last 21 values that only `config.json` held are in the
+  Settings tab: the sound's format and buffer, where recordings go, keeping the phone from sleeping,
+  waking it and dismissing a lock screen with no PIN, touchpad gestures, Alt + wheel and Alt + pinch
+  zoom on their own, four more for the lock screen guide, and a new **Connection & logs** group for
+  USB first, how often phones are looked for, the wait before trying again, the Wi-Fi debugging
+  port, phones to try by address, and the log.
+- **Changed**, beside the search box, lists every setting that is not as the app ships, with its
+  value now and **Put back** for each, or **Put them all back**. Each group ends with **Put this
+  group back to how it ships**. Only what you changed moves.
+- An address typed in for a phone on Wi-Fi must be on this PC's own network; anything else is
+  refused in words.
+- The Display group is called Picture.
+
+### Fixed
+
+- The Phone tab could show the settings of the phone it was reading before you switched phones.
+
 ## 2.10.0 - 2026-10-05
 
 ### Added

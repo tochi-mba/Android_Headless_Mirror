@@ -100,14 +100,13 @@ public sealed class SettingsPanelRulesTests
         // Flatten intentionally omits null leaves; these two are still schema values and are set by dragging.
         paths.Add("Hud.X");
         paths.Add("Hud.Y");
+        // Every value has a control, or is set where it belongs, with the reason: none is left to config.json alone.
         var catalogued = SettingsCatalogue.Controls.Keys
             .Concat(SettingsCatalogue.Elsewhere.Keys)
-            .Concat(SettingsCatalogue.NotYet)
             .ToArray();
 
         Assert.Equal(catalogued.Length, catalogued.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(paths.Order(), catalogued.Order());
-        Assert.Equal(21, SettingsCatalogue.NotYet.Count);
 
         Wpf.Run(() =>
         {
@@ -131,7 +130,7 @@ public sealed class SettingsPanelRulesTests
         {
             var panel = Wpf.Layout(new SettingsPanel(), 300);
             Assert.Equal(
-                ["GroupProfiles", "GroupDisplay", "GroupAudio", "GroupSound", "GroupSession", "GroupZoom", "GroupInput", "GroupCopies", "GroupScreen", "GroupSecondPhone", "GroupApps", "GroupFiles", "GroupHud", "GroupLockScreen", "GroupCaptures", "GroupStartup", "GroupGlobalKeys", "GroupAdvanced"],
+                ["GroupProfiles", "GroupDisplay", "GroupAudio", "GroupSound", "GroupSession", "GroupZoom", "GroupInput", "GroupCopies", "GroupScreen", "GroupSecondPhone", "GroupApps", "GroupFiles", "GroupHud", "GroupLockScreen", "GroupCaptures", "GroupStartup", "GroupGlobalKeys", "GroupConnection", "GroupAdvanced"],
                 panel.Groups().Select(group => group.Name));
             var filter = Assert.IsType<TextBox>(panel.FindName("SettingsFilter"));
             var count = Assert.IsType<TextBlock>(panel.FindName("FilterCount"));

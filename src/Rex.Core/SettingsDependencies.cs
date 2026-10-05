@@ -23,6 +23,7 @@ namespace Rex.Core;
 /// <param name="ScreenCustom">The second screen's own width and height: its size is set to your own.</param>
 /// <param name="ScreenFixed">Upright and the resolution limit: the second screen has a fixed size.</param>
 /// <param name="ScreenBeside">Side, minimum width and the splitter: the second screen goes beside the phone.</param>
+/// <param name="Touchpad">Two-finger gestures and pinch zoom: touchpad gestures are on.</param>
 /// <param name="TransferInstall">APK install choices: accepting files and installing APKs are on.</param>
 public sealed record SettingsDependencies(
     bool Sensitivity,
@@ -43,7 +44,8 @@ public sealed record SettingsDependencies(
     bool TransferInstall,
     bool ScreenCustom,
     bool ScreenFixed,
-    bool ScreenBeside)
+    bool ScreenBeside,
+    bool Touchpad)
 {
     public static SettingsDependencies Of(RexConfig config) => new(
         Sensitivity: config.Touchpad.Enabled && config.Touchpad.TwoFingerToAndroid,
@@ -64,5 +66,6 @@ public sealed record SettingsDependencies(
         TransferInstall: config.Transfer.Enabled && config.Transfer.InstallApks,
         ScreenCustom: config.SecondScreen.Size == "custom",
         ScreenFixed: config.SecondScreen.Size != "follow",
-        ScreenBeside: config.SecondScreen.Placement == "beside");
+        ScreenBeside: config.SecondScreen.Placement == "beside",
+        Touchpad: config.Touchpad.Enabled);
 }

@@ -31,6 +31,9 @@ public static class WhatsNew
         new("2.10.0", "Two phones side by side",
             "Show a second, different phone beside the first, each fully usable; the side panel follows the one you click.",
             "The phone menu · Ctrl+Alt+O switches", "DeviceChip"),
+        new("2.11.0", "Every setting in Settings, and a way back",
+            "Every value the app keeps now has a control. Changed lists what you changed, and each one, or a whole group, can go back to how the app ships.",
+            "Settings → Changed", "TabSettings"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>

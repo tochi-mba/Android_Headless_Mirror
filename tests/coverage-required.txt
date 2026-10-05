@@ -60,3 +60,5 @@ PhonePick.cs
 SecondPhonePlan.cs
 TwoPhonesLayout.cs
 ScrcpyArguments.OtherPhone.cs
+WirelessAddress.cs
+SettingsChanges.cs

@@ -203,6 +203,27 @@ public static class SettingsCatalogue
         ["Views.Outline"] = "ViewsOutline",
         ["Views.Captions"] = "ViewsCaptions",
         ["Views.Splitter"] = "ViewsSplitter",
+        ["Mirror.AudioCodec"] = "AudioCodec",
+        ["Mirror.AudioBufferMs"] = "AudioBuffer",
+        ["Mirror.RecordDirectory"] = "RecordFolder",
+        ["Session.KeepActive"] = "KeepActive",
+        ["Session.WakeBeforeMirror"] = "WakeBeforeMirror",
+        ["Session.DismissKeyguard"] = "DismissKeyguard",
+        ["Session.PreferUsb"] = "PreferUsb",
+        ["Session.PollSeconds"] = "PollSeconds",
+        ["Session.RetrySeconds"] = "RetrySeconds",
+        ["Wireless.Port"] = "WirelessPort",
+        ["Wireless.ManualHosts"] = "HostToAdd",
+        ["Touchpad.Enabled"] = "TouchpadEnabled",
+        ["Zoom.WheelZoom"] = "WheelZoom",
+        ["Zoom.PinchZoom"] = "PinchZoom",
+        ["PatternGuide.AskPerDevice"] = "PatternAsk",
+        ["PatternGuide.CalibrationEnabled"] = "PatternCalibration",
+        ["PatternGuide.ShowCursorTrail"] = "PatternTrail",
+        ["PatternGuide.Opacity"] = "PatternOpacity",
+        ["Logging.Enabled"] = "LoggingEnabled",
+        ["Logging.MaxBytes"] = "LogSize",
+        ["Logging.KeepFiles"] = "LogKeep",
         ["SecondPhone.Enabled"] = "SecondPhoneEnabled",
         ["SecondPhone.WhenConnected"] = "SecondPhoneWhen",
         ["SecondPhone.Remember"] = "SecondPhoneRemember",
@@ -244,15 +265,5 @@ public static class SettingsCatalogue
         ["Hud.X"] = "Set by dragging the fullscreen controls.",
         ["Hud.Y"] = "Set by dragging the fullscreen controls.",
         ["Session.PreferredSerial"] = "Set by the phone picker.",
-    };
-
-    public static readonly IReadOnlySet<string> NotYet = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "Mirror.AudioCodec", "Mirror.AudioBufferMs", "Mirror.RecordDirectory",
-        "Session.KeepActive", "Session.WakeBeforeMirror", "Session.DismissKeyguard", "Session.PreferUsb",
-        "Session.PollSeconds", "Session.RetrySeconds", "Wireless.Port", "Wireless.ManualHosts",
-        "Touchpad.Enabled", "Zoom.WheelZoom", "Zoom.PinchZoom", "PatternGuide.AskPerDevice",
-        "PatternGuide.CalibrationEnabled", "PatternGuide.ShowCursorTrail", "PatternGuide.Opacity",
-        "Logging.Enabled", "Logging.MaxBytes", "Logging.KeepFiles",
     };
 }

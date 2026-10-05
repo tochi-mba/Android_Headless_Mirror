@@ -26,7 +26,6 @@ internal static partial class SettingsPageWriter
             html.Append(CultureInfo.InvariantCulture, $"      <li><a href=\"#{GroupId(group.Name)}\">{SiteHtml.Escape(group.Title)}</a></li>\n");
         }
 
-        html.Append("      <li><a href=\"#group-config-only\">Only in config.json</a></li>\n");
         html.Append("      <li><a href=\"#group-elsewhere\">Set somewhere else</a></li>\n");
         html.Append("    </ol>\n  </nav>\n");
         html.Append("  <div class=\"doc-body\">\n");
@@ -41,9 +40,6 @@ internal static partial class SettingsPageWriter
             Group(html, GroupId(group.Name), group.Title, group.Intro, group.Rows.Select(row => Row(row)));
         }
 
-        Group(html, "group-config-only", "Only in config.json",
-            "These have no control in the window yet. Change them with the command shown, or in config.json while the app is closed.",
-            SettingsCatalogue.NotYet.Order(StringComparer.Ordinal).Select(path => Row(path, null)));
         Group(html, "group-elsewhere", "Set somewhere else",
             "These are in config.json, but the app sets them for you where it makes sense to.",
             SettingsCatalogue.Elsewhere.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => Row(pair.Key, pair.Value)));

@@ -25,7 +25,7 @@ public partial class SettingsPanel : UserControl
     public SettingsPanel()
     {
         InitializeComponent();
-        _settingsGroups = [ProfilesSettingsGroup, SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, SecondPhoneSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, GlobalKeysSettingsGroup];
+        _settingsGroups = [ProfilesSettingsGroup, SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, SecondPhoneSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, GlobalKeysSettingsGroup, ConnectionSettingsGroup];
         PolishRows();
         StampConfigPaths();
     }
@@ -124,6 +124,8 @@ public partial class SettingsPanel : UserControl
         {
             group.Attach(this, window, host);
         }
+
+        IndexSettings();
         _loading = true;
         try
         {
@@ -172,12 +174,13 @@ public partial class SettingsPanel : UserControl
             KeepPcAwake.IsChecked = c.Session.KeepPcAwake;
             RefreshInput(c);
             RefreshWindow(c);
+            RefreshRemaining(c);
             Record.IsChecked = c.Mirror.RecordOnStart;
             TurnScreenOff.IsChecked = c.Session.TurnScreenOff;
             StayAwake.IsChecked = c.Session.StayAwake;
             PowerOffOnClose.IsChecked = c.Session.PowerOffOnClose;
             RestartOnCrash.IsChecked = c.Session.RestartOnUnexpectedExit;
-            TwoFinger.IsChecked = c.Touchpad.Enabled && c.Touchpad.TwoFingerToAndroid;
+            TwoFinger.IsChecked = c.Touchpad.TwoFingerToAndroid;
             Sensitivity.Value = c.Touchpad.Sensitivity;
             SensitivityValue.Text = c.Touchpad.Sensitivity.ToString("0.0", CultureInfo.InvariantCulture) + "×";
             HostZoom.IsChecked = c.Zoom.Enabled;
@@ -303,11 +306,8 @@ public partial class SettingsPanel : UserControl
 
     private void OnLiveChanged(object sender, RoutedEventArgs e) => Save(c =>
     {
-        c.Touchpad.Enabled = true;
         c.Touchpad.TwoFingerToAndroid = TwoFinger.IsChecked == true;
         c.Zoom.Enabled = HostZoom.IsChecked == true;
-        c.Zoom.WheelZoom = c.Zoom.Enabled;
-        c.Zoom.PinchZoom = c.Zoom.Enabled;
         c.Zoom.ShowNavigator = Navigator.IsChecked == true;
         c.Zoom.NavigatorPicture = NavigatorPicture.IsChecked == true;
         c.Zoom.NavigatorAlways = NavigatorAlways.IsChecked == true;
