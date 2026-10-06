@@ -8,7 +8,7 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <Version>2.13.0</Version>
+    <Version>2.14.0</Version>
     <Company>REX Technologies</Company>
     <Product>Android Headless Mirror</Product>
     <Copyright>REX Technologies</Copyright>
