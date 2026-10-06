@@ -20,8 +20,9 @@ was built and tested by CI; the installer for each published one is on the
 - The names are smaller and sit closer to the top edge.
 - The window does less while it is hidden or minimised: the work that keeps it on the picture
   runs four times a second instead of thirty, and comes straight back when it shows.
-- Every pull request now measures what the app costs, starting and in five states, against a
+- Every pull request now measures what the app costs, starting and in six states, against a
   committed baseline, so a change that makes it slower or heavier is caught before it ships.
+- Every tab of the side panel is photographed whole for review, however long it is.
 
 ### Fixed
 

@@ -135,7 +135,7 @@ tests/Rex.Tests         xUnit: unit, contract, end-to-end and UI-automation test
   Support/AppAutomation UI Automation over the window (x:Name is the AutomationId)
   Site/*                the writers of docs/settings, shortcuts, cli and changelog .html (SiteTests compares them)
   SiteScreenshots       the website's pictures from the real window (REX_SITE_SHOTS=1, CI)
-  CostCheck             what the app costs (start time, CPU, memory, handles, threads) in five states,
+  CostCheck             what the app costs (start time, CPU, memory, handles, threads) in six states,
                         against tests/perf-baseline.json with its tolerance (REX_PERF=1, CI)
 tests/Rex.FakeAdb       deterministic adb.exe stand-in (scenario JSON, call log)
 tests/Rex.FakeScrcpy    scrcpy.exe stand-in: a real window the app embeds

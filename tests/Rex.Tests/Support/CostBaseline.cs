@@ -135,7 +135,7 @@ public static class CostBaseline
             ["tolerance"] = JsonSerializer.SerializeToNode(tolerance),
             ["metrics"] = numbers,
         };
-        return file.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
+        return file.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) + "\n";
     }
 
     /// <summary>Reads a baseline file; a missing tolerance is the default, and missing numbers are none.</summary>
