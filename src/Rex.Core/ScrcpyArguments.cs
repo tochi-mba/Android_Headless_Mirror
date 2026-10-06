@@ -97,6 +97,8 @@ public static partial class ScrcpyArguments
     /// <summary>
     /// Modifier for scrcpy's own keyboard shortcuts. scrcpy 4.1 no longer accepts combined
     /// modifiers, so use the rarely pressed Right Ctrl key and send that same key from the app.
+    /// It is not a setting: a Windows key posted to a window that leaves it to Windows opens the
+    /// Start menu, and an Alt is either the PC view's (left) or AltGr (right).
     /// </summary>
     public const string ShortcutModifier = "rctrl";
 

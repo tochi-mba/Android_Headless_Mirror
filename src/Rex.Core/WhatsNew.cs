@@ -43,6 +43,9 @@ public static class WhatsNew
         new("2.14.0", "A black backdrop, and controls that stay",
             "Black around the picture for an OLED screen, the floating controls in the window and kept on screen, and an optional daily check for a newer version.",
             "Settings → Window", "TabSettings"),
+        new("2.15.0", "Your own keys",
+            "Give any action a key, move one, or take one away, in the window and in browse mode. A key another action has is refused in words.",
+            "Settings → Keyboard shortcuts", "TabSettings"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>

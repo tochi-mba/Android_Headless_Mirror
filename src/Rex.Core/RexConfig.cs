@@ -32,6 +32,10 @@ public sealed record RexConfig
     public ViewsSettings Views { get; set; } = new();
     public ProfilesSettings Profiles { get; set; } = new();
     public SecondPhoneSettings SecondPhone { get; set; } = new();
+
+    /// <summary>The person's own keys for the window, for browse mode, and scrcpy's own shortcut key.</summary>
+    public KeysSettings Keys { get; set; } = new();
+
     public LoggingSettings Logging { get; set; } = new();
 
     /// <summary>Clamps every value into its supported range. Called after load and before save.</summary>
@@ -57,6 +61,8 @@ public sealed record RexConfig
         Views.Normalize();
         Profiles.Normalize();
         SecondPhone.Normalize();
+        Keys ??= new KeysSettings();
+        Keys.Normalize();
         Logging.Normalize();
     }
 
@@ -81,6 +87,7 @@ public sealed record RexConfig
         Views = Views.Copy(),
         Profiles = Profiles.Copy(),
         SecondPhone = SecondPhone.Copy(),
+        Keys = Keys.Copy(),
         Logging = Logging.Copy(),
     };
 
@@ -109,6 +116,7 @@ public sealed record RexConfig
         Views = copy.Views;
         Profiles = copy.Profiles;
         SecondPhone = copy.SecondPhone;
+        Keys = copy.Keys;
         Logging = copy.Logging;
     }
 
@@ -671,6 +679,7 @@ public static class PathRules
     DefaultIgnoreCondition = JsonIgnoreCondition.Never)]
 [JsonSerializable(typeof(RexConfig))]
 [JsonSerializable(typeof(List<GlobalKeyAction>))]
+[JsonSerializable(typeof(List<KeyBinding>))]
 [JsonSerializable(typeof(StateDocument))]
 [JsonSerializable(typeof(UiState))]
 [JsonSerializable(typeof(DeviceProfile))]

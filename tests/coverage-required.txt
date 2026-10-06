@@ -70,3 +70,5 @@ CaptureName.cs
 WindowFit.cs
 LoggedProcessRunner.cs
 UpdateCheck.cs
+KeyMap.cs
+KeysSettings.cs

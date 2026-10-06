@@ -295,6 +295,10 @@
     "PauseWhenHidden": false,
     "FollowsProfile": false
   },
+  "Keys": {
+    "Window": [],
+    "Browse": []
+  },
   "Logging": {
     "Enabled": true,
     "MaxBytes": 2097152,

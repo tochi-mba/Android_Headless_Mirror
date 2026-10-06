@@ -116,6 +116,8 @@ public static class SettingsCatalogue
         ["Mirror.Backdrop"] = "Backdrop",
         ["Hud.AutoHide"] = "HudAutoHide",
         ["Hud.ShowInWindow"] = "HudShowInWindow",
+        ["Keys.Window"] = "WindowKeysList",
+        ["Keys.Browse"] = "BrowseKeysList",
 
         ["Ambient.Enabled"] = "AmbientEnabled",
         ["Ambient.Opacity"] = "AmbientOpacity",

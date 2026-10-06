@@ -4,6 +4,20 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.15.0 - 2026-10-06
+
+### Added
+
+- **Keyboard shortcuts**, a group in Settings: every key the window answers to, and every action
+  that has none yet, in a box of its own. Click it and press the keys; Backspace takes a key away
+  and **Put back** returns the one it shipped with. A key another action has, one Windows keeps
+  for itself, or one that would fire while typing into the phone is refused in words.
+- Browse mode's keys can be your own too: any single key for any action. Space still taps unless
+  it is given something else.
+- `rex keys` lists every key; `rex keys set <action> <key>`, `rex keys set <action> none` and
+  `rex keys reset [action]` change them, with `--browse` for browse mode. A running app follows.
+- Tooltips, the Info tab, the fullscreen controls and the browse mode line say your own keys.
+
 ## 2.14.0 - 2026-10-06
 
 ### Added

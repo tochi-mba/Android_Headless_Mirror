@@ -286,6 +286,43 @@ public sealed class CliTests
     }
 
     [Fact]
+    public async Task Keys_AreListedSetAndPutBack()
+    {
+        using var package = new TestPackage(withFakeTools: true);
+        var context = new CliContext(package.Paths);
+        JsonNode Data(MachineResult r) => JsonNode.Parse(r.Json)!["data"]!;
+        JsonNode Key(JsonNode data, string list, string action) => data[list]!.AsArray().Single(k => k!["action"]!.GetValue<string>() == action)!;
+
+        var listed = Data(await MachineMode.RunAsync(["keys"], context));
+        Assert.Equal("Ctrl+Alt+H", Key(listed, "window", "home")["key"]!.GetValue<string>());
+        Assert.Null(Key(listed, "window", "power")["key"]);
+
+        var moved = Data(await MachineMode.RunAsync(["keys", "set", "home", "Ctrl+Alt+J"], context));
+        Assert.Equal("Ctrl+Alt+J", Key(moved, "window", "home")["key"]!.GetValue<string>());
+        Assert.Equal("Ctrl+Alt+H", Key(moved, "window", "home")["shipped"]!.GetValue<string>());
+        Assert.Equal(0, await Commands.RunAsync(["keys", "set", "power", "Ctrl+Alt+Q"], context));
+        Assert.Equal(0, await Commands.RunAsync(["keys", "set", "like", "K", "--browse"], context));
+        Assert.Equal(0, await Commands.RunAsync(["keys", "set", "recents", "none"], context));
+        var config = ConfigFile.Load(package.Paths.Config);
+        Assert.Equal([("home", "Ctrl+Alt+J"), ("power", "Ctrl+Alt+Q"), ("recents", "")], config.Keys.Window.Select(b => (b.Action, b.Key)));
+        Assert.Equal([("like", "K")], config.Keys.Browse.Select(b => (b.Action, b.Key)));
+        Assert.Equal(0, await Commands.RunAsync(["keys"], context));
+
+        // A key another action has is refused in words, and nothing changes.
+        var refused = await MachineMode.RunAsync(["keys", "set", "back", "Ctrl+Alt+J"], context);
+        Assert.NotEqual(0, refused.ExitCode);
+        Assert.Contains("This key already does: Home.", JsonNode.Parse(refused.Json)!["error"]!["message"]!.GetValue<string>(), StringComparison.Ordinal);
+        await Assert.ThrowsAsync<ArgumentException>(() => Commands.RunAsync(["keys", "swap"], context));
+
+        Assert.Equal(0, await Commands.RunAsync(["keys", "reset", "home"], context));
+        Assert.DoesNotContain(ConfigFile.Load(package.Paths.Config).Keys.Window, b => b.Action == "home");
+        Assert.Equal(0, await Commands.RunAsync(["keys", "reset", "--browse"], context));
+        Assert.Empty(ConfigFile.Load(package.Paths.Config).Keys.Browse);
+        Assert.Equal(0, await Commands.RunAsync(["keys", "reset"], context));
+        Assert.Empty(ConfigFile.Load(package.Paths.Config).Keys.Window);
+    }
+
+    [Fact]
     public async Task Encoders_AreListedWithoutTheDesktopApp()
     {
         using var package = new TestPackage(withFakeTools: true);

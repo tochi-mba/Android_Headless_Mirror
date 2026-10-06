@@ -44,6 +44,7 @@ Commands: `capabilities`, `status`, `devices`, `diagnostics`,
 `install <apk...> [--downgrade] [--grant] [--test] [--no-replace] [--serial S]`,
 `screen [open <app> [--instead|--beside] [--size S] [--fresh]|app <app>|close]`,
 `phones [beside [serial]|stop|switch|make-main]`, `encoders [--serial S]`,
+`keys [set <action> <key|none> | reset [action]] [--browse]`,
 `profile list|show <name>|apply <name>|save <name> [--groups A,B] [--all]|rename <old> <new>|delete <name>|export <name> <file>|import <file>`,
 `config list|get|set|restore`, `autostart on|off`, `lock-mode <serial> <pattern|other|none>`,
 `reset-lock [serial|ALL]`.
@@ -170,8 +171,9 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
 - Two fingers over one of the app's own lists scroll that list. The mirror is a child window that
   otherwise takes the whole gesture, so anything scrollable the pointer can rest on has to be
   offered to `TouchpadBridge.PanelAt` or it will be scrolled on the phone instead.
-- scrcpy is launched with `--shortcut-mod=rctrl`, `--mouse=sdk`, `--keyboard=uhid`,
-  `--window-borderless`, `--background-color` (the app's ink, so a letterbox is invisible) and
+- scrcpy is launched with `--shortcut-mod=rctrl` (not a setting: a Windows key posted to a window
+  can open the Start menu, and an Alt is the PC view's or AltGr), `--mouse=sdk`, `--keyboard=uhid`, `--window-borderless`, `--background-color` (the app's ink, or
+  black with the black backdrop, so a letterbox is invisible) and
   `--no-window-aspect-ratio-lock`; `Mirror.ExtraArgs` cannot override these
   and is validated wherever it is written (settings panel, `config set`, `Normalize`). If Android
   denies UHID, the session retries once with `--keyboard=sdk --raw-key-events` and remembers it in
@@ -227,6 +229,11 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   came with the phone are never uninstalled. `rex app` goes through the running app when it shows
   that phone, and straight to the phone otherwise. The phone's video encoders are read the same
   way (`EncoderList`, `scrcpy --list-encoders --no-cleanup`), only when asked, through the gate.
+- `KeyMap` is the only place a key is resolved: the window (`WindowKeys`), browse mode
+  (`KeyboardBrowse`), `Shortcuts.Gesture`, tooltips and the Info tab all read `KeyMap.Current`,
+  which only the app sets, from `Keys` in config.json (only what differs from how the app
+  ships). A window key needs Ctrl, Alt or Win, or is F1 to F24 alone; browse keys are single keys;
+  no key does two things.
 - The update check (`UpdateCheck`, `Services/UpdateChecker`) is opt-in: with
   `App.CheckForUpdates` off nothing is ever requested. On, it asks GitHub's latest release at most
   once a day; tests stand in for GitHub with `REX_FAKE_RELEASES`, which `AppProcess` always sets.
