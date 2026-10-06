@@ -30,6 +30,8 @@ was built and tested by CI; the installer for each published one is on the
 
 ### Fixed
 
+- With a USB device that Windows could not recognise and the automatic USB repair not set up, the
+  app's USB check failed every few seconds instead of saying what was wrong. It now says so.
 - A long key, like Ctrl+Alt+Backspace, fits its box in Keyboard shortcuts, and **Put back** is a
   small button that lines up on every row.
 - Adding a tile to the Controls tab starts from "Choose an action to add", and **Add** waits until
