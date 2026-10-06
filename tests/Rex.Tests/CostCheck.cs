@@ -7,8 +7,8 @@ namespace Rex.Tests;
 /// What the app costs, measured the same way on every run so a change can be compared: how long it
 /// takes to start mirroring, then its CPU, memory, handles and threads while mirroring, zoomed in,
 /// with Settings open, hidden in the tray, shown again, and mirroring without the soft background
-/// (on a runner with no graphics card the background is drawn in software, so this last state is
-/// the app's own cost with that set apart). The numbers are checked against the
+/// (on a runner with no graphics card the live pictures are the processor's work, so this last
+/// state is the app's own cost with that set apart). The numbers are checked against the
 /// committed tests/perf-baseline.json with its own tolerance, and written to artifacts/perf as a
 /// file that can replace the baseline as it is. CI runs it on every pull request; locally it only
 /// runs when REX_PERF=1, and its numbers are this PC's, not the runner's.

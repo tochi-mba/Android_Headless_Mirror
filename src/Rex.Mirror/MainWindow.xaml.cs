@@ -652,11 +652,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Whether the live pictures are made without a graphics card: the window drawn in software, or
-    /// the capture copying the screen because the graphics card will not hand it over (Remote
-    /// Desktop, many virtual machines). Either way every frame is the processor's work.
+    /// Whether the live pictures are made without a graphics card: the window drawn in software, the
+    /// capture copying the screen because the graphics card will not hand it over, or the capture on
+    /// Microsoft's software adapter (Remote Desktop, many virtual machines, CI's runners). Each way,
+    /// every frame is the processor's work.
     /// </summary>
-    internal bool WithoutGraphicsCard => RenderCapability.Tier >> 16 == 0 || _liveCapture.Path == "gdi";
+    internal bool WithoutGraphicsCard => RenderCapability.Tier >> 16 == 0 || _liveCapture.OnProcessor;
 
     /// <summary>The frames a second the live pictures are captured at now; 0 while none is wanted.</summary>
     internal double LivePictureRate { get; private set; }

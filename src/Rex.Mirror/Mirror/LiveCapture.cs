@@ -51,6 +51,9 @@ public sealed class LiveCapture : IDisposable
     /// <summary>"gpu" while desktop duplication is doing the work, "gdi" when the last picture was copied the slow way.</summary>
     public string Path => _path;
 
+    /// <summary>Whether the frames are the processor's work: copied from the screen, or captured on Microsoft's software adapter.</summary>
+    public bool OnProcessor => _path == "gdi" || _gpu.OnSoftwareAdapter;
+
     /// <summary>
     /// A fresh capture of <paramref name="screenRect"/> (physical pixels): the blurred background
     /// when <paramref name="ambient"/> is set, the sharp preview when <paramref name="previewWidth"/>
