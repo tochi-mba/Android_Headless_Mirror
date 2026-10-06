@@ -78,8 +78,10 @@ public sealed partial class AppEndToEndTests
         TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
         using var package = new TestPackage(withFakeTools: true);
         using var app = await StartForScreenAsync(package);
-        var status = await OpenScreenAsync(app);
+        await OpenScreenAsync(app);
 
+        // Showing comes a moment before the view has its place in the window.
+        var status = await app.WaitForStatusAsync(s => ScreenOf(s)["rect"] is not null, ScreenTimeout, "the second screen's place in the window");
         var rect = ScreenOf(status)["rect"]!;
         await app.ClickAtAsync(rect["left"]!.GetValue<int>() + rect["width"]!.GetValue<int>() / 2, rect["top"]!.GetValue<int>() + rect["height"]!.GetValue<int>() / 2);
         await app.WaitForStatusAsync(s => ScreenOf(s)["active"]!.GetValue<bool>(), ScreenTimeout, "the second screen to have the keyboard");

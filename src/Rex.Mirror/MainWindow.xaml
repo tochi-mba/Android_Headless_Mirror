@@ -64,7 +64,7 @@
                   AutomationProperties.Name="Save a screenshot" />
           <Button x:Name="QuickSound" Style="{StaticResource IconButton}" Content="{StaticResource IconPcSoundUp}" Click="OnQuickSound"
                   AutomationProperties.Name="Phone sound on this PC" />
-          <Popup x:Name="SoundPopup" PlacementTarget="{Binding ElementName=QuickSound}" Placement="Bottom" VerticalOffset="6"
+          <Popup x:Name="SoundPopup" PlacementTarget="{Binding ElementName=QuickSound}" Placement="Custom" VerticalOffset="6"
                  StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
             <views:SoundPanel x:Name="SoundPanel" />
           </Popup>

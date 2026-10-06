@@ -48,6 +48,11 @@ public partial class MainWindow
                 _ = RunActionAsync(e.Delta > 0 ? "sound-up" : "sound-down");
             }
         };
+        // Under the button with their right edges in line: the button sits at the window's right,
+        // so a panel that opened rightwards from it would hang past the window's edge.
+        SoundPopup.CustomPopupPlacementCallback = (popup, target, _) =>
+            [new System.Windows.Controls.Primitives.CustomPopupPlacement(new Point(target.Width - popup.Width, target.Height),
+                System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal)];
         SoundPopup.Closed += (_, _) =>
         {
             if (ActiveView.HasChild)
