@@ -52,6 +52,8 @@ public partial class WindowGroup : UserControl, ISettingsGroup
             ShowTopBar.IsChecked = app.ShowTopBar;
             BuildQuickButtonChoices(app.TopBarButtons);
             QuickButtonChoices.IsEnabled = app.ShowTopBar;
+            BuildExtras(app.TopBarButtons.Where(id => !AppSettings.QuickButtons.Contains(id)).ToArray());
+            TopBarExtraList.IsEnabled = app.ShowTopBar;
             ShowStatusBar.IsChecked = app.ShowStatusBar;
             ShowHints.IsChecked = app.ShowHints;
             ShowHints.IsEnabled = app.ShowStatusBar;
@@ -141,9 +143,61 @@ public partial class WindowGroup : UserControl, ISettingsGroup
                 chosen.Remove(id);
             }
 
-            // The top bar's own order, whatever order they were picked in.
-            c.App.TopBarButtons = AppSettings.QuickButtons.Where(chosen.Contains).ToList();
+            // The top bar's own order for its phone buttons, whatever order they were picked in; then the rest.
+            c.App.TopBarButtons = [.. AppSettings.QuickButtons.Where(chosen.Contains), .. c.App.TopBarButtons.Where(b => !AppSettings.QuickButtons.Contains(b))];
         });
+    }
+
+    /// <summary>The other actions in the top bar, each with Remove, and a list to add one from.</summary>
+    private void BuildExtras(IReadOnlyList<string> extras)
+    {
+        TopBarExtraList.Children.Clear();
+        foreach (var id in extras)
+        {
+            var label = MirrorActions.Find(id)?.Label ?? id;
+            var row = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
+            var remove = new Button { Content = "Remove", Style = (Style)FindResource("GhostButton") };
+            AutomationProperties.SetAutomationId(remove, "top-bar-remove-" + id);
+            AutomationProperties.SetName(remove, $"Take {label} out of the top bar");
+            remove.Click += (_, _) => _panel?.Save(c => c.App.TopBarButtons = [.. c.App.TopBarButtons.Where(b => b != id)]);
+            Grid.SetColumn(remove, 1);
+            row.Children.Add(remove);
+            TopBarExtraList.Children.Add(row);
+        }
+
+        var choice = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
+        AutomationProperties.SetAutomationId(choice, "top-bar-add-choice");
+        AutomationProperties.SetName(choice, "A button to add to the top bar");
+        choice.Items.Add(new ComboBoxItem { Content = "Choose an action to add", IsEnabled = false });
+        foreach (var action in MirrorActions.All.Where(a => !AppSettings.QuickButtons.Contains(a.Id) && !extras.Contains(a.Id)))
+        {
+            choice.Items.Add(new ComboBoxItem { Content = action.Label, Tag = action.Id });
+        }
+
+        choice.SelectedIndex = 0;
+        var room = extras.Count < AppSettings.MostTopBarExtras;
+        var add = new Button { Content = "Add", Margin = new Thickness(6, 6, 0, 0), IsEnabled = false };
+        AutomationProperties.SetAutomationId(add, "top-bar-add");
+        AutomationProperties.SetName(add, "Add the button to the top bar");
+        add.ToolTip = room ? null : $"The top bar takes at most {AppSettings.MostTopBarExtras} more buttons.";
+        choice.SelectionChanged += (_, _) => add.IsEnabled = room && choice.SelectedItem is ComboBoxItem { Tag: string };
+        add.Click += (_, _) =>
+        {
+            if (choice.SelectedItem is ComboBoxItem { Tag: string chosen })
+            {
+                _panel?.Save(c => c.App.TopBarButtons = [.. c.App.TopBarButtons, chosen]);
+            }
+        };
+        var adding = new Grid();
+        adding.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        adding.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(add, 1);
+        adding.Children.Add(choice);
+        adding.Children.Add(add);
+        TopBarExtraList.Children.Add(adding);
     }
 
     private static void SelectTag(ComboBox combo, string tag) =>

@@ -23,7 +23,10 @@ public sealed record AppSettings
 
     public static readonly string[] SidebarSides = ["right", "left"];
 
-    /// <summary>The phone buttons the top bar can show, in the order it shows them.</summary>
+    /// <summary>How many actions beyond its own phone buttons the top bar takes.</summary>
+    public const int MostTopBarExtras = 8;
+
+    /// <summary>The phone buttons the top bar has its own places for, in the order it shows them; any other action may follow them.</summary>
     public static readonly string[] QuickButtons = ["home", "back", "recents", "sleep", "screenshot", "sound"];
 
     public static readonly string[] ScreenshotFormats = ["png", "jpg"];
@@ -103,8 +106,13 @@ public sealed record AppSettings
         PanelScale = double.IsFinite(PanelScale) ? Math.Round(Math.Clamp(PanelScale, SmallestPanelScale, LargestPanelScale), 2) : 1.0;
         CaptureNames = CaptureName.WhyNot(CaptureNames) is null ? CaptureNames.Trim() : CaptureName.Default;
 
-        // Known buttons only, each once, in the top bar's own order.
-        var wanted = (TopBarButtons ?? []).Select(id => (id ?? string.Empty).Trim().ToLowerInvariant()).ToHashSet();
-        TopBarButtons = QuickButtons.Where(wanted.Contains).ToList();
+        // The phone buttons the bar has its own places for, in its order, then any other actions
+        // in the order they were added: known ones only, each once, at most MostTopBarExtras.
+        var wanted = (TopBarButtons ?? []).Select(id => MirrorActions.Find((id ?? string.Empty).Trim())?.Id ?? (id ?? string.Empty).Trim().ToLowerInvariant()).ToList();
+        TopBarButtons =
+        [
+            .. QuickButtons.Where(wanted.Contains),
+            .. wanted.Where(id => !QuickButtons.Contains(id) && MirrorActions.Find(id) is not null).Distinct().Take(MostTopBarExtras),
+        ];
     }
 }

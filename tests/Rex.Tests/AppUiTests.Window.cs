@@ -44,6 +44,18 @@ public sealed partial class AppUiTests
         Assert.False(app.Ui.Exists("QuickHome"));
         Assert.True(app.Ui.Exists("QuickBack"));
 
+        // Any other action joins the top bar after the phone buttons, works there, and leaves again.
+        app.Ui.SelectComboItem("top-bar-add-choice", "Zoom in");
+        app.Ui.Invoke("top-bar-add");
+        await app.WaitForStatusAsync(
+            s => Window(s)["quickButtons"]!.AsArray().Select(n => n!.GetValue<string>()).SequenceEqual(["back", "recents", "sleep", "sound", "zoom-in"]),
+            Soon,
+            "the zoom button to join the top bar");
+        app.Ui.Invoke("quick-zoom-in");
+        await app.WaitForStatusAsync(s => s["zoom"]!.GetValue<double>() > 1, Soon, "the top bar's zoom button to zoom in");
+        app.Ui.Invoke("top-bar-remove-zoom-in");
+        await app.WaitForStatusAsync(s => !app.Ui.Exists("quick-zoom-in"), Soon, "the zoom button to leave the top bar");
+
         app.Ui.Toggle("ShowHints", on: false);
         await app.WaitForStatusAsync(s => !Window(s)["hints"]!.GetValue<bool>(), Soon, "the hints to go");
 

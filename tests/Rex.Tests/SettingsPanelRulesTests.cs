@@ -224,6 +224,22 @@ public sealed class SettingsPanelRulesTests
 
             using var scaled = UiAuditCapture.Stitch(pages, band, scale: 1.5);
             Assert.Equal(60 + 225 + 100, scaled.Height);
+
+            // The area's padding stays put while its content scrolls, so none of it is drawn: at
+            // each seam it would cover the content.
+            foreach (var (_, shot) in pages)
+            {
+                using var paint = System.Drawing.Graphics.FromImage(shot);
+                paint.Clear(System.Drawing.Color.Green);
+                paint.FillRectangle(System.Drawing.Brushes.Red, band.Left, band.Top, band.Width, 4);
+                paint.FillRectangle(System.Drawing.Brushes.Red, band.Left, band.Bottom - 16, band.Width, 16);
+            }
+
+            using var seamless = UiAuditCapture.Stitch(pages, band, scale: 1);
+            for (var y = 0; y < seamless.Height; y++)
+            {
+                Assert.NotEqual(System.Drawing.Color.Red.ToArgb(), seamless.GetPixel(40, y).ToArgb());
+            }
         }
         finally
         {
