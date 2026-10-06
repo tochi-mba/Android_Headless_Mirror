@@ -74,6 +74,8 @@
       <a href="#transfers">Sending files</a>
       <a href="#profiles">Profiles</a>
       <a href="#two-phones">Two phones</a>
+      <a href="#own-keys">Your own keys</a>
+      <a href="#mirror-stops">Mirror stopped</a>
       <a href="#does-not-start">Does not start</a>
       <a href="#files">App files</a>
       <a href="#reset">Reset</a>
@@ -147,6 +149,15 @@
       <h2 id="two-phones-title">The second phone does not show</h2>
       <p>It must be allowed for USB debugging, like the first; until it is, the phone menu lists it as waiting. One phone on USB and Wi-Fi at once is the same phone and is never shown beside itself. If you once chose <em>Never for this phone</em>, it is not asked about again, but the phone menu can still show it beside.</p>
       <p>With three or more phones, two show at a time: choose them from the phone menu. A window too narrow for both shows the main phone alone until there is room. Copies wait while two phones show.</p>
+    </section>
+    <section class="help-topic" id="own-keys" aria-labelledby="own-keys-title">
+      <h2 id="own-keys-title">A key of my own is refused, or does nothing</h2>
+      <p>The words under its box say why it was refused: another action has it, Windows keeps it for itself, a shortcut from anywhere takes it first, or it would fire while you type into the phone (a key for the window needs <kbd>Ctrl</kbd>, <kbd>Alt</kbd> or <kbd>Win</kbd>, or is <kbd>F1</kbd> to <kbd>F24</kbd> on its own). Keys for the window work while the window is in front; for a key that works anywhere, use <a href="#from-anywhere">Shortcuts from anywhere</a>.</p>
+      <p><em>Put every key back</em> under Keyboard shortcuts returns them all as the app ships, and <code>rex keys reset</code> does the same from a terminal.</p>
+    </section>
+    <section class="help-topic" id="mirror-stops" aria-labelledby="mirror-stops-title">
+      <h2 id="mirror-stops-title">The mirror stopped by itself</h2>
+      <p>If <em>Stop the mirror after</em> is set, the status line says it stopped after that time, and it stays stopped until you press Start. If it says the phone has no video encoder by some name, choose another under <em>Video encoder</em>, or let the phone choose. If it keeps closing, it is started again as many times in a row as <em>Times in a row before it stops trying</em> says, then waits for you.</p>
     </section>
     <section class="help-topic" id="does-not-start" aria-labelledby="does-not-start-title">
       <h2 id="does-not-start-title">The app does not start, or closes</h2>
