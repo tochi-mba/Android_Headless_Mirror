@@ -23,6 +23,7 @@ public sealed class UsbDoctor : IDisposable
     private bool _checking;
     private bool _wasAutomatic;
     private string _logged = string.Empty;
+    private bool _statusUnreadable;
 
     public UsbDoctor(AppHost host, UsbSystem usb)
     {
@@ -114,9 +115,15 @@ public sealed class UsbDoctor : IDisposable
         {
             return _usb.AutoRepair.Status();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or UnauthorizedAccessException)
         {
-            _host.Log.Warn("Could not read the USB auto-repair task", ex);
+            // Said once: the check runs every few seconds, and the USB problem itself still shows.
+            if (!_statusUnreadable)
+            {
+                _statusUnreadable = true;
+                _host.Log.Warn("Could not read the USB auto-repair task", ex);
+            }
+
             return new UsbAutoRepairStatus(UsbAutoRepairState.NotInstalled);
         }
     }

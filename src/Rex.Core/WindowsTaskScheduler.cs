@@ -27,7 +27,7 @@ public sealed class WindowsTaskScheduler : ITaskScheduler
         {
             task = service.GetFolder(folder).GetTask(name);
         }
-        catch (COMException ex) when (IsMissing(ex))
+        catch (Exception ex) when (IsMissing(ex))
         {
             return null;
         }
@@ -52,7 +52,7 @@ public sealed class WindowsTaskScheduler : ITaskScheduler
             // nobody but administrators can put anything next to the task or replace it.
             target.SetSecurityDescriptor(securityDescriptor, 0);
         }
-        catch (COMException ex) when (IsMissing(ex))
+        catch (Exception ex) when (IsMissing(ex))
         {
             target = service.GetFolder(@"\").CreateFolder(folder, securityDescriptor);
         }
@@ -71,7 +71,7 @@ public sealed class WindowsTaskScheduler : ITaskScheduler
         {
             target = service.GetFolder(@"\" + folder);
         }
-        catch (COMException ex) when (IsMissing(ex))
+        catch (Exception ex) when (IsMissing(ex))
         {
             return false;
         }
@@ -81,7 +81,7 @@ public sealed class WindowsTaskScheduler : ITaskScheduler
         {
             target.DeleteTask(name, 0);
         }
-        catch (COMException ex) when (IsMissing(ex))
+        catch (Exception ex) when (IsMissing(ex))
         {
             deleted = false;
         }
@@ -120,20 +120,25 @@ public sealed class WindowsTaskScheduler : ITaskScheduler
         return (at <= 0 ? @"\" : path[..at], path[(at + 1)..]);
     }
 
-    private static bool IsMissing(COMException ex) => ex.HResult is FileNotFound or PathNotFound;
+    /// <summary>
+    /// A task or folder that is not there. Late-bound calls hand Task Scheduler's error back as the
+    /// exception .NET maps it to (FileNotFoundException, DirectoryNotFoundException), not as a
+    /// COMException, so the code is what is looked at.
+    /// </summary>
+    internal static bool IsMissing(Exception ex) => ex.HResult is FileNotFound or PathNotFound;
 
-    /// <summary>Task Scheduler's errors, in the exceptions the CLI and the app already report.</summary>
-    private static T Guard<T>(Func<T> call)
+    /// <summary>Task Scheduler's errors, in the exceptions the CLI and the app already report, whatever type they arrive as.</summary>
+    internal static T Guard<T>(Func<T> call)
     {
         try
         {
             return call();
         }
-        catch (COMException ex) when (ex.HResult == AccessDenied)
+        catch (Exception ex) when (ex.HResult == AccessDenied && ex is not UnauthorizedAccessException)
         {
             throw new UnauthorizedAccessException("Task Scheduler refused access: " + ex.Message, ex);
         }
-        catch (COMException ex)
+        catch (Exception ex) when (ex is ExternalException or IOException)
         {
             throw new InvalidOperationException($"Task Scheduler reported 0x{ex.HResult:X8}: {ex.Message}", ex);
         }
