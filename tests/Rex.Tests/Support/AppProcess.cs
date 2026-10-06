@@ -719,10 +719,19 @@ public sealed partial class AppProcess : IDisposable
         var main = FindMainWindow();
 
         // Windows hands the foreground to its own notification banners and will not take it back
-        // while one is up. They last a few seconds, so this outwaits them rather than carrying on
+        // while one is up. Most last a few seconds, so this outwaits them rather than carrying on
         // without focus: a keystroke sent to a window that is not in front goes to whatever is.
+        // One that stays (a tray message from an earlier test can) is closed with Escape, which a
+        // banner in front takes as "dismiss".
         for (var attempt = 0; attempt < 100 && GetAncestor(GetForegroundWindow(), 2) != main; attempt++)
         {
+            if (attempt % 20 == 19 && ForegroundProcess() == "ShellExperienceHost")
+            {
+                keybd_event(0x1B, 0, 0, UIntPtr.Zero);
+                keybd_event(0x1B, 0, 2, UIntPtr.Zero);
+                await Task.Delay(200, TestContext.Current.CancellationToken);
+            }
+
             keybd_event(0x12, 0, 0, UIntPtr.Zero);
             keybd_event(0x12, 0, 2, UIntPtr.Zero);
             await Task.Delay(50, TestContext.Current.CancellationToken);
