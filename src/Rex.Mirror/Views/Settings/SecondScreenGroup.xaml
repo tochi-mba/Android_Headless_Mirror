@@ -107,7 +107,7 @@
     </HeaderedContentControl>
     <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Name each view">
       <ComboBox x:Name="ViewsCaptions" SelectionChanged="OnOption" AutomationProperties.Name="Name each view">
-        <ComboBoxItem Content="When they show different things" Tag="auto" />
+        <ComboBoxItem Content="For a few seconds, when they show different things" Tag="auto" />
         <ComboBoxItem Content="Always" Tag="always" />
         <ComboBoxItem Content="Never" Tag="never" />
       </ComboBox>

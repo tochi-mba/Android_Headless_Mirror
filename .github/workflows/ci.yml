@@ -179,6 +179,23 @@ jobs:
           REX_SITE_SHOTS: "1"
         run: dotnet test --project tests/Rex.Tests/Rex.Tests.csproj -c Release --no-build -- --filter-class Rex.Tests.SiteScreenshots --long-running 60
 
+      # The same five states measured on every run, against the committed baseline: a change that
+      # makes the app cost more fails here, and the run's own numbers can become the new baseline.
+      - name: Measure what the app costs
+        if: always()
+        env:
+          REX_PERF: "1"
+        run: dotnet test --project tests/Rex.Tests/Rex.Tests.csproj -c Release --no-build -- --filter-class Rex.Tests.CostCheck --long-running 60
+
+      - name: Upload what the app costs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-ui-perf
+          path: artifacts/perf/
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Upload UI screenshots
         if: always()
         uses: actions/upload-artifact@v7

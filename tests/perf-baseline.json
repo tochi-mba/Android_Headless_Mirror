@@ -1,0 +1,14 @@
+{
+  "about": "What the app costs on CI's Windows runner with the fake phone, from CostCheck. No numbers yet: the first CI run writes them.",
+  "tolerance": {
+    "CpuFactor": 2,
+    "CpuPoints": 3,
+    "MemoryFactor": 1.35,
+    "MemoryMb": 40,
+    "TimeFactor": 2,
+    "TimeMs": 3000,
+    "CountFactor": 1.5,
+    "CountExtra": 100
+  },
+  "metrics": {}
+}

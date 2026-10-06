@@ -44,6 +44,17 @@ administrator prompt or the browser.
 Every Rex.Core file listed in `tests/coverage-required.txt` must stay 100 % line-covered; CI fails
 otherwise. Add each new Core file to that list.
 
+### What the app costs
+
+`CostCheck` measures the app on CI's runner with the fake phone: how long it takes to start
+mirroring, then its CPU (percent of one core), memory, handles and threads while mirroring, zoomed
+in, with Settings open, hidden in the tray and shown again. The numbers are compared with
+`tests/perf-baseline.json`; a run fails when one rises above *baseline x factor + allowance* (the
+tolerance is in the same file). The job's summary shows the table, and the `desktop-ui-perf`
+artefact holds the run's own `perf-baseline.json`. To move the baseline after a change that makes
+the app cheaper, or one that is meant to cost more, copy that file over the committed one in the
+same pull request. Locally it runs with `REX_PERF=1`, but its numbers are your PC's, not the runner's.
+
 ## The site and the docs
 
 The website in `docs/` is plain HTML with no build step. Four pages are made from the app itself:
