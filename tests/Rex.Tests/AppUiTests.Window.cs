@@ -43,6 +43,8 @@ public sealed partial class AppUiTests
             "the top bar to keep only the chosen buttons");
         Assert.False(app.Ui.Exists("QuickHome"));
         Assert.True(app.Ui.Exists("QuickBack"));
+        // Each button says what it does and its key.
+        Assert.StartsWith("Back · Ctrl+Alt+Backspace", app.Ui.Find("QuickBack").Current.HelpText, StringComparison.Ordinal);
 
         // Any other action joins the top bar after the phone buttons, works there, and leaves again.
         app.Ui.SelectComboItem("top-bar-add-choice", "Zoom in");
