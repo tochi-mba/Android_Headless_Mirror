@@ -113,6 +113,7 @@ public static class SettingsCatalogue
         ["App.ScreenshotFlash"] = "ScreenshotFlash",
         ["App.OpenScreenshots"] = "OpenScreenshots",
         ["App.CheckForUpdates"] = "CheckForUpdates",
+        ["App.WithoutGraphicsCard"] = "WithoutGraphicsCard",
         ["Mirror.Backdrop"] = "Backdrop",
         ["Hud.AutoHide"] = "HudAutoHide",
         ["Hud.ShowInWindow"] = "HudShowInWindow",
