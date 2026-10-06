@@ -198,6 +198,8 @@ public sealed partial class AppEndToEndTests
         await AppProcess.WaitForProcessExitAsync(copyProcess, TimeSpan.FromSeconds(10));
         Assert.True(away["mirroring"]!.GetValue<bool>());
         Assert.Equal(1, Copies(away)["wanted"]!.GetValue<int>());
+        // With nothing on screen to follow, the window's own tick slows down too.
+        Assert.Equal(250, away["window"]!["tickMs"]!.GetValue<int>());
         Assert.Single(Launches(package), line => !line.Contains("--no-cleanup", StringComparison.Ordinal));
 
         // Only the main session ever plays the phone's audio.
@@ -207,7 +209,8 @@ public sealed partial class AppEndToEndTests
 
         // Back on screen, so is the copy.
         Assert.True((await app.SendAsync(new IpcRequest("show"))).Ok);
-        await app.WaitForStatusAsync(s => s["windowVisible"]!.GetValue<bool>() && CopiesRunning(s) == 1, StartupTimeout, "the copy to come back");
+        var back = await app.WaitForStatusAsync(s => s["windowVisible"]!.GetValue<bool>() && CopiesRunning(s) == 1, StartupTimeout, "the copy to come back");
+        Assert.Equal(33, back["window"]!["tickMs"]!.GetValue<int>());
         await app.QuitAsync();
     }
 

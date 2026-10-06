@@ -4,6 +4,32 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.17.0 - 2026-10-06
+
+### Added
+
+- **More buttons in the top bar**, in Settings → Window: any action can sit in the top bar as a
+  button of its own, after the phone buttons, in the order you add it. Up to eight; **Remove**
+  takes one out again.
+
+### Changed
+
+- The names over a second screen and the phone say themselves for a few seconds after the views
+  change, then step aside from the top of each picture, where the phone shows its own status bar.
+  **Name each view** can keep them on screen.
+- The names are smaller and sit closer to the top edge.
+- The window does less while it is hidden or minimised: the work that keeps it on the picture
+  runs four times a second instead of thirty, and comes straight back when it shows.
+- Every pull request now measures what the app costs, starting and in five states, against a
+  committed baseline, so a change that makes it slower or heavier is caught before it ships.
+
+### Fixed
+
+- A long key, like Ctrl+Alt+Backspace, fits its box in Keyboard shortcuts, and **Put back** is a
+  small button that lines up on every row.
+- Adding a tile to the Controls tab starts from "Choose an action to add", and **Add** waits until
+  one is chosen.
+
 ## 2.16.1 - 2026-10-06
 
 ### Fixed

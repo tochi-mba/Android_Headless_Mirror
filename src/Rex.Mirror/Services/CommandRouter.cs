@@ -388,6 +388,7 @@ public static partial class CommandRouter
                 ["frameRate"] = shown.FrameRateShowing,
                 ["lastNotification"] = shown.LastNotification,
                 ["foreground"] = shown.InFront,
+                ["tickMs"] = (int)shown.OverlayTick.TotalMilliseconds,
                 ["topBar"] = shown.TopBarShowing,
                 ["statusBar"] = shown.StatusBarShowing,
                 ["panelScale"] = shown.PanelScaleShowing,

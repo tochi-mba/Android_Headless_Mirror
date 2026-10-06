@@ -119,7 +119,7 @@ public partial class MainWindow : Window
             Settings = () => _host.Config.Input,
         };
 
-        _overlayTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
+        _overlayTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = FollowingTick };
         _overlayTimer.Tick += (_, _) => TrackOverlay();
         _ambientTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(1000 / 15.0) };
         _ambientTimer.Tick += (_, _) => CaptureAmbientFrame();
@@ -188,6 +188,7 @@ public partial class MainWindow : Window
         LocationChanged += (_, _) => TrackOverlay();
         SizeChanged += (_, _) => TrackOverlay();
         StateChanged += (_, _) => TrackOverlay();
+        IsVisibleChanged += (_, _) => TrackOverlay();
         Activated += (_, _) => { if (ActiveView.HasChild) { ActiveView.FocusChild(); } };
         Deactivated += (_, _) => _overlay.ClearTrail();
         Closing += OnClosing;
@@ -571,8 +572,23 @@ public partial class MainWindow : Window
 
     // ----- Overlay / zoom -----
 
+    /// <summary>How often the window keeps the overlay on the picture while it is on screen, and while it is not.</summary>
+    internal static readonly TimeSpan FollowingTick = TimeSpan.FromMilliseconds(33), RestingTick = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>The window's tick now: slower while there is nothing on screen to follow.</summary>
+    internal TimeSpan OverlayTick => _overlayTimer.Interval;
+
     private void TrackOverlay()
     {
+        // Hidden or minimised, nothing on screen needs following, and the rest of the tick's work
+        // keeps well at four times a second. Showing the window again brings it straight back.
+        var onScreen = IsVisible && WindowState != WindowState.Minimized;
+        var tick = onScreen ? FollowingTick : RestingTick;
+        if (_overlayTimer.Interval != tick)
+        {
+            _overlayTimer.Interval = tick;
+        }
+
         if (SidebarScroll.IsVisible && _source is not null)
         {
             // Both corners through the screen, so the panel's own scale is counted as well as the DPI.
@@ -590,7 +606,7 @@ public partial class MainWindow : Window
         // Cheap, and catches what events miss: the window shown before it has a width, a size
         // that settles after the last layout.
         UpdateRoom();
-        var visible = PictureShowable && IsVisible && WindowState != WindowState.Minimized && Host.HasChild;
+        var visible = PictureShowable && onScreen && Host.HasChild;
         if (visible)
         {
             foreach (var view in AllViews)
