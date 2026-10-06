@@ -198,7 +198,8 @@
     "CaptureNames": "android-{date}-{time}",
     "ScreenshotFlash": false,
     "OpenScreenshots": false,
-    "CheckForUpdates": false
+    "CheckForUpdates": false,
+    "WithoutGraphicsCard": "slower"
   },
   "GlobalKeys": {
     "Enabled": true,

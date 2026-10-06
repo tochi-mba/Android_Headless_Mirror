@@ -11,6 +11,10 @@ was built and tested by CI; the installer for each published one is on the
 - **More buttons in the top bar**, in Settings → Window: any action can sit in the top bar as a
   button of its own, after the phone buttons, in the order you add it. Up to eight; **Remove**
   takes one out again.
+- **Live pictures without a graphics card**, in Settings → Window: over Remote Desktop or in a
+  virtual machine, where every frame is drawn by the processor, the soft background and the
+  navigator's picture run a few times a second instead of costing half a core each. They can be
+  kept as often as set, or turned off there.
 
 ### Changed
 

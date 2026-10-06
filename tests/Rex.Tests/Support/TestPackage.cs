@@ -148,9 +148,27 @@ public sealed class TestPackage : IDisposable
         return lines.ToArray();
     }
 
-    /// <summary>Rewrites the fake adb scenario (devices, properties, settings, keyguard).</summary>
-    public void WriteScenario(object scenario) =>
-        File.WriteAllText(FakeAdbScenario, JsonSerializer.Serialize(scenario, new JsonSerializerOptions { WriteIndented = true }));
+    /// <summary>
+    /// Rewrites the fake adb scenario (devices, properties, settings, keyguard): written whole and
+    /// swapped in, as the fake does itself, waiting out a fake adb that is reading or saving it.
+    /// </summary>
+    public void WriteScenario(object scenario)
+    {
+        var temp = FakeAdbScenario + ".test.tmp";
+        File.WriteAllText(temp, JsonSerializer.Serialize(scenario, new JsonSerializerOptions { WriteIndented = true }));
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, FakeAdbScenario, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && attempt < 200)
+            {
+                Thread.Sleep(10);
+            }
+        }
+    }
 
     /// <summary>A colourful stand-in for a phone screen, served by both fakes as the capture and the video.</summary>
     public static void WritePreviewImage(string path)

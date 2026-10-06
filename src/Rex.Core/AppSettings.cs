@@ -91,6 +91,9 @@ public sealed record AppSettings
     /// <summary>Ask GitHub, at most once a day, whether a newer version is out. Off unless turned on: nothing is sent otherwise.</summary>
     public bool CheckForUpdates { get; set; }
 
+    /// <summary>The live pictures on a PC that draws without a graphics card: <see cref="LivePictures"/>'s choices.</summary>
+    public string WithoutGraphicsCard { get; set; } = LivePictures.Slower;
+
     public const double SmallestPanelScale = 0.8;
     public const double LargestPanelScale = 1.5;
 
@@ -103,6 +106,7 @@ public sealed record AppSettings
             ? ScreenshotDirectory.Trim() : "captures/screenshots";
         SidebarSide = MirrorSettings.OneOf(SidebarSides, SidebarSide, "right");
         ScreenshotFormat = MirrorSettings.OneOf(ScreenshotFormats, ScreenshotFormat, "png");
+        WithoutGraphicsCard = MirrorSettings.OneOf(LivePictures.Choices, WithoutGraphicsCard, LivePictures.Slower);
         PanelScale = double.IsFinite(PanelScale) ? Math.Round(Math.Clamp(PanelScale, SmallestPanelScale, LargestPanelScale), 2) : 1.0;
         CaptureNames = CaptureName.WhyNot(CaptureNames) is null ? CaptureNames.Trim() : CaptureName.Default;
 

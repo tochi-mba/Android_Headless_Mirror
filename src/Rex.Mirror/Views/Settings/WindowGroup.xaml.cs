@@ -48,6 +48,9 @@ public partial class WindowGroup : UserControl, ISettingsGroup
             AlwaysOnTop.IsChecked = app.AlwaysOnTop;
             SelectTag(SidebarSide, app.SidebarSide);
             SelectTag(Backdrop, config.Mirror.Backdrop);
+            SelectTag(WithoutGraphicsCard, app.WithoutGraphicsCard);
+            WithoutGraphicsCardHint.Text = "The soft background and the navigator's picture, over Remote Desktop or in a virtual machine, where each frame is drawn by the processor." +
+                (MainWindow.DrawnInSoftware ? " This PC draws that way now." : string.Empty);
             PanelScale.Value = app.PanelScale;
             ShowTopBar.IsChecked = app.ShowTopBar;
             BuildQuickButtonChoices(app.TopBarButtons);
@@ -79,6 +82,7 @@ public partial class WindowGroup : UserControl, ISettingsGroup
             c.App.AlwaysOnTop = AlwaysOnTop.IsChecked == true;
             c.App.SidebarSide = (SidebarSide.SelectedItem as ComboBoxItem)?.Tag as string ?? "right";
             c.Mirror.Backdrop = (Backdrop.SelectedItem as ComboBoxItem)?.Tag as string ?? "ink";
+            c.App.WithoutGraphicsCard = (WithoutGraphicsCard.SelectedItem as ComboBoxItem)?.Tag as string ?? LivePictures.Slower;
             c.App.ShowTopBar = ShowTopBar.IsChecked == true;
             c.App.ShowStatusBar = ShowStatusBar.IsChecked == true;
             c.App.ShowHints = ShowHints.IsChecked == true;

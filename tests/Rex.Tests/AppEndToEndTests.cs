@@ -103,10 +103,13 @@ public sealed partial class AppEndToEndTests
         await app.WaitForPhaseAsync("mirroring", StartupTimeout);
         // The soft background is a live copy of the on-screen mirror, captured small and blurred
         // before it ever reaches the window; nothing is fetched from the phone for it.
-        await app.WaitForStatusAsync(
+        var live = await app.WaitForStatusAsync(
             s => s["ambientVisible"]!.GetValue<bool>() && s["ambientFrame"]!.GetValue<bool>(),
             StartupTimeout,
             "live soft background");
+        // Drawn without a graphics card, as on CI's runner, it runs a few times a second.
+        var software = live["window"]!["drawnInSoftware"]!.GetValue<bool>();
+        Assert.Equal(software ? LivePictures.SlowerRate : new AmbientSettings().FrameRate, live["window"]!["livePictureRate"]!.GetValue<double>());
         await app.FocusAsync();
         await app.SaveScreenshotAsync("ambient-live.png");
         await app.SendAsync(new IpcRequest("zoom", new Dictionary<string, string> { ["direction"] = "in" }));

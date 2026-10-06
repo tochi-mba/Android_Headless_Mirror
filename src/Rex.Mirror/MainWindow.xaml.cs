@@ -651,6 +651,12 @@ public partial class MainWindow : Window
         ControlsPanel.Refresh();
     }
 
+    /// <summary>Whether this PC draws the window without a graphics card (Remote Desktop, many virtual machines).</summary>
+    internal static bool DrawnInSoftware => RenderCapability.Tier >> 16 == 0;
+
+    /// <summary>The frames a second the live pictures are captured at now; 0 while none is wanted.</summary>
+    internal double LivePictureRate { get; private set; }
+
     private void UpdateNavigator()
     {
         var view = Host.View;
@@ -665,8 +671,22 @@ public partial class MainWindow : Window
         _ambientWanted = ambient;
         _previewWanted = show && zoom.NavigatorPicture;
 
+        // Without a graphics card every frame is drawn by the processor: slower there, or not at all.
+        var software = DrawnInSoftware;
+        var choice = _host.Config.App.WithoutGraphicsCard;
+        var ambientRate = LivePictures.Rate(_host.Config.Ambient.FrameRate, software, choice);
+        var previewRate = LivePictures.Rate(zoom.NavigatorFrameRate, software, choice);
+        if (ambientRate == 0 && _ambientWanted)
+        {
+            _ambientWanted = false;
+            Ambient.Update(false, PicturesInArea(), _host.Config.Ambient);
+        }
+
+        _previewWanted &= previewRate > 0;
+
         // One capture feeds both pictures, at the faster of the two rates that are in use.
-        var rate = Math.Max(_ambientWanted ? _host.Config.Ambient.FrameRate : 0, _previewWanted ? zoom.NavigatorFrameRate : 0);
+        var rate = Math.Max(_ambientWanted ? ambientRate : 0, _previewWanted ? previewRate : 0);
+        LivePictureRate = rate;
         var interval = TimeSpan.FromMilliseconds(1000 / Math.Max(1, rate));
         if (_ambientTimer.Interval != interval) _ambientTimer.Interval = interval;
         if ((_ambientWanted || _previewWanted) && IsVisible && WindowState != WindowState.Minimized && !_fullscreenTransition)
