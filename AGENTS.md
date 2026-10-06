@@ -234,6 +234,10 @@ CHANGELOG.md            what changed in each version, newest first; changelog.ht
   which only the app sets, from `Keys` in config.json (only what differs from how the app
   ships). A window key needs Ctrl, Alt or Win, or is F1 to F24 alone; browse keys are single keys;
   no key does two things.
+- The Controls tab is built from `ControlsSettings` (`ControlsPanel.ApplyLayout`): each section
+  sits in a host panel the settings show, hide and order, over the section's own show and hide
+  rules; its grids hold the actions chosen. Every action has a picture (`ActionIcons.TileFor`), so
+  any can be a tile; the fullscreen controls name four of them in words instead.
 - The update check (`UpdateCheck`, `Services/UpdateChecker`) is opt-in: with
   `App.CheckForUpdates` off nothing is ever requested. On, it asks GitHub's latest release at most
   once a day; tests stand in for GitHub with `REX_FAKE_RELEASES`, which `AppProcess` always sets.

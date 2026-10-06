@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Rex.Core;
+using Rex.Mirror.Mirror;
 using Rex.Mirror.Services;
 using Rex.Mirror.Session;
 
@@ -55,19 +56,16 @@ public partial class ControlsPanel : UserControl
     /// <summary>What a tile or button says while there is no phone for it to act on.</summary>
     public const string NeedsPhone = "Connect a phone to use these";
 
-    internal static readonly string[] PhoneTileIds =
-        ["home", "back", "recents", "power", "wake", "sleep", "volume-up", "volume-down", "mute", "notifications", "quick-settings", "collapse"];
+    internal static IReadOnlyList<string> PhoneTileIds => ControlsSettings.DefaultPhoneTiles;
 
-    /// <summary>
-    /// What the PC does with the picture. Rotating the phone itself is under phone orientation, and
-    /// scrcpy's FPS counter is left to the command line: it prints to a console nobody can see here.
-    /// </summary>
-    internal static readonly string[] ViewTileIds = ["rotate-left", "rotate-right", "pause", "reset-capture", "screenshot", "fullscreen"];
+    internal static IReadOnlyList<string> ViewTileIds => ControlsSettings.DefaultViewTiles;
 
-    /// <summary>Up then down, left then right, the way their keys sit; tap and like end the rows.</summary>
-    internal static readonly string[] GestureTileIds = ["swipe-down", "swipe-up", "tap", "swipe-right", "swipe-left", "like"];
+    internal static IReadOnlyList<string> GestureTileIds => ControlsSettings.DefaultGestureTiles;
 
-    private readonly ActionTileModel _pauseTile;
+    private ActionTileModel? _pauseTile;
+
+    /// <summary>The layout last built from the settings, so a refresh that changes nothing builds nothing.</summary>
+    private string _layoutBuilt = string.Empty;
     private MainWindow? _window;
     private AppHost? _host;
     private readonly Dictionary<Guid, TransferRow> _transferRows = [];
@@ -83,11 +81,55 @@ public partial class ControlsPanel : UserControl
     public ControlsPanel()
     {
         InitializeComponent();
-        NavigationTiles.ItemsSource = Tiles(PhoneTileIds);
-        var view = Tiles(ViewTileIds);
-        _pauseTile = view.Single(t => t.Id == "pause");
+        ApplyLayout(new ControlsSettings());
+    }
+
+    /// <summary>
+    /// The tab as the settings have it: its sections in their order (a hidden one stays out of
+    /// sight whatever its own state), the Phone, View and gesture grids with their tiles in order,
+    /// so many to a row, with or without their names.
+    /// </summary>
+    internal void ApplyLayout(ControlsSettings layout)
+    {
+        var built = string.Join(',', layout.Sections) + "|" + string.Join(',', layout.PhoneTiles) + "|" + string.Join(',', layout.ViewTiles) + "|" +
+                    string.Join(',', layout.GestureTiles) + "|" + layout.Columns + "|" + layout.TileLabels;
+        if (built == _layoutBuilt)
+        {
+            return;
+        }
+
+        _layoutBuilt = built;
+        var hosts = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal)
+        {
+            ["apps"] = HostApps, ["screen"] = HostScreen, ["phone"] = HostPhone, ["orientation"] = HostOrientation,
+            ["view"] = HostView, ["keyboard"] = HostKeyboard, ["zoom"] = HostZoom, ["copies"] = HostCopies,
+            ["files"] = HostFiles, ["clipboard"] = HostClipboard, ["pattern"] = HostPattern,
+        };
+        foreach (var host in hosts.Values)
+        {
+            Sections.Children.Remove(host);
+        }
+
+        foreach (var (id, _, shown) in layout.SectionRows())
+        {
+            hosts[id].Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            Sections.Children.Add(hosts[id]);
+        }
+
+        var template = (DataTemplate)FindResource(layout.TileLabels ? "Tile" : "TileIconOnly");
+        var panel = new ItemsPanelTemplate(new FrameworkElementFactory(typeof(UniformGrid)));
+        panel.VisualTree.SetValue(UniformGrid.ColumnsProperty, layout.Columns);
+        foreach (var grid in new[] { NavigationTiles, ViewTiles, GestureTiles })
+        {
+            grid.ItemTemplate = template;
+            grid.ItemsPanel = panel;
+        }
+
+        NavigationTiles.ItemsSource = Tiles(layout.PhoneTiles);
+        var view = Tiles(layout.ViewTiles);
+        _pauseTile = view.FirstOrDefault(t => t.Id == "pause");
         ViewTiles.ItemsSource = view;
-        GestureTiles.ItemsSource = Tiles(GestureTileIds);
+        GestureTiles.ItemsSource = Tiles(layout.GestureTiles);
     }
 
     public void Attach(MainWindow window, AppHost host)
@@ -109,7 +151,7 @@ public partial class ControlsPanel : UserControl
     private ActionTileModel[] Tiles(IEnumerable<string> ids) =>
         ids.Select(id => new ActionTileModel(MirrorActions.Find(id)!, Icon(id), "tile-" + id)).ToArray();
 
-    private Geometry Icon(string id) => (Geometry)FindResource(ActionIcons.For(id) ?? "IconInfo");
+    private Geometry Icon(string id) => (Geometry)FindResource(ActionIcons.TileFor(id) ?? "IconInfo");
 
     /// <summary>The action the pause tile runs: it resumes a picture that is frozen and pauses one that is not.</summary>
     internal static string PauseTileAction(bool paused) => paused ? "resume" : "pause";
@@ -129,6 +171,7 @@ public partial class ControlsPanel : UserControl
             return;
         }
 
+        ApplyLayout(_host.Config.Controls);
         var session = _host.Session;
         var mirroring = session.IsMirroring;
         var (content, tip, enabled) = SessionButtonState(mirroring, session.Phase);
@@ -153,15 +196,15 @@ public partial class ControlsPanel : UserControl
         Explain(ClipboardPaste, ready, "paste");
         Explain(ClipboardType, ready, "paste-text");
 
-        _pauseTile.Show(MirrorActions.Find(PauseTileAction(_window.MirrorPaused))!, Icon(PauseTileAction(_window.MirrorPaused)));
+        _pauseTile?.Show(MirrorActions.Find(PauseTileAction(_window.MirrorPaused))!, Icon(PauseTileAction(_window.MirrorPaused)));
 
         var browsing = _window.BrowseMode;
         Sync(() => BrowseToggle.IsChecked = browsing);
         BrowseState.Text = browsing ? "On" : "Off";
         BrowseState.Foreground = (Brush)FindResource(browsing ? "Signal" : "Muted");
         KeyboardStatus.Text = browsing
-            ? "Browse mode is on: Up and Down move through a feed, Left and Right turn pages, Enter taps, L likes, M mutes, Backspace goes back. Esc leaves."
-            : $"Typing goes straight to the phone. {Shortcuts.Gesture("browse")} turns on browse mode, where the arrow keys, Enter, L, M and Backspace drive a feed.";
+            ? "Browse mode is on. " + KeyboardBrowse.Hint["BROWSE · ".Length..].Replace(" · Esc leaves", ". Esc leaves.", StringComparison.Ordinal)
+            : $"Typing goes straight to the phone. {Shortcuts.Gesture("browse")} turns on browse mode, where single keys drive a feed.";
 
         ZoomLabel.Text = $"{_window.Host.Zoom * 100:0}%";
         ZoomReset.IsEnabled = _window.Host.View.IsZoomed;

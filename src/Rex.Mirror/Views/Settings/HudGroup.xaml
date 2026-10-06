@@ -13,6 +13,13 @@
         </StackPanel></HeaderedContentControl.Header>
         <CheckBox x:Name="HudShowInWindow" Checked="OnHudChanged" Unchecked="OnHudChanged" AutomationProperties.Name="Floating controls in the window too" />
       </HeaderedContentControl>
+      <HeaderedContentControl Style="{StaticResource SettingRow}">
+        <HeaderedContentControl.Header><StackPanel>
+          <TextBlock Text="Keep the order I pick them in" />
+          <TextBlock Text="Off puts the buttons in the order the actions are listed in." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel></HeaderedContentControl.Header>
+        <CheckBox x:Name="HudKeepOrder" Checked="OnHudChanged" Unchecked="OnHudChanged" AutomationProperties.Name="Keep the order I pick the floating controls in" />
+      </HeaderedContentControl>
       <HeaderedContentControl Style="{StaticResource SettingRow}" Header="Hide them by themselves">
         <CheckBox x:Name="HudAutoHide" Checked="OnHudChanged" Unchecked="OnHudChanged" AutomationProperties.Name="Hide the floating controls by themselves" />
       </HeaderedContentControl>

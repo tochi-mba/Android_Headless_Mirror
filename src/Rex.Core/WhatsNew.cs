@@ -46,6 +46,9 @@ public static class WhatsNew
         new("2.15.0", "Your own keys",
             "Give any action a key, move one, or take one away, in the window and in browse mode. A key another action has is refused in words.",
             "Settings → Keyboard shortcuts", "TabSettings"),
+        new("2.16.0", "Your own Controls tab",
+            "Choose which sections the Controls tab shows and in what order, and which tiles its grids hold, from every action there is.",
+            "Settings → Controls tab", "TabSettings"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>

@@ -1,0 +1,28 @@
+<UserControl x:Class="Rex.Mirror.Views.Settings.ControlsTabGroup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Expander x:Name="GroupControlsTab" Header="Controls tab" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="Which sections the Controls tab shows and in what order, and the tiles in its grids. Everything here applies at once." />
+    <TextBlock Text="SECTIONS" Style="{StaticResource Eyebrow}" />
+    <StackPanel x:Name="ControlsSectionsList" AutomationProperties.Name="Sections of the Controls tab" />
+    <TextBlock Text="PHONE TILES" Style="{StaticResource Eyebrow}" Margin="0,12,0,0" />
+    <StackPanel x:Name="ControlsPhoneTilesList" AutomationProperties.Name="Tiles in the Phone grid" />
+    <TextBlock Text="VIEW TILES" Style="{StaticResource Eyebrow}" Margin="0,12,0,0" />
+    <StackPanel x:Name="ControlsViewTilesList" AutomationProperties.Name="Tiles in the View grid" />
+    <TextBlock Text="GESTURE TILES" Style="{StaticResource Eyebrow}" Margin="0,12,0,0" />
+    <StackPanel x:Name="ControlsGestureTilesList" AutomationProperties.Name="Tiles under browse mode" />
+    <Grid Margin="0,12,0,0"><TextBlock x:Name="ControlsColumnsLabel" Text="Tiles in a row" /><TextBlock x:Name="ControlsColumnsValue" Style="{StaticResource MutedText}" HorizontalAlignment="Right" /></Grid>
+    <Slider x:Name="ControlsColumns" AutomationProperties.LabeledBy="{Binding ElementName=ControlsColumnsLabel}" Minimum="2" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
+            Margin="0,2,0,0" ValueChanged="OnColumns" />
+    <HeaderedContentControl Style="{StaticResource SettingRow}">
+      <HeaderedContentControl.Header><StackPanel>
+        <TextBlock Text="Names under the tiles" />
+        <TextBlock Text="Off shows the icons alone; each name stays in its tooltip." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+      </StackPanel></HeaderedContentControl.Header>
+      <CheckBox x:Name="ControlsTileLabels" Checked="OnLabels" Unchecked="OnLabels" AutomationProperties.Name="Names under the tiles" />
+    </HeaderedContentControl>
+    <Button x:Name="ControlsPutBack" Content="Put the Controls tab back" HorizontalAlignment="Left" Margin="0,12,0,0" Click="OnPutBack"
+            ToolTip="Every section and tile as the app ships them" />
+  </StackPanel></Expander>
+</UserControl>

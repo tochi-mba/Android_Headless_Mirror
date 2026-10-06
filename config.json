@@ -153,7 +153,8 @@
     "Opacity": 1,
     "ShowMessages": true,
     "AutoHide": true,
-    "ShowInWindow": false
+    "ShowInWindow": false,
+    "KeepOrder": false
   },
   "PatternGuide": {
     "Enabled": true,
@@ -298,6 +299,53 @@
   "Keys": {
     "Window": [],
     "Browse": []
+  },
+  "Controls": {
+    "Sections": [
+      "apps",
+      "screen",
+      "phone",
+      "orientation",
+      "view",
+      "keyboard",
+      "zoom",
+      "copies",
+      "files",
+      "clipboard",
+      "pattern"
+    ],
+    "PhoneTiles": [
+      "home",
+      "back",
+      "recents",
+      "power",
+      "wake",
+      "sleep",
+      "volume-up",
+      "volume-down",
+      "mute",
+      "notifications",
+      "quick-settings",
+      "collapse"
+    ],
+    "ViewTiles": [
+      "rotate-left",
+      "rotate-right",
+      "pause",
+      "reset-capture",
+      "screenshot",
+      "fullscreen"
+    ],
+    "GestureTiles": [
+      "swipe-down",
+      "swipe-up",
+      "tap",
+      "swipe-right",
+      "swipe-left",
+      "like"
+    ],
+    "Columns": 3,
+    "TileLabels": true
   },
   "Logging": {
     "Enabled": true,

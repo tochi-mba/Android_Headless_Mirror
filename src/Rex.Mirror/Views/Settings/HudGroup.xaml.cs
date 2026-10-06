@@ -32,6 +32,7 @@ public partial class HudGroup : UserControl, ISettingsGroup
             HudMessages.IsChecked = config.Hud.ShowMessages;
             HudShowInWindow.IsChecked = config.Hud.ShowInWindow;
             HudAutoHide.IsChecked = config.Hud.AutoHide;
+            HudKeepOrder.IsChecked = config.Hud.KeepOrder;
             // How long they wait means nothing while they never hide.
             HudDelay.IsEnabled = config.Hud.AutoHide;
             SelectTag(HudPosition, config.Hud.Position);
@@ -54,6 +55,7 @@ public partial class HudGroup : UserControl, ISettingsGroup
         c.Hud.ShowMessages = HudMessages.IsChecked == true;
         c.Hud.ShowInWindow = HudShowInWindow.IsChecked == true;
         c.Hud.AutoHide = HudAutoHide.IsChecked == true;
+        c.Hud.KeepOrder = HudKeepOrder.IsChecked == true;
     });
 
     private void OnHudPosition(object sender, SelectionChangedEventArgs e) => Save(c =>
@@ -91,9 +93,10 @@ public partial class HudGroup : UserControl, ISettingsGroup
     private void OnHudButton(object sender, RoutedEventArgs e)
     {
         if (_loading || sender is not ToggleButton { Tag: string id }) return;
-        Save(c => c.Hud.Buttons = MirrorActions.Ids
-            .Where(x => x == id ? !c.Hud.Buttons.Contains(id, StringComparer.Ordinal) : c.Hud.Buttons.Contains(x, StringComparer.Ordinal))
-            .ToList());
+        // A button added goes last; without keeping the picked order, Normalize puts them in the catalogue's.
+        Save(c => c.Hud.Buttons = c.Hud.Buttons.Contains(id, StringComparer.Ordinal)
+            ? [.. c.Hud.Buttons.Where(x => x != id)]
+            : [.. c.Hud.Buttons, id]);
     }
 
     private void BuildButtons(HudSettings hud)
