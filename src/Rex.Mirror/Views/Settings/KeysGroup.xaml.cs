@@ -94,9 +94,10 @@ public partial class KeysGroup : UserControl, ISettingsGroup
         grid.RowDefinitions.Add(new RowDefinition());
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var name = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = label };
-        // Wide enough for the longest key the app ships with, Ctrl+Alt+Backspace, in a narrow panel.
-        var box = new ChordBox { Width = 148, Padding = new Thickness(8, 6, 8, 6), Tag = id, Margin = new Thickness(8, 0, 0, 0) };
+        // The whole name, over two lines where the panel is narrow: cut short, most of them read alike.
+        var name = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+        // Wide enough for the longest key the app ships with, Ctrl+Alt+Backspace, and no wider.
+        var box = new ChordBox { Width = 136, Padding = new Thickness(8, 6, 8, 6), Tag = id, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetAutomationId(box, automationId);
         AutomationProperties.SetName(box, label + ", key");
         box.Committed += OnCommitted;
