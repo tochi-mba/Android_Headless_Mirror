@@ -6,7 +6,9 @@ namespace Rex.Tests;
 /// <summary>
 /// What the app costs, measured the same way on every run so a change can be compared: how long it
 /// takes to start mirroring, then its CPU, memory, handles and threads while mirroring, zoomed in,
-/// with Settings open, hidden in the tray and shown again. The numbers are checked against the
+/// with Settings open, hidden in the tray, shown again, and mirroring without the soft background
+/// (on a runner with no graphics card the background is drawn in software, so this last state is
+/// the app's own cost with that set apart). The numbers are checked against the
 /// committed tests/perf-baseline.json with its own tolerance, and written to artifacts/perf as a
 /// file that can replace the baseline as it is. CI runs it on every pull request; locally it only
 /// runs when REX_PERF=1, and its numbers are this PC's, not the runner's.
@@ -24,7 +26,7 @@ public sealed class CostCheck
     public static string BaselineFile => Path.Combine(RepoPaths.Root, "tests", "perf-baseline.json");
 
     /// <summary>The states measured, in the order they are visited.</summary>
-    public static readonly string[] States = ["mirroring", "zoomed", "settings", "hidden", "shown-again"];
+    public static readonly string[] States = ["mirroring", "zoomed", "settings", "hidden", "shown-again", "plain"];
 
     [Fact(Timeout = 300_000)]
     public async Task TheAppCostsNoMoreThanItsBaseline()
@@ -67,6 +69,10 @@ public sealed class CostCheck
         Assert.True((await app.SendAsync(new IpcRequest("show"))).Ok);
         await app.WaitForStatusAsync(s => s["windowVisible"]!.GetValue<bool>(), Soon, "the window to show");
         await Measure("shown-again");
+
+        new ConfigStore(package.Paths.Config).Set("Ambient.Enabled", "false");
+        await app.WaitForStatusAsync(s => !s["ambientVisible"]!.GetValue<bool>(), Soon, "the soft background to go");
+        await Measure("plain");
         await app.QuitAsync();
 
         var (tolerance, baseline) = File.Exists(BaselineFile)

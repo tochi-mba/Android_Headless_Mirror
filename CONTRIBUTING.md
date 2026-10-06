@@ -48,7 +48,8 @@ otherwise. Add each new Core file to that list.
 
 `CostCheck` measures the app on CI's runner with the fake phone: how long it takes to start
 mirroring, then its CPU (percent of one core), memory, handles and threads while mirroring, zoomed
-in, with Settings open, hidden in the tray and shown again. The numbers are compared with
+in, with Settings open, hidden in the tray, shown again, and without the soft background (which
+the runner, having no graphics card, draws in software). The numbers are compared with
 `tests/perf-baseline.json`; a run fails when one rises above *baseline x factor + allowance* (the
 tolerance is in the same file). The job's summary shows the table, and the `desktop-ui-perf`
 artefact holds the run's own `perf-baseline.json`. To move the baseline after a change that makes

@@ -1,5 +1,5 @@
 {
-  "about": "What the app costs on CI's Windows runner with the fake phone, from CostCheck. No numbers yet: the first CI run writes them.",
+  "about": "What the app costs on CI's Windows runner with the fake phone, from CostCheck. CPU is percent of one core, memory in megabytes. A run fails when a number rises above baseline x factor + allowance. To move the baseline, copy perf-baseline.json from the run's desktop-ui-perf artefact over this file.",
   "tolerance": {
     "CpuFactor": 2,
     "CpuPoints": 3,
@@ -10,5 +10,32 @@
     "CountFactor": 1.5,
     "CountExtra": 100
   },
-  "metrics": {}
+  "metrics": {
+    "hidden.cpu": 0.8,
+    "hidden.handles": 748,
+    "hidden.privateMb": 85,
+    "hidden.threads": 30,
+    "hidden.workingSetMb": 190.8,
+    "mirroring.cpu": 47.4,
+    "mirroring.handles": 649,
+    "mirroring.privateMb": 84.6,
+    "mirroring.threads": 28,
+    "mirroring.workingSetMb": 183.4,
+    "settings.cpu": 41.2,
+    "settings.handles": 724,
+    "settings.privateMb": 90.2,
+    "settings.threads": 30,
+    "settings.workingSetMb": 197.3,
+    "shown-again.cpu": 38.1,
+    "shown-again.handles": 770,
+    "shown-again.privateMb": 95.2,
+    "shown-again.threads": 28,
+    "shown-again.workingSetMb": 201.2,
+    "start.ms": 2649,
+    "zoomed.cpu": 59.3,
+    "zoomed.handles": 679,
+    "zoomed.privateMb": 81.3,
+    "zoomed.threads": 29,
+    "zoomed.workingSetMb": 177.3
+  }
 }

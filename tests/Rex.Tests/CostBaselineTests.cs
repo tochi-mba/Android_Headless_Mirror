@@ -77,13 +77,14 @@ public sealed class CostBaselineTests
     public void ABaselineFileReadsBackAsItWasWritten()
     {
         var tolerance = new CostTolerance(CpuFactor: 3, MemoryMb: 64);
-        var text = CostBaseline.Write(tolerance, new Dictionary<string, double> { ["b.cpu"] = 1.234, ["a.privateMb"] = 150.06 }, "About it.");
+        var text = CostBaseline.Write(tolerance, new Dictionary<string, double> { ["b.cpu"] = 1.234, ["a.privateMb"] = 150.06 }, "About it: it's baseline x factor + allowance.");
         var (read, metrics) = CostBaseline.Read(text);
 
         Assert.Equal(tolerance, read);
         Assert.Equal(new Dictionary<string, double> { ["a.privateMb"] = 150.1, ["b.cpu"] = 1.2 }, metrics);
         Assert.True(text.IndexOf("\"a.privateMb\"", StringComparison.Ordinal) < text.IndexOf("\"b.cpu\"", StringComparison.Ordinal));
         Assert.EndsWith("\n", text, StringComparison.Ordinal);
+        Assert.Contains("it's baseline x factor + allowance", text, StringComparison.Ordinal);
 
         var (defaults, none) = CostBaseline.Read("{}");
         Assert.Equal(new CostTolerance(), defaults);

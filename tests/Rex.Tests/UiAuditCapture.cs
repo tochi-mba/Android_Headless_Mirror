@@ -121,9 +121,13 @@ public sealed class UiAuditCapture
 
         var scale = app.DpiScale();
         var pages = new List<(double Offset, System.Drawing.Bitmap Shot)>();
+        // Most of a screenful at a time (a notch scrolls 48 DIPs), so every row is in two pictures
+        // at most and the longest tab, Settings with every group open, still fits the page limit.
+        var shown = (await app.SendAsync(new IpcRequest("status"))).Data!["sidebarViewport"]!["height"]!.GetValue<int>() / scale;
+        var notches = Math.Max(2, (int)(shown * 0.75 / 48));
         try
         {
-            for (var page = 0; page < 60; page++)
+            for (var page = 0; page < 200; page++)
             {
                 // The pointer off the panel, so no row is photographed under it, hovered.
                 var window = app.WindowBounds();
@@ -131,7 +135,7 @@ public sealed class UiAuditCapture
                 await Task.Delay(300, TestContext.Current.CancellationToken);
                 pages.Add((await OffsetAsync(app), await app.CaptureWindowAsync()));
                 var before = pages[^1].Offset;
-                await app.ScrollSidebarAsync(-4);
+                await app.ScrollSidebarAsync(-notches);
                 await Task.Delay(250, TestContext.Current.CancellationToken);
                 var after = await OffsetAsync(app);
                 Note(prefix, $"page {page} offset {before:0} -> {after:0}");
