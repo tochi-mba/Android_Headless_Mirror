@@ -651,8 +651,12 @@ public partial class MainWindow : Window
         ControlsPanel.Refresh();
     }
 
-    /// <summary>Whether this PC draws the window without a graphics card (Remote Desktop, many virtual machines).</summary>
-    internal static bool DrawnInSoftware => RenderCapability.Tier >> 16 == 0;
+    /// <summary>
+    /// Whether the live pictures are made without a graphics card: the window drawn in software, or
+    /// the capture copying the screen because the graphics card will not hand it over (Remote
+    /// Desktop, many virtual machines). Either way every frame is the processor's work.
+    /// </summary>
+    internal bool WithoutGraphicsCard => RenderCapability.Tier >> 16 == 0 || _liveCapture.Path == "gdi";
 
     /// <summary>The frames a second the live pictures are captured at now; 0 while none is wanted.</summary>
     internal double LivePictureRate { get; private set; }
@@ -671,8 +675,8 @@ public partial class MainWindow : Window
         _ambientWanted = ambient;
         _previewWanted = show && zoom.NavigatorPicture;
 
-        // Without a graphics card every frame is drawn by the processor: slower there, or not at all.
-        var software = DrawnInSoftware;
+        // Without a graphics card every frame is the processor's work: slower there, or not at all.
+        var software = WithoutGraphicsCard;
         var choice = _host.Config.App.WithoutGraphicsCard;
         var ambientRate = LivePictures.Rate(_host.Config.Ambient.FrameRate, software, choice);
         var previewRate = LivePictures.Rate(zoom.NavigatorFrameRate, software, choice);
