@@ -1,0 +1,16 @@
+<UserControl x:Class="Rex.Mirror.Views.Settings.KeysGroup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Expander x:Name="GroupKeys" Header="Keyboard shortcuts" Margin="0,12,0,0"><StackPanel>
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="Click a box and press the keys. Backspace takes a key away; Esc keeps the one it had. Find one with the search above." />
+    <TextBlock Text="IN THE WINDOW" Style="{StaticResource Eyebrow}" />
+    <StackPanel x:Name="WindowKeysList" AutomationProperties.Name="Keys in the window" />
+    <TextBlock Text="IN BROWSE MODE" Style="{StaticResource Eyebrow}" Margin="0,12,0,0" />
+    <TextBlock Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"
+               Text="Single keys, while browse mode is on. Space taps too, unless it is given something else." />
+    <StackPanel x:Name="BrowseKeysList" AutomationProperties.Name="Keys in browse mode" />
+    <Button x:Name="KeysPutAllBack" Content="Put every key back" HorizontalAlignment="Left" Margin="0,12,0,0" Click="OnPutAllBack"
+            ToolTip="Every key in the window and in browse mode as the app ships them" />
+  </StackPanel></Expander>
+</UserControl>

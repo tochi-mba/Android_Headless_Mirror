@@ -40,6 +40,7 @@ public partial class MainWindow
     private void ApplyWindowPreferences()
     {
         var app = _host.Config.App;
+        KeyMap.Current = new KeyMap(_host.Config.Keys);
         Topmost = app.AlwaysOnTop;
         ApplyBars();
         ApplyPanelScale();

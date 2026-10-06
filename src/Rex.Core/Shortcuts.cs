@@ -100,10 +100,26 @@ public static class Shortcuts
     public static IReadOnlyList<Shortcut> Effective(RexConfig config)
     {
         var keys = config.GlobalKeys;
+        var map = new KeyMap(config.Keys);
         var list = new List<Shortcut>(All.Count + keys.Actions.Count);
         foreach (var shortcut in All)
         {
-            if (shortcut.Id != GlobalKeyRules.ShowHide)
+            if (shortcut.Browse && shortcut.Action is { } played)
+            {
+                // A browse key the person moved shows where it is now; one they took away is left out.
+                if (map.BrowseChordFor(played) is { } browseKey)
+                {
+                    list.Add(shortcut with { Gesture = browseKey.ToString() });
+                }
+            }
+            else if (shortcut.IsKey && !shortcut.Global && KeyMap.WindowIds.Any(w => w.Id == shortcut.Id))
+            {
+                if (map.ChordFor(shortcut.Id) is { } windowKey)
+                {
+                    list.Add(shortcut with { Gesture = windowKey.ToString() });
+                }
+            }
+            else if (shortcut.Id != GlobalKeyRules.ShowHide)
             {
                 list.Add(shortcut);
             }
@@ -112,6 +128,11 @@ public static class Shortcuts
                 list.Add(shortcut with { Gesture = keys.ShowHide });
             }
         }
+
+        // Actions that ship without a key and were given one.
+        list.AddRange(map.Window
+            .Where(k => k.Shipped is null && k.Now is not null)
+            .Select(k => new Shortcut(k.Id, k.Now!.Value.ToString(), k.Label)));
 
         if (keys.Enabled)
         {
@@ -125,12 +146,12 @@ public static class Shortcuts
     /// <summary>The keys that mean something on their own while browse mode is on.</summary>
     public static IReadOnlyList<Shortcut> BrowseKeys => All.Where(s => s.Browse).ToArray();
 
-    /// <summary>The gesture for an action, or an empty string when it has none.</summary>
-    public static string Gesture(string id) => Find(id)?.Gesture ?? string.Empty;
+    /// <summary>The key or gesture for a shortcut or action as this person has it, or an empty string when it has none.</summary>
+    public static string Gesture(string id) =>
+        KeyMap.WindowIds.Any(w => w.Id == id) ? KeyMap.Current.ChordFor(id)?.ToString() ?? string.Empty : Find(id)?.Gesture ?? string.Empty;
 
-    /// <summary>The plain key browse mode plays an action with, or an empty string when it has none.</summary>
-    public static string BrowseKey(string actionId) =>
-        All.FirstOrDefault(s => s.Browse && s.Action == actionId)?.Gesture ?? string.Empty;
+    /// <summary>The plain key browse mode plays an action with, as this person has it, or an empty string when it has none.</summary>
+    public static string BrowseKey(string actionId) => KeyMap.Current.BrowseChordFor(actionId)?.ToString() ?? string.Empty;
 
     /// <summary>
     /// A tooltip that ends with every key that does the same thing: the shortcut, and the plain

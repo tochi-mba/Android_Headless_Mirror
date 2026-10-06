@@ -59,6 +59,8 @@ public static class CliReference
             Human: true, Machine: true, NeedsApp: false),
         new("encoders", EncoderCommands.Usage, "The phone's video encoders, to choose one with rex config set Mirror.VideoEncoder. Works with or without the app.", "rex encoders",
             Human: true, Machine: true, NeedsApp: false),
+        new("keys", KeyCommands.Usage, "Every key the window and browse mode answer to. Give any action a key, take one away, or put them back. Works with or without the app.", "rex keys set home Ctrl+Alt+J",
+            Human: true, Machine: true, NeedsApp: false),
         new("screenshot", "rex screenshot [--serial S]", "Save a picture of the phone screen.", "rex screenshot",
             Human: true, Machine: true, NeedsApp: false),
         new("phone", "rex phone list|get [filter]", "Every phone setting this phone offers, with its value.", "rex phone list bright",

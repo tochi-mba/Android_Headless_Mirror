@@ -25,7 +25,7 @@ public partial class SettingsPanel : UserControl
     public SettingsPanel()
     {
         InitializeComponent();
-        _settingsGroups = [ProfilesSettingsGroup, SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, SecondPhoneSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, WindowSettingsGroup, GlobalKeysSettingsGroup, ConnectionSettingsGroup];
+        _settingsGroups = [ProfilesSettingsGroup, SoundSettingsGroup, CopiesSettingsGroup, SecondScreenSettingsGroup, SecondPhoneSettingsGroup, AppsSettingsGroup, TransferSettingsGroup, HudSettingsGroup, WindowSettingsGroup, GlobalKeysSettingsGroup, KeysSettingsGroup, ConnectionSettingsGroup];
         PolishRows();
         StampConfigPaths();
     }

@@ -1,3 +1,4 @@
+using Rex.Core;
 using Rex.Mirror.Native;
 
 namespace Rex.Mirror.Mirror;
@@ -11,19 +12,8 @@ namespace Rex.Mirror.Mirror;
 /// </summary>
 public static class KeyboardBrowse
 {
-    /// <summary>The action a key asks for in browse mode, or null when the key is not one of them.</summary>
-    public static string? ActionFor(int virtualKey) => virtualKey switch
-    {
-        NativeMethods.VK_DOWN => "swipe-up",
-        NativeMethods.VK_UP => "swipe-down",
-        NativeMethods.VK_RIGHT => "swipe-left",
-        NativeMethods.VK_LEFT => "swipe-right",
-        NativeMethods.VK_RETURN or NativeMethods.VK_SPACE => "tap",
-        'L' => "like",
-        'M' => "mute",
-        NativeMethods.VK_BACK => "back",
-        _ => null,
-    };
+    /// <summary>The action a key asks for in browse mode (the person's own keys, <see cref="KeyMap.Current"/>), or null.</summary>
+    public static string? ActionFor(int virtualKey) => KeyMap.Current.BrowseActionFor(virtualKey);
 
     /// <summary>
     /// Whether a browse key should be taken now. Modifier chords are the app's own shortcuts and
@@ -33,6 +23,15 @@ public static class KeyboardBrowse
     public static bool Applies(bool browsing, bool ctrl, bool alt, bool focusInsideControl) =>
         browsing && !ctrl && !alt && !focusInsideControl;
 
-    /// <summary>The line the status bar shows while the mode is on.</summary>
-    public const string Hint = "BROWSE · ↑ ↓ feed · ← → pages · Enter tap · L like · M mute · Backspace back · Esc leaves";
+    /// <summary>The line the status bar shows while the mode is on, with the keys as the person has them.</summary>
+    public static string Hint
+    {
+        get
+        {
+            static string Key(string action) => KeyMap.Current.BrowseChordFor(action) is { } chord ? Arrow(chord.ToString()) : "-";
+            static string Arrow(string key) => key switch { "Up" => "↑", "Down" => "↓", "Left" => "←", "Right" => "→", _ => key };
+            return $"BROWSE · {Key("swipe-down")} {Key("swipe-up")} feed · {Key("swipe-right")} {Key("swipe-left")} pages · {Key("tap")} tap · " +
+                   $"{Key("like")} like · {Key("mute")} mute · {Key("back")} back · Esc leaves";
+        }
+    }
 }

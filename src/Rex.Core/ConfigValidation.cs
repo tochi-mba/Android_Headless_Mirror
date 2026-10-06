@@ -28,6 +28,10 @@ public static class ConfigValidation
             case "Transfer.Folder":
                 Refuse(TransferSettings.WhyNotFolder(raw));
                 break;
+            case "Keys.Window":
+            case "Keys.Browse":
+                CheckKeys(raw, current, browse: path == "Keys.Browse");
+                break;
             case "App.CaptureNames":
                 Refuse(CaptureName.WhyNot(raw));
                 break;
@@ -63,6 +67,44 @@ public static class ConfigValidation
                 ?? throw new FormatException($"'{entry.Action}' is not an action. Run 'rex action list' to see them.");
             Refuse(GlobalKeyRules.WhyNot(entry.Key, action.Id, taken) is { } why ? $"{entry.Key} for {action.Label}: {why}" : null);
             taken.Add(KeyChord.Parse(entry.Key));
+        }
+    }
+
+    /// <summary>A list of keys of one's own: each one checked as <c>rex keys set</c> would, against the ones before it.</summary>
+    private static void CheckKeys(string raw, RexConfig current, bool browse)
+    {
+        const string Example = "Expected a list such as [{\"Action\":\"home\",\"Key\":\"Ctrl+Alt+J\"}].";
+        List<KeyBinding> bindings;
+        try
+        {
+            bindings = JsonSerializer.Deserialize(raw, RexJsonContext.Default.ListKeyBinding) is { } list && list.All(b => b is not null)
+                ? list
+                : throw new FormatException(Example);
+        }
+        catch (JsonException ex)
+        {
+            throw new FormatException(Example + " " + ex.Message, ex);
+        }
+
+        if (bindings.Count > KeysSettings.MostBindings)
+        {
+            throw new FormatException($"At most {KeysSettings.MostBindings} keys of your own.");
+        }
+
+        var map = new KeyMap(new KeysSettings());
+        foreach (var binding in bindings)
+        {
+            var why = browse ? map.WhyNotBrowse(binding.Action, binding.Key)
+                : map.WhyNotWindow(binding.Action, binding.Key) ?? KeyMap.WhyNotFromAnywhere(current.GlobalKeys, binding.Key);
+            Refuse(why is null ? null : $"{binding.Key} for {binding.Action}: {why}");
+            if (browse)
+            {
+                map.BindBrowse(binding.Action, binding.Key);
+            }
+            else
+            {
+                map.BindWindow(binding.Action, binding.Key);
+            }
         }
     }
 

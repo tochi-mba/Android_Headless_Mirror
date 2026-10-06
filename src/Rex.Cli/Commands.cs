@@ -98,6 +98,9 @@ public static class Commands
             case "encoders":
                 return await EncoderCommands.HumanAsync(args, context).ConfigureAwait(false);
 
+            case "keys":
+                return await KeyCommands.HumanAsync(args, context).ConfigureAwait(false);
+
             case "push":
                 return await FileCommands.PushAsync(args, context).ConfigureAwait(false);
 

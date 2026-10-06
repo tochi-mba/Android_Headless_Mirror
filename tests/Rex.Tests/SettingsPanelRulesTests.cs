@@ -130,7 +130,7 @@ public sealed class SettingsPanelRulesTests
         {
             var panel = Wpf.Layout(new SettingsPanel(), 300);
             Assert.Equal(
-                ["GroupProfiles", "GroupDisplay", "GroupAudio", "GroupSound", "GroupSession", "GroupZoom", "GroupInput", "GroupCopies", "GroupScreen", "GroupSecondPhone", "GroupApps", "GroupFiles", "GroupHud", "GroupLockScreen", "GroupCaptures", "GroupWindow", "GroupStartup", "GroupGlobalKeys", "GroupConnection", "GroupAdvanced"],
+                ["GroupProfiles", "GroupDisplay", "GroupAudio", "GroupSound", "GroupSession", "GroupZoom", "GroupInput", "GroupCopies", "GroupScreen", "GroupSecondPhone", "GroupApps", "GroupFiles", "GroupHud", "GroupLockScreen", "GroupCaptures", "GroupWindow", "GroupStartup", "GroupGlobalKeys", "GroupKeys", "GroupConnection", "GroupAdvanced"],
                 panel.Groups().Select(group => group.Name));
             var filter = Assert.IsType<TextBox>(panel.FindName("SettingsFilter"));
             var count = Assert.IsType<TextBlock>(panel.FindName("FilterCount"));
