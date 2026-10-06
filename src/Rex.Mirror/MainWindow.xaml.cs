@@ -188,7 +188,9 @@ public partial class MainWindow : Window
         LocationChanged += (_, _) => TrackOverlay();
         SizeChanged += (_, _) => TrackOverlay();
         StateChanged += (_, _) => TrackOverlay();
-        IsVisibleChanged += (_, _) => TrackOverlay();
+        // Only on the way back: going away, the slower tick catches up by itself, and closing the
+        // window hides it after its contents have already left the screen.
+        IsVisibleChanged += (_, e) => { if (e.NewValue is true) { TrackOverlay(); } };
         Activated += (_, _) => { if (ActiveView.HasChild) { ActiveView.FocusChild(); } };
         Deactivated += (_, _) => _overlay.ClearTrail();
         Closing += OnClosing;
@@ -580,6 +582,12 @@ public partial class MainWindow : Window
 
     private void TrackOverlay()
     {
+        // A window being closed has let go of its contents: there is nothing left to measure.
+        if (PresentationSource.FromVisual(this) is null)
+        {
+            return;
+        }
+
         // Hidden or minimised, nothing on screen needs following, and the rest of the tick's work
         // keeps well at four times a second. Showing the window again brings it straight back.
         var onScreen = IsVisible && WindowState != WindowState.Minimized;
