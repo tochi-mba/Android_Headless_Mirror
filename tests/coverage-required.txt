@@ -72,3 +72,4 @@ LoggedProcessRunner.cs
 UpdateCheck.cs
 KeyMap.cs
 KeysSettings.cs
+ControlsSettings.cs

@@ -36,6 +36,9 @@ public sealed record RexConfig
     /// <summary>The person's own keys for the window, for browse mode, and scrcpy's own shortcut key.</summary>
     public KeysSettings Keys { get; set; } = new();
 
+    /// <summary>The Controls tab's sections and tiles, in the person's order.</summary>
+    public ControlsSettings Controls { get; set; } = new();
+
     public LoggingSettings Logging { get; set; } = new();
 
     /// <summary>Clamps every value into its supported range. Called after load and before save.</summary>
@@ -63,6 +66,8 @@ public sealed record RexConfig
         SecondPhone.Normalize();
         Keys ??= new KeysSettings();
         Keys.Normalize();
+        Controls ??= new ControlsSettings();
+        Controls.Normalize();
         Logging.Normalize();
     }
 
@@ -88,6 +93,7 @@ public sealed record RexConfig
         Profiles = Profiles.Copy(),
         SecondPhone = SecondPhone.Copy(),
         Keys = Keys.Copy(),
+        Controls = Controls.Copy(),
         Logging = Logging.Copy(),
     };
 
@@ -117,6 +123,7 @@ public sealed record RexConfig
         Profiles = copy.Profiles;
         SecondPhone = copy.SecondPhone;
         Keys = copy.Keys;
+        Controls = copy.Controls;
         Logging = copy.Logging;
     }
 
@@ -404,6 +411,9 @@ public sealed record HudSettings
     /// <summary>The same floating controls over the mirror in the window too, not only in fullscreen.</summary>
     public bool ShowInWindow { get; set; }
 
+    /// <summary>The buttons in the order they were chosen; off puts them in the order the actions are listed in.</summary>
+    public bool KeepOrder { get; set; }
+
     public HudSettings Copy() => this with { Buttons = [.. Buttons] };
 
     public void Normalize()
@@ -414,12 +424,13 @@ public sealed record HudSettings
         HideSeconds = double.IsFinite(HideSeconds) ? Math.Clamp(HideSeconds, 1, 15) : 3;
         Scale = double.IsFinite(Scale) ? Math.Clamp(Scale, 0.75, 1.75) : 1;
         Opacity = double.IsFinite(Opacity) ? Math.Clamp(Opacity, 0.3, 1) : 1;
-        // In the catalogue's order, as the preview and the bar show them, whatever order they were picked in.
+        // Known actions, each once; in the order they were picked when that is wanted, else the catalogue's.
         var chosen = (Buttons ?? [])
-            .Select(id => MirrorActions.Find(id)?.Id)
+            .Select(id => MirrorActions.Find(id ?? string.Empty)?.Id)
             .OfType<string>()
-            .ToHashSet(StringComparer.Ordinal);
-        Buttons = MirrorActions.Ids.Where(chosen.Contains).Take(16).ToList();
+            .Distinct()
+            .ToList();
+        Buttons = (KeepOrder ? chosen : [.. MirrorActions.Ids.Where(chosen.Contains)]).Take(16).ToList();
     }
 }
 

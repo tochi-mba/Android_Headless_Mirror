@@ -17,7 +17,7 @@ public sealed class ControlsPanelTests
     [Fact]
     public void EachSectionHoldsTheTilesThatBelongToIt()
     {
-        Assert.Equal(12, ControlsPanel.PhoneTileIds.Length);
+        Assert.Equal(12, ControlsPanel.PhoneTileIds.Count);
         Assert.Contains("mute", ControlsPanel.PhoneTileIds);
 
         // The picture on this PC, not the phone: turning the phone lives under phone orientation,
@@ -28,7 +28,7 @@ public sealed class ControlsPanelTests
         Assert.DoesNotContain("resume", ControlsPanel.ViewTileIds);
 
         // Six gestures, three by two; mute lives under PHONE, and browse and the layout are buttons.
-        Assert.Equal(6, ControlsPanel.GestureTileIds.Length);
+        Assert.Equal(6, ControlsPanel.GestureTileIds.Count);
         Assert.All(ControlsPanel.GestureTileIds, id => Assert.True(MirrorActions.IsGesture(id), id));
         Assert.Empty(ControlsPanel.PhoneTileIds.Intersect(ControlsPanel.GestureTileIds));
 

@@ -4,6 +4,21 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.16.0 - 2026-10-06
+
+### Added
+
+- **Controls tab**, a group in Settings: show or hide each section of the Controls tab and move
+  it up or down; take tiles out of the Phone, View and gesture grids, move them, or add any
+  action as a tile; two, three or four tiles to a row, with or without their names.
+  **Put the Controls tab back** returns it as it ships.
+- The floating controls can **keep the order you pick them in**.
+- Every action has a picture of its own, so any of them reads well as a tile.
+
+### Fixed
+
+- The Controls tab's keyboard line names browse mode's keys as you have them.
+
 ## 2.15.0 - 2026-10-06
 
 ### Added

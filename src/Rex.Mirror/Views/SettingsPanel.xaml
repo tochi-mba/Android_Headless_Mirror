@@ -725,6 +725,7 @@
     </StackPanel></Expander>
     <settings:GlobalKeysGroup x:Name="GlobalKeysSettingsGroup" />
     <settings:KeysGroup x:Name="KeysSettingsGroup" />
+    <settings:ControlsTabGroup x:Name="ControlsTabSettingsGroup" />
     <settings:ConnectionGroup x:Name="ConnectionSettingsGroup" />
 
     <Expander x:Name="GroupAdvanced" Margin="0,12,0,0">

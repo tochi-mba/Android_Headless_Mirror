@@ -40,6 +40,12 @@ public static class ActionIcons
         ["phone-switch"] = "IconPhoneSwitch",
         ["phone-beside"] = "IconPhoneBeside",
         ["fullscreen"] = "IconFullscreen",
+        ["fps"] = "IconFrameRate",
+        ["copy-add"] = "IconCopyAdd",
+        ["copy-remove"] = "IconCopyRemove",
+        ["send-files"] = "IconSendFiles",
+        ["send-copied-files"] = "IconSendCopied",
+        ["fit-window"] = "IconFitWindow",
         ["zoom-in"] = "IconZoomIn",
         ["zoom-out"] = "IconZoomOut",
         ["swipe-up"] = "IconArrowDown",
@@ -57,6 +63,24 @@ public static class ActionIcons
 
     /// <summary>The theme key of the action's icon, or null when it shows its label instead.</summary>
     public static string? For(string actionId) => Icons.GetValueOrDefault(actionId);
+
+    /// <summary>
+    /// Pictures for the actions the fullscreen controls name in words (the phone's three turns, and
+    /// Fit, which shows the zoom there): a Controls tab tile is a picture with its name under it.
+    /// </summary>
+    private static readonly Dictionary<string, string> TileOnly = new(StringComparer.Ordinal)
+    {
+        ["rotation-portrait"] = "IconPortrait",
+        ["rotation-landscape"] = "IconLandscape",
+        ["rotation-auto"] = "IconRotationAuto",
+        ["zoom-reset"] = "IconZoomFit",
+    };
+
+    /// <summary>The picture a Controls tab tile shows for an action: its icon, or the tile's own for those named in words elsewhere.</summary>
+    public static string? TileFor(string actionId) => For(actionId) ?? TileOnly.GetValueOrDefault(actionId);
+
+    /// <summary>The tiles' own pictures, for checking them against the theme.</summary>
+    internal static IReadOnlyDictionary<string, string> TileOnlyIcons => TileOnly;
 
     /// <summary>Every action that has an icon, for checking the map against the theme.</summary>
     internal static IReadOnlyDictionary<string, string> All => Icons;

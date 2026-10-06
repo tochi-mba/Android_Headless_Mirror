@@ -118,6 +118,13 @@ public static class SettingsCatalogue
         ["Hud.ShowInWindow"] = "HudShowInWindow",
         ["Keys.Window"] = "WindowKeysList",
         ["Keys.Browse"] = "BrowseKeysList",
+        ["Controls.Sections"] = "ControlsSectionsList",
+        ["Controls.PhoneTiles"] = "ControlsPhoneTilesList",
+        ["Controls.ViewTiles"] = "ControlsViewTilesList",
+        ["Controls.GestureTiles"] = "ControlsGestureTilesList",
+        ["Controls.Columns"] = "ControlsColumns",
+        ["Controls.TileLabels"] = "ControlsTileLabels",
+        ["Hud.KeepOrder"] = "HudKeepOrder",
 
         ["Ambient.Enabled"] = "AmbientEnabled",
         ["Ambient.Opacity"] = "AmbientOpacity",

@@ -20,12 +20,27 @@
     <DataTemplate x:Key="Tile">
       <Button Style="{StaticResource PanelTile}" Content="{Binding}" Tag="{Binding Id}" Click="OnTile" />
     </DataTemplate>
+    <!-- Without its name under the icon: the name stays in its tooltip and its accessible name. -->
+    <Style x:Key="PanelTileIconOnly" TargetType="Button" BasedOn="{StaticResource PanelTile}">
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="ContentTemplate">
+        <Setter.Value>
+          <DataTemplate>
+            <Path Data="{Binding Icon}" Stroke="{StaticResource Signal}" StrokeThickness="1.6" StrokeLineJoin="Round"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="22" Height="22" Stretch="None" HorizontalAlignment="Center" />
+          </DataTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <DataTemplate x:Key="TileIconOnly">
+      <Button Style="{StaticResource PanelTileIconOnly}" Content="{Binding}" Tag="{Binding Id}" Click="OnTile" />
+    </DataTemplate>
     <ItemsPanelTemplate x:Key="ThreeColumns">
       <UniformGrid Columns="3" />
     </ItemsPanelTemplate>
   </UserControl.Resources>
 
-  <StackPanel>
+  <StackPanel x:Name="Sections">
     <Grid Margin="0,6,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
@@ -37,123 +52,145 @@
 
     <!-- Each grid is pulled out by the 3 DIP its tiles keep around themselves, so the outer tiles
          line up with everything else in the panel. -->
-    <StackPanel x:Name="AppsSection">
-      <TextBlock Text="APPS" Style="{StaticResource Eyebrow}" />
-      <UniformGrid x:Name="FavouriteTiles" Columns="3" Margin="-3" />
-      <TextBlock x:Name="FavouritesHint" Style="{StaticResource MutedText}" TextWrapping="Wrap" Visibility="Collapsed"
-                 Text="Star an app in the Apps tab to keep it here." />
-      <Button x:Name="AllApps" Content="All apps…" Click="OnAllApps" Margin="0,6,0,0" ToolTip="The Apps tab · Ctrl+Alt+2" />
-    </StackPanel>
-
-    <StackPanel x:Name="ScreenSection">
-      <TextBlock Text="SECOND SCREEN" Style="{StaticResource Eyebrow}" />
-      <TextBlock x:Name="ScreenStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite" />
-      <Button x:Name="ScreenOpen" Content="Open an app on a second screen…" Click="OnScreenOpen" ToolTipService.ShowOnDisabled="True" />
-      <StackPanel x:Name="ScreenOpenControls" Visibility="Collapsed">
-        <UniformGrid Columns="2" Margin="-3,0">
-          <Button x:Name="ScreenSwitch" Content="Switch app…" Margin="3,0" Click="OnScreenOpen" ToolTip="Choose another app for the second screen; the screen stays" />
-          <Button x:Name="ScreenClose" Content="Close it" Margin="3,0" Click="OnScreenClose" />
-        </UniformGrid>
-        <UniformGrid Columns="2" Margin="-3,6,-3,0">
-          <RadioButton x:Name="ScreenBeside" Style="{StaticResource Segment}" Content="Beside the phone" GroupName="ScreenPlacement" Margin="3,0"
-                       HorizontalContentAlignment="Center" Checked="OnScreenPlacement" />
-          <RadioButton x:Name="ScreenInstead" Style="{StaticResource Segment}" Content="Instead of it" GroupName="ScreenPlacement" Margin="3,0"
-                       HorizontalContentAlignment="Center" Checked="OnScreenPlacement" AutomationProperties.Name="Instead of the phone" />
-        </UniformGrid>
+    <StackPanel x:Name="HostApps">
+      <StackPanel x:Name="AppsSection">
+        <TextBlock Text="APPS" Style="{StaticResource Eyebrow}" />
+        <UniformGrid x:Name="FavouriteTiles" Columns="3" Margin="-3" />
+        <TextBlock x:Name="FavouritesHint" Style="{StaticResource MutedText}" TextWrapping="Wrap" Visibility="Collapsed"
+                   Text="Star an app in the Apps tab to keep it here." />
+        <Button x:Name="AllApps" Content="All apps…" Click="OnAllApps" Margin="0,6,0,0" ToolTip="The Apps tab · Ctrl+Alt+2" />
       </StackPanel>
     </StackPanel>
 
-    <TextBlock Text="PHONE" Style="{StaticResource Eyebrow}" />
-    <ItemsControl x:Name="NavigationTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
+    <StackPanel x:Name="HostScreen">
+      <StackPanel x:Name="ScreenSection">
+        <TextBlock Text="SECOND SCREEN" Style="{StaticResource Eyebrow}" />
+        <TextBlock x:Name="ScreenStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite" />
+        <Button x:Name="ScreenOpen" Content="Open an app on a second screen…" Click="OnScreenOpen" ToolTipService.ShowOnDisabled="True" />
+        <StackPanel x:Name="ScreenOpenControls" Visibility="Collapsed">
+          <UniformGrid Columns="2" Margin="-3,0">
+            <Button x:Name="ScreenSwitch" Content="Switch app…" Margin="3,0" Click="OnScreenOpen" ToolTip="Choose another app for the second screen; the screen stays" />
+            <Button x:Name="ScreenClose" Content="Close it" Margin="3,0" Click="OnScreenClose" />
+          </UniformGrid>
+          <UniformGrid Columns="2" Margin="-3,6,-3,0">
+            <RadioButton x:Name="ScreenBeside" Style="{StaticResource Segment}" Content="Beside the phone" GroupName="ScreenPlacement" Margin="3,0"
+                         HorizontalContentAlignment="Center" Checked="OnScreenPlacement" />
+            <RadioButton x:Name="ScreenInstead" Style="{StaticResource Segment}" Content="Instead of it" GroupName="ScreenPlacement" Margin="3,0"
+                         HorizontalContentAlignment="Center" Checked="OnScreenPlacement" AutomationProperties.Name="Instead of the phone" />
+          </UniformGrid>
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
 
-    <TextBlock Text="PHONE ORIENTATION" Style="{StaticResource Eyebrow}" />
-    <UniformGrid Columns="3" Margin="-3,0">
-      <RadioButton x:Name="RotationPortrait" Style="{StaticResource Segment}" Content="Portrait" Tag="rotation-portrait" Checked="OnRotation"
-                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
-      <RadioButton x:Name="RotationLandscape" Style="{StaticResource Segment}" Content="Landscape" Tag="rotation-landscape" Checked="OnRotation"
-                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
-      <RadioButton x:Name="RotationAuto" Style="{StaticResource Segment}" Content="Auto" Tag="rotation-auto" Checked="OnRotation"
-                   GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
-    </UniformGrid>
-    <!-- Asks Android itself to turn, which is not the same as turning the picture on this PC. -->
-    <Button x:Name="RotateDevice" Content="Rotate the phone 90°" Tag="rotate-device" Click="OnTile" Margin="0,6,0,0"
-            ToolTipService.ShowOnDisabled="True" />
+    <StackPanel x:Name="HostPhone">
+      <TextBlock Text="PHONE" Style="{StaticResource Eyebrow}" />
+      <ItemsControl x:Name="NavigationTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
+    </StackPanel>
 
-    <TextBlock Text="VIEW" Style="{StaticResource Eyebrow}" />
-    <ItemsControl x:Name="ViewTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
+    <StackPanel x:Name="HostOrientation">
+      <TextBlock Text="PHONE ORIENTATION" Style="{StaticResource Eyebrow}" />
+      <UniformGrid Columns="3" Margin="-3,0">
+        <RadioButton x:Name="RotationPortrait" Style="{StaticResource Segment}" Content="Portrait" Tag="rotation-portrait" Checked="OnRotation"
+                     GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
+        <RadioButton x:Name="RotationLandscape" Style="{StaticResource Segment}" Content="Landscape" Tag="rotation-landscape" Checked="OnRotation"
+                     GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
+        <RadioButton x:Name="RotationAuto" Style="{StaticResource Segment}" Content="Auto" Tag="rotation-auto" Checked="OnRotation"
+                     GroupName="Rotation" HorizontalContentAlignment="Center" Margin="3,0" ToolTipService.ShowOnDisabled="True" />
+      </UniformGrid>
+      <!-- Asks Android itself to turn, which is not the same as turning the picture on this PC. -->
+      <Button x:Name="RotateDevice" Content="Rotate the phone 90°" Tag="rotate-device" Click="OnTile" Margin="0,6,0,0"
+              ToolTipService.ShowOnDisabled="True" />
+    </StackPanel>
 
-    <TextBlock Text="KEYBOARD" Style="{StaticResource Eyebrow}" />
-    <TextBlock x:Name="KeyboardStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8"
-               Text="Typing goes straight to the phone." />
-    <ToggleButton x:Name="BrowseToggle" Style="{StaticResource WideToggle}" Checked="OnBrowseToggle" Unchecked="OnBrowseToggle" AutomationProperties.Name="Browse mode"
-                  ToolTipService.ShowOnDisabled="True">
+    <StackPanel x:Name="HostView">
+      <TextBlock Text="VIEW" Style="{StaticResource Eyebrow}" />
+      <ItemsControl x:Name="ViewTiles" Margin="-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
+    </StackPanel>
+
+    <StackPanel x:Name="HostKeyboard">
+      <TextBlock Text="KEYBOARD" Style="{StaticResource Eyebrow}" />
+      <TextBlock x:Name="KeyboardStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,0,0,8"
+                 Text="Typing goes straight to the phone." />
+      <ToggleButton x:Name="BrowseToggle" Style="{StaticResource WideToggle}" Checked="OnBrowseToggle" Unchecked="OnBrowseToggle" AutomationProperties.Name="Browse mode"
+                    ToolTipService.ShowOnDisabled="True">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Path Data="{StaticResource IconKeyboard}" Stroke="{StaticResource Signal}" StrokeThickness="1.6" StrokeLineJoin="Round"
+                StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="22" Height="22" Stretch="None" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="Browse mode" Margin="10,0,0,0" VerticalAlignment="Center" />
+          <TextBlock x:Name="BrowseState" Grid.Column="2" Text="Off" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+        </Grid>
+      </ToggleButton>
+      <ItemsControl x:Name="GestureTiles" Margin="-3,5,-3,-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
+      <Button x:Name="KeyboardLayout" Content="Keyboard layout" Tag="keyboard-layout" Click="OnTile" Margin="0,8,0,0"
+              ToolTipService.ShowOnDisabled="True" />
+    </StackPanel>
+
+    <StackPanel x:Name="HostZoom">
+      <TextBlock Text="ZOOM (PC ONLY)" Style="{StaticResource Eyebrow}" />
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <Path Data="{StaticResource IconKeyboard}" Stroke="{StaticResource Signal}" StrokeThickness="1.6" StrokeLineJoin="Round"
-              StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="22" Height="22" Stretch="None" VerticalAlignment="Center" />
-        <TextBlock Grid.Column="1" Text="Browse mode" Margin="10,0,0,0" VerticalAlignment="Center" />
-        <TextBlock x:Name="BrowseState" Grid.Column="2" Text="Off" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+        <Button x:Name="ZoomOut" Content="−" Width="40" Padding="0" Tag="zoom-out" Click="OnTile" AutomationProperties.Name="Zoom out" />
+        <TextBlock x:Name="ZoomLabel" Grid.Column="1" Text="100%" FontFamily="{StaticResource Mono}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Button x:Name="ZoomIn" Grid.Column="2" Content="+" Width="40" Padding="0" Tag="zoom-in" Click="OnTile" AutomationProperties.Name="Zoom in" />
+        <Button x:Name="ZoomReset" Grid.Column="3" Content="Reset" Margin="6,0,0,0" Tag="zoom-reset" Click="OnTile" IsEnabled="False" />
       </Grid>
-    </ToggleButton>
-    <ItemsControl x:Name="GestureTiles" Margin="-3,5,-3,-3" ItemsPanel="{StaticResource ThreeColumns}" ItemTemplate="{StaticResource Tile}" Focusable="False" />
-    <Button x:Name="KeyboardLayout" Content="Keyboard layout" Tag="keyboard-layout" Click="OnTile" Margin="0,8,0,0"
-            ToolTipService.ShowOnDisabled="True" />
-
-    <TextBlock Text="ZOOM (PC ONLY)" Style="{StaticResource Eyebrow}" />
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-      <Button x:Name="ZoomOut" Content="−" Width="40" Padding="0" Tag="zoom-out" Click="OnTile" AutomationProperties.Name="Zoom out" />
-      <TextBlock x:Name="ZoomLabel" Grid.Column="1" Text="100%" FontFamily="{StaticResource Mono}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      <Button x:Name="ZoomIn" Grid.Column="2" Content="+" Width="40" Padding="0" Tag="zoom-in" Click="OnTile" AutomationProperties.Name="Zoom in" />
-      <Button x:Name="ZoomReset" Grid.Column="3" Content="Reset" Margin="6,0,0,0" Tag="zoom-reset" Click="OnTile" IsEnabled="False" />
-    </Grid>
-    <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0"
-               Text="Two fingers on the touchpad act on the phone (pinch, rotate, pan). Hold Alt to zoom or pan the PC view instead; Alt + wheel and Alt + drag work with a mouse." />
-
-    <TextBlock Text="COPIES" Style="{StaticResource Eyebrow}" />
-    <UniformGrid x:Name="CopyButtons" Columns="2" Margin="-3,0">
-      <Button x:Name="CopyAdd" Content="Add a copy" Margin="3,0" Tag="copy-add" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
-      <Button x:Name="CopyRemove" Content="Remove a copy" Margin="3,0" Tag="copy-remove" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
-    </UniformGrid>
-    <TextBlock x:Name="CopiesStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,8,0,0"
-               AutomationProperties.LiveSetting="Polite" />
-
-    <StackPanel x:Name="FilesSection">
-      <TextBlock Text="FILES" Style="{StaticResource Eyebrow}" />
-      <UniformGrid Columns="2" Margin="-3,0">
-        <Button x:Name="SendFiles" Content="Send files…" Margin="3,0" Click="OnSendFiles" ToolTipService.ShowOnDisabled="True" />
-        <Button x:Name="SendCopiedFiles" Content="Send copied files" Margin="3,0" Click="OnSendCopiedFiles" ToolTipService.ShowOnDisabled="True" />
-      </UniformGrid>
-      <StackPanel x:Name="TransferRows" Margin="0,4,0,0" />
-      <Button x:Name="ClearTransfers" Content="Clear finished" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnClearTransfers"
-              ToolTipService.ShowOnDisabled="True" />
+      <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0"
+                 Text="Two fingers on the touchpad act on the phone (pinch, rotate, pan). Hold Alt to zoom or pan the PC view instead; Alt + wheel and Alt + drag work with a mouse." />
     </StackPanel>
 
-    <TextBlock Text="CLIPBOARD" Style="{StaticResource Eyebrow}" />
-    <UniformGrid x:Name="ClipboardButtons" Columns="4" Margin="-3,0">
-      <Button x:Name="ClipboardCopy" Content="Copy" Margin="3,0" Tag="copy" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
-      <Button x:Name="ClipboardCut" Content="Cut" Margin="3,0" Tag="cut" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
-      <Button x:Name="ClipboardPaste" Content="Paste" Margin="3,0" Tag="paste" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
-      <Button x:Name="ClipboardType" Content="Type" Margin="3,0" Tag="paste-text" Click="OnTile" ToolTipService.ShowOnDisabled="True"
-              AutomationProperties.Name="Type clipboard" />
-    </UniformGrid>
-
-    <StackPanel x:Name="PatternSection" Visibility="Collapsed">
-      <TextBlock Text="PATTERN GUIDE" Style="{StaticResource Eyebrow}" />
-      <TextBlock x:Name="PatternStatus" Style="{StaticResource MutedText}" Text="Shows nine dots over a black lock screen." />
-      <UniformGrid Columns="2" Margin="-3,8,-3,0">
-        <Button x:Name="PatternToggle" Content="Show guide" Margin="3,0" Click="OnPatternToggle" />
-        <Button x:Name="PatternCalibrate" Content="Calibrate" Margin="3,0" Click="OnPatternCalibrate" />
+    <StackPanel x:Name="HostCopies">
+      <TextBlock Text="COPIES" Style="{StaticResource Eyebrow}" />
+      <UniformGrid x:Name="CopyButtons" Columns="2" Margin="-3,0">
+        <Button x:Name="CopyAdd" Content="Add a copy" Margin="3,0" Tag="copy-add" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+        <Button x:Name="CopyRemove" Content="Remove a copy" Margin="3,0" Tag="copy-remove" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
       </UniformGrid>
+      <TextBlock x:Name="CopiesStatus" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,8,0,0"
+                 AutomationProperties.LiveSetting="Polite" />
+    </StackPanel>
+
+    <StackPanel x:Name="HostFiles">
+      <StackPanel x:Name="FilesSection">
+        <TextBlock Text="FILES" Style="{StaticResource Eyebrow}" />
+        <UniformGrid Columns="2" Margin="-3,0">
+          <Button x:Name="SendFiles" Content="Send files…" Margin="3,0" Click="OnSendFiles" ToolTipService.ShowOnDisabled="True" />
+          <Button x:Name="SendCopiedFiles" Content="Send copied files" Margin="3,0" Click="OnSendCopiedFiles" ToolTipService.ShowOnDisabled="True" />
+        </UniformGrid>
+        <StackPanel x:Name="TransferRows" Margin="0,4,0,0" />
+        <Button x:Name="ClearTransfers" Content="Clear finished" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OnClearTransfers"
+                ToolTipService.ShowOnDisabled="True" />
+      </StackPanel>
+    </StackPanel>
+
+    <StackPanel x:Name="HostClipboard">
+      <TextBlock Text="CLIPBOARD" Style="{StaticResource Eyebrow}" />
+      <UniformGrid x:Name="ClipboardButtons" Columns="4" Margin="-3,0">
+        <Button x:Name="ClipboardCopy" Content="Copy" Margin="3,0" Tag="copy" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+        <Button x:Name="ClipboardCut" Content="Cut" Margin="3,0" Tag="cut" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+        <Button x:Name="ClipboardPaste" Content="Paste" Margin="3,0" Tag="paste" Click="OnTile" ToolTipService.ShowOnDisabled="True" />
+        <Button x:Name="ClipboardType" Content="Type" Margin="3,0" Tag="paste-text" Click="OnTile" ToolTipService.ShowOnDisabled="True"
+                AutomationProperties.Name="Type clipboard" />
+      </UniformGrid>
+    </StackPanel>
+
+    <StackPanel x:Name="HostPattern">
+      <StackPanel x:Name="PatternSection" Visibility="Collapsed">
+        <TextBlock Text="PATTERN GUIDE" Style="{StaticResource Eyebrow}" />
+        <TextBlock x:Name="PatternStatus" Style="{StaticResource MutedText}" Text="Shows nine dots over a black lock screen." />
+        <UniformGrid Columns="2" Margin="-3,8,-3,0">
+          <Button x:Name="PatternToggle" Content="Show guide" Margin="3,0" Click="OnPatternToggle" />
+          <Button x:Name="PatternCalibrate" Content="Calibrate" Margin="3,0" Click="OnPatternCalibrate" />
+        </UniformGrid>
+      </StackPanel>
     </StackPanel>
   </StackPanel>
 </UserControl>
