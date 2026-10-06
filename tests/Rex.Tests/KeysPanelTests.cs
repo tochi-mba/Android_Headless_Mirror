@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using Rex.Core;
 using Rex.Mirror.Views.Controls;
 using Rex.Mirror.Views.Settings;
@@ -23,13 +22,19 @@ public sealed class KeysPanelTests
 
             var boxes = Wpf.Logical(group).OfType<ChordBox>().ToArray();
             Assert.NotEmpty(boxes);
+            // Each key measured in a box of its own, styled as the row's is and free to be as wide as
+            // it likes: the text, the box's padding and border, and the room its template keeps.
             foreach (var box in boxes.Where(b => b.Text.Length > 0))
             {
-                var text = new FormattedText(box.Text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                    new Typeface(box.FontFamily, box.FontStyle, box.FontWeight, box.FontStretch), box.FontSize, Brushes.White, 1);
-                Assert.True(text.Width + box.Padding.Left + box.Padding.Right + box.BorderThickness.Left + box.BorderThickness.Right <= box.ActualWidth,
-                    $"{box.Text} needs {text.Width:0} of the {box.ActualWidth:0} its box has.");
+                var probe = new ChordBox { Padding = box.Padding, Chord = box.Text };
+                var holder = new StackPanel { Orientation = Orientation.Horizontal };
+                holder.Children.Add(probe);
+                Wpf.Layout(holder, 1000);
+                Assert.True(probe.DesiredSize.Width <= box.ActualWidth,
+                    $"{box.Text} needs {probe.DesiredSize.Width:0} of the {box.ActualWidth:0} its box has.");
             }
+
+            Assert.All(boxes, box => Assert.Equal(KeysGroup.BoxWidth, box.ActualWidth));
 
             // Names wrap rather than being cut short, so two that start alike can be told apart.
             var names = boxes.Select(b => ((Grid)b.Parent).Children.OfType<TextBlock>().First()).ToArray();
