@@ -42,6 +42,16 @@ public sealed class GpuCapture : IDisposable
     /// <summary>One shrunk copy of the region, BGRA with opaque alpha.</summary>
     public sealed record Picture(byte[] Pixels, int Width, int Height);
 
+    /// <summary>
+    /// Whether the device runs on Microsoft's own software adapter (the Basic Render Driver), as
+    /// it does with no graphics card, over Remote Desktop and in many virtual machines: then the
+    /// "GPU" work here is the processor's.
+    /// </summary>
+    public bool OnSoftwareAdapter { get; private set; }
+
+    /// <summary>The vendor id Windows gives its own adapters, the software one among them.</summary>
+    private const uint MicrosoftVendorId = 0x1414;
+
     /// <summary>Why the GPU path last failed, for the log; null while it works.</summary>
     public string? UnavailableReason { get; private set; }
 
@@ -203,6 +213,9 @@ public sealed class GpuCapture : IDisposable
         result.CheckError();
         _device = device;
         _context = context;
+        using var dxgiDevice = _device!.QueryInterface<IDXGIDevice>();
+        using var adapter = dxgiDevice.GetAdapter();
+        OnSoftwareAdapter = adapter.Description.VendorId == MicrosoftVendorId;
     }
 
     private bool EnsureDuplication(RECT screenRect)
