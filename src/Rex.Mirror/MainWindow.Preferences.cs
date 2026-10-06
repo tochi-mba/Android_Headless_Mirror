@@ -89,7 +89,10 @@ public partial class MainWindow
         TrackOverlay();
     }
 
-    /// <summary>The phone buttons in the top bar; a divider shows only between groups that both have one.</summary>
+    /// <summary>
+    /// The phone buttons in the top bar, each saying what it does and its key as the keys are now;
+    /// a divider shows only between groups that both have one.
+    /// </summary>
     private void ApplyQuickButtons(IReadOnlyCollection<string> wanted)
     {
         var buttons = new (Button Button, string Id)[]
@@ -99,6 +102,11 @@ public partial class MainWindow
         foreach (var (button, id) in buttons)
         {
             button.Visibility = wanted.Contains(id) ? Visibility.Visible : Visibility.Collapsed;
+            // The sound button's own words carry its level as well (MainWindow.Sound).
+            if (id != "sound")
+            {
+                button.ToolTip = Shortcuts.Tip(System.Windows.Automation.AutomationProperties.GetName(button), id);
+            }
         }
 
         var navigation = wanted.Any(id => id is "home" or "back" or "recents");
@@ -108,29 +116,33 @@ public partial class MainWindow
         QuickEndDivider.Visibility = navigation || screen || QuickExtra.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>Any other action in the top bar: an icon button each, after the phone buttons, built again only when the list changes.</summary>
+    /// <summary>
+    /// Any other action in the top bar: an icon button each, after the phone buttons. Built again
+    /// only when the list changes; their words follow the keys every time.
+    /// </summary>
     private void ApplyQuickExtras(IReadOnlyList<string> extras)
     {
-        if (QuickExtra.Children.OfType<Button>().Select(b => (string)b.Tag).SequenceEqual(extras))
+        if (!QuickExtra.Children.OfType<Button>().Select(b => (string)b.Tag).SequenceEqual(extras))
         {
-            return;
+            QuickExtra.Children.Clear();
+            foreach (var id in extras)
+            {
+                var button = new Button
+                {
+                    Style = (Style)FindResource("IconButton"),
+                    Content = FindResource(Views.ActionIcons.TileFor(id) ?? "IconInfo"),
+                    Tag = id,
+                };
+                System.Windows.Automation.AutomationProperties.SetAutomationId(button, "quick-" + id);
+                System.Windows.Automation.AutomationProperties.SetName(button, MirrorActions.Find(id)!.Label);
+                button.Click += OnQuickAction;
+                QuickExtra.Children.Add(button);
+            }
         }
 
-        QuickExtra.Children.Clear();
-        foreach (var id in extras)
+        foreach (var button in QuickExtra.Children.OfType<Button>())
         {
-            var label = MirrorActions.Find(id)?.Label ?? id;
-            var button = new Button
-            {
-                Style = (Style)FindResource("IconButton"),
-                Content = FindResource(Views.ActionIcons.TileFor(id) ?? "IconInfo"),
-                Tag = id,
-                ToolTip = Shortcuts.Tip(label, id),
-            };
-            System.Windows.Automation.AutomationProperties.SetAutomationId(button, "quick-" + id);
-            System.Windows.Automation.AutomationProperties.SetName(button, label);
-            button.Click += OnQuickAction;
-            QuickExtra.Children.Add(button);
+            button.ToolTip = Shortcuts.Tip(System.Windows.Automation.AutomationProperties.GetName(button), (string)button.Tag);
         }
     }
 
