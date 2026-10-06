@@ -20,6 +20,9 @@ public partial class KeysGroup : UserControl, ISettingsGroup
     /// <summary>Put back is a small button with a picture, so the name keeps its room in a narrow panel.</summary>
     private const double PutBackWidth = 36;
 
+    /// <summary>Every key box is this wide, so the boxes line up down the list.</summary>
+    internal const double BoxWidth = 150;
+
     private readonly List<Row> _window = [];
     private readonly List<Row> _browse = [];
     private SettingsPanel? _panel;
@@ -96,8 +99,8 @@ public partial class KeysGroup : UserControl, ISettingsGroup
 
         // The whole name, over two lines where the panel is narrow: cut short, most of them read alike.
         var name = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
-        // Wide enough for the longest key the app ships with, Ctrl+Alt+Backspace, and no wider.
-        var box = new ChordBox { Width = 136, Padding = new Thickness(8, 6, 8, 6), Tag = id, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        // Wide enough for the longest keys the app ships with, Ctrl+Alt+Backspace and Ctrl+Alt+PageDown.
+        var box = new ChordBox { Width = BoxWidth, Padding = new Thickness(6, 6, 6, 6), Tag = id, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetAutomationId(box, automationId);
         AutomationProperties.SetName(box, label + ", key");
         box.Committed += OnCommitted;
