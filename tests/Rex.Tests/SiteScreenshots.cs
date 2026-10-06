@@ -19,7 +19,10 @@ public sealed class SiteScreenshots
 
     /// <summary>Every picture this class promises, so a missing one fails the run.</summary>
     public static readonly string[] Pictures =
-        ["window.png", "controls.png", "settings.png", "fullscreen.png", "copies.png", "zoomed.png"];
+    [
+        "window.png", "controls.png", "settings.png", "fullscreen.png", "copies.png", "zoomed.png",
+        "apps.png", "sound.png", "keys.png", "second-screen.png",
+    ];
 
     [Fact(Timeout = 300_000)]
     public async Task EveryPictureTheSiteUses()
@@ -40,16 +43,21 @@ public sealed class SiteScreenshots
             File.Delete(old);
         }
 
-        var monitor = app.MonitorBounds();
+        // Inside the work area, so the taskbar never sits over the window in a picture.
+        var room = app.WorkArea();
         var scale = app.DpiScale();
-        app.MoveWindow(monitor.Left + 20, monitor.Top + 20,
-            Math.Min((int)(1180 * scale), monitor.Width - 40), Math.Min((int)(780 * scale), monitor.Height - 40));
+        app.MoveWindow(room.Left + 8, room.Top + 8,
+            Math.Min((int)(1180 * scale), room.Width - 16), Math.Min((int)(780 * scale), room.Height - 16));
         // Time for the new size to reach the embedded picture is itself what is being waited for.
         await Task.Delay(800, TestContext.Current.CancellationToken);
 
+        // The window as it is seen, without the borders Windows keeps around it for resizing.
         async Task Take(string name)
         {
-            using var bitmap = await app.CaptureWindowAsync();
+            // The pointer off the window, so no button is caught mid-hover.
+            app.MovePointerTo(room.Right - 2, room.Bottom - 2);
+            await Task.Delay(250, TestContext.Current.CancellationToken);
+            using var bitmap = await app.CaptureFrameAsync();
             bitmap.Save(Path.Combine(folder, name), System.Drawing.Imaging.ImageFormat.Png);
         }
 
@@ -78,6 +86,27 @@ public sealed class SiteScreenshots
         await app.WaitForStatusAsync(s => s["fullscreen"]!.GetValue<bool>(), Soon, "fullscreen");
         await Take("fullscreen.png");
         await app.ActionAsync("fullscreen");
+        await app.WaitForStatusAsync(s => !s["fullscreen"]!.GetValue<bool>(), Soon, "the window again");
+
+        app.Ui.Select("TabApps");
+        await app.WaitForStatusAsync(s => s["apps"]?["count"]?.GetValue<int>() > 0, Startup, "the phone's apps");
+        await Take("apps.png");
+
+        app.Ui.Select("TabSettings");
+        app.Ui.ExpandGroup("GroupKeys");
+        app.Ui.Find("key-home").SetFocus();
+        await Take("keys.png");
+        app.Ui.Select("TabControls");
+
+        app.Ui.Invoke("QuickSound");
+        await app.WaitUntilAsync(() => app.Ui.Exists("SoundVolume"), Soon, "the sound panel");
+        await Take("sound.png");
+        await app.PressChordAsync(0x1B);
+
+        var screen = await app.SendAsync(new IpcRequest("screen", new Dictionary<string, string> { ["verb"] = "open", ["app"] = "com.example.one" }));
+        Assert.True(screen.Ok, screen.Error);
+        await app.WaitForStatusAsync(s => s["secondScreen"]?["state"]?.GetValue<string>() == "showing", Startup, "the second screen");
+        await Take("second-screen.png");
 
         Assert.Equal(Pictures.Order(StringComparer.Ordinal), Directory.GetFiles(folder, "*.png").Select(Path.GetFileName).Order(StringComparer.Ordinal));
         await app.QuitAsync();
