@@ -37,7 +37,10 @@ public partial class WindowGroup : UserControl, ISettingsGroup
     {
         _panel = panel;
         _host = host;
+        _window = window;
     }
+
+    private MainWindow? _window;
 
     public void Refresh(RexConfig config)
     {
@@ -49,8 +52,8 @@ public partial class WindowGroup : UserControl, ISettingsGroup
             SelectTag(SidebarSide, app.SidebarSide);
             SelectTag(Backdrop, config.Mirror.Backdrop);
             SelectTag(WithoutGraphicsCard, app.WithoutGraphicsCard);
-            WithoutGraphicsCardHint.Text = "The soft background and the navigator's picture, over Remote Desktop or in a virtual machine, where each frame is drawn by the processor." +
-                (MainWindow.DrawnInSoftware ? " This PC draws that way now." : string.Empty);
+            WithoutGraphicsCardHint.Text = "The soft background and the navigator's picture, over Remote Desktop or in a virtual machine, where each frame is the processor's work." +
+                (_window?.WithoutGraphicsCard == true ? " This PC works that way now." : string.Empty);
             PanelScale.Value = app.PanelScale;
             ShowTopBar.IsChecked = app.ShowTopBar;
             BuildQuickButtonChoices(app.TopBarButtons);

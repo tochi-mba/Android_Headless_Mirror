@@ -31,7 +31,7 @@
       <HeaderedContentControl.Header><StackPanel>
         <TextBlock Text="Live pictures without a graphics card" />
         <TextBlock x:Name="WithoutGraphicsCardHint" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap"
-                   Text="The soft background and the navigator's picture, over Remote Desktop or in a virtual machine, where each frame is drawn by the processor." />
+                   Text="The soft background and the navigator's picture, over Remote Desktop or in a virtual machine, where each frame is the processor's work." />
       </StackPanel></HeaderedContentControl.Header>
       <ComboBox x:Name="WithoutGraphicsCard" SelectionChanged="OnChanged" AutomationProperties.Name="Live pictures without a graphics card">
         <ComboBoxItem Content="Slower, a few times a second" Tag="slower" />

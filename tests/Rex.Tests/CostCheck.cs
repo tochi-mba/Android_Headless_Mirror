@@ -52,6 +52,10 @@ public sealed class CostCheck
 
         app.MovePointerToCorner();
         await Measure("mirroring");
+        // What the numbers depend on, said beside them: how the live pictures are being made.
+        var shown = (await app.SendAsync(new IpcRequest("status"))).Data!;
+        var how = $"Capture: {shown["capture"]}. Without a graphics card: {shown["window"]!["withoutGraphicsCard"]}. " +
+                  $"Live pictures: {shown["window"]!["livePictureRate"]} frames a second.";
 
         Assert.True((await app.SendAsync(Zoom("in"))).Ok);
         Assert.True((await app.SendAsync(Zoom("in"))).Ok);
@@ -79,7 +83,7 @@ public sealed class CostCheck
             ? CostBaseline.Read(await File.ReadAllTextAsync(BaselineFile, TestContext.Current.CancellationToken))
             : (new CostTolerance(), new Dictionary<string, double>());
         var lines = CostBaseline.Compare(baseline, metrics, tolerance);
-        var report = "## What the app costs\n\n" + CostBaseline.Markdown(lines);
+        var report = "## What the app costs\n\n" + how + "\n\n" + CostBaseline.Markdown(lines);
 
         var folder = Path.Combine(RepoPaths.Root, "artifacts", "perf");
         Directory.CreateDirectory(folder);
