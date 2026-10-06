@@ -68,6 +68,8 @@
                  StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
             <views:SoundPanel x:Name="SoundPanel" />
           </Popup>
+          <!-- Any other action the person put in the top bar, in their order. -->
+          <StackPanel x:Name="QuickExtra" Orientation="Horizontal" />
           <Rectangle x:Name="QuickEndDivider" Width="1" Height="22" Fill="{StaticResource Line}" Margin="6,0" />
           <Button x:Name="ZoomBadge" Style="{StaticResource GhostButton}" Padding="8,4" MinHeight="28"
                   Click="OnQuickAction" Tag="zoom-reset" Visibility="Collapsed" AutomationProperties.Name="Reset zoom">

@@ -16,19 +16,30 @@ namespace Rex.Tests;
 public sealed class WindowPreferencesTests
 {
     [Fact]
+    public void TheTopBarTakesAtMostItsShareOfOtherActions()
+    {
+        var config = new RexConfig();
+        var others = MirrorActions.Ids.Where(id => !AppSettings.QuickButtons.Contains(id)).ToArray();
+        config.App.TopBarButtons = [.. others, "sound"];
+        config.Normalize();
+
+        Assert.Equal(["sound", .. others.Take(AppSettings.MostTopBarExtras)], config.App.TopBarButtons);
+    }
+
+    [Fact]
     public void WindowSettingsAreKeptSane()
     {
         var config = new RexConfig();
         config.App.SidebarSide = "LEFT";
-        config.App.TopBarButtons = ["screenshot", "bogus", "home", "HOME", " back "];
+        config.App.TopBarButtons = ["screenshot", "bogus", "Zoom-In", "home", "HOME", " back ", "fullscreen", "zoom-in"];
         config.App.ScreenshotFormat = "gif";
         config.Input.SwipeLength = 9;
         config.Input.SwipeMilliseconds = 5;
         config.Normalize();
 
         Assert.Equal("left", config.App.SidebarSide);
-        // Known buttons only, once each, in the top bar's own order.
-        Assert.Equal(new[] { "home", "back", "screenshot" }, config.App.TopBarButtons);
+        // Known actions only, once each: the phone buttons in the top bar's own order, then the rest as added.
+        Assert.Equal(new[] { "home", "back", "screenshot", "zoom-in", "fullscreen" }, config.App.TopBarButtons);
         Assert.Equal("png", config.App.ScreenshotFormat);
         Assert.Equal(InputSettings.SwipeLengthMax, config.Input.SwipeLength);
         Assert.Equal(InputSettings.SwipeMillisecondsMin, config.Input.SwipeMilliseconds);

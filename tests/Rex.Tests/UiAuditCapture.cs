@@ -113,9 +113,10 @@ public sealed class UiAuditCapture
     /// </summary>
     private static async Task CapturePagesAsync(AppProcess app, string prefix)
     {
-        for (var attempt = 0; attempt < 30 && await OffsetAsync(app) > 0.5; attempt++)
+        // Right to the top: a tab can remember where it was, and Settings with every group open is long.
+        for (var attempt = 0; attempt < 200 && await OffsetAsync(app) > 0.5; attempt++)
         {
-            await app.ScrollSidebarAsync(10);
+            await app.ScrollSidebarAsync(20);
         }
 
         var scale = app.DpiScale();
@@ -124,6 +125,9 @@ public sealed class UiAuditCapture
         {
             for (var page = 0; page < 60; page++)
             {
+                // The pointer off the panel, so no row is photographed under it, hovered.
+                var window = app.WindowBounds();
+                app.MovePointerTo(window.Left + 40, window.Top + window.Height / 2);
                 await Task.Delay(300, TestContext.Current.CancellationToken);
                 pages.Add((await OffsetAsync(app), await app.CaptureWindowAsync()));
                 var before = pages[^1].Offset;
@@ -138,11 +142,11 @@ public sealed class UiAuditCapture
             }
 
             var status = (await app.SendAsync(new IpcRequest("status"))).Data!;
-            var window = app.WindowBounds();
+            var bounds = app.WindowBounds();
             var viewport = status["sidebarViewport"]!;
             var band = new System.Drawing.Rectangle(
-                viewport["left"]!.GetValue<int>() - window.Left,
-                viewport["top"]!.GetValue<int>() - window.Top,
+                viewport["left"]!.GetValue<int>() - bounds.Left,
+                viewport["top"]!.GetValue<int>() - bounds.Top,
                 viewport["width"]!.GetValue<int>(),
                 viewport["height"]!.GetValue<int>());
             using var stitched = Stitch(pages, band, scale);
@@ -158,15 +162,23 @@ public sealed class UiAuditCapture
         }
     }
 
+    /// <summary>The scrolling area's own padding (MainWindow.xaml), which stays put while its content scrolls.</summary>
+    private const double PaddingTop = 4, PaddingBottom = 16;
+
     /// <summary>
     /// One tall picture of the panel: everything above the scrolling area from the first screenful
-    /// (the tab strip), then each screenful's scrolling area at its offset, later ones on top.
+    /// (the tab strip), then each screenful's scrolling area at its offset, later ones on top. The
+    /// area's padding is left out of every screenful but the first: it does not scroll, so drawn
+    /// in it would cover the content at each seam.
     /// </summary>
     internal static System.Drawing.Bitmap Stitch(IReadOnlyList<(double Offset, System.Drawing.Bitmap Shot)> pages, System.Drawing.Rectangle band, double scale)
     {
         var top = Math.Max(0, band.Top - 60);
         var header = band.Top - top;
         var last = pages.Count == 0 ? 0 : (int)Math.Round(pages[^1].Offset * scale);
+        var padTop = (int)Math.Round(PaddingTop * scale);
+        var padBottom = (int)Math.Round(PaddingBottom * scale);
+        var inner = new System.Drawing.Rectangle(band.Left, band.Top + padTop, band.Width, Math.Max(1, band.Height - padTop - padBottom));
         var result = new System.Drawing.Bitmap(band.Width, header + last + band.Height);
         using var graphics = System.Drawing.Graphics.FromImage(result);
         graphics.Clear(System.Drawing.Color.Black);
@@ -178,8 +190,8 @@ public sealed class UiAuditCapture
 
         foreach (var (offset, shot) in pages)
         {
-            var y = header + (int)Math.Round(offset * scale);
-            graphics.DrawImage(shot, new System.Drawing.Rectangle(0, y, band.Width, band.Height), band, System.Drawing.GraphicsUnit.Pixel);
+            var y = header + padTop + (int)Math.Round(offset * scale);
+            graphics.DrawImage(shot, new System.Drawing.Rectangle(0, y, inner.Width, inner.Height), inner, System.Drawing.GraphicsUnit.Pixel);
         }
 
         return result;

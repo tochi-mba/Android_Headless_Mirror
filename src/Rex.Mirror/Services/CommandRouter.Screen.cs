@@ -107,6 +107,7 @@ public static partial class CommandRouter
                 ? new JsonObject { ["left"] = rect.Left, ["top"] = rect.Top, ["width"] = rect.Width, ["height"] = rect.Height }
                 : null,
             ["captions"] = new JsonArray([.. window.ViewCaptions.Select(c => (JsonNode)c)]),
+            ["captionsShowing"] = window.ViewCaptionsShowing,
             ["outlined"] = window.ViewOutlined,
         };
     }

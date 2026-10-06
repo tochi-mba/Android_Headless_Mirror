@@ -53,6 +53,10 @@ public sealed partial class AppEndToEndTests
         Assert.Contains("Second screen · Example One", screen["captions"]!.AsArray().Select(c => c!.GetValue<string>()));
         Assert.True(status["mirroring"]!.GetValue<bool>());
 
+        // The names say themselves, then step aside from the top of each picture.
+        await app.WaitForStatusAsync(s => !ScreenOf(s)["captionsShowing"]!.GetValue<bool>(), ScreenTimeout, "the views' names to step aside");
+        Assert.Contains("Second screen · Example One", ScreenOf((await app.SendAsync(new IpcRequest("status"))).Data!.AsObject())["captions"]!.AsArray().Select(c => c!.GetValue<string>()));
+
         var line = Assert.Single(ScreenLines(package));
         Assert.Contains("flex=True start-app=com.example.one", line, StringComparison.Ordinal);
         var args = package.ScrcpyLog().Last(l => l.StartsWith("args ", StringComparison.Ordinal) && l.Contains("--new-display", StringComparison.Ordinal));

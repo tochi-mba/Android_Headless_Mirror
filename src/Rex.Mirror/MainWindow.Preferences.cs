@@ -33,7 +33,8 @@ public partial class MainWindow
     internal IEnumerable<string> QuickButtonsShowing =>
         new (Button Button, string Id)[] { (QuickHome, "home"), (QuickBack, "back"), (QuickRecents, "recents"), (QuickSleep, "sleep"), (QuickScreenshot, "screenshot"), (QuickSound, "sound") }
             .Where(pair => pair.Button.Visibility == Visibility.Visible)
-            .Select(pair => pair.Id);
+            .Select(pair => pair.Id)
+            .Concat(QuickExtra.Children.OfType<Button>().Select(b => (string)b.Tag));
 
     internal int? FrameRateShowing => FrameRateText.Visibility == Visibility.Visible && int.TryParse(FrameRateText.Text.Split(' ')[0], out var rate) ? rate : null;
 
@@ -102,8 +103,35 @@ public partial class MainWindow
 
         var navigation = wanted.Any(id => id is "home" or "back" or "recents");
         var screen = wanted.Any(id => id is "sleep" or "screenshot" or "sound");
-        QuickDivider.Visibility = navigation && screen ? Visibility.Visible : Visibility.Collapsed;
-        QuickEndDivider.Visibility = navigation || screen ? Visibility.Visible : Visibility.Collapsed;
+        ApplyQuickExtras(wanted.Where(id => !AppSettings.QuickButtons.Contains(id)).ToArray());
+        QuickDivider.Visibility = navigation && (screen || QuickExtra.Children.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
+        QuickEndDivider.Visibility = navigation || screen || QuickExtra.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Any other action in the top bar: an icon button each, after the phone buttons, built again only when the list changes.</summary>
+    private void ApplyQuickExtras(IReadOnlyList<string> extras)
+    {
+        if (QuickExtra.Children.OfType<Button>().Select(b => (string)b.Tag).SequenceEqual(extras))
+        {
+            return;
+        }
+
+        QuickExtra.Children.Clear();
+        foreach (var id in extras)
+        {
+            var label = MirrorActions.Find(id)?.Label ?? id;
+            var button = new Button
+            {
+                Style = (Style)FindResource("IconButton"),
+                Content = FindResource(Views.ActionIcons.TileFor(id) ?? "IconInfo"),
+                Tag = id,
+                ToolTip = Shortcuts.Tip(label, id),
+            };
+            System.Windows.Automation.AutomationProperties.SetAutomationId(button, "quick-" + id);
+            System.Windows.Automation.AutomationProperties.SetName(button, label);
+            button.Click += OnQuickAction;
+            QuickExtra.Children.Add(button);
+        }
     }
 
     /// <summary>

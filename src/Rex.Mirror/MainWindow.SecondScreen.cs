@@ -32,6 +32,8 @@ public partial class MainWindow
     /// <summary>The names over the views now, and whether one is outlined: what the status reports.</summary>
     internal IReadOnlyList<string> ViewCaptions => _overlay.MarkCaptions;
 
+    internal bool ViewCaptionsShowing => _overlay.MarkCaptionsShowing;
+
     internal bool ViewOutlined => _overlay.MarkOutlined;
 
     internal int ScreenProcessId => _screenProcess is { HasExited: false } process ? process.ProcessId : 0;
@@ -386,9 +388,11 @@ public partial class MainWindow
         Rect? outline = null;
         // Two phones name themselves; with a second screen too, it is named beside them.
         var phones = visible && MarkPhones(captions, ref outline);
+        // Named only when they show different things, the names say themselves and step aside.
+        var briefly = _host.Config.Views.Captions == "auto";
         if (!visible || _screenView is null || Group.Arrangement is not { } arrangement)
         {
-            _overlay.ShowMarks(captions, outline);
+            _overlay.ShowMarks(captions, outline, briefly);
             return;
         }
 
@@ -413,7 +417,7 @@ public partial class MainWindow
                 : null;
         }
 
-        _overlay.ShowMarks(captions, outline);
+        _overlay.ShowMarks(captions, outline, briefly);
     }
 
     /// <summary>

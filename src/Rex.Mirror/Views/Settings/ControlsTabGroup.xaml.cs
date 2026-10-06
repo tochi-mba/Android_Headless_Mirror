@@ -99,14 +99,19 @@ public partial class ControlsTabGroup : UserControl, ISettingsGroup
         // Any action can be a tile, once.
         var choice = new ComboBox { Margin = new Thickness(0, 6, 0, 0) };
         Identify(choice, key + "-add-choice", "A tile to add");
+        // The list says what it is for until an action is chosen; Add waits for one.
+        choice.Items.Add(new ComboBoxItem { Content = "Choose an action to add", IsEnabled = false });
         foreach (var action in MirrorActions.All.Where(a => !tiles.Contains(a.Id)))
         {
             choice.Items.Add(new ComboBoxItem { Content = action.Label, Tag = action.Id });
         }
 
-        var add = new Button { Content = "Add", Margin = new Thickness(6, 6, 0, 0), IsEnabled = tiles.Count < ControlsSettings.MostTiles };
+        choice.SelectedIndex = 0;
+        var room = tiles.Count < ControlsSettings.MostTiles;
+        var add = new Button { Content = "Add", Margin = new Thickness(6, 6, 0, 0), IsEnabled = false };
+        choice.SelectionChanged += (_, _) => add.IsEnabled = room && choice.SelectedItem is ComboBoxItem { Tag: string };
         Identify(add, key + "-add", "Add the tile");
-        add.ToolTip = tiles.Count < ControlsSettings.MostTiles ? null : $"A grid holds at most {ControlsSettings.MostTiles} tiles.";
+        add.ToolTip = room ? null : $"A grid holds at most {ControlsSettings.MostTiles} tiles.";
         add.Click += (_, _) =>
         {
             if (choice.SelectedItem is ComboBoxItem { Tag: string chosen })
