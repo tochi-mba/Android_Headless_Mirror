@@ -4,6 +4,14 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.16.1 - 2026-10-06
+
+### Fixed
+
+- The phone sound panel opens inside the window, under its button, instead of hanging past the
+  window's right edge.
+- The website shows real pictures of the app, and describes every feature it has now.
+
 ## 2.16.0 - 2026-10-06
 
 ### Added
