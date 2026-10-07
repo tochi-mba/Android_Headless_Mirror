@@ -52,6 +52,9 @@ public static class WhatsNew
         new("2.17.0", "Any action in the top bar",
             "Put any action in the top bar as a button of its own, after the phone buttons, in the order you add them.",
             "Settings → Window", "TabSettings"),
+        new("2.18.0", "Settings where you need them",
+            "Every section of the Controls tab now carries a small settings button that jumps straight to that feature's own group in Settings.",
+            "The Controls tab", "TabControls"),
     ];
 
     public static bool ShouldOffer(string? lastRunVersion, string currentVersion, bool enabled) =>

@@ -4,7 +4,14 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
-## 2.17.1 - 2026-10-07
+## 2.18.0 - 2026-10-07
+
+### Added
+
+- A small settings button beside each section of the Controls tab, opening the Settings tab at
+  the group where that feature is adjusted: the copies section leads to the Copies group, the
+  second screen to its own, and so on. Nobody has to know which of the nineteen groups holds a
+  setting to find it.
 
 ### Fixed
 

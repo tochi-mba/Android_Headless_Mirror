@@ -15,6 +15,28 @@ namespace Rex.Tests;
 public sealed class ControlsPanelTests
 {
     [Fact]
+    public void EverySectionOpensItsOwnSettingsGroup()
+    {
+        Wpf.Run(() =>
+        {
+            // Every section has the button, named after the section, and no section is forgotten.
+            var panel = Wpf.Layout(new ControlsPanel(), 300);
+            var buttons = Wpf.Logical(panel).OfType<Button>()
+                .Where(b => (AutomationProperties.GetAutomationId(b) ?? string.Empty).StartsWith("section-settings-", StringComparison.Ordinal))
+                .ToDictionary(b => AutomationProperties.GetAutomationId(b)["section-settings-".Length..]);
+            Assert.Equal(ControlsPanel.SectionSettings.Keys.Order(StringComparer.Ordinal), buttons.Keys.Order(StringComparer.Ordinal));
+            Assert.Equal(new ControlsSettings().Sections.Order(StringComparer.Ordinal), buttons.Keys.Order(StringComparer.Ordinal));
+            Assert.All(buttons.Values, b => Assert.EndsWith(" settings", AutomationProperties.GetName(b), StringComparison.Ordinal));
+            Assert.Equal("APPS settings", AutomationProperties.GetName(buttons["apps"]));
+
+            // Every group a button opens is really a group of the Settings tab.
+            var settings = Wpf.Layout(new SettingsPanel(), 300);
+            var groups = Wpf.Logical(settings).OfType<Expander>().Select(g => g.Name).ToHashSet(StringComparer.Ordinal);
+            Assert.All(ControlsPanel.SectionSettings.Values, group => Assert.Contains(group, groups));
+        });
+    }
+
+    [Fact]
     public void EachSectionHoldsTheTilesThatBelongToIt()
     {
         Assert.Equal(12, ControlsPanel.PhoneTileIds.Count);
