@@ -62,10 +62,11 @@ public sealed partial class AppUiTests
         await app.WaitUntilAsync(() => app.Ui.IsExpanded("GroupCopies"), Soon, "the Copies group to open");
         Assert.False(app.Ui.Read("CopiesMost", i => i.IsOffscreen));
 
-        // Back on Controls, the pattern guide's section reaches the Lock screen group the same way.
+        // Back on Controls, the keyboard section reaches its own group the same way. The pattern
+        // section is not tried: it only shows once a phone is known to have a pattern lock.
         app.Ui.Select("TabControls");
-        app.Ui.Invoke("section-settings-pattern");
-        await app.WaitUntilAsync(() => app.Ui.IsExpanded("GroupLockScreen"), Soon, "the Lock screen group to open");
+        app.Ui.Invoke("section-settings-keyboard");
+        await app.WaitUntilAsync(() => app.Ui.IsExpanded("GroupInput"), Soon, "the input group to open");
         await app.QuitAsync();
     }
 }
