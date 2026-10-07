@@ -15,7 +15,7 @@ public sealed class SecondScreenTests
 
     [Theory]
     [InlineData("follow", false, 1201, 801, "1200x800", true)]
-    [InlineData("phone", false, 0, 0, "2400x1080", false)]
+    [InlineData("phone", false, 0, 0, "1080x2400", false)]
     [InlineData("phone", true, 0, 0, "1080x2400", false)]
     [InlineData("720p", false, 0, 0, "1280x720", false)]
     [InlineData("720p", true, 0, 0, "720x1280", false)]
@@ -36,6 +36,27 @@ public sealed class SecondScreenTests
         // Custom sizes are kept as typed (the encoder rounds odd ones); everything else is made even.
         Assert.Equal(size == "custom" ? "1600x900" : expected, spec.NewDisplay);
         Assert.Equal(follows, spec.Follows);
+    }
+
+    /// <summary>
+    /// The phone's own size keeps the phone's own shape, upright, whatever the Upright switch says:
+    /// it is chosen to suit the phone's apps, and a portrait-only app on a lying display becomes a
+    /// small box in its middle. Read while the phone lay on its side, it still stands up; odd sides
+    /// are evened for the encoder; a square phone stays square.
+    /// </summary>
+    [Theory]
+    [InlineData(1080, 2400, "1080x2400")]
+    [InlineData(2400, 1080, "1080x2400")]
+    [InlineData(719, 1601, "718x1600")]
+    [InlineData(1000, 1000, "1000x1000")]
+    public void ThePhonesOwnSizeKeepsThePhonesShape(int width, int height, string expected)
+    {
+        foreach (var upright in new[] { false, true })
+        {
+            var spec = ScreenSpec.For(Screen(s => { s.Size = "phone"; s.Portrait = upright; }), (800, 600), (width, height), "a.b", fresh: false);
+            Assert.Equal(expected, spec.NewDisplay);
+            Assert.False(spec.Follows);
+        }
     }
 
     [Fact]

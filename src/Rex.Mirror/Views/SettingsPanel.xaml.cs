@@ -526,7 +526,7 @@ public partial class SettingsPanel : UserControl
         var picker = new Microsoft.Win32.OpenFolderDialog
         {
             Title = "Choose where screenshots are saved",
-            InitialDirectory = _host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory),
+            InitialDirectory = PickerFolder.Ready(_host.Paths.ScreenshotFolder(_host.Config.App.ScreenshotDirectory), _host.Paths.Root),
         };
         if (picker.ShowDialog(_window!) == true)
             Save(c => c.App.ScreenshotDirectory = picker.FolderName);

@@ -75,9 +75,14 @@ public sealed partial class AppUiTests
         app.Ui.Select("TabSettings");
         app.Ui.ExpandGroup("GroupScreen");
 
-        // Your own size waits for "Your own", and upright for a fixed size.
+        // Your own size waits for "Your own", and upright for a named PC size: the phone's own
+        // size keeps the phone's shape, so the switch stays off limits there too.
         Assert.False(app.Ui.Read("ScreenCustomWidth", i => i.IsEnabled));
         Assert.False(app.Ui.Read("ScreenPortrait", i => i.IsEnabled));
+        app.Ui.SelectComboItem("ScreenSize", "1920 x 1080");
+        await app.WaitUntilAsync(() => app.Ui.Read("ScreenPortrait", i => i.IsEnabled), Soon, "upright to open for a named size");
+        app.Ui.SelectComboItem("ScreenSize", "Same as the phone");
+        await app.WaitUntilAsync(() => !app.Ui.Read("ScreenPortrait", i => i.IsEnabled), Soon, "upright to close for the phone's own size");
         app.Ui.SelectComboItem("ScreenSize", "Your own");
         await app.WaitUntilAsync(() => app.Ui.Read("ScreenCustomWidth", i => i.IsEnabled), Soon, "your own size to open");
         app.Ui.SetText("ScreenCustomWidth", "1600");

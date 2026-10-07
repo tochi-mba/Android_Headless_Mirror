@@ -201,6 +201,16 @@ public sealed partial class AppEndToEndTests
         Assert.Contains("new-display 1280x720 flex=False", Assert.Single(ScreenLines(package)), StringComparison.Ordinal);
         Assert.Contains("on a second screen", await app.RunCliAsync("screen"), StringComparison.Ordinal);
         Assert.Contains("Off", await app.RunCliAsync("screen", "close"), StringComparison.Ordinal);
+
+        // The phone's own size stands upright, as the phone does, so a portrait-only app fills it.
+        Assert.Contains("Example One on a second screen", await app.RunCliAsync("screen", "open", "Example", "One", "--size", "phone"), StringComparison.Ordinal);
+        Assert.Contains("new-display 1080x2400 flex=False", ScreenLines(package)[1], StringComparison.Ordinal);
+        Assert.Contains("Off", await app.RunCliAsync("screen", "close"), StringComparison.Ordinal);
+
+        // A hand-typed size is clamped to the legal range and evened for the encoder.
+        Assert.Contains("Example One on a second screen", await app.RunCliAsync("screen", "open", "Example", "One", "--size", "719x1601"), StringComparison.Ordinal);
+        Assert.Contains("new-display 718x1600", ScreenLines(package)[2], StringComparison.Ordinal);
+        Assert.Contains("Off", await app.RunCliAsync("screen", "close"), StringComparison.Ordinal);
         Assert.Contains("A size is", await app.RunCliAsync("--json", "screen", "open", "Example", "One", "--size", "huge"), StringComparison.Ordinal);
         await app.QuitAsync();
     }
