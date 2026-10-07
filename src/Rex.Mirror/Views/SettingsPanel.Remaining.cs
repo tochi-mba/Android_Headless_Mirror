@@ -85,7 +85,7 @@ public partial class SettingsPanel
         var picker = new Microsoft.Win32.OpenFolderDialog
         {
             Title = "Save recordings to",
-            InitialDirectory = Path.Combine(_host.Paths.Root, _host.Config.Mirror.RecordDirectory),
+            InitialDirectory = PickerFolder.Ready(Path.Combine(_host.Paths.Root, _host.Config.Mirror.RecordDirectory), _host.Paths.Root),
         };
         if (picker.ShowDialog(Window.GetWindow(this)) != true)
         {

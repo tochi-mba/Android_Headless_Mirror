@@ -45,7 +45,7 @@
       <HeaderedContentControl Style="{StaticResource SettingRow}">
         <HeaderedContentControl.Header><StackPanel>
           <TextBlock Text="Upright" TextWrapping="Wrap" />
-          <TextBlock Text="Off, a fixed size lies on its side, as a PC screen does." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Off, a named size lies on its side, as a PC screen does. The phone's own size always keeps the phone's shape." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" />
         </StackPanel></HeaderedContentControl.Header>
         <CheckBox x:Name="ScreenPortrait" Checked="OnOption" Unchecked="OnOption" AutomationProperties.Name="Upright" />
       </HeaderedContentControl>

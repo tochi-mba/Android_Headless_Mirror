@@ -52,7 +52,7 @@ public partial class SecondScreenGroup : UserControl, ISettingsGroup
 
             var on = SettingsDependencies.Of(config);
             ScreenCustomOptions.IsEnabled = on.ScreenCustom;
-            ScreenFixedOptions.IsEnabled = on.ScreenFixed && !on.ScreenCustom;
+            ScreenFixedOptions.IsEnabled = on.ScreenUpright;
             ScreenResizeWhileDragging.IsEnabled = !on.ScreenFixed;
             ScreenBesideOptions.IsEnabled = on.ScreenBeside;
             ViewsSplitter.IsEnabled = on.ScreenBeside;

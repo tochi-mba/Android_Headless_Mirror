@@ -48,16 +48,18 @@ public sealed partial record ScreenSpec(int Width, int Height, int Dpi, bool Fol
         : $"{Width.ToString(CultureInfo.InvariantCulture)} x {Height.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>
-    /// The display the settings ask for. Fixed sizes lie on their side unless upright is asked for;
-    /// the phone's own size likewise. Following the view takes its pixels as they are. Every side is
-    /// even and at least <see cref="SecondScreenSettings.SmallestSide"/>, which encoders need.
+    /// The display the settings ask for. The named PC sizes lie on their side unless upright is
+    /// asked for. The phone's own size always keeps the phone's own shape, upright: it is chosen to
+    /// suit the phone's apps, and a portrait-only app on a lying display ends up a small box in its
+    /// middle. Following the view takes its pixels as they are. Every side is even and at least
+    /// <see cref="SecondScreenSettings.SmallestSide"/>, which encoders need.
     /// </summary>
     public static ScreenSpec For(SecondScreenSettings settings, (int Width, int Height) view, (int Width, int Height) phone, string app, bool fresh)
     {
         (int, int) Lying(int a, int b) => settings.Portrait ? (Math.Min(a, b), Math.Max(a, b)) : (Math.Max(a, b), Math.Min(a, b));
         var (width, height) = settings.Size switch
         {
-            "phone" when phone.Width > 0 && phone.Height > 0 => Lying(phone.Width, phone.Height),
+            "phone" when phone.Width > 0 && phone.Height > 0 => (Math.Min(phone.Width, phone.Height), Math.Max(phone.Width, phone.Height)),
             "720p" => Lying(1280, 720),
             "1080p" or "phone" => Lying(1920, 1080),
             "1440p" => Lying(2560, 1440),

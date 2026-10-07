@@ -4,6 +4,18 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.17.1 - 2026-10-07
+
+### Fixed
+
+- **Same as the phone** gives the second screen the phone's own shape, upright, whatever the
+  Upright switch says. It used to lie the display on its side, and a portrait-only app, like most
+  short-video apps, then showed as a small box in the middle of it. Upright can now only be
+  chosen for the named PC sizes, where it means something.
+- **Choose folder...** for recordings or screenshots no longer fails when the folder it would
+  start in does not exist yet, as on a fresh install before the first recording; the folder is
+  made first, and the picker starts in the app's own folder if it cannot be.
+
 ## 2.17.0 - 2026-10-06
 
 ### Added

@@ -42,6 +42,18 @@ public sealed class SettingsPanelRulesTests
         Assert.False(off.Ambient);
         Assert.False(off.Hud);
 
+        // Upright only means something for a named PC size: the phone's own size keeps the phone's
+        // shape, your own size is already both numbers, and following the view has no size to turn.
+        var screen = new RexConfig();
+        Assert.False(SettingsDependencies.Of(screen).ScreenUpright);
+        screen.SecondScreen.Size = "1080p";
+        Assert.True(SettingsDependencies.Of(screen).ScreenUpright);
+        screen.SecondScreen.Size = "phone";
+        Assert.False(SettingsDependencies.Of(screen).ScreenUpright);
+        Assert.True(SettingsDependencies.Of(screen).ScreenFixed);
+        screen.SecondScreen.Size = "custom";
+        Assert.False(SettingsDependencies.Of(screen).ScreenUpright);
+
         // The navigator needs both zoom and itself; keeping the audio on the phone needs a source that can.
         var navigator = new RexConfig();
         navigator.Zoom.ShowNavigator = false;

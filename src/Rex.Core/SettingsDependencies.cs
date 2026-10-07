@@ -21,7 +21,8 @@ namespace Rex.Core;
 /// <param name="AppsOnControls">How many favourites the Controls tab shows: it shows them.</param>
 /// <param name="Transfer">File-transfer choices: accepting files is on.</param>
 /// <param name="ScreenCustom">The second screen's own width and height: its size is set to your own.</param>
-/// <param name="ScreenFixed">Upright and the resolution limit: the second screen has a fixed size.</param>
+/// <param name="ScreenFixed">The resolution limit and resizing with the window: the second screen has a fixed size.</param>
+/// <param name="ScreenUpright">Upright: the second screen has a named PC size, which lies on its side unless asked. The phone's own size keeps the phone's shape, and your own size is already both numbers.</param>
 /// <param name="ScreenBeside">Side, minimum width and the splitter: the second screen goes beside the phone.</param>
 /// <param name="Touchpad">Two-finger gestures and pinch zoom: touchpad gestures are on.</param>
 /// <param name="TransferInstall">APK install choices: accepting files and installing APKs are on.</param>
@@ -45,6 +46,7 @@ public sealed record SettingsDependencies(
     bool TransferInstall,
     bool ScreenCustom,
     bool ScreenFixed,
+    bool ScreenUpright,
     bool ScreenBeside,
     bool Touchpad,
     bool Restarts)
@@ -68,6 +70,7 @@ public sealed record SettingsDependencies(
         TransferInstall: config.Transfer.Enabled && config.Transfer.InstallApks,
         ScreenCustom: config.SecondScreen.Size == "custom",
         ScreenFixed: config.SecondScreen.Size != "follow",
+        ScreenUpright: config.SecondScreen.Size is "720p" or "1080p" or "1440p",
         ScreenBeside: config.SecondScreen.Placement == "beside",
         Touchpad: config.Touchpad.Enabled,
         Restarts: config.Session.RestartOnUnexpectedExit);
