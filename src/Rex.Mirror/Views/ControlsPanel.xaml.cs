@@ -78,10 +78,87 @@ public partial class ControlsPanel : UserControl
     /// </summary>
     private bool _syncing;
 
+    private readonly Dictionary<string, FrameworkElement> _hosts;
+
     public ControlsPanel()
     {
         InitializeComponent();
+        _hosts = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal)
+        {
+            ["apps"] = HostApps, ["screen"] = HostScreen, ["phone"] = HostPhone, ["orientation"] = HostOrientation,
+            ["view"] = HostView, ["keyboard"] = HostKeyboard, ["zoom"] = HostZoom, ["copies"] = HostCopies,
+            ["files"] = HostFiles, ["clipboard"] = HostClipboard, ["pattern"] = HostPattern,
+        };
+        AddSectionSettings();
         ApplyLayout(new ControlsSettings());
+    }
+
+    /// <summary>
+    /// Each section's own settings, reachable from the section itself: a small button beside its
+    /// name that opens the Settings tab at the group where that feature is adjusted, so nobody has
+    /// to know which of the nineteen groups holds it.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, string> SectionSettings = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["apps"] = "GroupApps", ["screen"] = "GroupScreen", ["phone"] = "GroupControlsTab",
+        ["orientation"] = "GroupDisplay", ["view"] = "GroupControlsTab", ["keyboard"] = "GroupInput",
+        ["zoom"] = "GroupZoom", ["copies"] = "GroupCopies", ["files"] = "GroupFiles",
+        ["clipboard"] = "GroupInput", ["pattern"] = "GroupLockScreen",
+    };
+
+    /// <summary>Puts the settings button beside each section's name, which is its first eyebrow line.</summary>
+    private void AddSectionSettings()
+    {
+        var eyebrow = (Style)FindResource("Eyebrow");
+        foreach (var (id, host) in _hosts)
+        {
+            if (FirstEyebrow(host, eyebrow) is not { Parent: Panel place } title)
+            {
+                continue;
+            }
+
+            var at = place.Children.IndexOf(title);
+            place.Children.RemoveAt(at);
+            var header = new Grid();
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            header.Children.Add(title);
+            var open = new Button
+            {
+                Style = (Style)FindResource("IconButton"),
+                Content = FindResource("IconSettings"),
+                Height = 24,
+                Width = 28,
+                Padding = new Thickness(2),
+                VerticalAlignment = VerticalAlignment.Top,
+                ToolTip = "Its settings, in the Settings tab",
+            };
+            System.Windows.Automation.AutomationProperties.SetAutomationId(open, "section-settings-" + id);
+            System.Windows.Automation.AutomationProperties.SetName(open, title.Text + " settings");
+            var group = SectionSettings[id];
+            open.Click += (_, _) => _window?.OpenSettingsGroup(group);
+            Grid.SetColumn(open, 1);
+            header.Children.Add(open);
+            place.Children.Insert(at, header);
+        }
+    }
+
+    private static TextBlock? FirstEyebrow(DependencyObject root, Style eyebrow)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is TextBlock { } text && Equals(text.Style, eyebrow))
+            {
+                return text;
+            }
+
+            if (FirstEyebrow(child, eyebrow) is { } inner)
+            {
+                return inner;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -99,21 +176,15 @@ public partial class ControlsPanel : UserControl
         }
 
         _layoutBuilt = built;
-        var hosts = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal)
-        {
-            ["apps"] = HostApps, ["screen"] = HostScreen, ["phone"] = HostPhone, ["orientation"] = HostOrientation,
-            ["view"] = HostView, ["keyboard"] = HostKeyboard, ["zoom"] = HostZoom, ["copies"] = HostCopies,
-            ["files"] = HostFiles, ["clipboard"] = HostClipboard, ["pattern"] = HostPattern,
-        };
-        foreach (var host in hosts.Values)
+        foreach (var host in _hosts.Values)
         {
             Sections.Children.Remove(host);
         }
 
         foreach (var (id, _, shown) in layout.SectionRows())
         {
-            hosts[id].Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
-            Sections.Children.Add(hosts[id]);
+            _hosts[id].Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            Sections.Children.Add(_hosts[id]);
         }
 
         var template = (DataTemplate)FindResource(layout.TileLabels ? "Tile" : "TileIconOnly");

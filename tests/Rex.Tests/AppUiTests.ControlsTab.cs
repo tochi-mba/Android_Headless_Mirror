@@ -46,4 +46,26 @@ public sealed partial class AppUiTests
             "the Controls tab to be put back");
         await app.QuitAsync();
     }
+
+    /// <summary>Each section's small settings button opens the Settings tab at that feature's own group.</summary>
+    [Fact(Timeout = 75_000)]
+    public async Task ControlsTab_EachSectionLinksToItsSettings()
+    {
+        TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+        using var package = new TestPackage(withFakeTools: true);
+        using var app = new AppProcess(package);
+        await app.WaitForPhaseAsync("mirroring", Startup);
+        app.Ui.Select("TabControls");
+
+        app.Ui.Invoke("section-settings-copies");
+        await app.WaitForStatusAsync(s => s["sidebarTab"]!.GetValue<string>() == "settings", Soon, "the Settings tab");
+        await app.WaitUntilAsync(() => app.Ui.IsExpanded("GroupCopies"), Soon, "the Copies group to open");
+        Assert.False(app.Ui.Read("CopiesMost", i => i.IsOffscreen));
+
+        // Back on Controls, the pattern guide's section reaches the Lock screen group the same way.
+        app.Ui.Select("TabControls");
+        app.Ui.Invoke("section-settings-pattern");
+        await app.WaitUntilAsync(() => app.Ui.IsExpanded("GroupLockScreen"), Soon, "the Lock screen group to open");
+        await app.QuitAsync();
+    }
 }
