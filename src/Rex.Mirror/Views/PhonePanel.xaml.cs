@@ -420,7 +420,11 @@ public partial class PhonePanel : UserControl
             Element = row;
         }
 
-        /// <summary>The Reset button for a changed setting that can go back to the phone's default, or null.</summary>
+        /// <summary>
+        /// The Reset button for a changed setting that can go back to the phone's default, or null.
+        /// The same small round arrow as Put back in Keyboard shortcuts, so going back looks the same
+        /// everywhere and a switch row keeps its room for the label.
+        /// </summary>
         private static Button? ResetButton(PhoneSettingValue value, PhonePanel panel)
         {
             if (!ShowsReset(value))
@@ -430,10 +434,17 @@ public partial class PhonePanel : UserControl
 
             var reset = new Button
             {
-                Content = "Reset",
+                Content = new System.Windows.Shapes.Path
+                {
+                    Data = (Geometry)panel.FindResource("IconRefresh"),
+                    Stroke = (Brush)panel.FindResource("Signal"),
+                    StrokeThickness = 1.6,
+                    Width = 16,
+                    Height = 16,
+                    Stretch = Stretch.Uniform,
+                },
                 Style = (Style)panel.FindResource("GhostButton"),
-                MinHeight = 26,
-                Padding = new Thickness(8, 2, 8, 2),
+                Padding = new Thickness(4),
                 Margin = new Thickness(0, 0, 8, 0),
                 VerticalAlignment = VerticalAlignment.Center,
                 ToolTip = "Back to the phone's own default",

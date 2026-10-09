@@ -146,6 +146,37 @@ public static class Shortcuts
     /// <summary>The keys that mean something on their own while browse mode is on.</summary>
     public static IReadOnlyList<Shortcut> BrowseKeys => All.Where(s => s.Browse).ToArray();
 
+    /// <summary>
+    /// A list as a person reads it: a run of numbered keys that still follows its shipped pattern
+    /// (favourite apps 1 to 9, profiles 1 to 9) becomes one row, "Ctrl+Alt+F1 to F9". A run with any
+    /// key changed or taken away is listed one by one, so a moved key is never hidden in a range.
+    /// </summary>
+    public static IReadOnlyList<Shortcut> Folded(IEnumerable<Shortcut> shortcuts)
+    {
+        var list = shortcuts.ToList();
+        foreach (var (prefix, count, what) in new[] { (FavouritePrefix, FavouriteKeys, "Open favourite apps"), (ProfilePrefix, ProfileKeys, "Apply profiles") })
+        {
+            var run = Enumerable.Range(1, count).Select(n => list.FirstOrDefault(s => s.Id == prefix + n)).ToArray();
+            var shipped = Enumerable.Range(1, count).Select(n => Find(prefix + n)!.Gesture).ToArray();
+            if (run.Any(s => s is null) || !run.Select(s => s!.Gesture).SequenceEqual(shipped, StringComparer.Ordinal))
+            {
+                continue;
+            }
+
+            var at = list.IndexOf(run[0]!);
+            list.RemoveAll(s => run.Contains(s));
+            var last = shipped[^1];
+            list.Insert(at, run[0]! with
+            {
+                Id = prefix + "1-" + count,
+                Gesture = $"{shipped[0]} to {last[(last.LastIndexOf('+') + 1)..]}",
+                Description = $"{what} 1 to {count}",
+            });
+        }
+
+        return list;
+    }
+
     /// <summary>The key or gesture for a shortcut or action as this person has it, or an empty string when it has none.</summary>
     public static string Gesture(string id) =>
         KeyMap.WindowIds.Any(w => w.Id == id) ? KeyMap.Current.ChordFor(id)?.ToString() ?? string.Empty : Find(id)?.Gesture ?? string.Empty;

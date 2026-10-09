@@ -18,12 +18,10 @@ public partial class InfoPanel : UserControl
     {
         InitializeComponent();
 
-        // One list, from the registry the window and the website also read, so it cannot drift.
-        ShortcutKeys.ItemsSource = Rows(Shortcuts.All.Where(s => s.IsKey && !s.Browse && !s.Global));
-        ShortcutBrowse.ItemsSource = Rows(Shortcuts.BrowseKeys);
+        // From the registry the window and the website also read, so it cannot drift; the window's
+        // own lists follow the person's keys as soon as the app attaches (ShowKeys).
         ShortcutGestures.ItemsSource = Rows(Shortcuts.All.Where(s => !s.IsKey));
-        // The heading is set in capitals; the key is written the way it is everywhere else.
-        BrowseHeading.Text = "BROWSE MODE · " + Shortcuts.Gesture("browse");
+        ShowKeys(new RexConfig());
         HelpWhatsNew.ToolTip = $"What changed in {CommandRouter.AppVersion}, on the website";
         System.Windows.Automation.AutomationProperties.SetName(HelpWhatsNew, $"What's new in {CommandRouter.AppVersion}");
     }
@@ -31,10 +29,23 @@ public partial class InfoPanel : UserControl
     private static KeyValuePair<string, string>[] Rows(IEnumerable<Shortcut> shortcuts) =>
         shortcuts.Select(s => KeyValuePair.Create(s.Gesture, s.Description)).ToArray();
 
-    /// <summary>The keys from anywhere as this person has set them, or why there are none.</summary>
-    internal void ShowGlobalKeys(RexConfig config)
+    /// <summary>
+    /// Every key as this person has it: the window's own (numbered runs folded while they follow
+    /// their shipped pattern), browse mode's, and the keys from anywhere, or why there are none.
+    /// </summary>
+    internal void ShowKeys(RexConfig config)
     {
-        var keys = Shortcuts.Effective(config).Where(s => s.Global).ToArray();
+        var effective = Shortcuts.Effective(config);
+        // The favourite and profile keys are only listed while their settings have them on.
+        bool Kept(Shortcut s) =>
+            (config.Apps.FavouriteKeys || Shortcuts.Favourite(s.Id) == 0) && (config.Profiles.Keys || Shortcuts.ProfileNumber(s.Id) == 0);
+        ShortcutKeys.ItemsSource = Rows(Shortcuts.Folded(effective.Where(s => s.IsKey && !s.Browse && !s.Global && Kept(s))));
+        ShortcutBrowse.ItemsSource = Rows(effective.Where(s => s.Browse));
+        // The heading is set in capitals; the key is written the way it is everywhere else.
+        var browse = new KeyMap(config.Keys).ChordFor("browse")?.ToString();
+        BrowseHeading.Text = browse is null ? "BROWSE MODE" : "BROWSE MODE · " + browse;
+
+        var keys = effective.Where(s => s.Global).ToArray();
         ShortcutGlobal.ItemsSource = Rows(keys);
         ShortcutGlobalNote.Text = !config.GlobalKeys.Enabled
             ? "Off. Turn them on in Settings, Shortcuts from anywhere."
@@ -98,7 +109,7 @@ public partial class InfoPanel : UserControl
             }
 
             var profile = _host.State.GetDevice(device.Serial);
-            rows.Add(new InfoRow("Lock type", string.IsNullOrEmpty(profile?.LockScreenMode) ? "not set" : profile!.LockScreenMode));
+            rows.Add(new InfoRow("Lock type", LockScreenModes.Describe(profile?.LockScreenMode)));
         }
         else if (session.Devices.Count > 0)
         {
@@ -116,10 +127,10 @@ public partial class InfoPanel : UserControl
 
         ToolRows.ItemsSource = new[]
         {
-            new InfoRow("scrcpy", session.Tools is null ? "not installed" : $"{session.Tools.Version}"),
+            new InfoRow("scrcpy", session.Tools is null ? "Not installed" : $"{session.Tools.Version}"),
             new InfoRow("Folder", _host.Paths.Root, Mono: true),
             new InfoRow("Version", CommandRouter.AppVersion, Mono: true),
-            new InfoRow("Startup", StartupRegistration.IsEnabled() ? "starts with Windows" : "manual"),
+            new InfoRow("Startup", StartupRegistration.IsEnabled() ? "Starts with Windows" : "Opened by hand"),
         };
 
         LogText.Text = string.Join(Environment.NewLine, _host.Log.Tail(12));

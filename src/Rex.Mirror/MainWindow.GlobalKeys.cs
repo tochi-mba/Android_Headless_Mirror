@@ -38,7 +38,7 @@ public partial class MainWindow
         }
 
         _globalKeys = keys;
-        InfoPanel.ShowGlobalKeys(_host.Config);
+        InfoPanel.ShowKeys(_host.Config);
         if (keys.Count > 0)
         {
             _hooks.Install();

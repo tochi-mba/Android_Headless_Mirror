@@ -11,6 +11,15 @@ public static class LockScreenModes
     public const string Unknown = "";
 
     public static bool IsValid(string? value) => value is Pattern or Other or None;
+
+    /// <summary>How the app knows a phone unlocks, in the words the window uses.</summary>
+    public static string Describe(string? mode) => mode switch
+    {
+        Pattern => "Pattern",
+        Other => "PIN, password or other",
+        None => "No lock",
+        _ => "Not asked yet",
+    };
 }
 
 /// <param name="Landscape">True when the guide was lined up over a landscape picture; it only applies in that orientation.</param>
