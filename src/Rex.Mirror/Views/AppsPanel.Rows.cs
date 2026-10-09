@@ -85,6 +85,9 @@ public partial class AppsPanel
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
+            // Two lines exactly, whatever the font's own spacing: a fixed line height and room for two.
+            LineHeight = 15,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             MaxHeight = 30,
             Margin = new Thickness(0, 5, 0, 0),
         });
@@ -96,6 +99,7 @@ public partial class AppsPanel
                 FontSize = 10,
                 Style = (Style)FindResource("MutedText"),
                 TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.NoWrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 1, 0, 0),
             });
