@@ -118,6 +118,47 @@ public sealed class GlobalKeysPanelTests
         });
     }
 
+    /// <summary>
+    /// The Info tab lists every key as the person has it, not as the app ships: a moved key shows
+    /// where it is now, one taken away is gone, the numbered runs fold into one row each, and a run
+    /// whose keys are switched off in Settings is not listed at all.
+    /// </summary>
+    [Fact]
+    public void TheInfoTabListsThePersonsOwnKeys()
+    {
+        Wpf.Run(() =>
+        {
+            var info = Wpf.Layout(new Rex.Mirror.Views.InfoPanel(), 320);
+            static Dictionary<string, string> Rows(System.Collections.IEnumerable source) =>
+                ((IEnumerable<KeyValuePair<string, string>>)source).ToDictionary(row => row.Value, row => row.Key);
+
+            var shipped = Rows(info.ShortcutKeys.ItemsSource);
+            Assert.Equal("Ctrl+Alt+H", shipped["Home"]);
+            Assert.Equal("Ctrl+Alt+Shift+1 to 9", shipped["Open favourite apps 1 to 9"]);
+            Assert.Equal("Ctrl+Alt+F1 to F9", shipped["Apply profiles 1 to 9"]);
+            Assert.DoesNotContain("Open favourite app 1", shipped.Keys);
+
+            var config = new RexConfig();
+            config.Keys.Window =
+            [
+                new KeyBinding { Action = "home", Key = "Ctrl+Alt+J" },
+                new KeyBinding { Action = "recents", Key = string.Empty },
+            ];
+            config.Apps.FavouriteKeys = false;
+            config.Normalize();
+            info.ShowKeys(config);
+            var own = Rows(info.ShortcutKeys.ItemsSource);
+            Assert.Equal("Ctrl+Alt+J", own["Home"]);
+            Assert.DoesNotContain("Recent apps", own.Keys);
+            Assert.DoesNotContain(own.Keys, k => k.StartsWith("Open favourite app", StringComparison.Ordinal));
+            Assert.Equal("Ctrl+Alt+F1 to F9", own["Apply profiles 1 to 9"]);
+
+            config.Profiles.Keys = false;
+            info.ShowKeys(config);
+            Assert.DoesNotContain(Rows(info.ShortcutKeys.ItemsSource).Keys, k => k.StartsWith("Apply profile", StringComparison.Ordinal));
+        });
+    }
+
     [Fact]
     public void TheInfoTabListsThePersonsKeysFromAnywhere()
     {
@@ -129,7 +170,7 @@ public sealed class GlobalKeysPanelTests
             var config = new RexConfig();
             config.GlobalKeys.Actions = [new() { Key = "Ctrl+Shift+F10", Action = "screenshot" }];
 
-            info.ShowGlobalKeys(config);
+            info.ShowKeys(config);
             Assert.Equal(["Ctrl+Alt+M", "Ctrl+Shift+F10"], Keys(info));
             Assert.Equal("These work while the window is hidden or behind others.", info.ShortcutGlobalNote.Text);
             // The window's own list does not repeat them.
@@ -137,12 +178,12 @@ public sealed class GlobalKeysPanelTests
 
             config.GlobalKeys.ShowHide = string.Empty;
             config.GlobalKeys.Actions = [];
-            info.ShowGlobalKeys(config);
+            info.ShowKeys(config);
             Assert.Empty(Keys(info));
             Assert.StartsWith("None set.", info.ShortcutGlobalNote.Text, StringComparison.Ordinal);
 
             config.GlobalKeys.Enabled = false;
-            info.ShowGlobalKeys(config);
+            info.ShowKeys(config);
             Assert.StartsWith("Off.", info.ShortcutGlobalNote.Text, StringComparison.Ordinal);
         });
     }
