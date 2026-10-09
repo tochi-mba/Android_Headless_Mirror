@@ -4,6 +4,24 @@ What changed in each version of Android Headless Mirror, newest first. Every ver
 was built and tested by CI; the installer for each published one is on the
 [releases page](https://github.com/tochi-mba/Android_Headless_Mirror/releases).
 
+## 2.18.1 - 2026-10-09
+
+### Fixed
+
+- The Info tab lists every key as you have it. It used to show the keys the app ships with, so a
+  key moved in Keyboard shortcuts still showed its old place there. The favourite-app and profile
+  keys fold into one row each ("Ctrl+Alt+F1 to F9"), and are left out while they are switched off
+  in Settings.
+- The settings icon is a gear. The rayed circle it replaces read as the sun of Wake beside it.
+- In the Apps tab's tiles, a row lines up at the top however long a name in it is, a long name
+  keeps to two lines, and two apps with the same name show their packages so they can be told
+  apart.
+- The Phone tab's Reset is the same small round arrow as Put back in Keyboard shortcuts, so going
+  back looks the same everywhere and a switch row keeps its room for the label.
+- The Info tab says its values in words ("Pattern", "Starts with Windows", "Opened by hand"), and
+  the stopped screen says why the mirror stopped, if there is a reason, without saying "Mirror
+  stopped" twice. Every message about starting again names the Start mirror button.
+
 ## 2.18.0 - 2026-10-07
 
 ### Added
