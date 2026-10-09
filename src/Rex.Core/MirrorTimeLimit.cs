@@ -15,5 +15,5 @@ public static class MirrorTimeLimit
 
     /// <summary>What the status line says once it has stopped.</summary>
     public static string Stopped(int minutes) =>
-        $"Stopped after {TimeWords.Minutes(minutes)}, as set in Settings. Press Start to mirror again.";
+        $"Stopped after {TimeWords.Minutes(minutes)}, as set in Settings. Choose Start mirror to mirror again.";
 }

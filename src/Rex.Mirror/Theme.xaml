@@ -65,7 +65,8 @@
   <Geometry x:Key="IconKeyboardLayout">M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 Z M3 12 H21 M12 3 C8.5 6.5 8.5 17.5 12 21 M12 3 C15.5 6.5 15.5 17.5 12 21</Geometry>
   <Geometry x:Key="IconCamera">M4 8 H8 L10 5 H14 L16 8 H20 V19 H4 Z M12 10 A3.5 3.5 0 1 0 12 17 A3.5 3.5 0 1 0 12 10</Geometry>
   <Geometry x:Key="IconBell">M6 17 V11 A6 6 0 0 1 18 11 V17 L20 19 H4 Z M10 21 H14</Geometry>
-  <Geometry x:Key="IconSettings">M12 8 A4 4 0 1 0 12 16 A4 4 0 1 0 12 8 M12 2 V5 M12 19 V22 M2 12 H5 M19 12 H22 M4.9 4.9 L7 7 M17 17 L19.1 19.1 M4.9 19.1 L7 17 M17 7 L19.1 4.9</Geometry>
+  <!-- A gear with eight teeth: the rayed circle it replaces read as the sun of Wake beside it. -->
+  <Geometry x:Key="IconSettings">M18.47,9.32 L21.18,9.99 L21.18,14.01 L18.47,14.68 L19.92,17.07 L17.07,19.92 L14.68,18.47 L14.01,21.18 L9.99,21.18 L9.32,18.47 L6.93,19.92 L4.08,17.07 L5.53,14.68 L2.82,14.01 L2.82,9.99 L5.53,9.32 L4.08,6.93 L6.93,4.08 L9.32,5.53 L9.99,2.82 L14.01,2.82 L14.68,5.53 L17.07,4.08 L19.92,6.93 Z M15,12 A3,3 0 1 0 9,12 A3,3 0 1 0 15,12</Geometry>
   <Geometry x:Key="IconPhone">M8 3 H16 A2 2 0 0 1 18 5 V19 A2 2 0 0 1 16 21 H8 A2 2 0 0 1 6 19 V5 A2 2 0 0 1 8 3 Z M10 18 H14</Geometry>
   <Geometry x:Key="IconSliders">M4 6 H20 M4 12 H20 M4 18 H20 M8 4 V8 M16 10 V14 M10 16 V20</Geometry>
   <!-- The phone and a wider screen beside it. -->

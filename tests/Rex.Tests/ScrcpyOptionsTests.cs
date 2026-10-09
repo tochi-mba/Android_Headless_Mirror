@@ -382,7 +382,7 @@ public sealed class ScrcpyOptionsTests
 
     [Fact]
     public void TheStopSaysHowLongItRan() =>
-        Assert.Equal("Stopped after 30 minutes, as set in Settings. Press Start to mirror again.", MirrorTimeLimit.Stopped(30));
+        Assert.Equal("Stopped after 30 minutes, as set in Settings. Choose Start mirror to mirror again.", MirrorTimeLimit.Stopped(30));
 
     [Fact]
     public void EveryNewSettingHasAControlAndSaysWhenItApplies()

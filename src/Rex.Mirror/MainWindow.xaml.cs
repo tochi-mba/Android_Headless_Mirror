@@ -368,9 +368,16 @@ public partial class MainWindow : Window
                 _ when usbBlocked => "Phone found, but Windows blocks ADB",
                 _ => "Connect your phone",
             };
-            EmptyText.Text = session.Phase == SessionPhase.Waiting && session.Devices.Count == 0 && !usbBlocked
-                ? "Plug in an Android phone with USB debugging turned on. It appears here automatically."
-                : session.Message;
+            // The heading already says the mirror stopped; the line under it says why, if there is a
+            // reason, and what to do, without saying "Mirror stopped" a second time.
+            const string Stopped = "Mirror stopped. ";
+            EmptyText.Text = session.Phase switch
+            {
+                SessionPhase.Waiting when session.Devices.Count == 0 && !usbBlocked =>
+                    "Plug in an Android phone with USB debugging turned on. It appears here automatically.",
+                SessionPhase.Stopped when session.Message.StartsWith(Stopped, StringComparison.Ordinal) => session.Message[Stopped.Length..],
+                _ => session.Message,
+            };
             EmptyPrimary.Visibility = session.Phase == SessionPhase.Stopped ? Visibility.Visible : Visibility.Collapsed;
             EmptyRepair.Visibility = usbBlocked && session.Phase == SessionPhase.Waiting ? Visibility.Visible : Visibility.Collapsed;
 
