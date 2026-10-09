@@ -67,7 +67,12 @@ public partial class AppsPanel
     }
 
     /// <summary>A tile of the grid: the letter tile over the name. Starring is in its menu.</summary>
-    private FrameworkElement GridTile(string section, AppEntry entry)
+    /// <summary>
+    /// One tile: the letter, the name on at most two lines, and the package under it only when
+    /// another app has the same name. Tiles hang from the top, so a row of them lines up however
+    /// long one name is.
+    /// </summary>
+    private FrameworkElement GridTile(string section, AppEntry entry, bool showPackage)
     {
         var face = new StackPanel();
         var tile = Tile(entry.App, 36);
@@ -78,13 +83,29 @@ public partial class AppsPanel
             Text = entry.App.Name,
             FontSize = 11,
             TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxHeight = 30,
             Margin = new Thickness(0, 5, 0, 0),
         });
+        if (showPackage)
+        {
+            face.Children.Add(new TextBlock
+            {
+                Text = entry.App.Package,
+                FontSize = 10,
+                Style = (Style)FindResource("MutedText"),
+                TextAlignment = TextAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 1, 0, 0),
+            });
+        }
+
         var open = Opener(section, entry, face);
         open.Margin = new Thickness(3);
         open.Padding = new Thickness(4, 8, 4, 8);
         open.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        open.VerticalContentAlignment = VerticalAlignment.Top;
         return open;
     }
 

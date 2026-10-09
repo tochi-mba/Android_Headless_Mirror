@@ -205,6 +205,15 @@ public sealed partial class AppUiTests
         app.Ui.Select("TabApps");
         await app.WaitUntilAsync(() => app.Ui.Exists("app-yours-com.example.one"), Soon, "the tiles");
         Assert.False(app.Ui.Exists("app-star-yours-com.example.one"));
+
+        // A row of tiles lines up at the top, whatever the length of a name in it.
+        var top = app.Ui.Read("app-yours-com.example.longname", i => i.BoundingRectangle.Top);
+        Assert.Equal(top, app.Ui.Read("app-yours-com.example.bank", i => i.BoundingRectangle.Top));
+
+        // The two apps called Notes say their packages; an app with a name of its own does not.
+        Assert.True(app.Ui.ExistsNamed("com.example.notes"));
+        Assert.True(app.Ui.ExistsNamed("org.other.notes"));
+        Assert.False(app.Ui.ExistsNamed("com.example.bank"));
         await app.SaveScreenshotAsync("ui-apps-grid.png");
         await app.QuitAsync();
     }

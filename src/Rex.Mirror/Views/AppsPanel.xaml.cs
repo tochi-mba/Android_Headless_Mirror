@@ -107,6 +107,9 @@ public partial class AppsPanel : UserControl
         }
 
         var sections = AppOrder.Sections(apps, profile?.FavouriteApps ?? [], profile?.RecentApps ?? [], settings, query, _showHidden);
+        // Two apps with the same name can only be told apart by their packages, which the tiles otherwise leave out.
+        var sharedNames = apps.GroupBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.CurrentCultureIgnoreCase);
         Sections.Children.Clear();
         _order.Clear();
         foreach (var section in sections)
@@ -125,7 +128,7 @@ public partial class AppsPanel : UserControl
                 var key = $"{section.Id}/{entry.App.Package}/{entry.Favourite}/{entry.Missing}/{entry.Hidden}";
                 if (!_rows.TryGetValue(key, out var row))
                 {
-                    row = settings.Layout == "grid" ? GridTile(section.Id, entry) : ListRow(section.Id, entry, settings.ShowPackages);
+                    row = settings.Layout == "grid" ? GridTile(section.Id, entry, sharedNames.Contains(entry.App.Name)) : ListRow(section.Id, entry, settings.ShowPackages);
                     _rows[key] = row;
                 }
 
