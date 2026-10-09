@@ -416,7 +416,7 @@ public sealed partial class SessionController : IDisposable
         var phoneStillReady = Devices.Any(d => d.Serial == scrcpy.Serial && d.IsReady);
         if (userStopped)
         {
-            SetState(SessionPhase.Stopped, "Mirror stopped. Press Start, or reconnect the phone.");
+            SetState(SessionPhase.Stopped, "Mirror stopped. Choose Start mirror, or reconnect the phone.");
         }
         else if (_restartRequested)
         {
@@ -448,8 +448,8 @@ public sealed partial class SessionController : IDisposable
         {
             _stoppedSerial = scrcpy.Serial;
             SetState(SessionPhase.Stopped, config.Session.RestartOnUnexpectedExit && _restartAttempts >= config.Session.RestartLimit
-                ? "The mirror keeps closing. Press Start to try again, or check Info for details."
-                : "Mirror closed. Press Start, or reconnect the phone.");
+                ? "The mirror keeps closing. Choose Start mirror to try again, or see the Info tab for details."
+                : "Mirror closed. Choose Start mirror, or reconnect the phone.");
         }
 
         var byItself = !userStopped && !_restartRequested && phoneStillReady;
