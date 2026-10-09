@@ -687,7 +687,9 @@ public sealed partial class AppEndToEndTests
         {
             Devices = new[] { new { Serial = "FAKE123", State = "device", Model = "Fake Phone" } },
             KeyguardLocked = true,
-            UiHierarchyDelayMs = 1500,
+            // Long enough that a slow runner still sees the spinner while Android is asked; short
+            // enough that the dots then appearing is still quick.
+            UiHierarchyDelayMs = 4000,
             UiHierarchy = """
                 <hierarchy rotation="0"><node class="android.widget.FrameLayout" bounds="[0,0][1080,2400]">
                   <node class="com.android.internal.widget.LockPatternView" bounds="[140,820][940,1620]" />
@@ -708,7 +710,7 @@ public sealed partial class AppEndToEndTests
             data => data["patternGuide"]?["visible"]?.GetValue<bool>() == true &&
                 data["patternGuide"]?["resolving"]?.GetValue<bool>() == false &&
                 data["patternGuide"]?["source"]?.GetValue<string>() == PatternGeometry.SourceUiView,
-            TimeSpan.FromSeconds(8),
+            TimeSpan.FromSeconds(12),
             "discovered pattern geometry");
         Assert.False(ready["patternGuide"]!["spinning"]!.GetValue<bool>());
         Assert.Equal(PatternGeometry.SourceUiView, ready["patternGuide"]!["source"]!.GetValue<string>());
