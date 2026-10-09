@@ -206,9 +206,14 @@ public sealed partial class AppUiTests
         await app.WaitUntilAsync(() => app.Ui.Exists("app-yours-com.example.one"), Soon, "the tiles");
         Assert.False(app.Ui.Exists("app-star-yours-com.example.one"));
 
-        // A row of tiles lines up at the top, whatever the length of a name in it.
-        var top = app.Ui.Read("app-yours-com.example.longname", i => i.BoundingRectangle.Top);
-        Assert.Equal(top, app.Ui.Read("app-yours-com.example.bank", i => i.BoundingRectangle.Top));
+        // A row of tiles lines up at the top, whatever the length of a name in it: the letters at
+        // the top of each tile share a top edge. (The buttons always do; their contents need not.)
+        static double LetterTop(AppProcess app, string id) =>
+            app.Ui.Find(id).FindFirst(System.Windows.Automation.TreeScope.Descendants,
+                new System.Windows.Automation.PropertyCondition(System.Windows.Automation.AutomationElement.ControlTypeProperty, System.Windows.Automation.ControlType.Text))
+                .Current.BoundingRectangle.Top;
+        Assert.Equal(LetterTop(app, "app-yours-com.example.longname"), LetterTop(app, "app-yours-com.example.bank"), 1);
+        Assert.Equal(LetterTop(app, "app-yours-com.example.notes"), LetterTop(app, "app-yours-com.example.podcasts"), 1);
 
         // The two apps called Notes say their packages; an app with a name of its own does not.
         Assert.True(app.Ui.ExistsNamed("com.example.notes"));
